@@ -1,0 +1,14 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## Testing Strategy
+- Unit tests for core impact calculation algorithms
+- Unit tests for life projection algorithms
+- Mock HealthKit data for consistent testing
+- UI and navigation flow testing
+- Performance testing for scale
+- Simulated load testing
+- Conversion funnel analytics
+- A/B testing framework for questionnaire and payment screens

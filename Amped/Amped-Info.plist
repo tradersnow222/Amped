@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSHealthShareUsageDescription</key>
+    <string>Amped uses your health data to calculate personalized life impact metrics. All data is processed on your device and never shared.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>Amped does not modify your health data, but requires this permission to access your health information.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+    </array>
+</dict>
+</plist> 

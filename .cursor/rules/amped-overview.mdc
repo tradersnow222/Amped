@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Project Specification: Amped iOS Health Metrics App (MVP)
+
+## Overview
+Create a Minimum Viable Product (MVP) iOS application named "Amped" with the tagline "Power Up Your Life" that integrates with Apple HealthKit to track and analyze health metrics in real-time. The app calculates time gained or lost based on scientific research and personal health data, presenting this information with a battery-themed interface that visualizes health as energy levels. This MVP must be designed with scalability in mind to support future growth to millions of users.

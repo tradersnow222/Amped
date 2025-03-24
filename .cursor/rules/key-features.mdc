@@ -1,0 +1,16 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## Key Features
+- Real-time health analysis with HealthKit
+- Personalized questionnaire for additional health metrics
+- Life impact calculations based on scientific research
+- Total life expectancy projection with dynamic updates
+- Dual battery visualization (Impact Battery and Projection Battery)
+- Private on-device processing (no data sharing)
+- User-friendly insights with actionable recommendations
+- Intuitive battery-themed visualization that shows health metrics as energy levels
+- Familiar battery icon designs based on Apple's standard battery indicators
+- Frictionless UX designed around the "little yesses" conversion principle

@@ -1,0 +1,50 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## Implementation Sequence
+
+### Phase 1: MVP Foundation
+1. Update existing Xcode project with SwiftUI lifecycle
+2. Set up or update scalable directory structure
+3. Implement core models and services
+4. Configure basic UI theme and components
+5. Create initial README and architecture documentation
+
+### Phase 2: Core Functionality
+1. Implement HealthKitManager for permissions and data access
+2. Create HealthDataService for processing health data
+3. Design and implement health metric models
+4. Add HealthKit permissions in Info.plist
+5. Design frictionless questionnaire flow
+6. Document HealthKit integration approach
+
+### Phase 3: Impact and Projection Calculation
+1. Implement LifeImpactModel with scientific algorithms
+2. Create LifeImpactService for coordinating calculations
+3. Implement LifeProjectionService for long-term projections
+4. Design impact data structures and persistence
+5. Connect health data flow to impact calculations
+6. Integrate questionnaire data with calculations
+7. Document scientific basis and algorithm implementation
+
+### Phase 4: UI Implementation
+1. Build revised onboarding flow with "little yesses" approach
+2. Implement questionnaire flow (5-8 questions)
+3. Create payment screen with subscription options
+4. Implement dashboard with dual battery visualization
+5. Create metric cards showing different power levels
+6. Add charts and data visualization
+7. Implement privacy-respecting analytics
+8. Document UI components and user flows
+
+### Phase 5: MVP Refinement
+1. Add simple battery charging/discharging animations
+2. Implement basic settings
+3. Optimize performance for scale
+4. Add accessibility features
+5. Polish essential UI elements
+6. Test and optimize conversion funnel
+7. Complete user-facing documentation
+8. Finalize developer documentation

@@ -1,0 +1,14 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Rules
+- **Follow user requirements exactly** and **to the letter**.
+- **Think step-by-step** and describe a plan **before coding**.
+- **Confirm approach before implementing**.
+- Always write **correct, up-to-date, bug-free, secure, performant, and efficient** code.
+- Prioritize **readability** over extreme optimization.
+- Ensure **full implementation**—no placeholders or missing functionality.
+- **Be concise**—minimize unnecessary explanations.
+- If uncertain about something, **say so instead of guessing**.

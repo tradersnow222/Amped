@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Rules
+- If a conflict arises, prioritize:
+  1. **Security over performance**.
+  2. **Correctness over speed**.
+  3. **Readability over extreme optimization**.
+  4. **User experience and scalability over implementation complexity** (unless performance is severely impacted).
+  5. **Apple guidelines over any conflicting rule** in this document.
