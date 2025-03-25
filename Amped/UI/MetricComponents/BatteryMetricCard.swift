@@ -7,6 +7,8 @@ struct BatteryMetricCard: View {
     let metric: HealthMetric
     let showDetails: Bool
     
+    @Environment(\.themeManager) private var themeManager
+    
     // MARK: - UI Constants
     
     private let cardHeight: CGFloat = 110
@@ -36,7 +38,7 @@ struct BatteryMetricCard: View {
                     .foregroundColor(powerColor)
                 
                 Text(metric.type.displayName)
-                    .font(.headline)
+                    .style(.headline)
                 
                 Spacer()
                 
@@ -52,9 +54,7 @@ struct BatteryMetricCard: View {
             
             // Metric value
             Text(metric.formattedValue)
-                .font(.system(.title, design: .rounded))
-                .fontWeight(.bold)
-                .foregroundColor(powerColor)
+                .style(.metricValue, color: powerColor)
             
             // Battery visualization
             batteryVisualization
@@ -71,8 +71,7 @@ struct BatteryMetricCard: View {
                         .foregroundColor(Color(impact.comparisonToBaseline.color))
                     
                     Text(impact.formattedImpact)
-                        .font(.callout)
-                        .foregroundColor(impact.lifespanImpactMinutes >= 0 ? .ampedGreen : .ampedRed)
+                        .style(.callout, color: impact.lifespanImpactMinutes >= 0 ? .ampedGreen : .ampedRed)
                     
                     Spacer()
                     

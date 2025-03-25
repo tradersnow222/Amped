@@ -6,103 +6,303 @@ struct WelcomeView: View {
     
     @StateObject private var viewModel = WelcomeViewModel()
     @State private var isAnimating = false
+    @State private var glowOpacity = 0.7
+    @State private var scale = 1.0
+    @State private var isAppeared = false
+    @State private var buttonPulsing = false // Track button pulse animation state
+    @State private var buttonVisible = false // Track button visibility for delayed fade-in
+    
+    // Animation constants
+    private let pulseAnimationDuration: Double = 1.0
+    
+    // Callback to proceed to next step
+    var onContinue: (() -> Void)?
     
     // MARK: - Body
     
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
-            
-            // App logo and animation
-            VStack(spacing: 20) {
-                Image(systemName: "bolt.batteryblock.fill")
-                    .font(.system(size: 80))
-                    .foregroundColor(AmpedColors.green)
-                    .opacity(isAnimating ? 1.0 : 0.6)
-                    .scaleEffect(isAnimating ? 1.1 : 1.0)
-                    .shadow(color: AmpedColors.green.opacity(0.5), radius: isAnimating ? 10 : 5, x: 0, y: 0)
-                    .animation(
-                        Animation.easeInOut(duration: 1.5)
-                            .repeatForever(autoreverses: true),
-                        value: isAnimating
+        GeometryReader { geometry in
+            ZStack {
+                // Battery image as full-screen background
+                Image("BatteryBackground")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .overlay(
+                        // Overlay to ensure text readability
+                        LinearGradient(
+                            gradient: Gradient(
+                                colors: [
+                                    Color.black.opacity(0.4),
+                                    Color.black.opacity(0.2)
+                                ]
+                            ),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
                     )
-                    .onAppear {
-                        isAnimating = true
+                    .clipped()
+                
+                VStack {
+                    // Battery content area
+                    // This positions the content to appear within the green battery section
+                    GeometryReader { innerGeometry in
+                        // Main content - Amped and lightning bolt
+                        VStack(spacing: 16) {
+                            Text("Amped")
+                                .font(.system(size: 42, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white)
+                                .shadow(color: Color.ampedGreen, radius: 1.8, x: 0, y: 0)
+                                .shadow(color: Color.white.opacity(0.5), radius: 0.4, x: 0, y: 0)
+                                .minimumScaleFactor(0.7)
+                                .lineLimit(1)
+                                .frame(maxWidth: innerGeometry.size.width * 0.8)
+                                .padding(.bottom, 6)
+                            
+                            // Lightning bolt icon - much bigger with animation
+                            ZStack {
+                                // Glow effect
+                                Image(systemName: "bolt.fill")
+                                    .font(.system(size: 80))
+                                    .foregroundColor(.white.opacity(glowOpacity))
+                                    .shadow(color: Color.ampedGreen.opacity(0.8), radius: 10, x: 0, y: 0)
+                                
+                                // Main icon
+                                Image(systemName: "bolt.fill")
+                                    .font(.system(size: 70))
+                                    .foregroundColor(.white)
+                            }
+                            .scaleEffect(scale)
+                            .padding(.vertical, 8)
+                        }
+                        .frame(width: innerGeometry.size.width)
+                        // Restore the original position for Amped and lightning bolt
+                        .position(x: innerGeometry.size.width / 2, y: innerGeometry.size.height * 0.48)
+                        
+                        // Tagline positioned lower in the view (rule of thirds)
+                        VStack(spacing: 8) {
+                            Text("Your")
+                                .font(.callout.monospaced())
+                                .fontWeight(.medium)
+                                .foregroundColor(.white.opacity(0.95))
+                                .shadow(color: Color.black.opacity(0.5), radius: 2, x: 0, y: 1)
+                                .lineLimit(1)
+                            
+                            Text("LIFE BATTERY")
+                                .font(.callout.monospaced())
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .shadow(color: Color.ampedGreen, radius: 1.5, x: 0, y: 0)
+                                .shadow(color: Color.white.opacity(0.5), radius: 0.3, x: 0, y: 0)
+                                .lineLimit(1)
+                            
+                            Text("in real-time")
+                                .font(.callout.monospaced())
+                                .fontWeight(.medium)
+                                .foregroundColor(.white.opacity(0.95))
+                                .shadow(color: Color.black.opacity(0.5), radius: 2, x: 0, y: 1)
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: innerGeometry.size.width * 0.75)
+                        // Position at approximately 2/3 down the battery (rule of thirds)
+                        .position(x: innerGeometry.size.width / 2, y: innerGeometry.size.height * 0.7)
                     }
-                
-                Text("Amped")
-                    .font(.system(size: 48, weight: .bold, design: .rounded))
-                
-                Text("Power Up Your Life")
-                    .font(.title2)
-                    .foregroundColor(.secondary)
+                    
+                    Spacer()
+                    
+                    // Get started button
+                    Button(action: {
+                        // Use the callback instead of showing fullScreenCover
+                        onContinue?()
+                    }) {
+                        Text("Get Started")
+                            .fontWeight(.bold)
+                            .font(.system(.title3, design: .monospaced))
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.ampedGreen)
+                            .foregroundColor(.white)
+                            .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
+                            .cornerRadius(14)
+                    }
+                    .padding(.horizontal, 40)
+                    .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
+                    .scaleEffect(buttonPulsing ? 1.05 : 1.0) // Subtle scale effect when pulsing
+                    .opacity(buttonVisible ? 1 : 0) // Control button visibility
+                    .animation(.easeInOut(duration: 1.5), value: buttonVisible) // Button fade-in animation
+                    .animation(.easeInOut(duration: pulseAnimationDuration).repeatForever(autoreverses: true), value: buttonPulsing) // Pulse animation
+                    .withButtonInitiatedTransition() // Apply slightly slower transition for button navigation
+                    
+                    // Add spacer with specific height to move button up from bottom
+                    Spacer().frame(height: geometry.size.height * 0.12)
+                }
             }
-            
-            Spacer()
-            
-            // Get started button
-            Button(action: {
-                viewModel.proceedToNextStep()
-            }) {
-                Text("Get Started")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(AmpedColors.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(14)
-            }
-            .padding(.horizontal, 40)
-            
-            // Progress indicator for onboarding steps
-            ProgressIndicator(currentStep: 1, totalSteps: 7)
-                .padding(.top, 20)
         }
-        .padding(.vertical, 40)
-        .background(Color(.systemBackground))
+        .edgesIgnoringSafeArea(.all)
         .navigationBarHidden(true)
-        .fullScreenCover(isPresented: $viewModel.showPersonalizationIntro) {
-            PersonalizationIntroView()
+        .withWelcomeTransition(isPresented: isAppeared)
+        .onAppear {
+            // Trigger the fade-in animation after a short delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isAppeared = true
+                
+                // Fade in button 0.5 seconds after main fade-in completes (2.5 + 0.5 seconds)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    buttonVisible = true
+                    
+                    // Start BOTH lightning bolt and button pulse animations at the same time
+                    // 1 second after button appears
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        // Reset the lightning bolt animation to sync with button
+                        withAnimation(.easeInOut(duration: pulseAnimationDuration).repeatForever(autoreverses: true)) {
+                            glowOpacity = 0.95
+                            scale = 1.15
+                        }
+                        
+                        // Start button pulsing
+                        buttonPulsing = true
+                    }
+                }
+            }
         }
     }
 }
 
 // MARK: - Progress Indicator
 
-/// Simple progress dots to show onboarding progress
+/// Battery-styled progress indicator showing completion steps
 struct ProgressIndicator: View {
     let currentStep: Int
     let totalSteps: Int
     
+    // MARK: - UI Constants
+    private let barHeight: CGFloat = 16
+    private let horizontalMargin: CGFloat = 40
+    private let borderWidth: CGFloat = 1.5
+    private let segmentSpacing: CGFloat = 2
+    private let cornerRadius: CGFloat = 3
+    
     var body: some View {
-        HStack(spacing: 8) {
-            ForEach(1...totalSteps, id: \.self) { step in
-                Circle()
-                    .fill(step <= currentStep ? AmpedColors.green : Color.gray.opacity(0.3))
-                    .frame(width: 8, height: 8)
+        GeometryReader { geometry in
+            let availableWidth = geometry.size.width - (horizontalMargin * 2)
+            let segmentWidth = (availableWidth / CGFloat(totalSteps)) - segmentSpacing
+            
+            HStack(spacing: 2) {
+                Spacer(minLength: horizontalMargin)
+                
+                // Main battery body
+                ZStack(alignment: .leading) {
+                    // Empty battery background with outline
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .fill(Color.ampedGreen.opacity(0.05))
+                        .frame(width: availableWidth, height: barHeight)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: cornerRadius)
+                                .strokeBorder(Color.ampedGreen, lineWidth: borderWidth)
+                        )
+                    
+                    // Battery segments
+                    HStack(spacing: segmentSpacing) {
+                        ForEach(0..<totalSteps, id: \.self) { index in
+                            // Each segment has a chevron or forward-pointing shape
+                            ChevronSegment(
+                                isComplete: index < currentStep,
+                                width: segmentWidth,
+                                height: barHeight - (borderWidth * 2),
+                                isFirstSegment: index == 0
+                            )
+                        }
+                    }
+                    .padding(.horizontal, borderWidth)
+                    .background(Color.ampedGreen.opacity(0.08)) // More subtle background for dividers
+                }
+                .frame(height: barHeight)
+                
+                Spacer(minLength: horizontalMargin)
             }
         }
+        .frame(height: barHeight)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Progress")
+        .accessibilityValue("\(currentStep) of \(totalSteps) steps completed")
+    }
+}
+
+/// A chevron-shaped segment for the battery progress indicator
+struct ChevronSegment: View {
+    let isComplete: Bool
+    let width: CGFloat
+    let height: CGFloat
+    let isFirstSegment: Bool
+    
+    var body: some View {
+        ZStack {
+            // Base segment
+            ForwardShape(isFirstSegment: isFirstSegment)
+                .fill(isComplete ? Color.ampedGreen : Color.gray.opacity(0.2))
+                .frame(width: width, height: height)
+        }
+    }
+}
+
+/// A custom shape with a pronounced forward/chevron appearance
+struct ForwardShape: Shape {
+    var isFirstSegment: Bool = false
+    
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        
+        // Create a more pronounced forward-pointing shape
+        let chevronOffset: CGFloat = rect.height * 0.4
+        
+        // First segment has a straight left edge
+        if isFirstSegment {
+            // Start at bottom left
+            path.move(to: CGPoint(x: 0, y: rect.maxY))
+            
+            // Straight line up to top left
+            path.addLine(to: CGPoint(x: 0, y: rect.minY))
+            
+            // Line to top right 
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+            
+            // Line to bottom right with inward angle
+            path.addLine(to: CGPoint(x: rect.maxX - chevronOffset, y: rect.maxY))
+        } else {
+            // Start at bottom left
+            path.move(to: CGPoint(x: 0, y: rect.maxY))
+            
+            // Line to top left with inward angle
+            path.addLine(to: CGPoint(x: chevronOffset, y: rect.minY))
+            
+            // Line to top right
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+            
+            // Line to bottom right with inward angle
+            path.addLine(to: CGPoint(x: rect.maxX - chevronOffset, y: rect.maxY))
+        }
+        
+        // Close the path
+        path.closeSubpath()
+        
+        return path
     }
 }
 
 // MARK: - ViewModel
 
 final class WelcomeViewModel: ObservableObject {
-    @Published var showPersonalizationIntro = false
-    
-    func proceedToNextStep() {
-        showPersonalizationIntro = true
-    }
+    // Keep the ViewModel minimal since we're using callbacks for navigation
 }
 
 // MARK: - Preview
 
 struct WelcomeView_Previews: PreviewProvider {
     static var previews: some View {
-        WelcomeView()
+        WelcomeView(onContinue: {})
             .preferredColorScheme(.light)
         
-        WelcomeView()
+        WelcomeView(onContinue: {})
             .preferredColorScheme(.dark)
     }
 } 

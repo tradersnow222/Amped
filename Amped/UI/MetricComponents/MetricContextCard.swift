@@ -7,6 +7,8 @@ struct MetricContextCard: View {
     /// The health metric to show context for
     let metric: HealthMetric
     
+    @Environment(\.themeManager) private var themeManager
+    
     // MARK: - Body
     
     var body: some View {
@@ -17,7 +19,7 @@ struct MetricContextCard: View {
                     .foregroundColor(metric.type.color)
                 
                 Text("About \(metric.type.name)")
-                    .font(.headline)
+                    .style(.cardTitle)
                 
                 Spacer()
             }
@@ -25,12 +27,10 @@ struct MetricContextCard: View {
             // Explanation
             VStack(alignment: .leading, spacing: 12) {
                 Text(explanationTitle)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
+                    .style(.subheadlineBold)
                 
                 Text(explanationText)
-                    .font(.body)
-                    .foregroundColor(.secondary)
+                    .style(.bodySecondary)
                 
                 if let reference = metric.impactDetail?.studyReference {
                     Divider()
@@ -38,16 +38,13 @@ struct MetricContextCard: View {
                     // Research reference
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Research Reference")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
+                            .style(.subheadlineBold)
                         
                         Text(reference.title)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .style(.caption)
                         
                         Text(reference.shortCitation)
-                            .font(.caption2)
-                            .foregroundColor(.secondary.opacity(0.8))
+                            .style(.caption2)
                             .italic()
                     }
                 }
@@ -57,12 +54,10 @@ struct MetricContextCard: View {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Recommended")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .style(.caption)
                     
                     Text("\(formatValue(metric.type.baselineValue)) \(metric.type.unit)")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                        .style(.bodyMedium)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
@@ -71,13 +66,10 @@ struct MetricContextCard: View {
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Your Value")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .style(.caption)
                     
                     Text("\(formatValue(metric.value)) \(metric.type.unit)")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .foregroundColor(comparisonColor)
+                        .style(.bodyMedium, color: comparisonColor)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -105,25 +97,25 @@ struct MetricContextCard: View {
     private var explanationTitle: String {
         switch metric.type {
         case .steps:
-            return "Why Daily Steps Matter"
-        case .sleepHours:
-            return "The Importance of Quality Sleep"
+            return "Why step count matters"
         case .activeEnergyBurned:
-            return "Active Energy and Longevity"
+            return "About active calories"
+        case .exerciseMinutes:
+            return "Exercise and your health"
         case .restingHeartRate:
-            return "Resting Heart Rate and Heart Health"
+            return "Understanding resting heart rate"
         case .heartRateVariability:
-            return "Heart Rate Variability and Recovery"
-        case .oxygenSaturation:
-            return "Oxygen Saturation and Overall Health"
+            return "Heart rate variability"
+        case .sleepHours:
+            return "Sleep and your health"
         case .vo2Max:
-            return "VO2 Max and Cardiorespiratory Fitness"
+            return "Cardio fitness level"
+        case .oxygenSaturation:
+            return "Blood oxygen levels"
         case .nutritionQuality:
-            return "Nutritional Quality and Health Outcomes"
+            return "Nutrition quality"
         case .stressLevel:
-            return "Stress Management and Aging"
-        @unknown default:
-            return "Health Metrics and Longevity"
+            return "Stress management"
         }
     }
     
@@ -131,150 +123,50 @@ struct MetricContextCard: View {
     private var explanationText: String {
         switch metric.type {
         case .steps:
-            return "Regular walking can improve cardiovascular health, help maintain a healthy weight, and reduce risk of chronic diseases. Research suggests that even modest increases in daily steps can decrease mortality risk."
-            
-        case .sleepHours:
-            return "Quality sleep is essential for cellular repair, immune function, and cognitive processing. Both short and long sleep duration have been associated with increased mortality risk and chronic health conditions."
-            
+            return "Regular walking can help maintain a healthy weight, strengthen bones, and improve balance and coordination."
         case .activeEnergyBurned:
-            return "Physical activity helps maintain muscle mass, supports cardiovascular health, and improves metabolic function. Higher energy expenditure (within reasonable limits) is associated with reduced mortality risk."
-            
+            return "Active calories represent energy burned during physical activity. Staying active helps manage weight and improves cardiovascular health."
+        case .exerciseMinutes:
+            return "Regular exercise strengthens your heart, improves lung function, and helps manage weight and stress levels."
         case .restingHeartRate:
-            return "Your resting heart rate is an indicator of cardiovascular fitness. A lower resting heart rate generally indicates better heart function and has been associated with reduced risk of cardiovascular disease."
-            
+            return "Your resting heart rate is a key indicator of heart health and fitness. Lower is generally better, indicating a stronger heart."
         case .heartRateVariability:
-            return "HRV reflects your autonomic nervous system function and adaptability to stress. Higher HRV indicates better recovery capacity and has been linked to improved resilience, longevity, and reduced risk of cardiovascular issues."
-            
-        case .oxygenSaturation:
-            return "Blood oxygen levels reflect how efficiently your lungs, heart, and circulation are working together. Maintaining optimal oxygen saturation supports all bodily functions and is essential for cellular health and energy production."
-            
+            return "HRV measures the variation in time between heartbeats. Higher variability often indicates better cardiovascular health and stress resilience."
+        case .sleepHours:
+            return "Quality sleep supports immune function, metabolism, and cognitive performance. Adults typically need 7-9 hours per night."
         case .vo2Max:
-            return "VO2 Max is one of the best predictors of overall health and longevity. This measure of cardiorespiratory fitness indicates how efficiently your body uses oxygen and has strong associations with reduced all-cause mortality."
-            
+            return "VO2 max measures the maximum amount of oxygen your body can use during exercise, indicating cardiovascular fitness."
+        case .oxygenSaturation:
+            return "Blood oxygen saturation indicates how well your lungs are delivering oxygen to your blood. Normal levels are typically 95-100%."
         case .nutritionQuality:
-            return "Diets rich in whole foods and limited in processed foods are associated with reduced inflammation and 20-30% lower mortality risk."
-            
+            return "A balanced diet rich in nutrients supports overall health, energy levels, and disease prevention."
         case .stressLevel:
-            return "Chronic high stress levels may accelerate biological aging by 2-6 years through telomere shortening and increased oxidative stress."
-            
-        @unknown default:
-            return "Your health metrics provide valuable insights into your biological age and longevity. Regular monitoring and gradual improvements can significantly impact your long-term health outcomes."
+            return "Managing stress is essential for mental health, immune function, and reducing inflammation throughout the body."
         }
     }
     
-    /// Format value based on metric type
-    private func formatValue(_ value: Double) -> String {
-        switch metric.type {
-        case .steps:
-            return "\(Int(value))"
-        case .sleepHours:
-            return String(format: "%.1f", value)
-        case .activeEnergyBurned:
-            return "\(Int(value))"
-        case .restingHeartRate:
-            return "\(Int(value))"
-        case .heartRateVariability:
-            return String(format: "%.1f", value)
-        case .oxygenSaturation:
-            return String(format: "%.1f%%", value)
-        case .vo2Max:
-            return String(format: "%.1f", value)
-        case .nutritionQuality, .stressLevel:
-            return String(format: "%.1f", value)
-        @unknown default:
-            return "N/A"
-        }
-    }
-    
-    /// Get color for comparison based on whether the user's value is better or worse than baseline
+    /// Color for the comparison value
     private var comparisonColor: Color {
-        guard let comparison = metric.impactDetail?.comparisonToBaseline else {
-            return .primary
-        }
+        guard let impact = metric.impactDetail else { return .primary }
         
-        switch comparison {
-        case .muchBetter, .better:
-            return .green
-        case .slightlyBetter, .nearBaseline, .slightlyWorse:
+        switch impact.comparisonToBaseline {
+        case .muchBetter, .better, .slightlyBetter:
+            return .ampedGreen
+        case .nearBaseline, .same:
             return .primary
-        case .worse, .muchWorse:
-            return .red
-        case .same:
+        case .slightlyWorse, .worse, .muchWorse:
+            return .ampedRed
+        @unknown default:
             return .primary
-        case nil:
-            return .secondary
-        @unknown default:
-            return .secondary
         }
     }
     
-    /// Visual interpretation of comparison result
-    private var comparisonDescription: String {
-        switch metric.impactDetail?.comparisonToBaseline {
-        case .muchBetter, .better:
-            return "Significantly better than baseline"
-        case .slightlyBetter, .nearBaseline, .slightlyWorse:
-            return "Near your baseline"
-        case .worse, .muchWorse:
-            return "Below your baseline"
-        case .same:
-            return "At your baseline"
-        case nil:
-            return "No comparison data available"
-        @unknown default:
-            return "Comparison data available"
-        }
-    }
-    
-    private var valueText: String {
-        switch metric.type {
-        case .steps:
-            return NumberFormatter.localizedString(from: NSNumber(value: Int(metric.value)), number: .decimal)
-        case .activeEnergyBurned:
-            return String(format: "%.0f kcal", metric.value)
-        case .exerciseMinutes:
-            return String(format: "%.0f min", metric.value)
-        case .restingHeartRate:
-            return String(format: "%.0f bpm", metric.value)
-        case .heartRateVariability:
-            return String(format: "%.0f ms", metric.value)
-        case .sleepHours:
-            return String(format: "%.1f hrs", metric.value)
-        case .vo2Max:
-            return String(format: "%.1f ml/kg/min", metric.value)
-        case .oxygenSaturation:
-            return String(format: "%.1f%%", metric.value)
-        case .nutritionQuality:
-            return String(format: "%.1f/10", metric.value)
-        case .stressLevel:
-            return String(format: "%.1f/10", metric.value)
-        @unknown default:
-            return String(format: "%.1f", metric.value)
-        }
-    }
-    
-    private var unitText: String {
-        switch metric.type {
-        case .steps:
-            return "steps"
-        case .activeEnergyBurned:
-            return "kcal"
-        case .exerciseMinutes:
-            return "min"
-        case .restingHeartRate:
-            return "bpm"
-        case .heartRateVariability:
-            return "ms"
-        case .sleepHours:
-            return "hrs"
-        case .vo2Max:
-            return "ml/kg/min"
-        case .oxygenSaturation:
-            return "%"
-        case .nutritionQuality, .stressLevel:
-            return "/10"
-        @unknown default:
-            return ""
+    /// Format the value with appropriate precision
+    private func formatValue(_ value: Double) -> String {
+        if value.truncatingRemainder(dividingBy: 1) == 0 {
+            return "\(Int(value))"
+        } else {
+            return String(format: "%.1f", value)
         }
     }
 }

@@ -7,122 +7,125 @@ struct HealthKitPermissionsView: View {
     
     @StateObject private var viewModel = HealthKitPermissionsViewModel()
     
+    // Callback to proceed to next step
+    var onContinue: (() -> Void)?
+    
     // MARK: - Body
     
     var body: some View {
         VStack(spacing: 24) {
-            // Title
-            Text("Power Your Insights")
+            Text("Health Access")
                 .font(.largeTitle)
                 .fontWeight(.bold)
-                .padding(.top, 30)
-                .padding(.bottom, 10)
+                .padding(.top, 40)
             
-            // Description
-            Text("Amped needs access to your health data to calculate your life impact and provide personalized insights.")
+            Text("Allow Amped to access health data to calculate your life battery")
                 .font(.headline)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 30)
-            
-            // Permissions list
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    permissionRow(
-                        icon: "figure.walk",
-                        title: "Physical Activity",
-                        description: "Steps, exercise minutes, and active energy",
-                        isGranted: viewModel.activityPermissionGranted
-                    )
-                    
-                    permissionRow(
-                        icon: "heart.fill",
-                        title: "Heart Health",
-                        description: "Resting heart rate and heart rate variability",
-                        isGranted: viewModel.heartPermissionGranted
-                    )
-                    
-                    permissionRow(
-                        icon: "bed.double.fill",
-                        title: "Sleep",
-                        description: "Sleep duration and quality",
-                        isGranted: viewModel.sleepPermissionGranted
-                    )
-                    
-                    permissionRow(
-                        icon: "lungs.fill",
-                        title: "Cardiovascular Fitness",
-                        description: "VO2 max data",
-                        isGranted: viewModel.fitnessPermissionGranted
-                    )
-                }
-                .padding(.horizontal, 30)
-            }
+                .padding(.horizontal, 40)
             
             Spacer()
             
-            // Privacy note
-            VStack(spacing: 8) {
-                Text("Your privacy is our priority")
-                    .font(.headline)
+            // Health metrics list
+            VStack(alignment: .leading, spacing: 24) {
+                healthDataRow(
+                    icon: "heart.fill",
+                    title: "Heart Rate",
+                    description: "Track your resting and active heart rate"
+                )
                 
-                Text("All health data processing happens on your device. We never share your health data with third parties.")
-                    .font(.caption)
-                    .multilineTextAlignment(.center)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 40)
-            }
-            
-            Spacer()
-            
-            // Grant access button
-            Button(action: {
-                viewModel.requestHealthKitPermissions()
-            }) {
-                HStack {
-                    Image(systemName: "lock.shield.fill")
-                    Text("Allow Health Access")
-                }
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.ampedGreen)
-                .foregroundColor(.white)
-                .cornerRadius(14)
+                healthDataRow(
+                    icon: "flame.fill",
+                    title: "Active Energy",
+                    description: "Monitor calories burned throughout the day"
+                )
+                
+                healthDataRow(
+                    icon: "bed.double.fill",
+                    title: "Sleep Analysis",
+                    description: "Analyze your sleep duration and quality"
+                )
+                
+                healthDataRow(
+                    icon: "figure.walk",
+                    title: "Steps & Distance",
+                    description: "Track your daily movement activity"
+                )
             }
             .padding(.horizontal, 30)
-            .opacity(viewModel.isRequestingPermissions ? 0.5 : 1.0)
+            
+            Spacer()
+            
+            // Permissions button
+            Button(action: {
+                requestHealthKitPermissions()
+            }) {
+                Text(viewModel.isRequestingPermissions ? "Requesting..." : "Allow Health Access")
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(viewModel.isRequestingPermissions ? Color.gray : Color.ampedGreen)
+                    .foregroundColor(.white)
+                    .cornerRadius(14)
+            }
             .disabled(viewModel.isRequestingPermissions)
-            .overlay(
-                Group {
-                    if viewModel.isRequestingPermissions {
-                        ProgressView()
-                    }
-                }
-            )
+            .padding(.horizontal, 40)
+            .padding(.bottom, 30)
             
             // Progress indicator
             ProgressIndicator(currentStep: 4, totalSteps: 7)
-                .padding(.vertical, 30)
+                .padding(.bottom, 40)
         }
+        .withDeepBackground()
         .alert(isPresented: $viewModel.showError) {
             Alert(
-                title: Text("Permission Error"),
+                title: Text("Health Access Error"),
                 message: Text(viewModel.errorMessage),
                 dismissButton: .default(Text("OK"))
             )
         }
-        .background(Color(.systemBackground))
-        .fullScreenCover(isPresented: $viewModel.showSignInWithApple) {
-            // This would lead to Sign in with Apple screen
-            SignInWithAppleView()
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func requestHealthKitPermissions() {
+        viewModel.isRequestingPermissions = true
+        
+        Task {
+            // Check if HealthKit is available
+            guard viewModel.healthKitManager.isHealthKitAvailable else {
+                viewModel.errorMessage = "HealthKit is not available on this device."
+                viewModel.showError = true
+                viewModel.isRequestingPermissions = false
+                return
+            }
+            
+            // Request permissions
+            let granted = await viewModel.healthKitManager.requestAuthorization()
+            
+            if granted {
+                // Update UI to show all permissions granted
+                viewModel.activityPermissionGranted = true
+                viewModel.heartPermissionGranted = true
+                viewModel.sleepPermissionGranted = true
+                viewModel.fitnessPermissionGranted = true
+                
+                // Proceed to next step
+                onContinue?()
+            } else {
+                viewModel.errorMessage = "We need these permissions to provide accurate insights. Please try again."
+                viewModel.showError = true
+            }
+            
+            viewModel.isRequestingPermissions = false
         }
     }
     
     // MARK: - UI Components
     
-    /// Permission row with icon, title, description, and status
-    private func permissionRow(icon: String, title: String, description: String, isGranted: Bool) -> some View {
-        HStack(spacing: 16) {
+    /// Health data row with icon and text
+    private func healthDataRow(icon: String, title: String, description: String) -> some View {
+        HStack(spacing: 20) {
             Image(systemName: icon)
                 .font(.system(size: 28))
                 .foregroundColor(.ampedGreen)
@@ -138,11 +141,6 @@ struct HealthKitPermissionsView: View {
             }
             
             Spacer()
-            
-            // Status indicator
-            Image(systemName: isGranted ? "checkmark.circle.fill" : "circle")
-                .foregroundColor(isGranted ? .ampedGreen : .gray)
-                .font(.system(size: 24))
         }
     }
 }
@@ -162,48 +160,11 @@ final class HealthKitPermissionsViewModel: ObservableObject {
     @Published var showError = false
     @Published var errorMessage = ""
     
-    // Navigation
-    @Published var showSignInWithApple = false
-    
     // HealthKit manager
-    @ObservedObject private var healthKitManager: HealthKitManager
+    let healthKitManager: HealthKitManager
     
     init() {
         self.healthKitManager = HealthKitManager()
-    }
-    
-    // Request HealthKit permissions
-    func requestHealthKitPermissions() {
-        isRequestingPermissions = true
-        
-        Task {
-            // Check if HealthKit is available
-            guard healthKitManager.isHealthKitAvailable else {
-                errorMessage = "HealthKit is not available on this device."
-                showError = true
-                isRequestingPermissions = false
-                return
-            }
-            
-            // Request permissions
-            let granted = await healthKitManager.requestAuthorization()
-            
-            if granted {
-                // Update UI to show all permissions granted
-                activityPermissionGranted = true
-                heartPermissionGranted = true
-                sleepPermissionGranted = true
-                fitnessPermissionGranted = true
-                
-                // Proceed to next step
-                showSignInWithApple = true
-            } else {
-                errorMessage = "We need these permissions to provide accurate insights. Please try again."
-                showError = true
-            }
-            
-            isRequestingPermissions = false
-        }
     }
 }
 
@@ -211,6 +172,6 @@ final class HealthKitPermissionsViewModel: ObservableObject {
 
 struct HealthKitPermissionsView_Previews: PreviewProvider {
     static var previews: some View {
-        HealthKitPermissionsView()
+        HealthKitPermissionsView(onContinue: {})
     }
 } 

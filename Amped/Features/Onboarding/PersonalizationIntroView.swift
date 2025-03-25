@@ -5,157 +5,96 @@ struct PersonalizationIntroView: View {
     // MARK: - Properties
     
     @StateObject private var viewModel = PersonalizationIntroViewModel()
-    @State private var batteryFill: Double = 0.5
     @State private var isAnimating = false
+    @State private var nudgeAnimation = false
+    @State private var nudgeOffset: CGFloat = 0
+    @State private var nudgeTimer: Timer?
+    
+    // Callback to proceed to next step
+    var onContinue: (() -> Void)?
     
     // MARK: - UI Constants
-    
-    private let batteryHeight: CGFloat = 100
-    private let batteryWidth: CGFloat = 180
-    private let swipeIndicatorSize: CGFloat = 40
+    private let nudgeDistance: CGFloat = 20
     
     // MARK: - Body
     
     var body: some View {
-        VStack(spacing: 30) {
-            // Title
-            Text("Power Up Your Experience")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .multilineTextAlignment(.center)
-                .padding(.top, 40)
+        ZStack(alignment: .top) {
+            // Background
+            Color.clear.withDeepBackground()
             
-            // Battery icon at 50% charge
-            batteryVisualization
-                .padding(.vertical, 20)
-            
-            // Benefits description
-            VStack(spacing: 24) {
-                benefitIcon(icon: "bolt.circle.fill", text: "Custom power analysis")
-                benefitIcon(icon: "heart.circle.fill", text: "Personalized health insights")
-                benefitIcon(icon: "gauge.circle.fill", text: "Accurate lifespan impact")
-            }
-            
-            Spacer()
-            
-            // Questionnaire description
-            VStack(spacing: 20) {
-                Text("Let's go through a few quick questions to customize your battery")
-                    .font(.headline)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                
-                Text("5-8 questions, takes about 1 minute")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            // Swipe right gesture animation
-            HStack {
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(width: swipeIndicatorSize, height: swipeIndicatorSize)
-                    .background(Color.ampedGreen)
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(Color.ampedGreen.opacity(0.3), lineWidth: 4)
-                            .scaleEffect(isAnimating ? 1.5 : 1.0)
-                            .opacity(isAnimating ? 0.0 : 1.0)
-                    )
-                    .offset(x: isAnimating ? 20 : 0)
-                    .animation(
-                        Animation.easeInOut(duration: 1.5)
-                            .repeatForever(autoreverses: false),
-                        value: isAnimating
-                    )
-                    .onAppear {
-                        isAnimating = true
+            // Content with fixed progress indicator at bottom
+            VStack(spacing: 0) {
+                // Main content - can be nudged
+                VStack(spacing: 0) {
+                    // Expanded spacer to push content to center
+                    Spacer()
+                    
+                    // Main content - centered in the screen
+                    VStack(spacing: 24) {
+                        // Headline text - larger and more prominent
+                        Text("First, let's go through a few questions")
+                            .font(.title2.bold().monospaced())
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                        
+                        // Subheadline - increased size for better visibility
+                        Text("takes about 2 minutes")
+                            .font(.subheadline.monospaced())
+                            .foregroundColor(.white.opacity(0.8))
+                            .multilineTextAlignment(.center)
                     }
-                
-                Text("Swipe right to begin")
-                    .font(.headline)
-                    .foregroundColor(Color.ampedGreen)
-                    .padding(.leading, 10)
-            }
-            .padding(.bottom, 20)
-            
-            // Progress indicator
-            ProgressIndicator(currentStep: 2, totalSteps: 7)
-                .padding(.bottom, 40)
-        }
-        .gesture(
-            DragGesture(minimumDistance: 50)
-                .onEnded { gesture in
-                    if gesture.translation.width > 0 {
-                        // Swipe right detected
-                        viewModel.proceedToQuestionnaire()
-                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 30)
+                    .offset(x: nudgeOffset)
+                    
+                    Spacer()
                 }
-        )
-        .background(Color(.systemBackground))
-        .edgesIgnoringSafeArea(.bottom)
-        .navigationBarHidden(true)
-        .fullScreenCover(isPresented: $viewModel.showQuestionnaire) {
-            // This would lead to the first questionnaire screen
-            QuestionnaireView()
-        }
-    }
-    
-    // MARK: - UI Components
-    
-    /// Battery visualization at 50% charge
-    private var batteryVisualization: some View {
-        ZStack {
-            // Battery body
-            HStack(spacing: 2) {
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.gray, lineWidth: 4)
-                    .frame(width: batteryWidth, height: batteryHeight)
-                    .overlay(
-                        GeometryReader { geometry in
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(LinearGradient(
-                                    gradient: Gradient(colors: [Color.ampedYellow, Color.ampedGreen]),
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                ))
-                                .frame(width: (geometry.size.width - 8) * batteryFill)
-                                .padding(4)
-                        }
-                    )
                 
-                // Battery terminal
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.gray)
-                    .frame(width: 15, height: 40)
+                // Progress indicator - fixed position
+                ProgressIndicator(currentStep: 2, totalSteps: 7)
+                    .padding(.bottom, 40)
             }
-            
-            // Battery charge level
-            Text("50%")
-                .font(.system(.title, design: .rounded))
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-                .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+        }
+        .edgesIgnoringSafeArea(.all)
+        .navigationBarHidden(true)
+        .onAppear {
+            // Start nudging animation after 3 seconds (reduced from 5)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                startNudgeAnimation()
+            }
+        }
+        .onDisappear {
+            // Clean up timer when view disappears
+            nudgeTimer?.invalidate()
+            nudgeTimer = nil
         }
     }
     
-    /// Single benefit icon with text
-    private func benefitIcon(icon: String, text: String) -> some View {
-        HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.system(size: 32))
-                .foregroundColor(Color.ampedGreen)
-            
-            Text(text)
-                .font(.body)
-            
-            Spacer()
+    // MARK: - Helper Methods
+    
+    private func startNudgeAnimation() {
+        // Initial nudge
+        performNudge()
+        
+        // Set up repeating timer with 2 second interval (1s for animation + 1s pause)
+        nudgeTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
+            performNudge()
         }
-        .padding(.horizontal, 40)
+    }
+    
+    private func performNudge() {
+        // Animate to nudged position (increased to 0.6 seconds)
+        withAnimation(.easeInOut(duration: 0.6)) {
+            nudgeOffset = -nudgeDistance
+        }
+        
+        // Animate back after nudge completes (0.6 seconds delay with 0.4 seconds duration)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            withAnimation(.easeInOut(duration: 0.4)) {
+                nudgeOffset = 0
+            }
+        }
     }
 }
 
@@ -173,6 +112,6 @@ final class PersonalizationIntroViewModel: ObservableObject {
 
 struct PersonalizationIntroView_Previews: PreviewProvider {
     static var previews: some View {
-        PersonalizationIntroView()
+        PersonalizationIntroView(onContinue: {})
     }
 } 

@@ -1,48 +1,49 @@
 import SwiftUI
 import AuthenticationServices
 
-/// Sign in with Apple view
+/// View for Sign in with Apple authentication
 struct SignInWithAppleView: View {
     // MARK: - Properties
     
     @StateObject private var viewModel = SignInWithAppleViewModel()
     
+    // Callback to proceed to next step
+    var onContinue: (() -> Void)?
+    
     // MARK: - Body
     
     var body: some View {
-        VStack(spacing: 30) {
-            // Title
-            Text("Secure Your Progress")
+        VStack(spacing: 24) {
+            Text("Create Your Account")
                 .font(.largeTitle)
                 .fontWeight(.bold)
-                .padding(.top, 60)
+                .padding(.top, 40)
             
-            // Description
-            Text("Create a secure account to save your health insights and battery status.")
+            Text("Sign in to secure your data and access premium features")
                 .font(.headline)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
             
             Spacer()
             
-            // Benefits of account
-            VStack(spacing: 30) {
+            // Benefits
+            VStack(alignment: .leading, spacing: 24) {
                 benefitRow(
                     icon: "lock.shield.fill",
-                    title: "Privacy Protection",
-                    description: "Your data never leaves your device"
+                    title: "Secure Your Data",
+                    description: "Keep your health insights private and accessible"
                 )
                 
                 benefitRow(
-                    icon: "arrow.triangle.2.circlepath",
-                    title: "Sync Across Devices",
-                    description: "Access your battery status anywhere"
+                    icon: "icloud.fill",
+                    title: "Cross-Device Sync",
+                    description: "Access your battery data on all your devices"
                 )
                 
                 benefitRow(
-                    icon: "chart.line.uptrend.xyaxis",
-                    title: "Track Your Progress",
-                    description: "See how your habits improve over time"
+                    icon: "chart.bar.xaxis",
+                    title: "Advanced Analytics",
+                    description: "Unlock detailed health trend reports"
                 )
             }
             .padding(.horizontal, 30)
@@ -57,7 +58,7 @@ struct SignInWithAppleView: View {
                 },
                 onCompletion: { result in
                     // Handle the result
-                    viewModel.handleSignInWithAppleResult(result)
+                    handleSignInWithAppleResult(result)
                 }
             )
             .signInWithAppleButtonStyle(.black)
@@ -67,7 +68,7 @@ struct SignInWithAppleView: View {
             
             // Skip button
             Button("I'll do this later") {
-                viewModel.skipSignIn()
+                onContinue?()
             }
             .font(.subheadline)
             .foregroundColor(.secondary)
@@ -84,10 +85,29 @@ struct SignInWithAppleView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
-        .background(Color(.systemBackground))
-        .fullScreenCover(isPresented: $viewModel.showPaymentScreen) {
-            // This would lead to payment screen
-            PaymentView()
+        .withDeepBackground()
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func handleSignInWithAppleResult(_ result: Result<ASAuthorization, Error>) {
+        switch result {
+        case .success(let authorization):
+            // Handle successful authorization
+            // In a real app, we would process the credentials here
+            
+            if let _ = authorization.credential as? ASAuthorizationAppleIDCredential {
+                // Process Apple ID credential and create user account
+                onContinue?()
+            } else {
+                viewModel.errorMessage = "Unable to get proper authorization credentials."
+                viewModel.showError = true
+            }
+            
+        case .failure(let error):
+            // Handle error
+            viewModel.errorMessage = error.localizedDescription
+            viewModel.showError = true
         }
     }
     
@@ -121,37 +141,6 @@ final class SignInWithAppleViewModel: ObservableObject {
     // UI states
     @Published var showError = false
     @Published var errorMessage = ""
-    
-    // Navigation
-    @Published var showPaymentScreen = false
-    
-    // Handle Sign in with Apple result
-    func handleSignInWithAppleResult(_ result: Result<ASAuthorization, Error>) {
-        switch result {
-        case .success(let authorization):
-            // Handle successful authorization
-            // In a real app, we would process the credentials here
-            
-            if let _ = authorization.credential as? ASAuthorizationAppleIDCredential {
-                // Process Apple ID credential and create user account
-                showPaymentScreen = true
-            } else {
-                errorMessage = "Unable to get proper authorization credentials."
-                showError = true
-            }
-            
-        case .failure(let error):
-            // Handle error
-            errorMessage = error.localizedDescription
-            showError = true
-        }
-    }
-    
-    // Skip sign in
-    func skipSignIn() {
-        // Proceed without signing in
-        showPaymentScreen = true
-    }
 }
 
 // MARK: - Sign In With Apple Button
@@ -215,6 +204,6 @@ struct SignInWithAppleButton: UIViewRepresentable {
 
 struct SignInWithAppleView_Previews: PreviewProvider {
     static var previews: some View {
-        SignInWithAppleView()
+        SignInWithAppleView(onContinue: {})
     }
 } 

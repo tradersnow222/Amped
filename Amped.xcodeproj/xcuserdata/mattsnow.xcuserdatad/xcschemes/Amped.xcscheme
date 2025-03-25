@@ -1,1 +1,84 @@
-<?xml version="1.0" encoding="UTF-8"?><Scheme LastUpgradeVersion="1500" version="1.7"><BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES"><BuildActionEntries><BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="YOURIDENTIFIER" BuildableName="Amped.app" BlueprintName="Amped" ReferencedContainer="container:Amped.xcodeproj"></BuildableReference></BuildActionEntry></BuildActionEntries></BuildAction><LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB" disableMainThreadChecker="NO" disablePerformanceAntipatternChecker="NO" enableGPUValidationMode="1" additionalOptions="" debugServiceExtension="internal" allowLocationSimulation="YES" ignoresPersistentStateOnLaunch="NO"><CommandLineArguments></CommandLineArguments><EnvironmentVariables></EnvironmentVariables><DebuggerOptions disableMainThreadChecker="NO" disablePerformanceAntipatternChecker="NO" debugProcessAsUID="0" migratedStopOnEveryIssue="NO" migratedStopOnEveryMainThreadCheckerIssue="NO" disableASAN="YES" stopOnEveryUBSanitizerIssue="NO"><AdditionalLaunchArguments></AdditionalLaunchArguments></DebuggerOptions><BuildableProductRunnable runnableDebuggingMode="0"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="YOURIDENTIFIER" BuildableName="Amped.app" BlueprintName="Amped" ReferencedContainer="container:Amped.xcodeproj"></BuildableReference></BuildableProductRunnable><LocationScenarioReference identifier="com.apple.dt.IDEFoundation.CurrentLocationScenarioIdentifier" referenceType="1"></LocationScenarioReference></LaunchAction></Scheme>
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme
+   LastUpgradeVersion = "1500"
+   version = "1.8">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES">
+      <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "C106F20E2D90ADC6001E151A"
+               BuildableName = "Amped.app"
+               BlueprintName = "Amped"
+               ReferencedContainer = "container:Amped.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      shouldAutocreateTestPlan = "YES">
+   </TestAction>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      enableGPUValidationMode = "1"
+      additionalOptions = ""
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "C106F20E2D90ADC6001E151A"
+            BuildableName = "Amped.app"
+            BlueprintName = "Amped"
+            ReferencedContainer = "container:Amped.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+      <LocationScenarioReference
+         identifier = "com.apple.dt.IDEFoundation.CurrentLocationScenarioIdentifier"
+         referenceType = "1">
+      </LocationScenarioReference>
+      <DebuggerOptions
+         disableMainThreadChecker = "NO"
+         disablePerformanceAntipatternChecker = "NO"
+         debugProcessAsUID = "0"
+         migratedStopOnEveryIssue = "NO"
+         migratedStopOnEveryMainThreadCheckerIssue = "NO"
+         disableASAN = "YES"
+         stopOnEveryUBSanitizerIssue = "NO">
+         <AdditionalLaunchArguments>
+         </AdditionalLaunchArguments>
+      </DebuggerOptions>
+   </LaunchAction>
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+   </ProfileAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>

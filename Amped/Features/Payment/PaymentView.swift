@@ -6,6 +6,10 @@ struct PaymentView: View {
     // MARK: - Properties
     
     @StateObject private var viewModel = PaymentViewModel()
+    @EnvironmentObject var appState: AppState
+    
+    // Callback to proceed to next step
+    var onContinue: (() -> Void)?
     
     // MARK: - Body
     
@@ -80,26 +84,22 @@ struct PaymentView: View {
                 .foregroundColor(.secondary)
                 .padding(.top, 8)
             
-            // Subscribe button
+            // Continue button
             Button(action: {
-                viewModel.processPurchase()
+                processPurchase()
             }) {
-                HStack {
-                    Text("Subscribe Now")
-                        .fontWeight(.semibold)
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.ampedGreen)
-                .foregroundColor(.white)
-                .cornerRadius(14)
-                .padding(.horizontal, 30)
-                .padding(.top, 10)
+                Text("Continue")
+                    .fontWeight(.bold)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.ampedGreen)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
             }
+            .padding(.horizontal, 30)
             
-            // Skip option
             Button("Continue with Free Version") {
-                viewModel.skipPayment()
+                skipPayment()
             }
             .font(.subheadline)
             .foregroundColor(.secondary)
@@ -137,13 +137,33 @@ struct PaymentView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
-        .background(Color(.systemBackground))
-        .fullScreenCover(isPresented: $viewModel.showDashboard) {
-            // Main app dashboard
-            NavigationView {
-                DashboardView()
-            }
+        .withDeepBackground()
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func processPurchase() {
+        // In a real app, we would use StoreKit to process the purchase
+        viewModel.isProcessing = true
+        
+        // Simulate network request
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            viewModel.isProcessing = false
+            
+            // Complete onboarding
+            appState.hasCompletedOnboarding = true
+            
+            // Continue to dashboard
+            onContinue?()
         }
+    }
+    
+    private func skipPayment() {
+        // Mark onboarding as complete but without premium access
+        appState.hasCompletedOnboarding = true
+        
+        // Continue to dashboard
+        onContinue?()
     }
     
     // MARK: - UI Components
@@ -152,9 +172,9 @@ struct PaymentView: View {
     private func benefitRow(icon: String, text: String) -> some View {
         HStack(spacing: 16) {
             Image(systemName: icon)
-                .font(.system(size: 20))
+                .font(.system(size: 22))
                 .foregroundColor(.ampedGreen)
-                .frame(width: 28, height: 28)
+                .frame(width: 30, height: 30)
             
             Text(text)
                 .font(.body)
@@ -242,39 +262,13 @@ final class PaymentViewModel: ObservableObject {
     @Published var isProcessing = false
     @Published var showError = false
     @Published var errorMessage = ""
-    
-    // Navigation
-    @Published var showDashboard = false
-    
-    // Process purchase
-    func processPurchase() {
-        // In a real app, we would use StoreKit to process the purchase
-        isProcessing = true
-        
-        // Simulate network delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            // Success path for demo purposes
-            self.isProcessing = false
-            self.showDashboard = true
-            
-            // Error path example:
-            // self.errorMessage = "Unable to complete the purchase. Please try again."
-            // self.showError = true
-            // self.isProcessing = false
-        }
-    }
-    
-    // Skip payment
-    func skipPayment() {
-        // Proceed without purchasing
-        showDashboard = true
-    }
 }
 
 // MARK: - Preview
 
 struct PaymentView_Previews: PreviewProvider {
     static var previews: some View {
-        PaymentView()
+        PaymentView(onContinue: {})
+            .environmentObject(AppState())
     }
 } 

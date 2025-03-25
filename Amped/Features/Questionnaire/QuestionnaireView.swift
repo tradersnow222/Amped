@@ -6,6 +6,9 @@ struct QuestionnaireView: View {
     
     @StateObject private var viewModel = QuestionnaireViewModel()
     
+    // Callback to proceed to next step
+    var onContinue: (() -> Void)?
+    
     // MARK: - Body
     
     var body: some View {
@@ -42,7 +45,8 @@ struct QuestionnaireView: View {
             
             // Continue button
             Button(action: {
-                viewModel.finishQuestionnaire()
+                saveQuestionnaireData()
+                onContinue?()
             }) {
                 Text("Continue")
                     .fontWeight(.semibold)
@@ -59,11 +63,14 @@ struct QuestionnaireView: View {
             ProgressIndicator(currentStep: 3, totalSteps: 7)
                 .padding(.bottom, 40)
         }
-        .background(Color(.systemBackground))
-        .fullScreenCover(isPresented: $viewModel.showHealthKitPermissions) {
-            // This would lead to HealthKit permissions screen
-            HealthKitPermissionsView()
-        }
+        .withDeepBackground()
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func saveQuestionnaireData() {
+        // Save questionnaire data
+        // In a real implementation, this would save to UserDefaults, CoreData, or another storage
     }
     
     // MARK: - UI Components
@@ -173,21 +180,12 @@ final class QuestionnaireViewModel: ObservableObject {
     @Published var gender: UserProfile.Gender = .preferNotToSay
     @Published var nutritionQuality: Double = 5
     @Published var stressLevel: Double = 5
-    
-    // Navigation
-    @Published var showHealthKitPermissions = false
-    
-    // Complete questionnaire and proceed
-    func finishQuestionnaire() {
-        // In a real app, save the questionnaire data
-        showHealthKitPermissions = true
-    }
 }
 
 // MARK: - Preview
 
 struct QuestionnaireView_Previews: PreviewProvider {
     static var previews: some View {
-        QuestionnaireView()
+        QuestionnaireView(onContinue: {})
     }
 } 

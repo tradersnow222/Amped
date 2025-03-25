@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "Amped icon  2.jpg",
+      "filename" : "Amped icon 3.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "Amped icon  1.jpg",
+      "filename" : "Amped icon 4.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -25,7 +25,7 @@
           "value" : "tinted"
         }
       ],
-      "filename" : "Amped icon .jpg",
+      "filename" : "Amped icon 5.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

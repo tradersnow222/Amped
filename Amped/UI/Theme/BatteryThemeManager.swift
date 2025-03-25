@@ -85,6 +85,18 @@ final class BatteryThemeManager: ObservableObject {
                 return Color(.label).opacity(0.95)
             }
         }
+        
+        /// Accent color for the theme
+        var accentColor: Color {
+            switch self {
+            case .morning, .midday:
+                return Color.ampedGreen
+            case .afternoon:
+                return Color.ampedYellow
+            case .evening, .night:
+                return Color.ampedSilver
+            }
+        }
     }
     
     // MARK: - Properties
@@ -104,6 +116,22 @@ final class BatteryThemeManager: ObservableObject {
     /// Manually update the theme
     func updateTheme() {
         currentTheme = ThemeType.forCurrentTime()
+    }
+    
+    /// Get the appropriate color for a text style in the current theme
+    /// - Parameter style: The text style to get a color for
+    /// - Returns: The appropriate color for the text style in the current theme
+    func getThemeColor(for style: AmpedTextStyle) -> Color {
+        switch style {
+        case .largeTitle, .title, .title2, .title3, .headline, .headlineBold, .cardTitle:
+            return currentTheme.primaryColor
+        case .metricValue, .percentValue:
+            return currentTheme.accentColor
+        case .bodySecondary, .caption, .caption2, .footnote:
+            return currentTheme.textColor.opacity(0.7)
+        default:
+            return currentTheme.textColor
+        }
     }
     
     // MARK: - Private Methods
@@ -140,9 +168,31 @@ struct ThemeModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content
-            .accentColor(themeManager.currentTheme.primaryColor)
-            .foregroundStyle(themeManager.currentTheme.textColor)
-            .background(themeManager.currentTheme.backgroundColor)
+            // Removed background setting since we're using DeepBackground image
+            .accentColor(themeManager.currentTheme.accentColor)
+            .environment(\.colorScheme, colorSchemeForCurrentTheme)
+    }
+    
+    /// Determine color scheme based on current theme
+    private var colorSchemeForCurrentTheme: ColorScheme {
+        switch themeManager.currentTheme {
+        case .morning, .midday, .afternoon:
+            return .light
+        case .evening, .night:
+            return .dark
+        }
+    }
+}
+
+/// Text modifier for theme-aware text styling
+struct ThemedTextModifier: ViewModifier {
+    @ObservedObject var themeManager: BatteryThemeManager
+    let style: AmpedTextStyle
+    
+    func body(content: Content) -> some View {
+        content
+            .font(style.font)
+            .foregroundColor(themeManager.getThemeColor(for: style))
     }
 }
 
@@ -150,5 +200,14 @@ extension View {
     /// Apply the current battery theme to the view
     func withBatteryTheme(_ themeManager: BatteryThemeManager) -> some View {
         self.modifier(ThemeModifier(themeManager: themeManager))
+    }
+    
+    /// Apply themed text style with current theme colors
+    /// - Parameters:
+    ///   - style: The AmpedTextStyle to apply
+    ///   - themeManager: The BatteryThemeManager to get colors from
+    /// - Returns: View with themed text style
+    func themedTextStyle(_ style: AmpedTextStyle, themeManager: BatteryThemeManager) -> some View {
+        self.modifier(ThemedTextModifier(themeManager: themeManager, style: style))
     }
 } 

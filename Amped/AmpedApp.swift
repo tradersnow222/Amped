@@ -37,9 +37,13 @@ struct AmpedApp: App {
             #if DEBUG
             // For previews and development
             ContentView()
+                .environmentObject(appState)
                 .environmentObject(settingsManager)
                 .environmentObject(themeManager)
                 .accentColor(Color.ampedGreen) // Set app-wide accent color
+                .withDeepBackground() // Apply deep background image
+                .withBatteryTheme(themeManager) // Apply time-based background theme
+                .withFuturisticTheme() // Apply futuristic text styling
                 .onAppear {
                     // Log app launch in analytics (if enabled)
                     analyticsService.trackEvent(.appLaunch)
@@ -53,10 +57,14 @@ struct AmpedApp: App {
                 // User has completed onboarding, show dashboard
                 NavigationView {
                     DashboardView()
+                        .environmentObject(appState)
                         .environmentObject(settingsManager)
                         .environmentObject(themeManager)
                 }
                 .accentColor(Color.ampedGreen) // Set app-wide accent color
+                .withDeepBackground() // Apply deep background image
+                .withBatteryTheme(themeManager) // Apply time-based background theme
+                .withFuturisticTheme() // Apply futuristic text styling
                 .onAppear {
                     // Log app launch in analytics (if enabled)
                     analyticsService.trackEvent(.appLaunch)
@@ -65,11 +73,14 @@ struct AmpedApp: App {
                     featureFlagManager.refreshFlags()
                 }
             } else {
-                // User needs onboarding, start from welcome screen
-                WelcomeView()
+                // User needs onboarding, use the new OnboardingFlow
+                OnboardingFlow()
+                    .environmentObject(appState)
                     .environmentObject(settingsManager)
                     .environmentObject(themeManager)
                     .accentColor(Color.ampedGreen) // Set app-wide accent color
+                    .withBatteryTheme(themeManager) // Apply time-based background theme
+                    .withFuturisticTheme() // Apply futuristic text styling
                     .onAppear {
                         // Track onboarding start
                         analyticsService.trackOnboardingStep("welcome")
@@ -128,5 +139,23 @@ class AppState: ObservableObject {
     func completeOnboarding() {
         hasCompletedOnboarding = true
         UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+    }
+}
+
+// MARK: - Futuristic Theme Modifier
+
+/// View modifier for applying futuristic theme throughout the app
+struct FuturisticThemeModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .environment(\.font, .system(.body, design: .monospaced))
+            .tint(.white) // Set tint color for buttons, toggles, etc.
+    }
+}
+
+extension View {
+    /// Apply futuristic styling app-wide
+    func withFuturisticTheme() -> some View {
+        modifier(FuturisticThemeModifier())
     }
 }

@@ -1,9 +1,12 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var selectedView: AppView = .welcome
+    @State private var selectedView: AppView = .onboardingFlow
+    @State private var showDebugControls: Bool = false
     
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var themeManager: BatteryThemeManager
     
     enum AppView: String, CaseIterable, Identifiable {
         case welcome
@@ -13,6 +16,7 @@ struct ContentView: View {
         case signInWithApple
         case payment
         case dashboard
+        case onboardingFlow
         
         var id: String { rawValue }
         
@@ -25,66 +29,105 @@ struct ContentView: View {
             case .signInWithApple: return "Sign In With Apple"
             case .payment: return "Payment"
             case .dashboard: return "Dashboard"
+            case .onboardingFlow: return "Onboarding Flow"
             }
         }
     }
     
     var body: some View {
         #if DEBUG
-        // Development preview mode - show only the selected view without picker
-        Group {
-            switch selectedView {
-            case .welcome:
-                WelcomeView()
-            case .personalizationIntro:
-                PersonalizationIntroView()
-            case .questionnaire:
-                QuestionnaireView()
-            case .healthkitPermissions:
-                HealthKitPermissionsView()
-            case .signInWithApple:
-                SignInWithAppleView()
-            case .payment:
-                PaymentView()
-            case .dashboard:
-                DashboardView()
+        // Development preview mode
+        ZStack {
+            // The main content view takes up the full screen
+            Group {
+                switch selectedView {
+                case .welcome:
+                    WelcomeView(onContinue: {})
+                case .personalizationIntro:
+                    PersonalizationIntroView(onContinue: {})
+                case .questionnaire:
+                    QuestionnaireView(onContinue: {})
+                case .healthkitPermissions:
+                    HealthKitPermissionsView(onContinue: {})
+                case .signInWithApple:
+                    SignInWithAppleView(onContinue: {})
+                case .payment:
+                    PaymentView(onContinue: {})
+                        .environmentObject(appState)
+                case .dashboard:
+                    DashboardView()
+                        .navigationBarHidden(true)
+                case .onboardingFlow:
+                    OnboardingFlow()
+                        .environmentObject(appState)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            
+            // Hidden debug controls that can be shown by triple-tapping the corner
+            if showDebugControls {
+                VStack {
+                    Spacer()
+                    
+                    Picker("Select View", selection: $selectedView) {
+                        ForEach(AppView.allCases) { view in
+                            Text(view.displayName).tag(view)
+                        }
+                    }
+                    .pickerStyle(MenuPickerStyle())
+                    .padding()
+                    .background(Color(.systemBackground).opacity(0.8))
+                    .cornerRadius(10)
+                    .padding(.horizontal)
+                    .padding(.bottom, 20)
+                }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .withBatteryTheme(BatteryThemeManager())
+        // Add a tap gesture to the corner to show/hide debug controls
+        .overlay(
+            VStack {
+                HStack {
+                    Spacer()
+                    
+                    Rectangle()
+                        .fill(Color.clear)
+                        .frame(width: 50, height: 50)
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 3) {
+                            showDebugControls.toggle()
+                        }
+                }
+                
+                Spacer()
+            }
+        )
         #else
         // Production mode - follow normal app flow
         if appState.hasCompletedOnboarding {
             NavigationView {
                 DashboardView()
             }
+            .navigationViewStyle(StackNavigationViewStyle())
+            .accentColor(Color.ampedGreen)
         } else {
-            WelcomeView()
+            OnboardingFlow()
         }
         #endif
-    }
-}
-
-// Previews
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-            .environmentObject(SettingsManager())
-            .environmentObject(BatteryThemeManager())
-            .environmentObject(AppState())
-            .accentColor(AmpedColors.green)
-            .withBatteryTheme(BatteryThemeManager())
     }
 }
 
 // For Xcode 15+ preview
 #if swift(>=5.9)
 #Preview {
-    ContentView()
-        .environmentObject(SettingsManager())
-        .environmentObject(BatteryThemeManager())
+    let themeManager = BatteryThemeManager()
+    
+    return ContentView()
         .environmentObject(AppState())
-        .accentColor(AmpedColors.green)
-        .withBatteryTheme(BatteryThemeManager())
+        .environmentObject(SettingsManager())
+        .environmentObject(themeManager)
+        .accentColor(Color.ampedGreen)
+        .withDeepBackground()
+        .withBatteryTheme(themeManager)
+        .withFuturisticTheme()
 }
 #endif

@@ -5,9 +5,22 @@ import Charts
 struct MetricDetailView: View {
     // MARK: - Properties
     
-    let metric: HealthMetric
-    @StateObject private var viewModel = MetricDetailViewModel()
+    @StateObject private var viewModel: MetricDetailViewModel
+    
+    // Environment
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.themeManager) private var themeManager
+    
+    // Convenience property for accessing current metric
+    private var metric: HealthMetric {
+        viewModel.metric
+    }
+    
+    // MARK: - Initialization
+    
+    init(metric: HealthMetric) {
+        _viewModel = StateObject(wrappedValue: MetricDetailViewModel(metric: metric))
+    }
     
     // MARK: - Body
     
@@ -56,24 +69,26 @@ struct MetricDetailView: View {
     private var impactSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Impact Details")
-                .font(.headline)
+                .style(.headline)
                 .padding(.horizontal)
             
             if let impact = metric.impactDetail {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Your \(metric.type.displayName.lowercased()) is \(impact.comparisonToBaseline.description).")
+                        .style(.body)
                     
                     Text("This impacts your lifespan by approximately \(impact.formattedImpact).")
+                        .style(.body)
                     
                     if impact.lifespanImpactMinutes > 0 {
                         Text("This is a positive impact on your health! 🎉")
-                            .foregroundStyle(Color.green)
+                            .style(.bodyMedium, color: .ampedGreen)
                     } else if impact.lifespanImpactMinutes < 0 {
                         Text("This is currently reducing your projected lifespan.")
-                            .foregroundStyle(Color.red)
+                            .style(.bodyMedium, color: .ampedRed)
                     } else {
                         Text("This is in line with typical health outcomes.")
-                            .foregroundStyle(Color.primary)
+                            .style(.bodyMedium)
                     }
                 }
                 .padding()
@@ -81,7 +96,7 @@ struct MetricDetailView: View {
                 .padding(.horizontal)
             } else {
                 Text("Impact data unavailable")
-                    .foregroundStyle(Color.secondary)
+                    .style(.bodySecondary)
                     .padding(.horizontal)
             }
         }
@@ -92,7 +107,7 @@ struct MetricDetailView: View {
     private var chartSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("History")
-                .font(.headline)
+                .style(.headline)
                 .padding(.horizontal)
             
             if !viewModel.historyData.isEmpty {
@@ -167,20 +182,19 @@ struct MetricDetailView: View {
     private var researchSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Research Reference")
-                .font(.headline)
+                .style(.headline)
                 .padding(.horizontal)
             
             if let study = metric.impactDetail?.studyReference {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(study.title)
-                        .font(.subheadline)
-                        .bold()
+                        .style(.subheadlineBold)
                     
                     Text(study.shortCitation)
-                        .font(.caption)
+                        .style(.caption)
                     
                     Text(study.summary)
-                        .font(.body)
+                        .style(.body)
                         .padding(.top, 4)
                     
                     if let studyUrl = study.url, !studyUrl.absoluteString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -194,7 +208,7 @@ struct MetricDetailView: View {
                 .padding(.horizontal)
             } else {
                 Text("No research reference available")
-                    .foregroundStyle(Color.secondary)
+                    .style(.bodySecondary)
                     .padding(.horizontal)
             }
         }
@@ -205,7 +219,7 @@ struct MetricDetailView: View {
     private var recommendationsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Recommendations")
-                .font(.headline)
+                .style(.headline)
                 .padding(.horizontal)
             
             ForEach(viewModel.recommendations) { recommendation in
@@ -218,14 +232,14 @@ struct MetricDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: recommendation.iconName)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundColor(themeManager.currentTheme.accentColor)
                 
                 Text(recommendation.title)
-                    .font(.headline)
+                    .style(.headlineBold)
             }
             
             Text(recommendation.description)
-                .font(.body)
+                .style(.body)
             
             if !recommendation.actionText.isEmpty {
                 Button {
@@ -234,11 +248,10 @@ struct MetricDetailView: View {
                     viewModel.logRecommendationAction(recommendation)
                 } label: {
                     Text(recommendation.actionText)
-                        .font(.subheadline)
+                        .style(.buttonLabel, color: .white)
                         .padding(.vertical, 8)
                         .padding(.horizontal, 16)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.accentColor))
-                        .foregroundStyle(Color.white)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(themeManager.currentTheme.accentColor))
                 }
                 .padding(.top, 4)
             }
@@ -250,6 +263,74 @@ struct MetricDetailView: View {
         )
         .padding(.horizontal)
     }
+    
+    private var powerLevelIndicator: some View {
+        // Breaking down the complex expression
+        PowerLevelIndicatorView(powerLevel: viewModel.powerLevel, powerColor: viewModel.powerColor)
+    }
+    
+    private var headerSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: metric.type.symbolName)
+                            .foregroundColor(metric.type.color)
+                            .textStyle(.title)
+                        
+                        Text(metric.type.displayName)
+                            .style(.title)
+                    }
+                    
+                    Text(metric.formattedValue)
+                        .style(.metricValue, color: themeManager.getThemeColor(for: .metricValue))
+                }
+                
+                Spacer()
+                
+                // Power level indicator
+                powerLevelIndicator
+            }
+            .padding(.horizontal)
+        }
+    }
+}
+
+// Helper view to simplify complex expressions
+struct PowerLevelIndicatorView: View {
+    let powerLevel: Int
+    let powerColor: Color
+    
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            Text("Power Level")
+                .style(.caption)
+            
+            // Battery power level
+            HStack(spacing: 2) {
+                ForEach(0..<5) { i in
+                    PowerLevelBar(
+                        isActive: i < powerLevel,
+                        activeColor: powerColor,
+                        height: 8 + CGFloat(i) * 2
+                    )
+                }
+            }
+            .padding(.top, 4)
+        }
+    }
+}
+
+struct PowerLevelBar: View {
+    let isActive: Bool
+    let activeColor: Color
+    let height: CGFloat
+    
+    var body: some View {
+        RoundedRectangle(cornerRadius: 1)
+            .fill(isActive ? activeColor : Color.gray.opacity(0.3))
+            .frame(width: 3, height: height)
+    }
 }
 
 // MARK: - View Model
@@ -259,6 +340,33 @@ final class MetricDetailViewModel: ObservableObject {
     
     @Published var historyData: [HistoryDataPoint] = []
     @Published var recommendations: [MetricRecommendation] = []
+    @Published var metric: HealthMetric
+    
+    // Computed properties for the power level indicator
+    var powerLevel: Int {
+        // Simulate power level based on metric's impact
+        if let impact = metric.impactDetail?.lifespanImpactMinutes {
+            if impact > 120 { return 5 }
+            else if impact > 60 { return 4 }
+            else if impact > 0 { return 3 }
+            else if impact > -60 { return 2 }
+            else { return 1 }
+        }
+        return 3 // Default middle level
+    }
+    
+    var powerColor: Color {
+        if let impact = metric.impactDetail?.lifespanImpactMinutes, impact >= 0 {
+            return .ampedGreen
+        }
+        return .ampedRed
+    }
+    
+    // MARK: - Initialization
+    
+    init(metric: HealthMetric) {
+        self.metric = metric
+    }
     
     // MARK: - Methods
     
@@ -539,6 +647,25 @@ struct MetricRecommendation: Identifiable {
     let description: String
     let iconName: String
     let actionText: String
+}
+
+// Sample chart view - in a real app, this would use Swift Charts
+struct ChartView: View {
+    let metric: HealthMetric
+    let period: ImpactDataPoint.PeriodType
+    
+    @Environment(\.themeManager) private var themeManager
+    
+    var body: some View {
+        // Placeholder for chart
+        ZStack {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.systemGray6))
+            
+            Text("Chart for \(metric.type.displayName) over \(period.rawValue)")
+                .font(.caption)
+        }
+    }
 }
 
 #Preview {

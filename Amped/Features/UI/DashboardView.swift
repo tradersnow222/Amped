@@ -74,7 +74,6 @@ struct DashboardView: View {
                 Group {
                     if viewModel.isLoading && viewModel.metrics.isEmpty {
                         ProgressView("Charging...")
-                            .background(Color(.systemBackground).opacity(0.8))
                             .cornerRadius(10)
                             .padding()
                     }
