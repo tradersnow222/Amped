@@ -135,20 +135,26 @@ struct OnboardingFlow: View {
                         if dragDirection == .leading && abs(dragOffset) > threshold {
                             // Dragged left past threshold - move forward
                             if let nextStep = getNextStep(after: currentStep) {
+                                withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
+                                    dragOffset = 0
+                                }
                                 dragDirection = nil
                                 navigateTo(nextStep)
                             }
                         } else if dragDirection == .trailing && abs(dragOffset) > threshold {
                             // Dragged right past threshold - move backward
                             if let previousStep = getPreviousStep(before: currentStep), previousStep != .welcome {
+                                withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
+                                    dragOffset = 0
+                                }
                                 dragDirection = nil
                                 navigateTo(previousStep)
                             }
-                        }
-                        
-                        // Reset drag state with animation
-                        withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
-                            dragOffset = 0
+                        } else {
+                            // Reset drag state with animation if threshold not met
+                            withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
+                                dragOffset = 0
+                            }
                             dragDirection = nil
                         }
                     }

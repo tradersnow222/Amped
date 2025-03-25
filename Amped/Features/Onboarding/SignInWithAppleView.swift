@@ -17,6 +17,8 @@ struct SignInWithAppleView: View {
             Text("Create Your Account")
                 .font(.largeTitle)
                 .fontWeight(.bold)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
                 .padding(.top, 40)
             
             Text("Sign in to secure your data and access premium features")

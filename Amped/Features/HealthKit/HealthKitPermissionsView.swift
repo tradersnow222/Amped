@@ -17,6 +17,8 @@ struct HealthKitPermissionsView: View {
             Text("Health Access")
                 .font(.largeTitle)
                 .fontWeight(.bold)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
                 .padding(.top, 40)
             
             Text("Allow Amped to access health data to calculate your life battery")
