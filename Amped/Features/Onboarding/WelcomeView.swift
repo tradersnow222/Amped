@@ -125,6 +125,7 @@ struct WelcomeView: View {
                             .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
                             .cornerRadius(14)
                     }
+                    .hapticFeedback(.heavy)
                     .padding(.horizontal, 40)
                     .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
                     .scaleEffect(buttonPulsing ? 1.05 : 1.0) // Subtle scale effect when pulsing

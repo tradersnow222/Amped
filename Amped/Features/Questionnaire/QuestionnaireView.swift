@@ -53,6 +53,9 @@ struct QuestionnaireView: View {
                         .frame(height: 42)
                     }
                     
+                    // Add spacer to push question down approximately 1/3 from top
+                    Spacer().frame(height: geometry.size.height * 0.15)
+                    
                     // Current question view with proper bidirectional transitions
                     ZStack {
                         ForEach(QuestionnaireViewModel.Question.allCases, id: \.self) { question in
@@ -84,6 +87,7 @@ struct QuestionnaireView: View {
                                 .foregroundColor(.white)
                                 .cornerRadius(14)
                         }
+                        .hapticFeedback()
                         .padding(.horizontal, 40)
                         .padding(.bottom, 20)
                         .disabled(!viewModel.canProceed)
@@ -216,7 +220,8 @@ struct QuestionnaireView: View {
     
     // Birthdate question
     private var birthdateQuestionView: some View {
-        VStack(alignment: .center, spacing: 24) {
+        VStack(alignment: .center, spacing: 0) {
+            // Question text placed higher
             Text("When were you born?")
                 .font(.title)
                 .fontWeight(.bold)
@@ -224,15 +229,17 @@ struct QuestionnaireView: View {
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
-            
-            // DatePicker with wheel style
+
+            Spacer()
+
+            // DatePicker positioned at bottom for thumb access
             DatePicker("", selection: $viewModel.birthdate, in: viewModel.birthdateRange, displayedComponents: .date)
                 .datePickerStyle(WheelDatePickerStyle())
                 .labelsHidden()
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
             
-            // Continue button (no arrow)
+            // Continue button at very bottom
             Button(action: { viewModel.proceedToNextQuestion() }) {
                 Text("Continue")
                     .fontWeight(.semibold)
@@ -242,16 +249,20 @@ struct QuestionnaireView: View {
                     .foregroundColor(.white)
                     .cornerRadius(14)
             }
+            .hapticFeedback()
             .padding(.top, 20)
+            .padding(.bottom, 30)
             .opacity(viewModel.canProceed ? 1 : 0.6)
             .disabled(!viewModel.canProceed)
         }
         .padding(.horizontal, 20)
+        .frame(maxHeight: .infinity)
     }
     
     // Gender question
     private var genderQuestionView: some View {
-        VStack(alignment: .center, spacing: 20) {
+        VStack(alignment: .center, spacing: 0) {
+            // Question placed higher
             Text("What is your biological sex?")
                 .font(.title)
                 .fontWeight(.bold)
@@ -260,6 +271,9 @@ struct QuestionnaireView: View {
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
             
+            Spacer()
+            
+            // Options at bottom for thumb access
             VStack(spacing: 12) {
                 ForEach(UserProfile.Gender.allCases.filter { $0 != .preferNotToSay }, id: \.self) { gender in
                     Button(action: {
@@ -289,6 +303,7 @@ struct QuestionnaireView: View {
                                 .stroke(viewModel.selectedGender == gender ? Color.ampedGreen : Color.gray.opacity(0.3), lineWidth: 2)
                         )
                     }
+                    .hapticFeedback(.selection)
                 }
                 
                 Button(action: {
@@ -319,13 +334,16 @@ struct QuestionnaireView: View {
                     )
                 }
             }
+            .padding(.bottom, 30)
         }
         .padding(.horizontal, 20)
+        .frame(maxHeight: .infinity)
     }
     
     // Diet question
     private var dietQuestionView: some View {
-        VStack(alignment: .center, spacing: 20) {
+        VStack(alignment: .center, spacing: 0) {
+            // Question placed higher
             Text("How would you describe your diet?")
                 .font(.title)
                 .fontWeight(.bold)
@@ -334,6 +352,9 @@ struct QuestionnaireView: View {
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
             
+            Spacer()
+            
+            // Options at bottom for thumb access
             VStack(spacing: 12) {
                 ForEach(QuestionnaireViewModel.DietType.allCases, id: \.self) { diet in
                     Button(action: {
@@ -365,13 +386,16 @@ struct QuestionnaireView: View {
                     }
                 }
             }
+            .padding(.bottom, 30)
         }
         .padding(.horizontal, 20)
+        .frame(maxHeight: .infinity)
     }
     
     // Exercise question
     private var exerciseQuestionView: some View {
-        VStack(alignment: .center, spacing: 20) {
+        VStack(alignment: .center, spacing: 0) {
+            // Question placed higher
             Text("How often do you exercise?")
                 .font(.title)
                 .fontWeight(.bold)
@@ -380,6 +404,9 @@ struct QuestionnaireView: View {
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
             
+            Spacer()
+            
+            // Options at bottom for thumb access
             VStack(spacing: 12) {
                 ForEach(QuestionnaireViewModel.ExerciseFrequency.allCases, id: \.self) { frequency in
                     Button(action: {
@@ -411,13 +438,16 @@ struct QuestionnaireView: View {
                     }
                 }
             }
+            .padding(.bottom, 30)
         }
         .padding(.horizontal, 20)
+        .frame(maxHeight: .infinity)
     }
     
     // Sleep question
     private var sleepQuestionView: some View {
-        VStack(alignment: .center, spacing: 20) {
+        VStack(alignment: .center, spacing: 0) {
+            // Question placed higher
             Text("How much sleep do you typically get each night?")
                 .font(.title)
                 .fontWeight(.bold)
@@ -426,6 +456,9 @@ struct QuestionnaireView: View {
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
             
+            Spacer()
+            
+            // Options at bottom for thumb access
             VStack(spacing: 12) {
                 ForEach(QuestionnaireViewModel.SleepDuration.allCases, id: \.self) { duration in
                     Button(action: {
@@ -457,13 +490,16 @@ struct QuestionnaireView: View {
                     }
                 }
             }
+            .padding(.bottom, 30)
         }
         .padding(.horizontal, 20)
+        .frame(maxHeight: .infinity)
     }
     
     // Stress question
     private var stressQuestionView: some View {
-        VStack(alignment: .center, spacing: 20) {
+        VStack(alignment: .center, spacing: 0) {
+            // Question placed higher
             Text("How would you rate your typical stress level?")
                 .font(.title)
                 .fontWeight(.bold)
@@ -472,6 +508,9 @@ struct QuestionnaireView: View {
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
             
+            Spacer()
+            
+            // Options at bottom for thumb access
             VStack(spacing: 12) {
                 ForEach(QuestionnaireViewModel.StressLevel.allCases, id: \.self) { level in
                     Button(action: {
@@ -503,13 +542,16 @@ struct QuestionnaireView: View {
                     }
                 }
             }
+            .padding(.bottom, 30)
         }
         .padding(.horizontal, 20)
+        .frame(maxHeight: .infinity)
     }
     
     // Socialization question
     private var socializationQuestionView: some View {
-        VStack(alignment: .center, spacing: 20) {
+        VStack(alignment: .center, spacing: 0) {
+            // Question placed higher
             Text("How often do you socialize with friends, family, or community?")
                 .font(.title)
                 .fontWeight(.bold)
@@ -518,6 +560,9 @@ struct QuestionnaireView: View {
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
             
+            Spacer()
+            
+            // Options at bottom for thumb access
             VStack(spacing: 12) {
                 ForEach(QuestionnaireViewModel.SocializationFrequency.allCases, id: \.self) { frequency in
                     Button(action: {
@@ -549,13 +594,16 @@ struct QuestionnaireView: View {
                     }
                 }
             }
+            .padding(.bottom, 30)
         }
         .padding(.horizontal, 20)
+        .frame(maxHeight: .infinity)
     }
     
     // Smoking question
     private var smokingQuestionView: some View {
-        VStack(alignment: .center, spacing: 20) {
+        VStack(alignment: .center, spacing: 0) {
+            // Question placed higher
             Text("Do you smoke tobacco products?")
                 .font(.title)
                 .fontWeight(.bold)
@@ -564,6 +612,9 @@ struct QuestionnaireView: View {
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
             
+            Spacer()
+            
+            // Options at bottom for thumb access
             VStack(spacing: 12) {
                 ForEach(QuestionnaireViewModel.SmokingStatus.allCases, id: \.self) { status in
                     Button(action: {
@@ -595,13 +646,16 @@ struct QuestionnaireView: View {
                     }
                 }
             }
+            .padding(.bottom, 30)
         }
         .padding(.horizontal, 20)
+        .frame(maxHeight: .infinity)
     }
     
     // Alcohol question
     private var alcoholQuestionView: some View {
-        VStack(alignment: .center, spacing: 20) {
+        VStack(alignment: .center, spacing: 0) {
+            // Question placed higher
             Text("How often do you consume alcoholic beverages?")
                 .font(.title)
                 .fontWeight(.bold)
@@ -610,6 +664,9 @@ struct QuestionnaireView: View {
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
             
+            Spacer()
+            
+            // Options at bottom for thumb access
             VStack(spacing: 12) {
                 ForEach(QuestionnaireViewModel.AlcoholFrequency.allCases, id: \.self) { frequency in
                     Button(action: {
@@ -641,14 +698,17 @@ struct QuestionnaireView: View {
                     }
                 }
             }
+            .padding(.bottom, 30)
         }
         .padding(.horizontal, 20)
+        .frame(maxHeight: .infinity)
     }
     
-    // Demographics (weight) question
+    // Demographics question
     private var demographicsQuestionView: some View {
-        VStack(alignment: .center, spacing: 20) {
-            Text("What is your current weight?")
+        VStack(alignment: .center, spacing: 0) {
+            // Question placed higher
+            Text("Finally, what is your current weight range?")
                 .font(.title)
                 .fontWeight(.bold)
                 .foregroundColor(themeManager.currentTheme.textColor)
@@ -656,19 +716,23 @@ struct QuestionnaireView: View {
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
             
+            Spacer()
+            
+            // Options at bottom for thumb access
             VStack(spacing: 12) {
-                ForEach(QuestionnaireViewModel.WeightRange.allCases, id: \.self) { weightRange in
+                ForEach(QuestionnaireViewModel.WeightRange.allCases, id: \.self) { range in
                     Button(action: {
-                        viewModel.selectedWeightRange = weightRange
+                        viewModel.selectedWeightRange = range
+                        viewModel.proceedToNextQuestion()
                     }) {
                         HStack {
-                            Text(weightRange.displayName)
+                            Text(range.displayName)
                                 .fontWeight(.medium)
                                 .foregroundColor(.primary)
                             
                             Spacer()
                             
-                            if viewModel.selectedWeightRange == weightRange {
+                            if viewModel.selectedWeightRange == range {
                                 Image(systemName: "checkmark.circle.fill")
                                     .foregroundColor(.ampedGreen)
                             } else {
@@ -681,13 +745,15 @@ struct QuestionnaireView: View {
                         .cornerRadius(12)
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
-                                .stroke(viewModel.selectedWeightRange == weightRange ? Color.ampedGreen : Color.gray.opacity(0.3), lineWidth: 2)
+                                .stroke(viewModel.selectedWeightRange == range ? Color.ampedGreen : Color.gray.opacity(0.3), lineWidth: 2)
                         )
                     }
                 }
             }
+            .padding(.bottom, 30)
         }
         .padding(.horizontal, 20)
+        .frame(maxHeight: .infinity)
     }
 }
 

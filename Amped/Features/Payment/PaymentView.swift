@@ -158,8 +158,10 @@ struct PaymentView: View {
                         Text("$19.99")
                             .font(.largeTitle)
                             .fontWeight(.bold)
-                            + Text(" ")
-                            + Text("$39.99")
+                        
+                        + Text(" ")
+                        
+                        Text("$39.99")
                             .font(.headline)
                             .strikethrough()
                         
@@ -181,6 +183,7 @@ struct PaymentView: View {
                                     .foregroundColor(.primary)
                                     .cornerRadius(14)
                             }
+                            .hapticFeedback(.light)
                             
                             // Accept
                             Button(action: {
@@ -195,6 +198,7 @@ struct PaymentView: View {
                                     .foregroundColor(.white)
                                     .cornerRadius(14)
                             }
+                            .successFeedback()
                         }
                         .padding(.top, 10)
                     }
@@ -323,6 +327,7 @@ struct PaymentView: View {
             )
         }
         .foregroundColor(.primary)
+        .hapticFeedback(.selection)
     }
 }
 

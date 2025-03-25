@@ -241,7 +241,7 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
-				"${SRCROOT}/Amped/Scripts/dummy_update_infoplist.sh",
+				"${SRCROOT}/Amped/Scripts/update_infoplist.sh",
 				"${SRCROOT}/Amped/Amped-Info.plist",
 			);
 			name = "Update Info.plist";
@@ -252,7 +252,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "# Run the Info.plist update script\n\"${SRCROOT}/Amped/Scripts/dummy_update_infoplist.sh\"\n";
+			shellScript = "# Run the Info.plist update script\n\"${SRCROOT}/Amped/Scripts/update_infoplist.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

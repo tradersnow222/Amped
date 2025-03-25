@@ -73,6 +73,7 @@ struct HealthKitPermissionsView: View {
             .disabled(viewModel.isRequestingPermissions)
             .padding(.horizontal, 40)
             .padding(.bottom, 30)
+            .hapticFeedback()
             
             // Progress indicator
             ProgressIndicator(currentStep: 4, totalSteps: 7)
