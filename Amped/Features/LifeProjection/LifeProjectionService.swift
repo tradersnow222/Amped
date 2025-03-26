@@ -46,7 +46,7 @@ final class LifeProjectionService: LifeProjectionServicing, ObservableObject {
             baselineYears = 76.0
         case .female:
             baselineYears = 81.0
-        case .other, .preferNotToSay:
+        case .preferNotToSay:
             baselineYears = 78.5
         }
         

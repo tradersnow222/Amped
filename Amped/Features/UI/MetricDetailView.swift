@@ -232,7 +232,7 @@ struct MetricDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: recommendation.iconName)
-                    .foregroundColor(themeManager.currentTheme.accentColor)
+                    .foregroundColor(themeManager.accentColor)
                 
                 Text(recommendation.title)
                     .style(.headlineBold)
@@ -251,7 +251,7 @@ struct MetricDetailView: View {
                         .style(.buttonLabel, color: .white)
                         .padding(.vertical, 8)
                         .padding(.horizontal, 16)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(themeManager.currentTheme.accentColor))
+                        .background(RoundedRectangle(cornerRadius: 8).fill(themeManager.accentColor))
                 }
                 .padding(.top, 4)
             }

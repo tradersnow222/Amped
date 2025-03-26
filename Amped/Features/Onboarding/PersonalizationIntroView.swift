@@ -69,6 +69,25 @@ struct PersonalizationIntroView: View {
             nudgeTimer?.invalidate()
             nudgeTimer = nil
         }
+        .gesture(
+            DragGesture(minimumDistance: 20, coordinateSpace: .local)
+                .onEnded { value in
+                    if value.translation.width < -50 {
+                        // Left swipe - proceed to next screen
+                        withAnimation {
+                            nudgeTimer?.invalidate()
+                            nudgeTimer = nil
+                            onContinue?()
+                        }
+                    }
+                }
+        )
+        .onTapGesture {
+            // Tap gesture for easier navigation as well
+            nudgeTimer?.invalidate()
+            nudgeTimer = nil
+            onContinue?()
+        }
     }
     
     // MARK: - Helper Methods

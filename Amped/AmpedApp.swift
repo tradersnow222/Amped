@@ -19,7 +19,7 @@ struct AmpedApp: App {
     /// Settings manager for user preferences
     @StateObject private var settingsManager = SettingsManager()
     
-    /// Theme manager for time-based theming
+    /// Theme manager
     @StateObject private var themeManager = BatteryThemeManager()
     
     // MARK: - Properties
@@ -42,7 +42,7 @@ struct AmpedApp: App {
                 .environmentObject(themeManager)
                 .accentColor(Color.ampedGreen) // Set app-wide accent color
                 .withDeepBackground() // Apply deep background image
-                .withBatteryTheme(themeManager) // Apply time-based background theme
+                .withBatteryTheme(themeManager) // Apply theme
                 .withFuturisticTheme() // Apply futuristic text styling
                 .onAppear {
                     // Log app launch in analytics (if enabled)
@@ -63,7 +63,7 @@ struct AmpedApp: App {
                 }
                 .accentColor(Color.ampedGreen) // Set app-wide accent color
                 .withDeepBackground() // Apply deep background image
-                .withBatteryTheme(themeManager) // Apply time-based background theme
+                .withBatteryTheme(themeManager) // Apply theme
                 .withFuturisticTheme() // Apply futuristic text styling
                 .onAppear {
                     // Log app launch in analytics (if enabled)
@@ -79,7 +79,7 @@ struct AmpedApp: App {
                     .environmentObject(settingsManager)
                     .environmentObject(themeManager)
                     .accentColor(Color.ampedGreen) // Set app-wide accent color
-                    .withBatteryTheme(themeManager) // Apply time-based background theme
+                    .withBatteryTheme(themeManager) // Apply theme
                     .withFuturisticTheme() // Apply futuristic text styling
                     .onAppear {
                         // Track onboarding start
@@ -106,10 +106,8 @@ struct AmpedApp: App {
         switch newPhase {
         case .active:
             // App became active
-            if oldPhase != .active {
-                // Update theme based on current time
-                themeManager.updateTheme()
-            }
+            // No theme update needed anymore
+            break
         case .background:
             // App went to background
             analyticsService.trackEvent(.appBackground)

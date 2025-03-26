@@ -56,9 +56,9 @@ final class AmpedUITests: XCTestCase {
         // HealthKit permissions
         XCTAssertTrue(app.staticTexts["Health Access"].exists, "HealthKit permission screen should be visible")
         
-        // Tap "Allow Access" to simulate HealthKit permission grant
+        // Tap "Allow Health Access" to simulate HealthKit permission grant
         // Note: This won't actually trigger system permission UI in test mode
-        app.buttons["Allow Access"].tap()
+        app.buttons["Allow Health Access"].tap()
         
         // Sign in with Apple
         XCTAssertTrue(app.staticTexts["Secure Account"].exists, "Sign in screen should be visible")

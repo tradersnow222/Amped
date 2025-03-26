@@ -38,7 +38,7 @@ struct PaymentView: View {
                     .fontWeight(.bold)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
-                    .foregroundColor(themeManager.currentTheme.textColor)
+                    .foregroundColor(themeManager.textColor)
                 
                 // Description
                 Text("Supercharge your health insights and maximize your battery potential")

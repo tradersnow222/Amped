@@ -29,10 +29,9 @@ alwaysApply: true
    - Final question subtly leads into HealthKit permission value
 
 4. **HealthKit Permissions**: Request access to health data
-   - Clear explanation of why each permission benefits the user
-   - Connect to questionnaire responses ("Based on your sleep habits...")
-   - Progressive permission requests (most important first)
-   - Each permission is another small "yes"
+   - Clear explanation of why granting permission benefits the user and gives a more accurate calculation
+   - A simple and scalable integration to meet iOS best practices and project MVP standards
+  
 
 5. **Sign in with Apple**: Authentication
    - Familiar, low-friction authentication flow

@@ -242,6 +242,7 @@
 			);
 			inputPaths = (
 				"${SRCROOT}/Amped/Scripts/update_infoplist.sh",
+				"${SRCROOT}/Amped/Scripts/copy_infoplist.sh",
 				"${SRCROOT}/Amped/Amped-Info.plist",
 			);
 			name = "Update Info.plist";
@@ -252,7 +253,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "# Run the Info.plist update script\n\"${SRCROOT}/Amped/Scripts/update_infoplist.sh\"\n";
+			shellScript = "# Run both Info.plist update scripts\n\"${SRCROOT}/Amped/Scripts/update_infoplist.sh\"\n\"${SRCROOT}/Amped/Scripts/copy_infoplist.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -425,6 +426,8 @@
 				DEVELOPMENT_TEAM = CGJF4WRXFT;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Amped uses your health data to calculate personalized life impact metrics. All data is processed on your device and never shared.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Amped does not modify your health data, but requires this permission to access your health information.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -455,6 +458,8 @@
 				DEVELOPMENT_TEAM = CGJF4WRXFT;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Amped uses your health data to calculate personalized life impact metrics. All data is processed on your device and never shared.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Amped does not modify your health data, but requires this permission to access your health information.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

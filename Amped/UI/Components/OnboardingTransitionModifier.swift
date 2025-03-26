@@ -7,7 +7,8 @@ struct OnboardingTransitionModifier: ViewModifier {
         case welcome       // Fade in for welcome screen
         case onboarding    // Horizontal slide for onboarding screens
         case dashboard     // Fade to dashboard
-        case buttonInitiated // Special case for button-initiated transitions
+        case buttonInitiated // Special case for button-initiated transitions (forward)
+        case backButtonInitiated // Special case for back button transitions
     }
     
     let type: TransitionType
@@ -37,10 +38,20 @@ struct OnboardingTransitionModifier: ViewModifier {
                 
         case .buttonInitiated:
             // Slightly slower transition for button-initiated navigation with spring animation
+            // Forward direction (right to left)
             content
                 .transition(.asymmetric(
                     insertion: .move(edge: .trailing).combined(with: .opacity),
                     removal: .move(edge: .leading).combined(with: .opacity)
+                ))
+                .animation(.interpolatingSpring(stiffness: 300, damping: 30), value: isPresented)
+                
+        case .backButtonInitiated:
+            // Back button transition (left to right)
+            content
+                .transition(.asymmetric(
+                    insertion: .move(edge: .leading).combined(with: .opacity),
+                    removal: .move(edge: .trailing).combined(with: .opacity)
                 ))
                 .animation(.interpolatingSpring(stiffness: 300, damping: 30), value: isPresented)
         }
@@ -64,8 +75,13 @@ extension View {
         modifier(OnboardingTransitionModifier(type: .dashboard, isPresented: true))
     }
     
-    /// Apply button-initiated transition (slightly slower)
+    /// Apply button-initiated transition (slightly slower) - forward direction
     func withButtonInitiatedTransition(isPresented: Bool = true) -> some View {
         modifier(OnboardingTransitionModifier(type: .buttonInitiated, isPresented: isPresented))
+    }
+    
+    /// Apply back button transition - backward direction
+    func withBackButtonTransition(isPresented: Bool = true) -> some View {
+        modifier(OnboardingTransitionModifier(type: .backButtonInitiated, isPresented: isPresented))
     }
 } 

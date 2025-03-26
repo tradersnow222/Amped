@@ -364,7 +364,7 @@ final class LifeImpactService: LifeImpactServicing, ObservableObject {
             baseline = 60.0 - (Double(age) / 3.0)
         case .female:
             baseline = 50.0 - (Double(age) / 3.0)
-        default:
+        case .preferNotToSay:
             baseline = 55.0 - (Double(age) / 3.0)
         }
         

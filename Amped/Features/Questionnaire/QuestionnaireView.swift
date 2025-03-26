@@ -10,9 +10,18 @@ struct QuestionnaireView: View {
     // Drag gesture state
     @State private var dragOffset: CGFloat = 0
     @State private var dragDirection: Edge? = nil
+    @State private var isBackButtonTapped: Bool = false
     
-    // Callback to proceed to next step
-    var onContinue: (() -> Void)?
+    // Navigation bindings
+    @Binding var exitToPersonalizationIntro: Bool
+    @Binding var proceedToHealthPermissions: Bool
+    
+    // MARK: - Initializers
+    
+    init(exitToPersonalizationIntro: Binding<Bool>, proceedToHealthPermissions: Binding<Bool>) {
+        self._exitToPersonalizationIntro = exitToPersonalizationIntro
+        self._proceedToHealthPermissions = proceedToHealthPermissions
+    }
     
     // MARK: - Body
     
@@ -27,7 +36,7 @@ struct QuestionnaireView: View {
                     if viewModel.canMoveBack {
                         HStack {
                             Button(action: {
-                                viewModel.moveBackToPreviousQuestion()
+                                handleBackNavigation()
                             }) {
                                 HStack(spacing: 4) {
                                     Image(systemName: "chevron.left")
@@ -63,119 +72,169 @@ struct QuestionnaireView: View {
                                 questionView(for: question)
                                     .padding()
                                     .offset(x: calculateOffset(for: question, geometry: geometry))
-                                    .transition(getTransition(for: dragDirection))
+                                    .transition(getTransition())
                                     .zIndex(viewModel.currentQuestion == question ? 1 : 0)
                             }
                         }
                     }
-                    .animation(dragDirection == nil ? .interpolatingSpring(stiffness: 300, damping: 30) : nil, value: viewModel.currentQuestion)
+                    .animation(dragDirection == nil ? .interpolatingSpring(stiffness: 150, damping: 20, initialVelocity: 0.3) : nil, value: viewModel.currentQuestion)
                     
                     Spacer()
-                    
-                    // Action buttons
-                    if viewModel.currentQuestion == .demographics {
-                        Button(action: {
-                            if viewModel.isComplete {
-                                onContinue?()
-                            }
-                        }) {
-                            Text("Continue")
-                                .fontWeight(.semibold)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.ampedGreen)
-                                .foregroundColor(.white)
-                                .cornerRadius(14)
-                        }
-                        .hapticFeedback()
-                        .padding(.horizontal, 40)
-                        .padding(.bottom, 20)
-                        .disabled(!viewModel.canProceed)
-                        .opacity(viewModel.canProceed ? 1 : 0.6)
-                    }
                     
                     // Progress indicator at bottom - consistent with other screens
                     ProgressIndicator(currentStep: viewModel.currentStep, totalSteps: viewModel.totalSteps)
                         .padding(.bottom, 40)
                 }
-                .gesture(
-                    DragGesture()
-                        .onChanged { gesture in
-                            if abs(gesture.translation.width) > abs(gesture.translation.height) {
-                                // Determine drag direction
-                                if gesture.translation.width < 0 && viewModel.canProceed {
-                                    // Dragging to the left (forward)
-                                    dragDirection = .leading
-                                    
-                                    // Create smoother drag with spring-like resistance
-                                    let resistance = 1.0 - min(abs(gesture.translation.width) / geometry.size.width, 0.5) * 0.2
-                                    dragOffset = max(gesture.translation.width, -geometry.size.width) * resistance
-                                } else if gesture.translation.width > 0 && viewModel.canMoveBack {
-                                    // Dragging to the right (backward)
-                                    dragDirection = .trailing
-                                    
-                                    // Create smoother drag with spring-like resistance
-                                    let resistance = 1.0 - min(abs(gesture.translation.width) / geometry.size.width, 0.5) * 0.2
-                                    dragOffset = min(gesture.translation.width, geometry.size.width) * resistance
-                                }
-                            }
-                        }
-                        .onEnded { gesture in
-                            guard dragDirection != nil else { return }
-                            
-                            // Calculate if the drag was significant enough to trigger navigation
-                            let threshold: CGFloat = geometry.size.width * 0.2 // Reduced threshold for easier swiping
-                            
-                            if dragDirection == .leading && abs(dragOffset) > threshold && viewModel.canProceed {
-                                // Dragged left past threshold - move forward
-                                viewModel.proceedToNextQuestion()
-                            } else if dragDirection == .trailing && abs(dragOffset) > threshold && viewModel.canMoveBack {
-                                // Dragged right past threshold - move backward
-                                viewModel.moveBackToPreviousQuestion()
-                            }
-                            
-                            // Reset drag state with animation
-                            withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
-                                dragOffset = 0
-                                dragDirection = nil
-                            }
-                        }
-                )
+                .withDeepBackgroundTheme()
+            }
+            // Move the gesture to the ZStack level for better gesture recognition
+            .contentShape(Rectangle()) // Ensure the entire area responds to gestures
+            .gesture(
+                DragGesture()
+                    .onChanged { gesture in
+                        handleDragChanged(gesture, geometry: geometry)
+                    }
+                    .onEnded { gesture in
+                        handleDragEnded(gesture, geometry: geometry)
+                    }
+            )
+        }
+    }
+    
+    // MARK: - Gesture Handling
+    
+    private func handleDragChanged(_ gesture: DragGesture.Value, geometry: GeometryProxy) {
+        // Add debug log
+        print("🔍 QUESTIONNAIRE: Drag detected, translation=\(gesture.translation)")
+        
+        // Reset back button flag when user starts dragging
+        isBackButtonTapped = false
+        
+        // Only consider horizontal drags that are significantly more horizontal than vertical
+        if abs(gesture.translation.width) > abs(gesture.translation.height) * 1.5 {
+            // Only allow backward (right) swipes, not forward (left) swipes
+            if gesture.translation.width > 0 && viewModel.canMoveBack {
+                // Dragging right (backward)
+                dragDirection = .trailing
+                
+                // Create smoother drag with spring-like resistance
+                let resistance = 1.0 - min(abs(gesture.translation.width) / geometry.size.width, 0.5) * 0.2
+                dragOffset = min(gesture.translation.width, geometry.size.width) * resistance
+                print("🔍 QUESTIONNAIRE: Backward drag, offset=\(dragOffset), isFirstQuestion=\(viewModel.isFirstQuestion), canMoveBack=\(viewModel.canMoveBack)")
             }
         }
     }
     
-    // Get the appropriate transition based on the drag direction
-    private func getTransition(for direction: Edge?) -> AnyTransition {
-        guard let direction = direction else {
-            // Default transition for programmatic navigation
-            return .asymmetric(
-                insertion: .move(edge: .trailing).combined(with: .opacity),
-                removal: .move(edge: .leading).combined(with: .opacity)
-            )
+    private func handleDragEnded(_ gesture: DragGesture.Value, geometry: GeometryProxy) {
+        guard dragDirection != nil else { 
+            print("🔍 QUESTIONNAIRE: Drag ended but dragDirection is nil")
+            return 
         }
         
-        // Return the correct directional transition based on swipe
-        switch direction {
-        case .leading:
-            // Forward navigation (left swipe)
-            return .asymmetric(
-                insertion: .move(edge: .trailing).combined(with: .opacity),
-                removal: .move(edge: .leading).combined(with: .opacity)
-            )
-        case .trailing:
-            // Backward navigation (right swipe)
+        // Calculate if the drag was significant enough to trigger navigation
+        let threshold: CGFloat = geometry.size.width * 0.2 // 20% threshold for easier swiping
+        print("🔍 QUESTIONNAIRE: Drag ended, dragOffset=\(dragOffset), threshold=\(threshold), dragDirection=\(String(describing: dragDirection))")
+        
+        // Only handle backward (trailing) swipes - forward swipes are disabled
+        if dragDirection == .trailing && abs(dragOffset) > threshold {
+            // Backward swipe - go to previous question or back to intro if at first question
+            if viewModel.isFirstQuestion {
+                // If at first question, signal parent to navigate back to personalization intro
+                print("🔍 QUESTIONNAIRE: Backward swipe at first question - signaling parent")
+                exitToPersonalizationIntro = true
+            } else {
+                // For any other question, navigate internally
+                print("🔍 QUESTIONNAIRE: Backward swipe to previous question, currentQuestion=\(viewModel.currentQuestion)")
+                viewModel.moveBackToPreviousQuestion()
+            }
+        } else {
+            print("🔍 QUESTIONNAIRE: Drag threshold not met, canceling navigation")
+        }
+        
+        // Reset drag state with animation - use consistent speed with app-wide animations but slower and more deliberate
+        withAnimation(.interpolatingSpring(stiffness: 150, damping: 20, initialVelocity: 0.3)) {
+            dragOffset = 0
+            // Keep dragDirection set until animation completes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                dragDirection = nil
+            }
+        }
+    }
+    
+    // MARK: - Navigation Handling
+    
+    private func handleBackNavigation(isSwipe: Bool = false) {
+        if viewModel.isFirstQuestion {
+            // At first question, navigate back to personalization intro
+            isBackButtonTapped = true
+            print("🔍 QUESTIONNAIRE: Back to previous onboarding screen (personalization intro)")
+            
+            // Signal to parent to navigate back
+            exitToPersonalizationIntro = true
+        } else {
+            // For any other question, navigate internally within questionnaire
+            isBackButtonTapped = true
+            viewModel.moveBackToPreviousQuestion()
+            print("🔍 QUESTIONNAIRE: Back to previous question")
+            
+            // Reset flag after transition completes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                isBackButtonTapped = false
+            }
+        }
+    }
+    
+    // Get the appropriate transition based on navigation context
+    private func getTransition() -> AnyTransition {
+        // For back button navigation
+        if isBackButtonTapped {
+            print("🔍 QUESTIONNAIRE: Back button transition (right to left appearance)")
+            // For back button taps, the old view should move right (trailing) while the new view comes from left (leading)
             return .asymmetric(
                 insertion: .move(edge: .leading).combined(with: .opacity),
                 removal: .move(edge: .trailing).combined(with: .opacity)
             )
-        default:
-            // Fallback
-            return .asymmetric(
-                insertion: .move(edge: .trailing).combined(with: .opacity),
-                removal: .move(edge: .leading).combined(with: .opacity)
-            )
         }
+        
+        // For gesture-based navigation
+        if let direction = dragDirection {
+            switch direction {
+            case .leading:
+                // Forward navigation (left swipe)
+                print("🔍 QUESTIONNAIRE: Forward swipe transition")
+                // When swiping left (forward), old view moves left while new view comes from right
+                return .asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                )
+            case .trailing:
+                // Backward navigation (right swipe)
+                print("🔍 QUESTIONNAIRE: Backward swipe transition")
+                // When swiping right (backward), old view moves right while new view comes from left
+                return .asymmetric(
+                    insertion: AnyTransition.move(edge: .leading)
+                        .combined(with: .opacity)
+                        .animation(.interpolatingSpring(stiffness: 150, damping: 20, initialVelocity: 0.3).delay(0.05)),
+                    removal: AnyTransition.move(edge: .trailing)
+                        .combined(with: .opacity)
+                        .animation(.interpolatingSpring(stiffness: 150, damping: 20, initialVelocity: 0.3))
+                )
+            default:
+                // Fallback
+                print("🔍 QUESTIONNAIRE: Default transition (unknown direction)")
+                return .asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                )
+            }
+        }
+        
+        // Default transition for other programmatic navigation (Continue button)
+        print("🔍 QUESTIONNAIRE: Default continue button transition")
+        return .asymmetric(
+            insertion: .move(edge: .trailing).combined(with: .opacity),
+            removal: .move(edge: .leading).combined(with: .opacity)
+        )
     }
     
     // Calculate the offset for the current question based on drag
@@ -225,7 +284,7 @@ struct QuestionnaireView: View {
             Text("When were you born?")
                 .font(.title)
                 .fontWeight(.bold)
-                .foregroundColor(themeManager.currentTheme.textColor)
+                .foregroundColor(.white)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
@@ -238,11 +297,13 @@ struct QuestionnaireView: View {
                 .labelsHidden()
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
+                .colorScheme(.dark)
             
             // Continue button at very bottom
-            Button(action: { viewModel.proceedToNextQuestion() }) {
+            Button(action: handleContinue) {
                 Text("Continue")
-                    .fontWeight(.semibold)
+                    .fontWeight(.bold)
+                    .font(.system(.title3, design: .default))
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color.ampedGreen)
@@ -250,6 +311,7 @@ struct QuestionnaireView: View {
                     .cornerRadius(14)
             }
             .hapticFeedback()
+            .padding(.horizontal, 20)
             .padding(.top, 20)
             .padding(.bottom, 30)
             .opacity(viewModel.canProceed ? 1 : 0.6)
@@ -266,72 +328,55 @@ struct QuestionnaireView: View {
             Text("What is your biological sex?")
                 .font(.title)
                 .fontWeight(.bold)
-                .foregroundColor(themeManager.currentTheme.textColor)
+                .foregroundColor(.white)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
+                .onAppear {
+                    print("Gender question appeared. Selected gender: \(viewModel.selectedGender)")
+                    // Reset selected gender to ensure correct styling
+                    viewModel.selectedGender = .preferNotToSay
+                }
             
             Spacer()
             
             // Options at bottom for thumb access
             VStack(spacing: 12) {
-                ForEach(UserProfile.Gender.allCases.filter { $0 != .preferNotToSay }, id: \.self) { gender in
+                ForEach(["Male", "Female"], id: \.self) { gender in
                     Button(action: {
-                        viewModel.selectedGender = gender
+                        viewModel.selectedGender = gender == "Male" ? .male : .female
+                        print("Selected gender: \(viewModel.selectedGender)")
                         viewModel.proceedToNextQuestion()
                     }) {
-                        HStack {
-                            Text(gender.displayName)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            if viewModel.selectedGender == gender {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.ampedGreen)
-                            } else {
-                                Image(systemName: "circle")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(viewModel.selectedGender == gender ? Color.ampedGreen : Color.gray.opacity(0.3), lineWidth: 2)
-                        )
+                        Text(gender)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill((gender == "Male" && viewModel.selectedGender == .male) || 
+                                         (gender == "Female" && viewModel.selectedGender == .female) ?
+                                         Color.ampedGreen : Color.black.opacity(0.7))
+                            )
                     }
                     .hapticFeedback(.selection)
                 }
                 
                 Button(action: {
                     viewModel.selectedGender = .preferNotToSay
+                    print("Selected 'Prefer not to say', gender: \(viewModel.selectedGender)")
                     viewModel.proceedToNextQuestion()
                 }) {
-                    HStack {
-                        Text("Prefer not to say")
-                            .fontWeight(.medium)
-                            .foregroundColor(.primary)
-                        
-                        Spacer()
-                        
-                        if viewModel.selectedGender == .preferNotToSay {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.ampedGreen)
-                        } else {
-                            Image(systemName: "circle")
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemBackground))
-                    .cornerRadius(12)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(viewModel.selectedGender == .preferNotToSay ? Color.ampedGreen : Color.gray.opacity(0.3), lineWidth: 2)
-                    )
+                    Text("Prefer not to say")
+                        .fontWeight(.medium)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.black.opacity(0.7))
+                        )
                 }
             }
             .padding(.bottom, 30)
@@ -347,7 +392,7 @@ struct QuestionnaireView: View {
             Text("How would you describe your diet?")
                 .font(.title)
                 .fontWeight(.bold)
-                .foregroundColor(themeManager.currentTheme.textColor)
+                .foregroundColor(themeManager.textColor)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
@@ -361,28 +406,15 @@ struct QuestionnaireView: View {
                         viewModel.selectedDiet = diet
                         viewModel.proceedToNextQuestion()
                     }) {
-                        HStack {
-                            Text(diet.displayName)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            if viewModel.selectedDiet == diet {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.ampedGreen)
-                            } else {
-                                Image(systemName: "circle")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(viewModel.selectedDiet == diet ? Color.ampedGreen : Color.gray.opacity(0.3), lineWidth: 2)
-                        )
+                        Text(diet.displayName)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(viewModel.selectedDiet == diet ? Color.ampedGreen : Color.black.opacity(0.7))
+                            )
                     }
                 }
             }
@@ -399,7 +431,7 @@ struct QuestionnaireView: View {
             Text("How often do you exercise?")
                 .font(.title)
                 .fontWeight(.bold)
-                .foregroundColor(themeManager.currentTheme.textColor)
+                .foregroundColor(themeManager.textColor)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
@@ -413,28 +445,15 @@ struct QuestionnaireView: View {
                         viewModel.selectedExerciseFrequency = frequency
                         viewModel.proceedToNextQuestion()
                     }) {
-                        HStack {
-                            Text(frequency.displayName)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            if viewModel.selectedExerciseFrequency == frequency {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.ampedGreen)
-                            } else {
-                                Image(systemName: "circle")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(viewModel.selectedExerciseFrequency == frequency ? Color.ampedGreen : Color.gray.opacity(0.3), lineWidth: 2)
-                        )
+                        Text(frequency.displayName)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(viewModel.selectedExerciseFrequency == frequency ? Color.ampedGreen : Color.black.opacity(0.7))
+                            )
                     }
                 }
             }
@@ -451,7 +470,7 @@ struct QuestionnaireView: View {
             Text("How much sleep do you typically get each night?")
                 .font(.title)
                 .fontWeight(.bold)
-                .foregroundColor(themeManager.currentTheme.textColor)
+                .foregroundColor(themeManager.textColor)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
@@ -465,28 +484,15 @@ struct QuestionnaireView: View {
                         viewModel.selectedSleepDuration = duration
                         viewModel.proceedToNextQuestion()
                     }) {
-                        HStack {
-                            Text(duration.displayName)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            if viewModel.selectedSleepDuration == duration {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.ampedGreen)
-                            } else {
-                                Image(systemName: "circle")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(viewModel.selectedSleepDuration == duration ? Color.ampedGreen : Color.gray.opacity(0.3), lineWidth: 2)
-                        )
+                        Text(duration.displayName)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(viewModel.selectedSleepDuration == duration ? Color.ampedGreen : Color.black.opacity(0.7))
+                            )
                     }
                 }
             }
@@ -503,7 +509,7 @@ struct QuestionnaireView: View {
             Text("How would you rate your typical stress level?")
                 .font(.title)
                 .fontWeight(.bold)
-                .foregroundColor(themeManager.currentTheme.textColor)
+                .foregroundColor(themeManager.textColor)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
@@ -517,28 +523,15 @@ struct QuestionnaireView: View {
                         viewModel.selectedStressLevel = level
                         viewModel.proceedToNextQuestion()
                     }) {
-                        HStack {
-                            Text(level.displayName)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            if viewModel.selectedStressLevel == level {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.ampedGreen)
-                            } else {
-                                Image(systemName: "circle")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(viewModel.selectedStressLevel == level ? Color.ampedGreen : Color.gray.opacity(0.3), lineWidth: 2)
-                        )
+                        Text(level.displayName)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(viewModel.selectedStressLevel == level ? Color.ampedGreen : Color.black.opacity(0.7))
+                            )
                     }
                 }
             }
@@ -555,7 +548,7 @@ struct QuestionnaireView: View {
             Text("How often do you socialize with friends, family, or community?")
                 .font(.title)
                 .fontWeight(.bold)
-                .foregroundColor(themeManager.currentTheme.textColor)
+                .foregroundColor(themeManager.textColor)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
@@ -569,28 +562,15 @@ struct QuestionnaireView: View {
                         viewModel.selectedSocializationFrequency = frequency
                         viewModel.proceedToNextQuestion()
                     }) {
-                        HStack {
-                            Text(frequency.displayName)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            if viewModel.selectedSocializationFrequency == frequency {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.ampedGreen)
-                            } else {
-                                Image(systemName: "circle")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(viewModel.selectedSocializationFrequency == frequency ? Color.ampedGreen : Color.gray.opacity(0.3), lineWidth: 2)
-                        )
+                        Text(frequency.displayName)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(viewModel.selectedSocializationFrequency == frequency ? Color.ampedGreen : Color.black.opacity(0.7))
+                            )
                     }
                 }
             }
@@ -607,7 +587,7 @@ struct QuestionnaireView: View {
             Text("Do you smoke tobacco products?")
                 .font(.title)
                 .fontWeight(.bold)
-                .foregroundColor(themeManager.currentTheme.textColor)
+                .foregroundColor(themeManager.textColor)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
@@ -621,28 +601,15 @@ struct QuestionnaireView: View {
                         viewModel.selectedSmokingStatus = status
                         viewModel.proceedToNextQuestion()
                     }) {
-                        HStack {
-                            Text(status.displayName)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            if viewModel.selectedSmokingStatus == status {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.ampedGreen)
-                            } else {
-                                Image(systemName: "circle")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(viewModel.selectedSmokingStatus == status ? Color.ampedGreen : Color.gray.opacity(0.3), lineWidth: 2)
-                        )
+                        Text(status.displayName)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(viewModel.selectedSmokingStatus == status ? Color.ampedGreen : Color.black.opacity(0.7))
+                            )
                     }
                 }
             }
@@ -659,7 +626,7 @@ struct QuestionnaireView: View {
             Text("How often do you consume alcoholic beverages?")
                 .font(.title)
                 .fontWeight(.bold)
-                .foregroundColor(themeManager.currentTheme.textColor)
+                .foregroundColor(themeManager.textColor)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
@@ -673,28 +640,15 @@ struct QuestionnaireView: View {
                         viewModel.selectedAlcoholFrequency = frequency
                         viewModel.proceedToNextQuestion()
                     }) {
-                        HStack {
-                            Text(frequency.displayName)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            if viewModel.selectedAlcoholFrequency == frequency {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.ampedGreen)
-                            } else {
-                                Image(systemName: "circle")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(viewModel.selectedAlcoholFrequency == frequency ? Color.ampedGreen : Color.gray.opacity(0.3), lineWidth: 2)
-                        )
+                        Text(frequency.displayName)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(viewModel.selectedAlcoholFrequency == frequency ? Color.ampedGreen : Color.black.opacity(0.7))
+                            )
                     }
                 }
             }
@@ -711,10 +665,14 @@ struct QuestionnaireView: View {
             Text("Finally, what is your current weight range?")
                 .font(.title)
                 .fontWeight(.bold)
-                .foregroundColor(themeManager.currentTheme.textColor)
+                .foregroundColor(themeManager.textColor)
                 .multilineTextAlignment(.center)
                 .padding(.bottom, 10)
                 .frame(maxWidth: .infinity)
+                .onAppear {
+                    print("Demographics question appeared. Selected weight range: \(String(describing: viewModel.selectedWeightRange))")
+                    print("canProceed: \(viewModel.canProceed)")
+                }
             
             Spacer()
             
@@ -723,30 +681,20 @@ struct QuestionnaireView: View {
                 ForEach(QuestionnaireViewModel.WeightRange.allCases, id: \.self) { range in
                     Button(action: {
                         viewModel.selectedWeightRange = range
-                        viewModel.proceedToNextQuestion()
+                        print("Selected weight range: \(range)")
+                        
+                        // This is the final question, so we need to move to the next onboarding step
+                        completeQuestionnaire()
                     }) {
-                        HStack {
-                            Text(range.displayName)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            if viewModel.selectedWeightRange == range {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.ampedGreen)
-                            } else {
-                                Image(systemName: "circle")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(viewModel.selectedWeightRange == range ? Color.ampedGreen : Color.gray.opacity(0.3), lineWidth: 2)
-                        )
+                        Text(range.displayName)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(viewModel.selectedWeightRange == range ? Color.ampedGreen : Color.black.opacity(0.7))
+                            )
                     }
                 }
             }
@@ -754,6 +702,34 @@ struct QuestionnaireView: View {
         }
         .padding(.horizontal, 20)
         .frame(maxHeight: .infinity)
+    }
+    
+    // MARK: - Completing the Questionnaire
+
+    private func completeQuestionnaire() {
+        guard viewModel.canProceed else { return }
+        
+        // Activate binding to trigger the transition to health permissions
+        proceedToHealthPermissions = true
+        
+        print("🔍 QUESTIONNAIRE: Completed questionnaire, moving to health permissions")
+    }
+    
+    private func handleContinue() {
+        guard viewModel.canProceed else { return }
+        
+        // If this is the last question, proceed to the next onboarding step
+        if viewModel.isLastQuestion {
+            print("🔍 QUESTIONNAIRE: Continue from last question - completing questionnaire")
+            
+            // Call the binding to move to the next onboarding step
+            completeQuestionnaire()
+            return
+        }
+        
+        // For all other questions, proceed to next question within questionnaire
+        viewModel.proceedToNextQuestion()
+        print("🔍 QUESTIONNAIRE: Continue to next question")
     }
 }
 
@@ -957,11 +933,11 @@ final class QuestionnaireViewModel: ObservableObject {
         
         var displayName: String {
             switch self {
-            case .underFiftyFive: return "Under 55 kg (121 lbs)"
-            case .fiftyFiveToSeventy: return "55-70 kg (121-154 lbs)"
-            case .seventyToEightyFive: return "70-85 kg (154-187 lbs)"
-            case .eightyFiveToHundred: return "85-100 kg (187-220 lbs)"
-            case .overHundred: return "Over 100 kg (220 lbs)"
+            case .underFiftyFive: return "Under 121 lbs (55 kg)"
+            case .fiftyFiveToSeventy: return "121-154 lbs (55-70 kg)"
+            case .seventyToEightyFive: return "154-187 lbs (70-85 kg)"
+            case .eightyFiveToHundred: return "187-220 lbs (85-100 kg)"
+            case .overHundred: return "Over 220 lbs (100 kg)"
             }
         }
         
@@ -1074,6 +1050,16 @@ final class QuestionnaireViewModel: ObservableObject {
         return currentQuestion != .birthdate
     }
     
+    // Check if we're at the first question
+    var isFirstQuestion: Bool {
+        return currentQuestion == .birthdate
+    }
+    
+    // Check if we're at the last question
+    var isLastQuestion: Bool {
+        return currentQuestion == .alcohol || currentQuestion == .demographics
+    }
+    
     var progressPercentage: Double {
         let questionIndex = Double(currentQuestion.rawValue)
         let totalQuestions = Double(Question.allCases.count)
@@ -1085,7 +1071,7 @@ final class QuestionnaireViewModel: ObservableObject {
         guard canProceed else { return }
         
         if let nextQuestion = getNextQuestion() {
-            withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
+            withAnimation(.interpolatingSpring(stiffness: 200, damping: 25, initialVelocity: 0.5)) {
                 currentQuestion = nextQuestion
             }
         }
@@ -1094,7 +1080,7 @@ final class QuestionnaireViewModel: ObservableObject {
     // Move back to previous question with animation
     func moveBackToPreviousQuestion() {
         if let prevQuestion = getPreviousQuestion() {
-            withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
+            withAnimation(.interpolatingSpring(stiffness: 150, damping: 20, initialVelocity: 0.3)) {
                 currentQuestion = prevQuestion
             }
         }
@@ -1127,6 +1113,6 @@ final class QuestionnaireViewModel: ObservableObject {
 
 struct QuestionnaireView_Previews: PreviewProvider {
     static var previews: some View {
-        QuestionnaireView(onContinue: {})
+        QuestionnaireView(exitToPersonalizationIntro: .constant(false), proceedToHealthPermissions: .constant(false))
     }
 } 

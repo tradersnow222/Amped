@@ -31,6 +31,8 @@ struct DeepBackgroundModifier: ViewModifier {
             // The actual content
             content
         }
+        // Force dark color scheme when using deep background to ensure proper text contrast
+        .environment(\.colorScheme, .dark)
     }
 }
 

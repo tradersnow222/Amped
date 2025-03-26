@@ -59,14 +59,12 @@ struct UserProfile: Codable, Equatable {
     enum Gender: String, Codable, CaseIterable {
         case male
         case female
-        case other
         case preferNotToSay
         
         var displayName: String {
             switch self {
             case .male: return "Male"
             case .female: return "Female"
-            case .other: return "Other"
             case .preferNotToSay: return "Prefer not to say"
             }
         }

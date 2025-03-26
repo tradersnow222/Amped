@@ -46,7 +46,7 @@ struct ContentView: View {
                 case .personalizationIntro:
                     PersonalizationIntroView(onContinue: {})
                 case .questionnaire:
-                    QuestionnaireView(onContinue: {})
+                    QuestionnaireView(exitToPersonalizationIntro: .constant(false), proceedToHealthPermissions: .constant(false))
                 case .healthkitPermissions:
                     HealthKitPermissionsView(onContinue: {})
                 case .signInWithApple:

@@ -99,43 +99,6 @@ enum AmpedColors {
             return Color.criticalPowerFallback
         }
     }
-    
-    // Time-based scheme colors
-    static var morning: Color { 
-        if #available(iOS 17.0, *) {
-            return Color.morning 
-        } else {
-            return Color(red: 0.976, green: 0.843, blue: 0.204)
-        }
-    }
-    static var midday: Color { 
-        if #available(iOS 17.0, *) {
-            return Color.midday 
-        } else {
-            return Color(red: 0.976, green: 0.843, blue: 0.078)
-        }
-    }
-    static var afternoon: Color { 
-        if #available(iOS 17.0, *) {
-            return Color.afternoon 
-        } else {
-            return Color(red: 0.976, green: 0.706, blue: 0.376)
-        }
-    }
-    static var evening: Color { 
-        if #available(iOS 17.0, *) {
-            return Color.evening 
-        } else {
-            return Color(red: 0.945, green: 0.576, blue: 0.427)
-        }
-    }
-    static var night: Color { 
-        if #available(iOS 17.0, *) {
-            return Color.night 
-        } else {
-            return Color(red: 0.675, green: 0.478, blue: 0.757)
-        }
-    }
 }
 
 /// A struct to create all the required colors in the asset catalog
