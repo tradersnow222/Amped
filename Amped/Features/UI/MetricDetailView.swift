@@ -27,21 +27,35 @@ struct MetricDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
+                // Header if needed
+                // MetricDetailSections.HeaderSection(
+                //    metric: metric, 
+                //    powerLevel: viewModel.powerLevel,
+                //    powerColor: viewModel.powerColor
+                // )
+                
                 // Metric card
                 BatteryMetricCard(metric: metric, showDetails: true)
                     .padding(.horizontal)
                 
                 // Impact section
-                impactSection
+                MetricDetailSections.ImpactSection(metric: metric)
                 
                 // Chart section
-                chartSection
+                MetricDetailSections.ChartSection(
+                    metric: metric,
+                    historyData: viewModel.historyData,
+                    getChartYRange: viewModel.getChartYRange
+                )
                 
                 // Research section
-                researchSection
+                MetricDetailSections.ResearchSection(metric: metric)
                 
                 // Recommendations section
-                recommendationsSection
+                MetricDetailSections.RecommendationsSection(
+                    recommendations: viewModel.recommendations,
+                    logAction: viewModel.logRecommendationAction
+                )
                 
                 Spacer(minLength: 40)
             }
@@ -63,274 +77,6 @@ struct MetricDetailView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Details for \(metric.type.displayName)")
     }
-    
-    // MARK: - Impact Section
-    
-    private var impactSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Impact Details")
-                .style(.headline)
-                .padding(.horizontal)
-            
-            if let impact = metric.impactDetail {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Your \(metric.type.displayName.lowercased()) is \(impact.comparisonToBaseline.description).")
-                        .style(.body)
-                    
-                    Text("This impacts your lifespan by approximately \(impact.formattedImpact).")
-                        .style(.body)
-                    
-                    if impact.lifespanImpactMinutes > 0 {
-                        Text("This is a positive impact on your health! 🎉")
-                            .style(.bodyMedium, color: .ampedGreen)
-                    } else if impact.lifespanImpactMinutes < 0 {
-                        Text("This is currently reducing your projected lifespan.")
-                            .style(.bodyMedium, color: .ampedRed)
-                    } else {
-                        Text("This is in line with typical health outcomes.")
-                            .style(.bodyMedium)
-                    }
-                }
-                .padding()
-                .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
-                .padding(.horizontal)
-            } else {
-                Text("Impact data unavailable")
-                    .style(.bodySecondary)
-                    .padding(.horizontal)
-            }
-        }
-    }
-    
-    // MARK: - Chart Section
-    
-    private var chartSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("History")
-                .style(.headline)
-                .padding(.horizontal)
-            
-            if !viewModel.historyData.isEmpty {
-                metricHistoryChart
-                    .frame(height: 200)
-                    .padding(.horizontal)
-            } else {
-                ProgressView()
-                    .frame(height: 200)
-                    .frame(maxWidth: .infinity)
-            }
-        }
-    }
-    
-    private var metricHistoryChart: some View {
-        Chart {
-            ForEach(viewModel.historyData) { dataPoint in
-                LineMark(
-                    x: .value("Date", dataPoint.date),
-                    y: .value(metric.type.displayName, dataPoint.value)
-                )
-                .foregroundStyle(metric.impactDetail?.lifespanImpactMinutes ?? 0 >= 0 ? Color.green : Color.red)
-                
-                AreaMark(
-                    x: .value("Date", dataPoint.date),
-                    y: .value(metric.type.displayName, dataPoint.value)
-                )
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [
-                            (metric.impactDetail?.lifespanImpactMinutes ?? 0 >= 0 ? Color.green : Color.red).opacity(0.3),
-                            (metric.impactDetail?.lifespanImpactMinutes ?? 0 >= 0 ? Color.green : Color.red).opacity(0.0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-            }
-            
-            if let targetValue = metric.type.targetValue {
-                RuleMark(y: .value("Target", targetValue))
-                    .foregroundStyle(Color.gray.opacity(0.5))
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
-                    .annotation(position: .leading) {
-                        Text("Target")
-                            .font(.caption)
-                            .foregroundStyle(Color.secondary)
-                    }
-            }
-        }
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: 7)) { _ in
-                AxisGridLine()
-                AxisTick()
-                AxisValueLabel()
-            }
-        }
-        .chartYAxis {
-            AxisMarks { value in
-                AxisGridLine()
-                AxisTick()
-                AxisValueLabel("\(value.index)")
-            }
-        }
-        .chartYScale(domain: viewModel.getChartYRange(for: metric))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Chart showing \(metric.type.displayName) history over time")
-    }
-    
-    // MARK: - Research Section
-    
-    private var researchSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Research Reference")
-                .style(.headline)
-                .padding(.horizontal)
-            
-            if let study = metric.impactDetail?.studyReference {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(study.title)
-                        .style(.subheadlineBold)
-                    
-                    Text(study.shortCitation)
-                        .style(.caption)
-                    
-                    Text(study.summary)
-                        .style(.body)
-                        .padding(.top, 4)
-                    
-                    if let studyUrl = study.url, !studyUrl.absoluteString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Link("Read More", destination: studyUrl)
-                            .font(.caption)
-                            .padding(.top, 4)
-                    }
-                }
-                .padding()
-                .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
-                .padding(.horizontal)
-            } else {
-                Text("No research reference available")
-                    .style(.bodySecondary)
-                    .padding(.horizontal)
-            }
-        }
-    }
-    
-    // MARK: - Recommendations Section
-    
-    private var recommendationsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Recommendations")
-                .style(.headline)
-                .padding(.horizontal)
-            
-            ForEach(viewModel.recommendations) { recommendation in
-                recommendationCard(recommendation)
-            }
-        }
-    }
-    
-    private func recommendationCard(_ recommendation: MetricRecommendation) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: recommendation.iconName)
-                    .foregroundColor(themeManager.accentColor)
-                
-                Text(recommendation.title)
-                    .style(.headlineBold)
-            }
-            
-            Text(recommendation.description)
-                .style(.body)
-            
-            if !recommendation.actionText.isEmpty {
-                Button {
-                    // In a real app, this would perform the action
-                    // For MVP, just log it
-                    viewModel.logRecommendationAction(recommendation)
-                } label: {
-                    Text(recommendation.actionText)
-                        .style(.buttonLabel, color: .white)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 16)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(themeManager.accentColor))
-                }
-                .padding(.top, 4)
-            }
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.secondarySystemBackground))
-        )
-        .padding(.horizontal)
-    }
-    
-    private var powerLevelIndicator: some View {
-        // Breaking down the complex expression
-        PowerLevelIndicatorView(powerLevel: viewModel.powerLevel, powerColor: viewModel.powerColor)
-    }
-    
-    private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: metric.type.symbolName)
-                            .foregroundColor(metric.type.color)
-                            .textStyle(.title)
-                        
-                        Text(metric.type.displayName)
-                            .style(.title)
-                    }
-                    
-                    Text(metric.formattedValue)
-                        .style(.metricValue, color: themeManager.getThemeColor(for: .metricValue))
-                }
-                
-                Spacer()
-                
-                // Power level indicator
-                powerLevelIndicator
-            }
-            .padding(.horizontal)
-        }
-    }
-}
-
-// Helper view to simplify complex expressions
-struct PowerLevelIndicatorView: View {
-    let powerLevel: Int
-    let powerColor: Color
-    
-    var body: some View {
-        VStack(alignment: .trailing, spacing: 4) {
-            Text("Power Level")
-                .style(.caption)
-            
-            // Battery power level
-            HStack(spacing: 2) {
-                ForEach(0..<5) { i in
-                    PowerLevelBar(
-                        isActive: i < powerLevel,
-                        activeColor: powerColor,
-                        height: 8 + CGFloat(i) * 2
-                    )
-                }
-            }
-            .padding(.top, 4)
-        }
-    }
-}
-
-struct PowerLevelBar: View {
-    let isActive: Bool
-    let activeColor: Color
-    let height: CGFloat
-    
-    var body: some View {
-        RoundedRectangle(cornerRadius: 1)
-            .fill(isActive ? activeColor : Color.gray.opacity(0.3))
-            .frame(width: 3, height: height)
-    }
 }
 
 // MARK: - View Model
@@ -345,7 +91,7 @@ final class MetricDetailViewModel: ObservableObject {
     // Computed properties for the power level indicator
     var powerLevel: Int {
         // Simulate power level based on metric's impact
-        if let impact = metric.impactDetail?.lifespanImpactMinutes {
+        if let impact = metric.impactDetails?.lifespanImpactMinutes {
             if impact > 120 { return 5 }
             else if impact > 60 { return 4 }
             else if impact > 0 { return 3 }
@@ -356,7 +102,7 @@ final class MetricDetailViewModel: ObservableObject {
     }
     
     var powerColor: Color {
-        if let impact = metric.impactDetail?.lifespanImpactMinutes, impact >= 0 {
+        if let impact = metric.impactDetails?.lifespanImpactMinutes, impact >= 0 {
             return .ampedGreen
         }
         return .ampedRed
@@ -399,237 +145,232 @@ final class MetricDetailViewModel: ObservableObject {
     // MARK: - Private Methods
     
     private func generateMockHistoryData(for metric: HealthMetric) {
-        // Generate 30 days of mock data
-        var mockData: [HistoryDataPoint] = []
+        // Generate mock data for the last 30 days
         let calendar = Calendar.current
-        let baseValue = metric.value
+        let now = Date()
         
-        for day in 0..<30 {
-            guard let date = calendar.date(byAdding: .day, value: -day, to: Date()) else { continue }
-            
-            // Random variation around the base value
-            let variation = Double.random(in: -0.2...0.2)
-            let adjustedValue = baseValue * (1 + variation)
-            
-            mockData.append(HistoryDataPoint(date: date, value: adjustedValue))
+        // Clear existing data
+        historyData.removeAll()
+        
+        // Generate basic trend with some randomness
+        var baseValue: Double
+        var trendDirection: Double
+        
+        switch metric.type {
+        case .steps:
+            baseValue = 8000
+            trendDirection = 100
+        case .exerciseMinutes:
+            baseValue = 30
+            trendDirection = 0.5
+        case .sleepHours:
+            baseValue = 7
+            trendDirection = 0.05
+        case .heartRateVariability:
+            baseValue = 50
+            trendDirection = 0.2
+        case .restingHeartRate:
+            baseValue = 65
+            trendDirection = -0.1
+        case .bodyMass:
+            baseValue = 75
+            trendDirection = -0.05
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality:
+            // Manual metrics - use constant value with minor fluctuations
+            baseValue = metric.value
+            trendDirection = 0
+        case .activeEnergyBurned:
+            baseValue = 400
+            trendDirection = 10
+        case .vo2Max:
+            baseValue = 40
+            trendDirection = 0.2
+        case .oxygenSaturation:
+            baseValue = 98
+            trendDirection = 0.05
+        case .stressLevel:
+            baseValue = 5
+            trendDirection = -0.1
         }
         
-        // Sort by date ascending
-        mockData.sort { $0.date < $1.date }
-        
-        DispatchQueue.main.async {
-            self.historyData = mockData
+        // Generate data points
+        for i in (0..<30).reversed() {
+            let day = calendar.date(byAdding: .day, value: -i, to: now)!
+            
+            // Calculate value with trend and some random noise
+            let trendFactor = Double(i) * trendDirection
+            let randomFactor = Double.random(in: -0.1...0.1) * baseValue
+            let value = max(0, baseValue + trendFactor + randomFactor)
+            
+            historyData.append(HistoryDataPoint(date: day, value: value))
         }
     }
     
     private func generateRecommendations(for metric: HealthMetric) {
-        // Generate appropriate recommendations based on the metric type
-        var metricRecommendations: [MetricRecommendation] = []
+        // Clear existing recommendations
+        recommendations.removeAll()
         
+        // Generate recommendations based on metric type
         switch metric.type {
         case .steps:
-            metricRecommendations = generateStepsRecommendations(metric)
-        case .activeEnergyBurned:
-            metricRecommendations = generateActiveEnergyRecommendations(metric)
-        case .exerciseMinutes:
-            metricRecommendations = generateExerciseRecommendations(metric)
-        case .sleepHours:
-            metricRecommendations = generateSleepRecommendations(metric)
-        case .restingHeartRate:
-            metricRecommendations = generateHeartRateRecommendations(metric)
-        case .heartRateVariability:
-            metricRecommendations = generateHRVRecommendations(metric)
-        case .vo2Max:
-            metricRecommendations = generateVO2MaxRecommendations(metric)
-        case .oxygenSaturation:
-            metricRecommendations = generateOxygenSaturationRecommendations(metric)
-        case .nutritionQuality:
-            metricRecommendations = generateNutritionRecommendations(metric)
-        case .stressLevel:
-            metricRecommendations = generateStressRecommendations(metric)
-        @unknown default:
-            metricRecommendations = [
-                MetricRecommendation(
+            recommendations.append(MetricRecommendation(
+                id: UUID(),
+                title: "Daily Walking",
+                description: "Try to walk for at least 30 minutes each day, ideally reaching 10,000 steps for optimal cardiovascular benefits.",
+                iconName: "figure.walk",
+                actionText: "Set Walking Reminder"
+            ))
+            
+            if metric.value < 7500 {
+                recommendations.append(MetricRecommendation(
                     id: UUID(),
-                    title: "Track Consistently",
-                    description: "Regular monitoring helps identify trends and opportunities for improvement.",
-                    iconName: "chart.line.uptrend.xyaxis",
-                    actionText: "Set a reminder to check this metric"
-                ),
-                MetricRecommendation(
-                    id: UUID(),
-                    title: "Make Gradual Changes",
-                    description: "Small, sustainable improvements compound over time for significant health benefits.",
+                    title: "Increase Movement",
+                    description: "Finding it hard to get enough steps? Try parking farther away, taking the stairs, or walking during phone calls.",
                     iconName: "arrow.up.forward",
-                    actionText: "Focus on one small change this week"
-                )
-            ]
+                    actionText: "See Movement Tips"
+                ))
+            }
+            
+        case .exerciseMinutes:
+            recommendations.append(MetricRecommendation(
+                id: UUID(),
+                title: "Activity Variety",
+                description: "Mix cardio, strength training, and flexibility exercises for best results. Aim for at least 150 minutes per week.",
+                iconName: "person.fill.turn.right",
+                actionText: "Explore Exercise Types"
+            ))
+            
+        case .sleepHours:
+            recommendations.append(MetricRecommendation(
+                id: UUID(),
+                title: "Sleep Consistency",
+                description: "Maintain a consistent sleep schedule, even on weekends, to optimize your sleep quality and overall health.",
+                iconName: "moon.fill",
+                actionText: "Set Sleep Schedule"
+            ))
+            
+            if metric.value < 7 {
+                recommendations.append(MetricRecommendation(
+                    id: UUID(),
+                    title: "Sleep Environment",
+                    description: "Create a dark, quiet, and cool sleep environment. Avoid screens at least one hour before bedtime.",
+                    iconName: "bed.double.fill",
+                    actionText: "Sleep Tips"
+                ))
+            }
+            
+        case .heartRateVariability:
+            recommendations.append(MetricRecommendation(
+                id: UUID(),
+                title: "Stress Management",
+                description: "Regular meditation, deep breathing exercises, and adequate recovery time can improve your HRV.",
+                iconName: "heart.fill",
+                actionText: "Try Breathing Exercise"
+            ))
+            
+        case .restingHeartRate:
+            recommendations.append(MetricRecommendation(
+                id: UUID(),
+                title: "Cardiovascular Health",
+                description: "Regular aerobic exercise, adequate hydration, and good sleep hygiene can help optimize your resting heart rate.",
+                iconName: "heart.circle.fill",
+                actionText: "Learn More"
+            ))
+            
+        case .bodyMass:
+            recommendations.append(MetricRecommendation(
+                id: UUID(),
+                title: "Balanced Nutrition",
+                description: "Focus on whole foods, fruits, vegetables, lean proteins, and proper hydration for maintaining healthy weight.",
+                iconName: "fork.knife",
+                actionText: "Nutrition Guide"
+            ))
+            
+        case .nutritionQuality:
+            recommendations.append(MetricRecommendation(
+                id: UUID(),
+                title: "Dietary Diversity",
+                description: "Include a variety of colors in your diet to ensure you're getting a wide range of nutrients.",
+                iconName: "leaf.fill",
+                actionText: "Recipe Ideas"
+            ))
+            
+        case .smokingStatus:
+            if metric.value < 9 { // Not 'never' smoker
+                recommendations.append(MetricRecommendation(
+                    id: UUID(),
+                    title: "Smoking Cessation",
+                    description: "Quitting smoking has immediate and long-term health benefits. Support programs significantly increase success rates.",
+                    iconName: "lungs.fill",
+                    actionText: "Find Support Resources"
+                ))
+            }
+            
+        case .alcoholConsumption:
+            if metric.value < 9 { // Not 'never' drinker
+                recommendations.append(MetricRecommendation(
+                    id: UUID(),
+                    title: "Moderate Consumption",
+                    description: "If you drink alcohol, do so in moderation. Guidelines suggest no more than 1 drink per day for women and 2 for men.",
+                    iconName: "drop.fill",
+                    actionText: "Moderation Tips"
+                ))
+            }
+            
+        case .socialConnectionsQuality:
+            recommendations.append(MetricRecommendation(
+                id: UUID(),
+                title: "Social Engagement",
+                description: "Regular meaningful social interactions boost mental health and can add years to your life. Schedule regular connection time.",
+                iconName: "person.2.fill",
+                actionText: "Social Activities Ideas"
+            ))
+            
+        case .activeEnergyBurned:
+            recommendations.append(MetricRecommendation(
+                id: UUID(),
+                title: "Active Energy",
+                description: "Increasing your daily active energy expenditure through regular exercise and movement contributes to overall cardiovascular health.",
+                iconName: "flame.fill",
+                actionText: "Activity Tips"
+            ))
+            
+        case .vo2Max:
+            recommendations.append(MetricRecommendation(
+                id: UUID(),
+                title: "Cardiorespiratory Fitness",
+                description: "Improve your VO2 Max through consistent cardio exercise like running, cycling, or swimming to enhance oxygen utilization.",
+                iconName: "lungs.fill",
+                actionText: "Fitness Program"
+            ))
+            
+        case .oxygenSaturation:
+            recommendations.append(MetricRecommendation(
+                id: UUID(),
+                title: "Oxygen Levels",
+                description: "Maintain healthy oxygen saturation through good respiratory practices and consider consulting a doctor for persistently low levels.",
+                iconName: "drop.fill",
+                actionText: "Learn More"
+            ))
+            
+        case .stressLevel:
+            recommendations.append(MetricRecommendation(
+                id: UUID(),
+                title: "Stress Management",
+                description: "Incorporate relaxation techniques, mindfulness practices, and regular breaks to manage stress levels effectively.",
+                iconName: "brain.head.profile",
+                actionText: "Stress Relief Techniques"
+            ))
         }
         
-        DispatchQueue.main.async {
-            self.recommendations = metricRecommendations
-        }
-    }
-    
-    private func generateStepsRecommendations(_ metric: HealthMetric) -> [MetricRecommendation] {
-        if metric.value < 7000 {
-            return [
-                MetricRecommendation(
-                    id: UUID(),
-                    title: "Increase Daily Movement",
-                    description: "Try to incorporate more walking into your daily routine. Even small increases can have significant benefits.",
-                    iconName: "figure.walk",
-                    actionText: "Set Step Goal"
-                ),
-                MetricRecommendation(
-                    id: UUID(),
-                    title: "Take Walking Meetings",
-                    description: "Convert some of your seated meetings into walking ones when possible.",
-                    iconName: "person.2.fill",
-                    actionText: ""
-                )
-            ]
-        } else {
-            return [
-                MetricRecommendation(
-                    id: UUID(),
-                    title: "Maintain Your Activity",
-                    description: "You're doing well with your daily steps. Consider adding variety to your walking routes to keep it engaging.",
-                    iconName: "checkmark.circle.fill",
-                    actionText: ""
-                )
-            ]
-        }
-    }
-    
-    private func generateActiveEnergyRecommendations(_ metric: HealthMetric) -> [MetricRecommendation] {
-        // Implementation similar to steps recommendations
-        return [
-            MetricRecommendation(
-                id: UUID(),
-                title: "Mix Up Your Activities",
-                description: "Try different types of physical activities to engage different muscle groups and boost overall energy expenditure.",
-                iconName: "flame.fill",
-                actionText: "Find Activities"
-            )
-        ]
-    }
-    
-    private func generateExerciseRecommendations(_ metric: HealthMetric) -> [MetricRecommendation] {
-        // Implementation similar to steps recommendations
-        return [
-            MetricRecommendation(
-                id: UUID(),
-                title: "Schedule Exercise",
-                description: "Block time in your calendar for physical activity to ensure you meet the recommended 150 minutes per week.",
-                iconName: "timer",
-                actionText: "Set Reminder"
-            )
-        ]
-    }
-    
-    private func generateSleepRecommendations(_ metric: HealthMetric) -> [MetricRecommendation] {
-        // Implementation similar to steps recommendations
-        return [
-            MetricRecommendation(
-                id: UUID(),
-                title: "Consistent Sleep Schedule",
-                description: "Try to go to bed and wake up at the same time every day, even on weekends.",
-                iconName: "bed.double.fill",
-                actionText: "Set Sleep Reminder"
-            )
-        ]
-    }
-    
-    private func generateHeartRateRecommendations(_ metric: HealthMetric) -> [MetricRecommendation] {
-        // Implementation similar to steps recommendations
-        return [
-            MetricRecommendation(
-                id: UUID(),
-                title: "Consider Relaxation Techniques",
-                description: "Regular relaxation practices like deep breathing or meditation can help optimize your resting heart rate.",
-                iconName: "heart.fill",
-                actionText: "Learn Techniques"
-            )
-        ]
-    }
-    
-    private func generateHRVRecommendations(_ metric: HealthMetric) -> [MetricRecommendation] {
-        // Implementation similar to steps recommendations
-        return [
-            MetricRecommendation(
-                id: UUID(),
-                title: "Mindfulness Practice",
-                description: "Even 5 minutes of daily mindfulness can help reduce stress levels over time.",
-                iconName: "brain.head.profile",
-                actionText: "Try Guided Exercise"
-            )
-        ]
-    }
-    
-    private func generateVO2MaxRecommendations(_ metric: HealthMetric) -> [MetricRecommendation] {
-        // Implementation similar to steps recommendations
-        return [
-            MetricRecommendation(
-                id: UUID(),
-                title: "Interval Training",
-                description: "High-intensity interval training (HIIT) can be particularly effective for improving VO2 Max.",
-                iconName: "lungs.fill",
-                actionText: "View HIIT Workouts"
-            )
-        ]
-    }
-    
-    private func generateOxygenSaturationRecommendations(_ metric: HealthMetric) -> [MetricRecommendation] {
-        return [
-            MetricRecommendation(
-                id: UUID(),
-                title: "Maintain Good Air Quality",
-                description: "Ensure proper ventilation in your living spaces and monitor indoor air quality.",
-                iconName: "air.purifier",
-                actionText: "Check your home's air quality"
-            ),
-            MetricRecommendation(
-                id: UUID(),
-                title: "Practice Deep Breathing",
-                description: "Regular deep breathing exercises can help optimize oxygen intake and utilization.",
-                iconName: "lungs.fill",
-                actionText: "Try a 5-minute breathing exercise"
-            ),
-            MetricRecommendation(
-                id: UUID(),
-                title: "Stay Physically Active",
-                description: "Regular exercise improves cardiovascular function and oxygen delivery throughout the body.",
-                iconName: "figure.run",
-                actionText: "Schedule a cardio workout"
-            )
-        ]
-    }
-    
-    private func generateNutritionRecommendations(_ metric: HealthMetric) -> [MetricRecommendation] {
-        // Implementation similar to steps recommendations
-        return [
-            MetricRecommendation(
-                id: UUID(),
-                title: "Plant-Based Focus",
-                description: "Try to make plants the star of your meals. Aim for half your plate to be vegetables and fruits.",
-                iconName: "leaf.fill",
-                actionText: ""
-            )
-        ]
-    }
-    
-    private func generateStressRecommendations(_ metric: HealthMetric) -> [MetricRecommendation] {
-        // Implementation similar to steps recommendations
-        return [
-            MetricRecommendation(
-                id: UUID(),
-                title: "Mindfulness Practice",
-                description: "Even 5 minutes of daily mindfulness can help reduce stress levels over time.",
-                iconName: "brain.head.profile",
-                actionText: "Try Guided Exercise"
-            )
-        ]
+        // Add a general recommendation for all metrics
+        recommendations.append(MetricRecommendation(
+            id: UUID(),
+            title: "Consistency is Key",
+            description: "Small, consistent improvements have a greater impact on longevity than occasional major changes.",
+            iconName: "calendar.badge.clock",
+            actionText: ""
+        ))
     }
 }
 

@@ -1,0 +1,16 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/ContentView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Select View",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 72
+        }
+      }
+    ]
+  },
+  "version": 1
+}

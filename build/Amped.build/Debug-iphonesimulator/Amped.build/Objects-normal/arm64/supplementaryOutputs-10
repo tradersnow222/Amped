@@ -1,0 +1,30 @@
+"/Users/mattsnow/programming/Amped/Amped/Features/Onboarding/SignInWithAppleView.swift":
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SignInWithAppleView.o"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SignInWithAppleView.d"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SignInWithAppleView.swiftconstvalues"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SignInWithAppleView.swiftdeps"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SignInWithAppleView.dia"
+"/Users/mattsnow/programming/Amped/Amped/Features/Payment/PaymentView.swift":
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentView.o"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentView.dia"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentView.d"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentView.swiftdeps"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentView.swiftconstvalues"
+"/Users/mattsnow/programming/Amped/Amped/Features/Questionnaire/QuestionnaireView.swift":
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/QuestionnaireView.d"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/QuestionnaireView.swiftconstvalues"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/QuestionnaireView.swiftdeps"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/QuestionnaireView.dia"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/QuestionnaireView.o"
+"/Users/mattsnow/programming/Amped/Amped/Features/Onboarding/WelcomeView.swift":
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/WelcomeView.swiftdeps"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/WelcomeView.o"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/WelcomeView.dia"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/WelcomeView.swiftconstvalues"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/WelcomeView.d"
+"/Users/mattsnow/programming/Amped/Amped/Features/Settings/SettingsManager.swift":
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SettingsManager.d"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SettingsManager.swiftdeps"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SettingsManager.swiftconstvalues"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SettingsManager.dia"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SettingsManager.o"

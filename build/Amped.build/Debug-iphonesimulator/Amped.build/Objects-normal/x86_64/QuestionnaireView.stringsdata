@@ -1,0 +1,96 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/Features/Questionnaire/QuestionnaireView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Go back to previous question",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 51
+        }
+      },
+      {
+        "comment": "",
+        "key": "Back",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 44
+        }
+      },
+      {
+        "comment": "",
+        "key": "When were you born?",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 276
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 287
+        }
+      },
+      {
+        "comment": "",
+        "key": "Continue",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 296
+        }
+      },
+      {
+        "comment": "",
+        "key": "What is your biological sex?",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 320
+        }
+      },
+      {
+        "comment": "",
+        "key": "Prefer not to say",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 363
+        }
+      },
+      {
+        "comment": "",
+        "key": "How would you describe your typical diet?",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 385
+        }
+      },
+      {
+        "comment": "",
+        "key": "Do you smoke tobacco products?",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 425
+        }
+      },
+      {
+        "comment": "",
+        "key": "How often do you consume alcoholic beverages?",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 465
+        }
+      },
+      {
+        "comment": "",
+        "key": "How would you describe your social connections?",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 505
+        }
+      }
+    ]
+  },
+  "version": 1
+}

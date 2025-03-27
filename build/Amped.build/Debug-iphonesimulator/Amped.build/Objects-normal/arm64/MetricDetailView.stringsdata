@@ -1,0 +1,184 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/Features/UI/MetricDetailView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Details for %@",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 64
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 54
+        }
+      },
+      {
+        "comment": "",
+        "key": "Impact Details",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 71
+        }
+      },
+      {
+        "comment": "",
+        "key": "Impact data unavailable",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 98
+        }
+      },
+      {
+        "comment": "",
+        "key": "Your %@ is %@.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 77
+        }
+      },
+      {
+        "comment": "",
+        "key": "This impacts your lifespan by approximately %@.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 80
+        }
+      },
+      {
+        "comment": "",
+        "key": "This is a positive impact on your health! 🎉",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 84
+        }
+      },
+      {
+        "comment": "",
+        "key": "This is currently reducing your projected lifespan.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 87
+        }
+      },
+      {
+        "comment": "",
+        "key": "This is in line with typical health outcomes.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "History",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 109
+        }
+      },
+      {
+        "comment": "",
+        "key": "Chart showing %@ history over time",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 177
+        }
+      },
+      {
+        "comment": "",
+        "key": "Target",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 129
+        }
+      },
+      {
+        "comment": "",
+        "key": "Date",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 135
+        }
+      },
+      {
+        "comment": "",
+        "key": "Target",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 155
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 172
+        }
+      },
+      {
+        "comment": "",
+        "key": "Research Reference",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 184
+        }
+      },
+      {
+        "comment": "",
+        "key": "No research reference available",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 210
+        }
+      },
+      {
+        "comment": "",
+        "key": "Read More",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 201
+        }
+      },
+      {
+        "comment": "",
+        "key": "Recommendations",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 221
+        }
+      },
+      {
+        "comment": "",
+        "key": "Power Level",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 306
+        }
+      },
+      {
+        "comment": "",
+        "key": "Chart for %@ over %@",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 665
+        }
+      }
+    ]
+  },
+  "version": 1
+}

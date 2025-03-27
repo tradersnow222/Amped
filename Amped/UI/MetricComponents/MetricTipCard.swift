@@ -105,8 +105,16 @@ struct MetricTipCard: View {
             return "Improve Nutrition Quality"
         case .stressLevel:
             return "Manage Stress Levels"
-        @unknown default:
-            return "Improve Your Health"
+        case .exerciseMinutes:
+            return "Maximize Exercise Benefits"
+        case .bodyMass:
+            return "Maintain Healthy Weight"
+        case .smokingStatus:
+            return "Reduce Smoking Impact"
+        case .alcoholConsumption:
+            return "Moderate Alcohol Intake"
+        case .socialConnectionsQuality:
+            return "Strengthen Social Connections"
         }
     }
     
@@ -131,8 +139,16 @@ struct MetricTipCard: View {
             return "Add more colorful vegetables to meals"
         case .stressLevel:
             return "Practice daily mindfulness meditation"
-        @unknown default:
-            return "Maintain consistent healthy habits"
+        case .exerciseMinutes:
+            return "Include both cardio and strength exercises"
+        case .bodyMass:
+            return "Focus on whole foods and regular exercise"
+        case .smokingStatus:
+            return "Gradually reduce daily consumption"
+        case .alcoholConsumption:
+            return "Track and limit weekly consumption"
+        case .socialConnectionsQuality:
+            return "Schedule regular social activities"
         }
     }
     
@@ -157,8 +173,16 @@ struct MetricTipCard: View {
             return "Focus on whole foods and limit processed items"
         case .stressLevel:
             return "Take a 5-minute mindfulness break"
-        @unknown default:
-            return "Focus on one small improvement each day"
+        case .exerciseMinutes:
+            return "Break up exercise into smaller sessions if needed"
+        case .bodyMass:
+            return "Prioritize sustainable habits over rapid changes"
+        case .smokingStatus:
+            return "Consider professional support for quitting"
+        case .alcoholConsumption:
+            return "Try alcohol-free alternatives for social occasions"
+        case .socialConnectionsQuality:
+            return "Foster meaningful conversations with friends and family"
         }
     }
     
@@ -183,21 +207,27 @@ struct MetricTipCard: View {
             return "Add one extra vegetable serving today"
         case .stressLevel:
             return "Take a 5-minute mindfulness break now"
-        @unknown default:
-            return "Focus on one health habit today"
+        case .exerciseMinutes:
+            return "Get 30 minutes of moderate exercise today"
+        case .bodyMass:
+            return "Plan balanced meals for tomorrow"
+        case .smokingStatus:
+            return "Skip one cigarette today"
+        case .alcoholConsumption:
+            return "Have an alcohol-free day today"
+        case .socialConnectionsQuality:
+            return "Call or message a friend today"
         }
     }
     
     private var cardTitle: String {
-        switch metric.impactDetail?.comparisonToBaseline {
-        case .muchBetter, .better, .slightlyBetter:
+        switch metric.impactDetails?.comparisonToBaseline {
+        case .better:
             return "Keep up the good work!"
-        case .nearBaseline, .same:
+        case .same:
             return "You're on the right track"
-        case .slightlyWorse:
+        case .worse:
             return "Room for improvement"
-        case .worse, .muchWorse:
-            return "Let's focus on this area"
         case nil:
             return "Tips for improvement"
         @unknown default:
@@ -241,17 +271,21 @@ extension Color {
     VStack(spacing: 20) {
         MetricTipCard(
             metric: HealthMetric(
+                id: UUID().uuidString,
                 type: .steps,
                 value: 6500,
-                date: Date()
+                date: Date(),
+                source: .healthKit
             )
         )
         
         MetricTipCard(
             metric: HealthMetric(
+                id: UUID().uuidString,
                 type: .sleepHours,
                 value: 6.5,
-                date: Date()
+                date: Date(),
+                source: .healthKit
             )
         )
     }

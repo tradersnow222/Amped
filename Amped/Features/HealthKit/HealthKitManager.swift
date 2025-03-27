@@ -2,14 +2,21 @@ import Foundation
 import HealthKit
 import OSLog
 import Combine
+@preconcurrency import Combine
 
 /// Protocol defining the core HealthKit management functionality
-@MainActor protocol HealthKitManaging {
+@preconcurrency protocol HealthKitManaging: AnyObject {
     /// Check if HealthKit is available on this device
     var isHealthKitAvailable: Bool { get }
     
     /// Check if all permissions have been granted
     var hasAllPermissions: Bool { get }
+    
+    /// Check if critical permissions have been granted
+    var hasCriticalPermissions: Bool { get }
+    
+    /// Get detailed permission status for all types
+    var permissionStatus: [HealthMetricType: HKAuthorizationStatus] { get }
     
     /// Request authorization for all supported HealthKit data types
     func requestAuthorization() async -> Bool
@@ -23,59 +30,149 @@ import Combine
     /// Fetch data for a specific metric type within a time range
     func fetchData(for metricType: HealthMetricType, from startDate: Date, to endDate: Date) async -> [HealthMetric]
     
-    /// Set up background delivery for updates to specific metric types
-    func startBackgroundDelivery(for metricTypes: [HealthMetricType]) async -> Bool
-    
     /// Start observing changes to a specific metric type
-    func startObserving(metricType: HealthMetricType) async -> AnyPublisher<HealthMetric?, Error>
+    func startObserving(metricType: HealthMetricType) -> AnyPublisher<HealthMetric?, Error>
     
-    /// Get the underlying HealthKit store for direct access
-    func getHealthStore() -> HKHealthStore
+    /// Validate permissions by attempting to access health data
+    /// This is the most reliable way to check if permissions have been granted
+    func validatePermissionsByAccessingData() async -> Bool
 }
 
 /// Manages all interactions with HealthKit, providing a clean interface to access health data
-@MainActor final class HealthKitManager: HealthKitManaging, ObservableObject {
+@MainActor final class HealthKitManager: ObservableObject, @preconcurrency HealthKitManaging {
     // MARK: - Properties
     
     private let healthStore: HKHealthStore
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.amped.Amped", category: "HealthKitManager")
-    private var observers: [String: AnyCancellable] = [:]
+    private var observers = [String: AnyCancellable]()
     
     /// Observable property to track permission status changes
     @Published private(set) var permissionsGranted: Bool = false
     
+    /// Observable property to track critical permission status
+    @Published private(set) var criticalPermissionsGranted: Bool = false
+    
+    /// Detailed permission status for each metric type - backing store for the protocol property
+    @Published private(set) var _permissionStatus: [HealthMetricType: HKAuthorizationStatus] = [:]
+    
     /// Observable property for metric updates
-    @Published var latestMetrics: [HealthMetricType: HealthMetric] = [:]
+    @Published private(set) var latestMetrics: [HealthMetricType: HealthMetric] = [:]
+    
+    // Critical metrics that are required for the app to function properly
+    nonisolated static let criticalMetricTypes: [HealthMetricType] = [
+        .steps,
+        .exerciseMinutes,
+        .sleepHours,
+        .restingHeartRate,
+        .heartRateVariability
+    ]
+    
+    // The complete list of metrics we want from HealthKit - limited to just the critical ones for MVP
+    nonisolated static let allMetricTypes: [HealthMetricType] = criticalMetricTypes
+    
+    // Shared HealthKit store for non-isolated methods - marked nonisolated to be accessible from nonisolated contexts
+    @preconcurrency nonisolated private static let sharedHealthStore = HKHealthStore()
     
     // MARK: - Initialization
     
     init(healthStore: HKHealthStore = HKHealthStore()) {
         self.healthStore = healthStore
         
-        // Initialize permission status
+        // Check HealthKit availability immediately
+        guard HKHealthStore.isHealthDataAvailable() else {
+            logger.error("HealthKit is not available on this device")
+            return
+        }
+        
+        // Check permission status on init
         Task {
-            self.permissionsGranted = await checkPermissionsStatus()
+            await checkPermissionsStatus()
         }
     }
     
     // MARK: - Public API
     
-    var isHealthKitAvailable: Bool {
+    nonisolated var isHealthKitAvailable: Bool {
         HKHealthStore.isHealthDataAvailable()
     }
     
-    var hasAllPermissions: Bool {
-        permissionsGranted
+    nonisolated var hasAllPermissions: Bool {
+        // Use shared health store for consistency
+        let store = HealthKitManager.sharedHealthStore
+        
+        // Check permission status for all types
+        for metricType in HealthKitManager.allMetricTypes {
+            // Get the appropriate health type (regular or sleep)
+            let healthType: HKObjectType?
+            if metricType == .sleepHours {
+                healthType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)
+            } else {
+                healthType = metricType.healthKitType
+            }
+            
+            // If we have a valid type, check its permission
+            if let healthType = healthType {
+                if store.authorizationStatus(for: healthType) != .sharingAuthorized {
+                    return false
+                }
+            }
+        }
+        
+        return true
     }
     
-    /// Get the underlying HealthStore (for testing and special cases)
-    func getHealthStore() -> HKHealthStore {
-        return healthStore
+    nonisolated var hasCriticalPermissions: Bool {
+        // Use shared health store for consistency
+        let store = HealthKitManager.sharedHealthStore
+        
+        // Check permission status for critical types only
+        for metricType in HealthKitManager.criticalMetricTypes {
+            // Get the appropriate health type (regular or sleep)
+            let healthType: HKObjectType?
+            if metricType == .sleepHours {
+                healthType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)
+            } else {
+                healthType = metricType.healthKitType
+            }
+            
+            // If we have a valid type, check its permission
+            if let healthType = healthType {
+                if store.authorizationStatus(for: healthType) != .sharingAuthorized {
+                    return false
+                }
+            }
+        }
+        
+        return true
+    }
+    
+    nonisolated var permissionStatus: [HealthMetricType: HKAuthorizationStatus] {
+        // Use shared health store for consistency
+        let store = HealthKitManager.sharedHealthStore
+        var statusMap: [HealthMetricType: HKAuthorizationStatus] = [:]
+        
+        // Check all metric types
+        for metricType in HealthKitManager.allMetricTypes {
+            // Get the appropriate health type (regular or sleep)
+            let healthType: HKObjectType?
+            if metricType == .sleepHours {
+                healthType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)
+            } else {
+                healthType = metricType.healthKitType
+            }
+            
+            // If we have a valid type, get its permission status
+            if let healthType = healthType {
+                statusMap[metricType] = store.authorizationStatus(for: healthType)
+            }
+        }
+        
+        return statusMap
     }
     
     /// Request authorization for all supported HealthKit data types
     func requestAuthorization() async -> Bool {
-        await requestAuthorization(for: HealthMetricType.healthKitTypes)
+        return await requestAuthorization(for: HealthKitManager.allMetricTypes)
     }
     
     /// Request authorization for specific HealthKit data types
@@ -85,487 +182,635 @@ import Combine
             return false
         }
         
-        // Check if permissions are already granted
-        let existingPermissionsGranted = await checkPermissionsStatus()
-        if existingPermissionsGranted {
-            logger.info("HealthKit permissions already granted")
-            self.permissionsGranted = true
-            return true
-        }
-        
         // Prepare read types set
         var typesToRead = Set<HKObjectType>()
         
         // Add each requested HealthKit type
         for metricType in types {
-            if let healthKitType = metricType.healthKitType {
-                typesToRead.insert(healthKitType)
-                logger.debug("Requesting permission for: \(metricType.displayName)")
+            // Get the appropriate health type (regular or sleep)
+            let healthType: HKObjectType?
+            if metricType == .sleepHours {
+                healthType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)
+            } else {
+                healthType = metricType.healthKitType
             }
             
-            // Special handling for sleep which uses category type
-            if metricType == .sleepHours {
-                if let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
-                    typesToRead.insert(sleepType)
-                    logger.debug("Requesting permission for sleep analysis")
-                }
+            // If we have a valid type, add it to the request
+            if let healthType = healthType {
+                typesToRead.insert(healthType)
+                logger.debug("Requesting permission for: \(metricType.displayName)")
             }
         }
         
-        // Add demographic data types
-        addDemographicTypesToRequest(typesToRead: &typesToRead)
-        
-        // Request permissions - this will trigger the system dialog
         do {
-            logger.info("Directly requesting HealthKit authorization for \(typesToRead.count) types via HKHealthStore")
+            // First check existing permissions before requesting - we might already have them
+            await checkPermissionsStatus()
             
-            // This is the key line that triggers the iOS permission dialog
-            // Call it directly without additional await wrapping
+            // If already granted all or critical, return success without requesting again
+            if permissionsGranted || criticalPermissionsGranted {
+                logger.info("Required permissions already granted, no need to request")
+                return true
+            }
+            
+            // Important: Log the authorization status before requesting
+            logger.info("Authorization status before request:")
+            for metricType in types {
+                if let healthKitType = metricType.healthKitType {
+                    let status = healthStore.authorizationStatus(for: healthKitType)
+                    logger.debug("- \(metricType.displayName): \(self.authorizationStatusToString(status))")
+                }
+            }
+            
+            // Request authorization with proper error handling
+            logger.info("Calling HKHealthStore.requestAuthorization")
             try await healthStore.requestAuthorization(toShare: [], read: typesToRead)
+            logger.info("HKHealthStore.requestAuthorization completed")
             
-            // After the user responds to the dialog, check if permissions were granted
-            try? await Task.sleep(nanoseconds: 500_000_000) // Small delay to let system update
+            // Important: Immediately check permission status without delay
+            // The system has already updated the permissions at this point
+            logger.info("Checking permission status immediately after request")
+            await checkPermissionsStatus()
             
-            // Verify permissions status
-            let granted = await checkPermissionsStatus()
-            self.permissionsGranted = granted
+            // Log the status after authorization to see what changed
+            logger.info("Authorization status after request:")
+            for metricType in types {
+                if let healthKitType = metricType.healthKitType {
+                    let status = healthStore.authorizationStatus(for: healthKitType)
+                    logger.debug("- \(metricType.displayName): \(self.authorizationStatusToString(status))")
+                }
+            }
             
-            logger.info("HealthKit authorization completed, result: \(granted ? "granted" : "denied")")
-            return granted
+            // Check again in case the status hasn't propagated immediately
+            if !criticalPermissionsGranted {
+                // Create a fresh health store instance to avoid any caching issues
+                logger.info("Creating fresh HKHealthStore instance to validate permissions")
+                let freshStore = HKHealthStore()
+                var allCriticalGranted = true
+                
+                // Re-check critical permissions with fresh store
+                for metricType in HealthKitManager.criticalMetricTypes {
+                    let healthType: HKObjectType?
+                    if metricType == .sleepHours {
+                        healthType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)
+                    } else {
+                        healthType = metricType.healthKitType
+                    }
+                    
+                    if let healthType = healthType {
+                        let status = freshStore.authorizationStatus(for: healthType)
+                        logger.debug("- Fresh check for \(metricType.displayName): \(self.authorizationStatusToString(status))")
+                        if status != .sharingAuthorized {
+                            allCriticalGranted = false
+                            break
+                        }
+                    }
+                }
+                
+                // If newly detected as granted, update our state
+                if allCriticalGranted {
+                    logger.info("Fresh store detected permissions, updating state")
+                    await checkPermissionsStatus()
+                }
+                
+                // One more important check: Actually attempt to retrieve data
+                // This is the most reliable way to check if permissions are truly granted
+                logger.info("Validating permissions by attempting to access health data")
+                let permissionValidated = await validatePermissionsByAccessingData()
+                if permissionValidated {
+                    logger.info("Successfully accessed health data, permissions confirmed")
+                    criticalPermissionsGranted = true
+                    return true
+                }
+            }
+            
+            // Return true if we have at least critical permissions
+            return criticalPermissionsGranted
         } catch {
             logger.error("Error requesting HealthKit authorization: \(error.localizedDescription)")
             return false
         }
     }
     
-    /// Fetch the latest value for a specific metric type
-    func fetchLatestData(for metricType: HealthMetricType) async -> HealthMetric? {
-        guard isHealthKitAvailable, let healthKitType = metricType.healthKitType else {
-            if metricType == .sleepHours {
-                // Special handling for sleep
-                return await processSleepData(from: Calendar.current.date(byAdding: .day, value: -7, to: Date())!, to: Date())
-            }
-            
-            logger.warning("Cannot fetch data for \(metricType.rawValue): Type not available or manual metric")
-            return nil
+    /// Helper method to convert HKAuthorizationStatus to a readable string
+    private func authorizationStatusToString(_ status: HKAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined:
+            return "Not Determined"
+        case .sharingDenied:
+            return "Sharing Denied"
+        case .sharingAuthorized:
+            return "Sharing Authorized"
+        @unknown default:
+            return "Unknown Status"
+        }
+    }
+    
+    /// Validate permissions by actually attempting to access health data
+    /// This is the most reliable way to check if permissions are truly granted
+    func validatePermissionsByAccessingData() async -> Bool {
+        guard isHealthKitAvailable else {
+            return false
         }
         
-        // Query the most recent sample in the last 7 days
-        let recentPredicate = HKQuery.predicateForSamples(
-            withStart: Calendar.current.date(byAdding: .day, value: -7, to: Date()),
-            end: Date(),
-            options: .strictEndDate
-        )
-        
-        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
-        
-        do {
-            // Execute the query with async/await pattern
-            let samples = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKSample], Error>) in
-                let query = HKSampleQuery(
-                    sampleType: healthKitType,
-                    predicate: recentPredicate,
-                    limit: 1,
-                    sortDescriptors: [sortDescriptor]
-                ) { _, samples, error in
-                    if let error = error {
-                        continuation.resume(throwing: error)
-                        return
+        // Try to access steps data as a test
+        if let stepsType = HKQuantityType.quantityType(forIdentifier: .stepCount) {
+            // No need to store HKUnit.count() as it's not used
+            
+            let now = Date()
+            let startDate = Calendar.current.date(byAdding: .day, value: -1, to: now) ?? now
+            let predicate = HKQuery.predicateForSamples(withStart: startDate, end: now, options: .strictEndDate)
+            
+            do {
+                // Try to execute a sample query - this will fail if permissions aren't granted
+                logger.debug("Attempting to query steps data to validate permissions")
+                let _ = try await withCheckedThrowingContinuation { [self] (continuation: CheckedContinuation<[HKSample], Error>) in
+                    let query = HKSampleQuery(
+                        sampleType: stepsType,
+                        predicate: predicate,
+                        limit: 1,
+                        sortDescriptors: nil
+                    ) { [self] _, results, error in
+                        if let error = error {
+                            self.logger.debug("Error accessing steps data: \(error.localizedDescription)")
+                            continuation.resume(throwing: error)
+                            return
+                        }
+                        
+                        self.logger.debug("Successfully accessed steps data: \(results?.count ?? 0) samples")
+                        continuation.resume(returning: results ?? [])
                     }
                     
-                    continuation.resume(returning: samples ?? [])
+                    healthStore.execute(query)
                 }
                 
-                self.healthStore.execute(query)
+                logger.info("Successfully executed health data query, permissions confirmed")
+                return true
+            } catch {
+                logger.debug("Failed to access health data: \(error.localizedDescription)")
+                return false
             }
+        }
+        
+        // Try sleep data as an alternative
+        if let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
+            let now = Date()
+            let startDate = Calendar.current.date(byAdding: .day, value: -1, to: now) ?? now
+            let predicate = HKQuery.predicateForSamples(withStart: startDate, end: now, options: .strictEndDate)
             
-            guard let sample = samples.first as? HKQuantitySample else {
-                logger.info("No recent data found for \(metricType.rawValue)")
-                return nil
+            do {
+                // Try to execute a sample query - this will fail if permissions aren't granted
+                logger.debug("Attempting to query sleep data to validate permissions")
+                let _ = try await withCheckedThrowingContinuation { [self] (continuation: CheckedContinuation<[HKSample], Error>) in
+                    let query = HKSampleQuery(
+                        sampleType: sleepType,
+                        predicate: predicate,
+                        limit: 1,
+                        sortDescriptors: nil
+                    ) { [self] _, results, error in
+                        if let error = error {
+                            self.logger.debug("Error accessing sleep data: \(error.localizedDescription)")
+                            continuation.resume(throwing: error)
+                            return
+                        }
+                        
+                        self.logger.debug("Successfully accessed sleep data: \(results?.count ?? 0) samples")
+                        continuation.resume(returning: results ?? [])
+                    }
+                    
+                    healthStore.execute(query)
+                }
+                
+                logger.info("Successfully executed sleep data query, permissions confirmed")
+                return true
+            } catch {
+                logger.debug("Failed to access sleep data: \(error.localizedDescription)")
+                return false
             }
-            
-            // Convert to HealthMetric
-            let metric = HealthMetric(from: sample, for: metricType)
-            
-            // Store the latest metric for observability
-            if let metric = metric {
-                latestMetrics[metricType] = metric
-            }
-            
-            return metric
-        } catch {
-            logger.error("Error fetching data for \(metricType.rawValue): \(error.localizedDescription)")
+        }
+        
+        return false
+    }
+    
+    /// Fetch the latest value for a specific metric type
+    func fetchLatestData(for metricType: HealthMetricType) async -> HealthMetric? {
+        guard isHealthKitAvailable else {
+            logger.error("HealthKit is not available on this device")
             return nil
         }
+        
+        if !hasCriticalPermissions && !hasAllPermissions {
+            logger.warning("No HealthKit permissions granted")
+            return nil
+        }
+        
+        // Handle different metric types appropriately
+        if metricType == .sleepHours {
+            return await fetchSleepData()
+        } else if let quantityType = metricType.healthKitType,
+                  let unit = metricType.unit {
+            // Remove unnecessary cast
+            return await fetchQuantityData(for: quantityType as HKQuantityType, unit: unit, metricType: metricType)
+        }
+        
+        return nil
     }
     
     /// Fetch data for a specific metric type within a time range
     func fetchData(for metricType: HealthMetricType, from startDate: Date, to endDate: Date) async -> [HealthMetric] {
         guard isHealthKitAvailable else {
-            logger.warning("HealthKit is not available on this device")
+            logger.error("HealthKit is not available on this device")
             return []
         }
         
-        // Special handling for sleep
-        if metricType == .sleepHours {
-            if let sleepMetric = await processSleepData(from: startDate, to: endDate) {
-                return [sleepMetric]
+        if !hasCriticalPermissions && !hasAllPermissions {
+            logger.warning("No HealthKit permissions granted")
+            return []
+        }
+        
+        // Simple implementation for now - we'll expand this in the future
+        if let metric = await fetchLatestData(for: metricType) {
+            return [metric]
+        }
+        
+        return []
+    }
+    
+    /// Start observing changes to a specific metric type
+    nonisolated func startObserving(metricType: HealthMetricType) -> AnyPublisher<HealthMetric?, Error> {
+        let subject = PassthroughSubject<HealthMetric?, Error>()
+        
+        if !HKHealthStore.isHealthDataAvailable() {
+            subject.send(completion: .failure(HealthKitError.healthKitNotAvailable))
+            return subject.eraseToAnyPublisher()
+        }
+        
+        Task { @MainActor in
+            // Handle special case of sleep
+            if metricType == .sleepHours {
+                if let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
+                    await setupObserver(for: sleepType, metricType: metricType, subject: subject)
+                }
+            } 
+            // Handle quantity types - avoid redundant cast
+            else if let quantityType = metricType.healthKitType, quantityType is HKQuantityType {
+                // Use the quantity type directly without redundant cast
+                await setupObserver(for: quantityType, metricType: metricType, subject: subject)
             }
-            return []
+            
+            // Fetch initial value
+            let initialValue = await fetchLatestData(for: metricType)
+            subject.send(initialValue)
         }
         
-        guard let healthKitType = metricType.healthKitType else {
-            logger.warning("Cannot fetch data for \(metricType.rawValue): No corresponding HealthKit type")
-            return []
+        return subject.eraseToAnyPublisher()
+    }
+    
+    // MARK: - Permission Management
+    
+    /// Check the status of all permissions
+    @MainActor
+    func checkPermissionsStatus() async {
+        guard isHealthKitAvailable else {
+            permissionsGranted = false
+            criticalPermissionsGranted = false
+            return
         }
         
-        let datePredicate = HKQuery.predicateForSamples(
-            withStart: startDate,
-            end: endDate,
-            options: .strictEndDate
-        )
+        var allGranted = true
+        var criticalGranted = true
+        var statusMap: [HealthMetricType: HKAuthorizationStatus] = [:]
         
-        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: true)
+        // To ensure consistency, use the same approach here as in the nonisolated property methods
+        // Check all metric types
+        for metricType in HealthKitManager.allMetricTypes {
+            // Get the appropriate health type (regular or sleep)
+            let healthType: HKObjectType?
+            if metricType == .sleepHours {
+                healthType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)
+            } else {
+                healthType = metricType.healthKitType
+            }
+            
+            // If we have a valid type, check its permission status
+            if let healthType = healthType {
+                let status = healthStore.authorizationStatus(for: healthType)
+                statusMap[metricType] = status
+                
+                if status != .sharingAuthorized {
+                    allGranted = false
+                    
+                    // Check if this is a critical metric
+                    if HealthKitManager.criticalMetricTypes.contains(metricType) {
+                        criticalGranted = false
+                    }
+                }
+            }
+        }
+        
+        // Double-check with a fresh instance to validate the status hasn't changed
+        // This can help catch issues with stale caches or system updates
+        let freshStore = HKHealthStore()
+        for metricType in HealthKitManager.criticalMetricTypes {
+            // Get the appropriate health type (regular or sleep)
+            let healthType: HKObjectType?
+            if metricType == .sleepHours {
+                healthType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)
+            } else {
+                healthType = metricType.healthKitType
+            }
+            
+            // If we have a valid type, verify its permission status
+            if let healthType = healthType {
+                let status = freshStore.authorizationStatus(for: healthType)
+                
+                // If we detect a discrepancy, use the more recent status
+                if let existingStatus = statusMap[metricType], existingStatus != status {
+                    // Fix ambiguous type error with proper string interpolation
+                    let message = "Permission status discrepancy for \(metricType.displayName): \(existingStatus) vs \(status)"
+                    logger.warning("\(message)")
+                    statusMap[metricType] = status
+                    
+                    // Update the granted flags if this is now authorized
+                    if status == .sharingAuthorized && existingStatus != .sharingAuthorized {
+                        if HealthKitManager.criticalMetricTypes.contains(metricType) {
+                            // Recalculate critical permissions
+                            criticalGranted = true
+                            for criticalType in HealthKitManager.criticalMetricTypes {
+                                if statusMap[criticalType] != .sharingAuthorized {
+                                    criticalGranted = false
+                                    break
+                                }
+                            }
+                        }
+                        
+                        // Recalculate all permissions
+                        allGranted = true
+                        for type in HealthKitManager.allMetricTypes {
+                            if statusMap[type] != .sharingAuthorized {
+                                allGranted = false
+                                break
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Log the permission status for debugging
+        logger.info("Permission status check results:")
+        for (type, status) in statusMap {
+            let statusDescription = (status == .sharingAuthorized) ? "Granted" : "Not Granted"
+            logger.debug("- \(type.displayName): \(statusDescription)")
+        }
+        
+        // Update state
+        _permissionStatus = statusMap
+        permissionsGranted = allGranted
+        criticalPermissionsGranted = criticalGranted
+        
+        logger.info("Permission check: all=\(allGranted), critical=\(criticalGranted)")
+    }
+    
+    /// Execute a HealthKit query on the health store
+    func executeQuery(_ query: HKQuery) {
+        healthStore.execute(query)
+    }
+    
+    /// Get the permission status on the MainActor
+    func getPermissionStatus() -> [HealthMetricType: HKAuthorizationStatus] {
+        return _permissionStatus
+    }
+    
+    // MARK: - Private Methods
+    
+    /// Fetch quantity data from HealthKit
+    private func fetchQuantityData(for quantityType: HKQuantityType, unit: HKUnit, metricType: HealthMetricType) async -> HealthMetric? {
+        // Define the predicate for the query
+        let now = Date()
+        let startDate = Calendar.current.date(byAdding: .day, value: -7, to: now) ?? now
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: now, options: .strictEndDate)
+        
+        // Sort by date (most recent first)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
         
         do {
-            // Execute the query with async/await pattern
+            // Query for the most recent sample
             let samples = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKSample], Error>) in
                 let query = HKSampleQuery(
-                    sampleType: healthKitType,
-                    predicate: datePredicate,
-                    limit: HKObjectQueryNoLimit,
+                    sampleType: quantityType,
+                    predicate: predicate,
+                    limit: 1,
                     sortDescriptors: [sortDescriptor]
-                ) { _, samples, error in
+                ) { _, results, error in
                     if let error = error {
                         continuation.resume(throwing: error)
                         return
                     }
                     
-                    continuation.resume(returning: samples ?? [])
+                    continuation.resume(returning: results ?? [])
                 }
                 
-                self.healthStore.execute(query)
+                healthStore.execute(query)
             }
             
-            // Convert all samples to HealthMetric objects
-            return samples.compactMap { sample in
-                guard let quantitySample = sample as? HKQuantitySample else { return nil }
-                return HealthMetric(from: quantitySample, for: metricType)
+            // Process the result
+            guard let sample = samples.first as? HKQuantitySample else {
+                logger.debug("No recent data found for \(metricType.displayName)")
+                return nil
             }
+            
+            // Extract the quantity value
+            let value = sample.quantity.doubleValue(for: unit)
+            
+            // Create and return the health metric
+            return HealthMetric(
+                id: UUID().uuidString,
+                type: metricType,
+                value: value,
+                date: sample.endDate,
+                source: .healthKit
+            )
         } catch {
-            logger.error("Error fetching data for \(metricType.rawValue): \(error.localizedDescription)")
-            return []
-        }
-    }
-    
-    /// Set up background delivery for updates to specific metric types
-    func startBackgroundDelivery(for metricTypes: [HealthMetricType]) async -> Bool {
-        guard isHealthKitAvailable else {
-            logger.error("HealthKit is not available on this device")
-            return false
-        }
-        
-        var allSucceeded = true
-        
-        for metricType in metricTypes {
-            guard let healthKitType = metricType.healthKitType else {
-                // Skip types without corresponding HealthKit types
-                continue
-            }
-            
-            do {
-                // Enable background delivery with hourly frequency
-                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                    self.healthStore.enableBackgroundDelivery(
-                        for: healthKitType,
-                        frequency: .hourly
-                    ) { success, error in
-                        if let error = error {
-                            self.logger.error("Failed to enable background delivery for \(metricType.rawValue): \(error.localizedDescription)")
-                            allSucceeded = false
-                            continuation.resume(throwing: error)
-                        } else if success {
-                            self.logger.info("Background delivery enabled for \(metricType.rawValue)")
-                            continuation.resume()
-                        } else {
-                            self.logger.warning("Background delivery not enabled for \(metricType.rawValue)")
-                            allSucceeded = false
-                            continuation.resume(throwing: NSError(domain: "com.amped.Amped", code: 0, userInfo: [NSLocalizedDescriptionKey: "Failed to enable background delivery"]))
-                        }
-                    }
-                }
-            } catch {
-                logger.error("Error enabling background delivery for \(metricType.rawValue): \(error.localizedDescription)")
-                allSucceeded = false
-            }
-        }
-        
-        return allSucceeded
-    }
-    
-    /// Start observing changes to a specific metric type
-    func startObserving(metricType: HealthMetricType) async -> AnyPublisher<HealthMetric?, Error> {
-        guard isHealthKitAvailable else {
-            return Fail(error: NSError(domain: "com.amped.Amped", code: 1, userInfo: [NSLocalizedDescriptionKey: "HealthKit is not available"]))
-                .eraseToAnyPublisher()
-        }
-        
-        // Special handling for sleep which requires category type
-        if metricType == .sleepHours {
-            return observeSleepChanges()
-        }
-        
-        guard let healthKitType = metricType.healthKitType else {
-            return Fail(error: NSError(domain: "com.amped.Amped", code: 2, userInfo: [NSLocalizedDescriptionKey: "No HealthKit type for \(metricType.rawValue)"]))
-                .eraseToAnyPublisher()
-        }
-        
-        // Create a subject that will emit metric updates
-        let subject = PassthroughSubject<HealthMetric?, Error>()
-        
-        // Set up the query to observe changes
-        let query = HKObserverQuery(sampleType: healthKitType, predicate: nil) { [weak self] _, completionHandler, error in
-            guard let self = self else {
-                completionHandler()
-                return
-            }
-            
-            if let error = error {
-                self.logger.error("Observer query error for \(metricType.rawValue): \(error.localizedDescription)")
-                subject.send(completion: .failure(error))
-                completionHandler()
-                return
-            }
-            
-            // When change is detected, fetch the latest data
-            Task { @MainActor [weak self] in
-                guard let self = self else {
-                    completionHandler()
-                    return
-                }
-                
-                let metric = await self.fetchLatestData(for: metricType)
-                subject.send(metric)
-                completionHandler()
-            }
-        }
-        
-        // Execute the query
-        healthStore.execute(query)
-        
-        // Store the observer for later cancellation
-        let cancellable = AnyCancellable {
-            self.healthStore.stop(query)
-        }
-        
-        observers[metricType.rawValue] = cancellable
-        
-        return subject.eraseToAnyPublisher()
-    }
-    
-    // MARK: - Private Methods
-    
-    /// Add demographic data types to the request set
-    private func addDemographicTypesToRequest(typesToRead: inout Set<HKObjectType>) {
-        // Add date of birth
-        if let dobType = HKObjectType.characteristicType(forIdentifier: .dateOfBirth) {
-            typesToRead.insert(dobType)
-        }
-        
-        // Add biological sex
-        if let sexType = HKObjectType.characteristicType(forIdentifier: .biologicalSex) {
-            typesToRead.insert(sexType)
-        }
-        
-        // Add height and weight
-        typesToRead.insert(HKQuantityType(.height))
-        typesToRead.insert(HKQuantityType(.bodyMass))
-    }
-    
-    /// Process sleep data which requires special handling
-    private func processSleepData(from startDate: Date, to endDate: Date) async -> HealthMetric? {
-        guard isHealthKitAvailable else {
-            logger.warning("HealthKit is not available for sleep processing")
+            logger.error("Error fetching \(metricType.displayName): \(error.localizedDescription)")
             return nil
         }
-        
+    }
+    
+    /// Fetch sleep data from HealthKit (special case)
+    private func fetchSleepData() async -> HealthMetric? {
         guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else {
-            logger.warning("Sleep analysis type is not available")
+            logger.error("Sleep analysis type is not available")
             return nil
         }
         
-        let predicate = HKQuery.predicateForSamples(
-            withStart: startDate,
-            end: endDate,
-            options: .strictEndDate
-        )
+        // Define the predicate for the query (last 7 days)
+        let now = Date()
+        let startDate = Calendar.current.date(byAdding: .day, value: -7, to: now) ?? now
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: now, options: .strictEndDate)
         
         do {
-            // Execute the query with async/await pattern
+            // Query for sleep samples
             let samples = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKSample], Error>) in
                 let query = HKSampleQuery(
                     sampleType: sleepType,
                     predicate: predicate,
                     limit: HKObjectQueryNoLimit,
-                    sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: true)]
-                ) { _, samples, error in
+                    sortDescriptors: nil
+                ) { _, results, error in
                     if let error = error {
                         continuation.resume(throwing: error)
                         return
                     }
                     
-                    continuation.resume(returning: samples ?? [])
+                    continuation.resume(returning: results ?? [])
                 }
                 
-                self.healthStore.execute(query)
+                healthStore.execute(query)
             }
             
-            // Calculate total sleep time
-            var totalSleepTime: TimeInterval = 0
+            // Calculate sleep duration from samples
+            var totalSleepHours = 0.0
             
-            for sample in samples {
-                guard let categorySample = sample as? HKCategorySample else { continue }
+            // Filter samples to only include actual sleep (not in bed but awake)
+            let sleepSamples = samples.compactMap { sample -> HKCategorySample? in
+                guard let categorySample = sample as? HKCategorySample else { return nil }
                 
-                // Count only asleep states
+                // Only count actual sleep, not just in bed
                 if categorySample.value == HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue ||
-                   categorySample.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue ||
-                   categorySample.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue ||
-                   categorySample.value == HKCategoryValueSleepAnalysis.asleepCore.rawValue {
-                    
-                    let sleepTime = categorySample.endDate.timeIntervalSince(categorySample.startDate)
-                    totalSleepTime += sleepTime
+                   categorySample.value == HKCategoryValueSleepAnalysis.inBed.rawValue {
+                    return categorySample
                 }
-            }
-            
-            // Convert to hours
-            let sleepHours = totalSleepTime / 3600.0
-            
-            // Only create metric if we have valid sleep data
-            if sleepHours > 0 {
-                return HealthMetric(
-                    type: .sleepHours,
-                    value: sleepHours,
-                    date: endDate
-                )
-            } else {
-                logger.info("No valid sleep data found in the specified period")
+                
                 return nil
             }
             
+            // Calculate total sleep duration (avoiding overlaps)
+            var sleepIntervals: [(Date, Date)] = []
+            
+            for sample in sleepSamples {
+                let startDate = sample.startDate
+                let endDate = sample.endDate
+                
+                sleepIntervals.append((startDate, endDate))
+            }
+            
+            // Merge overlapping intervals
+            let mergedIntervals = mergeTimeIntervals(sleepIntervals)
+            
+            // Calculate total hours from merged intervals
+            for (start, end) in mergedIntervals {
+                let duration = end.timeIntervalSince(start)
+                totalSleepHours += duration / 3600 // Convert seconds to hours
+            }
+            
+            // Get the latest sleep data point for the date
+            let latestSleep = sleepSamples.max(by: { $0.endDate < $1.endDate })
+            
+            // Create and return the health metric with the average daily sleep
+            // We'll use the end date of the latest sleep sample as our reference point
+            return HealthMetric(
+                id: UUID().uuidString,
+                type: .sleepHours,
+                value: totalSleepHours / 7.0, // Average per day over the week
+                date: latestSleep?.endDate ?? now,
+                source: .healthKit
+            )
         } catch {
-            logger.error("Error processing sleep data: \(error.localizedDescription)")
+            logger.error("Error fetching sleep data: \(error.localizedDescription)")
             return nil
         }
     }
     
-    /// Set up an observer for sleep changes
-    private func observeSleepChanges() -> AnyPublisher<HealthMetric?, Error> {
-        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else {
-            return Fail(error: NSError(domain: "com.amped.Amped", code: 3, userInfo: [NSLocalizedDescriptionKey: "Sleep analysis type is not available"]))
-                .eraseToAnyPublisher()
+    /// Merge overlapping time intervals to avoid double-counting
+    private func mergeTimeIntervals(_ intervals: [(Date, Date)]) -> [(Date, Date)] {
+        guard !intervals.isEmpty else { return [] }
+        
+        // Sort intervals by start time
+        let sortedIntervals = intervals.sorted { $0.0 < $1.0 }
+        
+        var result: [(Date, Date)] = []
+        var currentInterval = sortedIntervals[0]
+        
+        for (start, end) in sortedIntervals.dropFirst() {
+            // If current interval overlaps with next interval, merge them
+            if start <= currentInterval.1 {
+                currentInterval.1 = max(currentInterval.1, end)
+            } else {
+                // No overlap, add current interval to result and move to next
+                result.append(currentInterval)
+                currentInterval = (start, end)
+            }
         }
         
-        // Create a subject for sleep updates
-        let subject = PassthroughSubject<HealthMetric?, Error>()
+        // Add the last interval
+        result.append(currentInterval)
         
-        // Set up the query to observe sleep changes
-        let query = HKObserverQuery(sampleType: sleepType, predicate: nil) { [weak self] _, completionHandler, error in
-            guard let self = self else {
-                completionHandler()
-                return
-            }
-            
-            if let error = error {
-                self.logger.error("Sleep observer query error: \(error.localizedDescription)")
-                subject.send(completion: .failure(error))
-                completionHandler()
-                return
-            }
-            
-            // When sleep data changes, process the updated data
-            Task { @MainActor [weak self] in
-                guard let self = self else {
+        return result
+    }
+    
+    /// Setup observer for health data changes
+    private func setupObserver(for objectType: HKSampleType, metricType: HealthMetricType, subject: PassthroughSubject<HealthMetric?, Error>) async {
+        do {
+            // Create the query
+            let query = HKObserverQuery(sampleType: objectType, predicate: nil) { [weak self, subject] query, completionHandler, error in
+                // Error handling
+                if let error = error {
+                    self?.logger.error("Observer query error for \(metricType.displayName): \(error.localizedDescription)")
+                    subject.send(completion: .failure(error))
                     completionHandler()
                     return
                 }
                 
-                let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
-                if let sleepMetric = await self.processSleepData(from: yesterday, to: Date()) {
-                    subject.send(sleepMetric)
-                    self.latestMetrics[.sleepHours] = sleepMetric
-                } else {
-                    subject.send(nil)
-                }
-                completionHandler()
-            }
-        }
-        
-        // Execute the query
-        healthStore.execute(query)
-        
-        // Store the observer for later cancellation
-        let cancellable = AnyCancellable {
-            self.healthStore.stop(query)
-        }
-        
-        observers["sleepHours"] = cancellable
-        
-        return subject.eraseToAnyPublisher()
-    }
-    
-    /// Check if all required permissions have been granted
-    private func checkPermissionsStatus() async -> Bool {
-        guard isHealthKitAvailable else { 
-            logger.warning("HealthKit is not available on this device")
-            return false 
-        }
-        
-        logger.debug("Checking permissions status for all health metrics...")
-        var permissionsCount = 0
-        var grantedCount = 0
-        var deniedPermissions: [String] = []
-        
-        // Check status for each HealthKit type
-        for metricType in HealthMetricType.healthKitTypes {
-            if let healthKitType = metricType.healthKitType {
-                permissionsCount += 1
-                let status = healthStore.authorizationStatus(for: healthKitType)
-                
-                if status == .sharingAuthorized {
-                    grantedCount += 1
-                    logger.debug("✅ Permission granted for \(metricType.displayName)")
-                } else {
-                    deniedPermissions.append(metricType.displayName)
-                    logger.debug("❌ Permission not granted for \(metricType.displayName): \(status.rawValue)")
+                // Fetch the updated data
+                Task { [weak self] in
+                    guard let self = self else {
+                        completionHandler()
+                        return
+                    }
+                    
+                    let metric = await self.fetchLatestData(for: metricType)
+                    subject.send(metric)
+                    completionHandler()
                 }
             }
             
-            // Special handling for sleep
-            if metricType == .sleepHours {
-                if let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
-                    permissionsCount += 1
-                    let status = healthStore.authorizationStatus(for: sleepType)
-                    
-                    if status == .sharingAuthorized {
-                        grantedCount += 1
-                        logger.debug("✅ Permission granted for sleep analysis")
-                    } else {
-                        deniedPermissions.append("Sleep Analysis")
-                        logger.debug("❌ Permission not granted for sleep analysis: \(status.rawValue)")
-                    }
-                }
-            }
+            // Execute the query
+            healthStore.execute(query)
+            
+            // Set up background delivery if possible
+            try await healthStore.enableBackgroundDelivery(for: objectType, frequency: .immediate)
+            
+            logger.info("Started observing changes for \(metricType.displayName)")
+        } catch {
+            logger.error("Failed to set up observer for \(metricType.displayName): \(error.localizedDescription)")
+            subject.send(completion: .failure(error))
         }
-        
-        // Report overall status
-        let allGranted = grantedCount == permissionsCount && permissionsCount > 0
-        
-        if allGranted {
-            logger.info("✅ HealthKit permissions check: All \(grantedCount) permissions granted")
-        } else {
-            logger.info("❌ HealthKit permissions check: \(grantedCount)/\(permissionsCount) granted, missing: \(deniedPermissions.joined(separator: ", "))")
+    }
+}
+
+// MARK: - HealthKit Errors
+
+enum HealthKitError: Error {
+    case healthKitNotAvailable
+    case dataNotAvailable
+    case authorizationDenied
+    case unknownError
+    case invalidType
+}
+
+extension HealthKitError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .healthKitNotAvailable:
+            return "HealthKit is not available on this device"
+        case .dataNotAvailable:
+            return "The requested health data is not available"
+        case .authorizationDenied:
+            return "Authorization to access health data was denied"
+        case .unknownError:
+            return "An unknown error occurred"
+        case .invalidType:
+            return "Invalid type for observer setup"
         }
-        
-        return allGranted
     }
 } 

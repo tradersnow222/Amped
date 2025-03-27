@@ -1,0 +1,30 @@
+"/Users/mattsnow/programming/Amped/Amped/Features/HealthKit/HealthDataService.swift":
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthDataService.d"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthDataService.swiftconstvalues"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthDataService.swiftdeps"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthDataService.dia"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthDataService.o"
+"/Users/mattsnow/programming/Amped/Amped/Features/HealthKit/HealthKitManager.swift":
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthKitManager.dia"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthKitManager.swiftconstvalues"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthKitManager.o"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthKitManager.d"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthKitManager.swiftdeps"
+"/Users/mattsnow/programming/Amped/Amped/Core/InfoPlistManager.swift":
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/InfoPlistManager.d"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/InfoPlistManager.swiftconstvalues"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/InfoPlistManager.o"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/InfoPlistManager.swiftdeps"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/InfoPlistManager.dia"
+"/Users/mattsnow/programming/Amped/Amped/Features/HealthKit/HealthKitPermissionsView.swift":
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthKitPermissionsView.d"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthKitPermissionsView.swiftdeps"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthKitPermissionsView.dia"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthKitPermissionsView.o"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/HealthKitPermissionsView.swiftconstvalues"
+"/Users/mattsnow/programming/Amped/Amped/Core/FeatureFlagManager.swift":
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/FeatureFlagManager.dia"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/FeatureFlagManager.d"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/FeatureFlagManager.swiftdeps"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/FeatureFlagManager.o"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/FeatureFlagManager.swiftconstvalues"

@@ -1,0 +1,32 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/Features/Onboarding/OnboardingStepsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Let's go through a few questions",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 35
+        }
+      },
+      {
+        "comment": "",
+        "key": "5-8 questions, takes about 1 minute",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 41
+        }
+      },
+      {
+        "comment": "",
+        "key": "Swipe right to begin",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 49
+        }
+      }
+    ]
+  },
+  "version": 1
+}

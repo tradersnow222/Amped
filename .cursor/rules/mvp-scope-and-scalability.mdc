@@ -6,7 +6,7 @@ alwaysApply: true
 ## MVP Scope & Scalability Focus
 
 ### MVP Core Features
-- Focus on 5-7 most impactful health metrics for initial release
+- Focus on 10 most impactful health metrics for initial release (5 manual and 5 from HealthKit)
 - Implement core functionality with clean architecture that allows easy expansion
 - Prioritize performance and reliability over feature completeness
 - Design for zero-server architecture initially (fully on-device) for rapid deployment

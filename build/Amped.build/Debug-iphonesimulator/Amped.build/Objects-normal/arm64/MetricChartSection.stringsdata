@@ -1,0 +1,24 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/UI/MetricComponents/MetricChartSection.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Historical Data",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 27
+        }
+      },
+      {
+        "comment": "",
+        "key": "No historical data available",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 81
+        }
+      }
+    ]
+  },
+  "version": 1
+}

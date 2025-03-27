@@ -1,5 +1,5 @@
 import Foundation
-import Combine
+@preconcurrency import Combine
 
 /// Manages app settings and user preferences
 final class SettingsManager: ObservableObject {

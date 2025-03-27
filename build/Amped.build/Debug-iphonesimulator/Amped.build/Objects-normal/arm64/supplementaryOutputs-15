@@ -1,0 +1,30 @@
+"/Users/mattsnow/programming/Amped/Amped/UI/MetricComponents/BatteryMetricCard.swift":
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/BatteryMetricCard.swiftconstvalues"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/BatteryMetricCard.d"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/BatteryMetricCard.dia"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/BatteryMetricCard.swiftdeps"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/BatteryMetricCard.o"
+"/Users/mattsnow/programming/Amped/Amped/UI/MetricComponents/MetricContextCard.swift":
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricContextCard.swiftconstvalues"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricContextCard.o"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricContextCard.dia"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricContextCard.swiftdeps"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricContextCard.d"
+"/Users/mattsnow/programming/Amped/Amped/UI/Components/TransparentBackground.swift":
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/TransparentBackground.dia"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/TransparentBackground.swiftconstvalues"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/TransparentBackground.d"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/TransparentBackground.o"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/TransparentBackground.swiftdeps"
+"/Users/mattsnow/programming/Amped/Amped/UI/Components/PeriodSelector.swift":
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PeriodSelector.swiftdeps"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PeriodSelector.d"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PeriodSelector.swiftconstvalues"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PeriodSelector.o"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PeriodSelector.dia"
+"/Users/mattsnow/programming/Amped/Amped/UI/MetricComponents/MetricChartSection.swift":
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricChartSection.o"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricChartSection.swiftdeps"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricChartSection.dia"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricChartSection.d"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricChartSection.swiftconstvalues"

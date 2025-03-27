@@ -62,7 +62,7 @@ struct BatteryMetricCard: View {
                 .padding(.vertical, 4)
             
             // Impact information (if details are enabled)
-            if showDetails, let impact = metric.impactDetail {
+            if showDetails, let impact = metric.impactDetails {
                 Divider()
                     .padding(.vertical, 4)
                 
@@ -160,9 +160,12 @@ struct BatteryMetricCard_Previews: PreviewProvider {
             // High power metric
             BatteryMetricCard(
                 metric: HealthMetric(
+                    id: UUID().uuidString,
                     type: .steps,
                     value: 9500,
-                    impactDetail: MetricImpactDetail(
+                    date: Date(),
+                    source: .healthKit,
+                    impactDetails: MetricImpactDetail(
                         metricType: .steps,
                         lifespanImpactMinutes: 10,
                         comparisonToBaseline: .better
@@ -174,17 +177,23 @@ struct BatteryMetricCard_Previews: PreviewProvider {
             // Medium power metric
             BatteryMetricCard(
                 metric: HealthMetric(
+                    id: UUID().uuidString,
                     type: .sleepHours,
-                    value: 7.2
+                    value: 7.2,
+                    date: Date(),
+                    source: .healthKit
                 )
             )
             
             // Low power metric
             BatteryMetricCard(
                 metric: HealthMetric(
+                    id: UUID().uuidString,
                     type: .restingHeartRate,
                     value: 85,
-                    impactDetail: MetricImpactDetail(
+                    date: Date(),
+                    source: .healthKit,
+                    impactDetails: MetricImpactDetail(
                         metricType: .restingHeartRate,
                         lifespanImpactMinutes: -30,
                         comparisonToBaseline: .worse

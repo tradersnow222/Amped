@@ -155,8 +155,8 @@ final class DashboardViewModel: ObservableObject {
         
         // Mock manual metrics (would come from QuestionnaireManager)
         let manualMetrics = [
-            ManualMetricInput(metricType: .nutritionQuality, value: 7.0),
-            ManualMetricInput(metricType: .stressLevel, value: 4.0)
+            ManualMetricInput(type: .nutritionQuality, value: 7.0),
+            ManualMetricInput(type: .stressLevel, value: 4.0)
         ]
         
         // Combine HealthKit and manual metrics
@@ -167,14 +167,14 @@ final class DashboardViewModel: ObservableObject {
         
         // Calculate impact for each metric
         let metricsWithImpact = combinedMetrics.map { metric in
-            _ = metric // Remove unused variable
             let impact = lifeImpactService.calculateImpact(for: metric)
             return HealthMetric(
                 id: metric.id,
                 type: metric.type,
                 value: metric.value,
                 date: metric.date,
-                impactDetail: impact
+                source: metric.source,
+                impactDetails: impact
             )
         }
         
@@ -184,7 +184,7 @@ final class DashboardViewModel: ObservableObject {
         // Update UI
         self.metrics = metricsWithImpact.sorted {
             // Sort by absolute impact (largest first)
-            abs($0.impactDetail?.lifespanImpactMinutes ?? 0) > abs($1.impactDetail?.lifespanImpactMinutes ?? 0)
+            abs($0.impactDetails?.lifespanImpactMinutes ?? 0) > abs($1.impactDetails?.lifespanImpactMinutes ?? 0)
         }
         
         self.isLoading = false

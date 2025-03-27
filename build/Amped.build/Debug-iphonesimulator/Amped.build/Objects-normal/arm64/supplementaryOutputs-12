@@ -1,0 +1,30 @@
+"/Users/mattsnow/programming/Amped/Amped/Features/UI/MetricDetailView.swift":
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricDetailView.swiftdeps"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricDetailView.o"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricDetailView.swiftconstvalues"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricDetailView.dia"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/MetricDetailView.d"
+"/Users/mattsnow/programming/Amped/Amped/Features/Settings/SettingsView.swift":
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SettingsView.swiftdeps"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SettingsView.swiftconstvalues"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SettingsView.d"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SettingsView.dia"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SettingsView.o"
+"/Users/mattsnow/programming/Amped/Amped/UI/Accessibility/AccessibilitySupport.swift":
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/AccessibilitySupport.o"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/AccessibilitySupport.swiftconstvalues"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/AccessibilitySupport.swiftdeps"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/AccessibilitySupport.dia"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/AccessibilitySupport.d"
+"/Users/mattsnow/programming/Amped/Amped/UI/Accessibility/ButtonHaptics.swift":
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/ButtonHaptics.d"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/ButtonHaptics.dia"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/ButtonHaptics.swiftconstvalues"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/ButtonHaptics.o"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/ButtonHaptics.swiftdeps"
+"/Users/mattsnow/programming/Amped/Amped/Features/UI/DashboardView.swift":
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/DashboardView.swiftconstvalues"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/DashboardView.swiftdeps"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/DashboardView.o"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/DashboardView.dia"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/DashboardView.d"

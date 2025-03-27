@@ -1,0 +1,30 @@
+"/Users/mattsnow/programming/Amped/Amped/UI/Accessibility/HapticFeedback.swift":
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HapticFeedback.swiftdeps"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HapticFeedback.dia"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HapticFeedback.swiftconstvalues"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HapticFeedback.o"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HapticFeedback.d"
+"/Users/mattsnow/programming/Amped/Amped/UI/Components/BatteryLifeProjectionCard.swift":
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryLifeProjectionCard.d"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryLifeProjectionCard.swiftconstvalues"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryLifeProjectionCard.o"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryLifeProjectionCard.dia"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryLifeProjectionCard.swiftdeps"
+"/Users/mattsnow/programming/Amped/Amped/UI/Components/BatteryAnimations.swift":
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryAnimations.d"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryAnimations.dia"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryAnimations.swiftconstvalues"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryAnimations.o"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryAnimations.swiftdeps"
+"/Users/mattsnow/programming/Amped/Amped/UI/Components/OnboardingTransitionModifier.swift":
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/OnboardingTransitionModifier.dia"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/OnboardingTransitionModifier.o"
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/OnboardingTransitionModifier.swiftconstvalues"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/OnboardingTransitionModifier.d"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/OnboardingTransitionModifier.swiftdeps"
+"/Users/mattsnow/programming/Amped/Amped/UI/Components/BatteryLifeImpactCard.swift":
+  const-values: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryLifeImpactCard.swiftconstvalues"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryLifeImpactCard.d"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryLifeImpactCard.dia"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryLifeImpactCard.swiftdeps"
+  object: "/Users/mattsnow/programming/Amped/build/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryLifeImpactCard.o"

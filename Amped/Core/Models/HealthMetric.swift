@@ -1,115 +1,153 @@
 import Foundation
 import HealthKit
 
-/// Represents a single health metric with its value, impact, and display properties
+/// Represents a single health metric with its value and metadata
 struct HealthMetric: Identifiable, Equatable {
-    let id: UUID
+    /// Unique identifier for the metric
+    let id: String
+    
+    /// The type of health metric
     let type: HealthMetricType
+    
+    /// The numeric value of the health metric
     let value: Double
+    
+    /// The date when this metric was recorded
     let date: Date
-    let impactDetail: MetricImpactDetail?
     
-    /// Standard initialization
-    init(id: UUID = UUID(), type: HealthMetricType, value: Double, date: Date = Date(), impactDetail: MetricImpactDetail? = nil) {
-        self.id = id
-        self.type = type
-        self.value = value
-        self.date = date
-        self.impactDetail = impactDetail
-    }
+    /// The source of this health metric data
+    let source: HealthMetricSource
     
-    /// Initialization from HealthKit sample
-    init?(from sample: HKQuantitySample, for type: HealthMetricType) {
-        guard let unit = type.unit else { return nil }
-        
-        self.id = UUID()
-        self.type = type
-        self.value = sample.quantity.doubleValue(for: unit)
-        self.date = sample.endDate
-        self.impactDetail = nil
-    }
+    /// The impact details for this metric (optional)
+    var impactDetails: MetricImpactDetail?
     
-    /// Returns the formatted value with appropriate unit
+    /// Get a formatted string for the value
     var formattedValue: String {
+        let numberFormatter = NumberFormatter()
+        numberFormatter.numberStyle = .decimal
+        numberFormatter.maximumFractionDigits = 1
+        
         switch type {
         case .steps:
-            return NumberFormatter.localizedString(from: NSNumber(value: Int(value)), number: .decimal)
-        case .activeEnergyBurned:
-            return String(format: "%.0f kcal", value)
-        case .exerciseMinutes:
-            return String(format: "%.0f min", value)
-        case .restingHeartRate:
-            return String(format: "%.0f bpm", value)
-        case .heartRateVariability:
-            return String(format: "%.0f ms", value)
+            return "\(Int(value))"
+        case .heartRateVariability, .restingHeartRate:
+            return numberFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
         case .sleepHours:
-            return String(format: "%.1f hrs", value)
+            let hours = Int(value)
+            let minutes = Int((value - Double(hours)) * 60)
+            if minutes > 0 {
+                return "\(hours)h \(minutes)m"
+            } else {
+                return "\(hours)h"
+            }
+        case .exerciseMinutes:
+            return "\(Int(value)) min"
+        case .bodyMass:
+            return "\(Int(value)) kg"
+        case .activeEnergyBurned:
+            return "\(Int(value)) kcal"
         case .vo2Max:
-            return String(format: "%.1f ml/kg/min", value)
+            return numberFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
         case .oxygenSaturation:
-            return String(format: "%.1f%%", value)
-        case .nutritionQuality, .stressLevel:
-            return String(format: "%.1f", value)
-        @unknown default:
-            return String(format: "%.1f", value)
+            return "\(Int(value))%"
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+            // Manual metrics use a 1-10 scale
+            return "\(Int(value))/10"
         }
     }
     
-    /// Returns the power level based on the metric value and impact
-    var powerLevel: PowerLevel {
-        guard let impact = impactDetail else {
-            return .medium
+    /// Get the unit string for the metric
+    var unitString: String {
+        switch type {
+        case .steps:
+            return "steps"
+        case .exerciseMinutes:
+            return "min"
+        case .sleepHours:
+            return "hours"
+        case .restingHeartRate:
+            return "bpm"
+        case .heartRateVariability:
+            return "ms"
+        case .bodyMass:
+            return "kg"
+        case .activeEnergyBurned:
+            return "kcal"
+        case .vo2Max:
+            return "ml/kg/min"
+        case .oxygenSaturation:
+            return "%"
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+            return ""
+        }
+    }
+    
+    /// Calculate the percent difference from baseline value
+    var percentFromBaseline: Double {
+        let baseline = type.baselineValue
+        guard baseline > 0 else { return 0 }
+        
+        let percent = ((value - baseline) / baseline) * 100
+        
+        // For metrics where lower is better, invert the percentage
+        return type.isHigherBetter ? percent : -percent
+    }
+    
+    /// Returns whether this value is considered healthy
+    var isHealthy: Bool {
+        if let target = type.targetValue {
+            if type.isHigherBetter {
+                return value >= target
+            } else {
+                return value <= target
+            }
         }
         
-        // Default logic based on impact direction
-        if impact.lifespanImpactMinutes > 120 {
-            return .full
-        } else if impact.lifespanImpactMinutes > 60 {
-            return .high
-        } else if impact.lifespanImpactMinutes > -60 {
-            return .medium
-        } else if impact.lifespanImpactMinutes > -120 {
-            return .low
+        // If no target value, compare to baseline
+        if type.isHigherBetter {
+            return value >= type.baselineValue
         } else {
-            return .critical
+            return value <= type.baselineValue
         }
     }
     
-    /// Power level enumeration for battery visualization
-    enum PowerLevel: String, CaseIterable {
-        case full
-        case high
-        case medium
-        case low
-        case critical
-        
-        var color: String {
-            switch self {
-            case .full: return "ampedGreen"
-            case .high: return "ampedGreen"
-            case .medium: return "ampedYellow"
-            case .low: return "ampedRed"
-            case .critical: return "ampedRed"
+    /// Returns the power level for this metric based on its impact
+    var powerLevel: PowerLevel {
+        if let impact = impactDetails?.lifespanImpactMinutes {
+            if impact > 120 {
+                return .full
+            } else if impact > 60 {
+                return .high
+            } else if impact > 0 {
+                return .medium
+            } else if impact > -60 {
+                return .low
+            } else {
+                return .critical
             }
         }
         
-        var fillPercent: Double {
-            switch self {
-            case .full: return 1.0
-            case .high: return 0.75
-            case .medium: return 0.5
-            case .low: return 0.25
-            case .critical: return 0.1
-            }
-        }
+        // Default to medium if no impact data available
+        return .medium
     }
     
-    static func == (lhs: HealthMetric, rhs: HealthMetric) -> Bool {
-        lhs.id == rhs.id && 
-        lhs.type == rhs.type && 
-        lhs.value == rhs.value && 
-        lhs.date == rhs.date
+    /// Create a simple metric with a specified value (for testing and previews)
+    static func sample(type: HealthMetricType, value: Double) -> HealthMetric {
+        HealthMetric(
+            id: UUID().uuidString,
+            type: type,
+            value: value,
+            date: Date(),
+            source: .healthKit
+        )
     }
+}
+
+/// Source of the health metric data
+enum HealthMetricSource: String, Codable {
+    case healthKit
+    case userInput
+    case calculated
 }
 
 // MARK: - Mocks for Development and Testing
@@ -118,39 +156,33 @@ extension HealthMetric {
     /// Mock steps data for previews and testing
     static var mockSteps: HealthMetric {
         HealthMetric(
+            id: UUID().uuidString,
             type: .steps,
             value: 8500,
-            impactDetail: MetricImpactDetail(
-                metricType: .steps,
-                lifespanImpactMinutes: 120,
-                comparisonToBaseline: .better
-            )
+            date: Date(),
+            source: .healthKit
         )
     }
     
     /// Mock sleep data for previews and testing
     static var mockSleep: HealthMetric {
         HealthMetric(
+            id: UUID().uuidString,
             type: .sleepHours,
             value: 7.5,
-            impactDetail: MetricImpactDetail(
-                metricType: .sleepHours,
-                lifespanImpactMinutes: 60,
-                comparisonToBaseline: .same
-            )
+            date: Date(),
+            source: .healthKit
         )
     }
     
     /// Mock heart rate data for previews and testing
     static var mockHeartRate: HealthMetric {
         HealthMetric(
+            id: UUID().uuidString,
             type: .restingHeartRate,
             value: 65,
-            impactDetail: MetricImpactDetail(
-                metricType: .restingHeartRate,
-                lifespanImpactMinutes: -30,
-                comparisonToBaseline: .worse
-            )
+            date: Date(),
+            source: .healthKit
         )
     }
 } 

@@ -1,4 +1,5 @@
 import SwiftUI
+import HealthKit
 
 /// Card showing contextual information about a health metric
 struct MetricContextCard: View {
@@ -32,7 +33,7 @@ struct MetricContextCard: View {
                 Text(explanationText)
                     .style(.bodySecondary)
                 
-                if let reference = metric.impactDetail?.studyReference {
+                if let scientificRef = metric.impactDetails?.scientificReference {
                     Divider()
                     
                     // Research reference
@@ -40,12 +41,8 @@ struct MetricContextCard: View {
                         Text("Research Reference")
                             .style(.subheadlineBold)
                         
-                        Text(reference.title)
+                        Text(scientificRef)
                             .style(.caption)
-                        
-                        Text(reference.shortCitation)
-                            .style(.caption2)
-                            .italic()
                     }
                 }
             }
@@ -56,7 +53,7 @@ struct MetricContextCard: View {
                     Text("Recommended")
                         .style(.caption)
                     
-                    Text("\(formatValue(metric.type.baselineValue)) \(metric.type.unit)")
+                    Text("\(formatValue(metric.type.baselineValue)) \(metric.type.unit ?? HKUnit.count())")
                         .style(.bodyMedium)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -68,7 +65,7 @@ struct MetricContextCard: View {
                     Text("Your Value")
                         .style(.caption)
                     
-                    Text("\(formatValue(metric.value)) \(metric.type.unit)")
+                    Text("\(formatValue(metric.value)) \(metric.type.unit ?? HKUnit.count())")
                         .style(.bodyMedium, color: comparisonColor)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -116,6 +113,14 @@ struct MetricContextCard: View {
             return "Nutrition quality"
         case .stressLevel:
             return "Stress management"
+        case .bodyMass:
+            return "Weight management"
+        case .smokingStatus:
+            return "Smoking and health"
+        case .alcoholConsumption:
+            return "Alcohol consumption"
+        case .socialConnectionsQuality:
+            return "Social connections"
         }
     }
     
@@ -142,19 +147,27 @@ struct MetricContextCard: View {
             return "A balanced diet rich in nutrients supports overall health, energy levels, and disease prevention."
         case .stressLevel:
             return "Managing stress is essential for mental health, immune function, and reducing inflammation throughout the body."
+        case .bodyMass:
+            return "Maintaining a healthy weight reduces the risk of chronic diseases and improves overall health and longevity."
+        case .smokingStatus:
+            return "Avoiding smoking significantly increases life expectancy and reduces the risk of numerous diseases."
+        case .alcoholConsumption:
+            return "Moderate to no alcohol consumption is associated with better health outcomes and reduced disease risk."
+        case .socialConnectionsQuality:
+            return "Strong social connections are linked to better mental health, immune function, and overall longevity."
         }
     }
     
     /// Color for the comparison value
     private var comparisonColor: Color {
-        guard let impact = metric.impactDetail else { return .primary }
+        guard let impact = metric.impactDetails else { return .primary }
         
         switch impact.comparisonToBaseline {
-        case .muchBetter, .better, .slightlyBetter:
+        case .better:
             return .ampedGreen
-        case .nearBaseline, .same:
+        case .same:
             return .primary
-        case .slightlyWorse, .worse, .muchWorse:
+        case .worse:
             return .ampedRed
         @unknown default:
             return .primary
@@ -175,42 +188,32 @@ struct MetricContextCard: View {
     VStack {
         MetricContextCard(
             metric: HealthMetric(
+                id: UUID().uuidString,
                 type: .steps,
                 value: 8500,
                 date: Date(),
-                impactDetail: MetricImpactDetail(
+                source: .healthKit,
+                impactDetails: MetricImpactDetail(
                     metricType: .steps,
                     lifespanImpactMinutes: 12.5,
                     comparisonToBaseline: .better,
-                    studyReference: StudyReference(
-                        title: "Association of Daily Step Count and Step Intensity With Mortality Among US Adults",
-                        authors: "Saint-Maurice PF, Troiano RP, Bassett DR Jr, et al.",
-                        journalName: "JAMA",
-                        publicationYear: 2020,
-                        doi: "10.1001/jama.2020.0030",
-                        summary: "This study found that higher daily step counts were associated with lower all-cause mortality."
-                    )
+                    scientificReference: "Association of Daily Step Count and Step Intensity With Mortality Among US Adults"
                 )
             )
         )
         
         MetricContextCard(
             metric: HealthMetric(
+                id: UUID().uuidString,
                 type: .sleepHours,
                 value: 6.5,
                 date: Date(),
-                impactDetail: MetricImpactDetail(
+                source: .healthKit,
+                impactDetails: MetricImpactDetail(
                     metricType: .sleepHours,
                     lifespanImpactMinutes: -5.2,
-                    comparisonToBaseline: .slightlyWorse,
-                    studyReference: StudyReference(
-                        title: "Sleep Duration and All-Cause Mortality: A Systematic Review and Meta-Analysis",
-                        authors: "Cappuccio FP, D'Elia L, Strazzullo P, Miller MA",
-                        journalName: "Sleep",
-                        publicationYear: 2010,
-                        doi: "10.1093/sleep/33.5.585",
-                        summary: "This meta-analysis found that both short and long duration of sleep are significant predictors of death."
-                    )
+                    comparisonToBaseline: .worse,
+                    scientificReference: "Sleep Duration and All-Cause Mortality: A Systematic Review and Meta-Analysis"
                 )
             )
         )

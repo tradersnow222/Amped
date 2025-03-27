@@ -1,5 +1,5 @@
 import Foundation
-import Combine
+@preconcurrency import Combine
 import OSLog
 
 /// Protocol defining the life projection calculation functionality

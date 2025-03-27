@@ -1,5 +1,6 @@
 import SwiftUI
-import Combine
+import Foundation
+@preconcurrency import Combine
 
 /// Manager for app theming
 /// This implements the BatteryThemeManager mentioned in the core services requirements

@@ -20,17 +20,19 @@ alwaysApply: true
    - Progress indicator showing first step completed
    - Minimalist design with visual focus on battery and swipe indicator
 
-3. **Questionnaire (5-8 questions)**: Gather high-impact health metrics
+3. **Questionnaire (5 questions/metrics)**: Manually gather most impactful health metrics from user
    - Engaging, conversational questions about metrics not in HealthKit
    - Simple, tap-based inputs (sliders, buttons) rather than text entry
    - Show immediate positive feedback after each answer
    - Progress indicator showing advancement through questions
    - Each question represents another small "yes"
    - Final question subtly leads into HealthKit permission value
+   - No duplicate metrics between Questionnaire and HealthKit Permissions
 
-4. **HealthKit Permissions**: Request access to health data
+4. **HealthKit Permissions (5 metrics)**: Request access to most impactful health data
    - Clear explanation of why granting permission benefits the user and gives a more accurate calculation
    - A simple and scalable integration to meet iOS best practices and project MVP standards
+   - **Read Only**
   
 
 5. **Sign in with Apple**: Authentication

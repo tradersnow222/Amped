@@ -34,7 +34,7 @@ extension View {
         let label = "\(metric.type.displayName): \(metric.formattedValue)"
         
         var hint = ""
-        if includeImpact, let impact = metric.impactDetail {
+        if includeImpact, let impact = metric.impactDetails {
             hint = "This value is \(impact.comparisonToBaseline.accessibilityDescription) and has a "
             
             if impact.lifespanImpactMinutes > 0 {
@@ -191,26 +191,16 @@ extension View {
 }
 
 /// Extension to help format accessibility descriptions for metric impacts
-extension MetricImpactDetail.ComparisonResult {
+extension ComparisonResult {
     /// Human-readable description for accessibility
     var accessibilityDescription: String {
         switch self {
-        case .muchBetter:
-            return "significantly better than the target value"
         case .better:
             return "better than the target value"
-        case .slightlyBetter:
-            return "slightly better than the target value"
-        case .nearBaseline:
-            return "near the target value"
         case .same:
             return "at the target value"
-        case .slightlyWorse:
-            return "slightly worse than the target value"
         case .worse:
             return "worse than the target value"
-        case .muchWorse:
-            return "significantly worse than the target value"
         @unknown default:
             return "compared to the target value"
         }

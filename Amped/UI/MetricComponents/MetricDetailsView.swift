@@ -215,22 +215,16 @@ final class MetricDetailsViewModel: ObservableObject {
 #Preview {
     MetricDetailsView(
         metric: HealthMetric(
-            id: UUID(),
+            id: "sample-id",
             type: .steps,
             value: 9500,
             date: Date(),
-            impactDetail: MetricImpactDetail(
+            source: .healthKit,
+            impactDetails: MetricImpactDetail(
                 metricType: .steps,
                 lifespanImpactMinutes: 45,
                 comparisonToBaseline: .better,
-                studyReference: StudyReference(
-                    title: "Daily Step Count and Mortality",
-                    authors: "Johnson et al.",
-                    journalName: "JAMA Internal Medicine",
-                    publicationYear: 2020,
-                    doi: "10.1001/jamainternmed.2019.5678",
-                    summary: "This study found that taking more steps per day was associated with lower mortality rates."
-                )
+                scientificReference: "Daily Step Count and Mortality"
             )
         )
     )

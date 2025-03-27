@@ -1,5 +1,5 @@
 import Foundation
-import Combine
+@preconcurrency import Combine
 import SwiftUI
 
 /// Manager for feature flags to enable gradual rollout of new features

@@ -1,0 +1,16 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/UI/Components/BatteryLifeImpactCard.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Life Impact",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 34
+        }
+      }
+    ]
+  },
+  "version": 1
+}

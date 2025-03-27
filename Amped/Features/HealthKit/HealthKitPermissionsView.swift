@@ -1,17 +1,18 @@
 import SwiftUI
 import HealthKit
 import OSLog
+import UIKit
 
 /// View for requesting HealthKit permissions following Apple Human Interface Guidelines
 struct HealthKitPermissionsView: View {
     // MARK: - Properties
     
-    @StateObject private var viewModel = HealthKitPermissionsViewModel()
+    @StateObject private var viewModel = HealthKitPermissionsViewModel(healthKitManager: HealthKitManager())
     
     /// Callbacks for navigation
     var onContinue: (() -> Void)?
     
-    /// Logger for tracking user interactions and errors
+    /// Logger for tracking user interactions
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.amped.Amped", category: "HealthKitPermissionsView")
     
     // MARK: - Body
@@ -28,12 +29,19 @@ struct HealthKitPermissionsView: View {
             // Health metrics list with permissions
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    // Highlight critical metrics at the top
+                    if !viewModel.allPermissionsGranted {
+                        criticalMetricsSection
+                    }
+                    
+                    // All metrics
                     ForEach(viewModel.healthMetrics) { metric in
                         healthDataRow(
                             icon: metric.icon,
                             title: metric.title,
                             description: metric.description,
-                            isGranted: metric.isGranted
+                            isGranted: metric.isGranted,
+                            isCritical: metric.isCritical
                         )
                     }
                 }
@@ -53,21 +61,72 @@ struct HealthKitPermissionsView: View {
         }
         .withDeepBackground()
         .alert("Health Access Error", isPresented: $viewModel.showError) {
-            Button("OK", role: .cancel) {}
+            Button("Open Settings", role: .none) {
+                openSettings()
+            }
+            
+            Button("Try Again", role: .none) {
+                viewModel.clearErrorState()
+                requestHealthKitPermissions()
+            }
+            
+            Button("OK", role: .cancel) {
+                viewModel.clearErrorState()
+            }
         } message: {
             Text(viewModel.errorMessage)
         }
         .onAppear {
+            // Clear any persistent error state when the view appears
+            viewModel.clearErrorState()
+            
             // Check if permissions were already granted when view appears
             checkExistingPermissions()
         }
-        .onChange(of: viewModel.allPermissionsGranted) { _, allGranted in
-            if allGranted {
-                // Slightly delay continuing to show the granted state to the user
-                Task {
-                    try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-                    await MainActor.run {
+        // Critical addition: Monitor for iOS health permission dialog return
+        // This uses NotificationCenter to detect when the app becomes active again
+        // which happens after returning from the system permission dialog
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            logger.info("App became active again - likely returned from Health permission dialog")
+            Task {
+                // Skip waiting and immediately check for permissions
+                // The system should have already updated the authorization status
+                logger.info("Checking permissions status after app becomes active")
+                await viewModel.checkPermissionsStatus(forceRefresh: true)
+                
+                // If permissions are granted, proceed to the next screen
+                if viewModel.allPermissionsGranted || viewModel.criticalPermissionsGranted {
+                    logger.info("Permissions detected after returning from system dialog, continuing")
+                    onContinue?()
+                } else {
+                    logger.info("Permissions not detected by status check, trying direct data access validation")
+                    
+                    // Create a new HealthKit manager with a fresh store to avoid any caching issues
+                    let healthKitManager = HealthKitManager(healthStore: HKHealthStore())
+                    
+                    // Important: Instead of checking permissions, try to actually access health data
+                    // This is more reliable because it tests what we actually need - data access
+                    let canAccessHealthData = await healthKitManager.validatePermissionsByAccessingData()
+                    
+                    if canAccessHealthData {
+                        logger.info("Successfully validated permissions by accessing health data")
+                        await viewModel.checkPermissionsStatus(forceRefresh: true)
+                        logger.info("Proceeding to next screen after successful data access validation")
                         onContinue?()
+                    } else {
+                        // Last resort: Try with a direct authorization request
+                        // This might re-prompt for permissions if needed
+                        logger.info("Attempting direct authorization request as final check")
+                        let hasPermissions = await healthKitManager.requestAuthorization(for: HealthKitManager.criticalMetricTypes)
+                        
+                        // If permissions are now detected, refresh the viewModel and proceed
+                        if hasPermissions {
+                            logger.info("Permissions granted after direct authorization request")
+                            await viewModel.checkPermissionsStatus(forceRefresh: true)
+                            onContinue?()
+                        } else {
+                            logger.warning("Permissions still not detected after all validation attempts")
+                        }
                     }
                 }
             }
@@ -107,7 +166,7 @@ struct HealthKitPermissionsView: View {
                             .foregroundColor(.white)
                     }
                     
-                    Text(viewModel.isRequestingPermissions ? "Requesting..." : "Allow Health Access")
+                    Text(viewModel.isRequestingPermissions ? "Requesting..." : "Continue")
                         .fontWeight(.bold)
                     
                     if viewModel.isRequestingPermissions {
@@ -127,7 +186,7 @@ struct HealthKitPermissionsView: View {
             .disabled(viewModel.isRequestingPermissions || viewModel.allPermissionsGranted)
             .padding(.horizontal, 40)
             .hapticFeedback()
-            .accessibilityHint("Request access to health data")
+            .accessibilityHint("Continue and request access to health data")
             
             // Explanatory text to emphasize that permissions are mandatory
             if !viewModel.allPermissionsGranted {
@@ -140,21 +199,48 @@ struct HealthKitPermissionsView: View {
         }
     }
     
+    /// Critical metrics section highlighting the most important permissions
+    private var criticalMetricsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Essential Health Data")
+                .font(.headline)
+                .foregroundColor(.primary)
+                .padding(.bottom, 4)
+            
+            Text("These metrics are required for basic app functionality:")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .padding(.bottom, 8)
+        }
+    }
+    
     /// Health data row with icon, text, and status indicator
-    private func healthDataRow(icon: String, title: String, description: String, isGranted: Bool) -> some View {
+    private func healthDataRow(icon: String, title: String, description: String, isGranted: Bool, isCritical: Bool = false) -> some View {
         HStack(spacing: 20) {
             // Icon
             Image(systemName: icon)
                 .font(.system(size: 28))
-                .foregroundColor(isGranted ? .ampedGreen : .ampedSilver)
+                .foregroundColor(isGranted ? .ampedGreen : (isCritical ? .ampedYellow : .ampedSilver))
                 .frame(width: 36, height: 36)
                 .accessibility(hidden: true)
             
             // Text content
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                HStack {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    if isCritical {
+                        Text("Required")
+                            .font(.caption)
+                            .foregroundColor(.ampedYellow)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.ampedYellow.opacity(0.2))
+                            .cornerRadius(4)
+                    }
+                }
                 
                 Text(description)
                     .font(.subheadline)
@@ -170,12 +256,16 @@ struct HealthKitPermissionsView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.ampedGreen)
                     .accessibility(label: Text("Permission granted"))
+            } else if isCritical {
+                Image(systemName: "exclamationmark.circle.fill")
+                    .foregroundColor(.ampedYellow)
+                    .accessibility(label: Text("Required permission needed"))
             }
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title) \(isGranted ? "permission granted" : "permission needed")")
+        .accessibilityLabel("\(title) \(isGranted ? "permission granted" : "permission needed")\(isCritical ? ", required" : "")")
         .accessibilityHint(description)
     }
     
@@ -184,258 +274,117 @@ struct HealthKitPermissionsView: View {
     /// Check if permissions have already been granted when the view appears
     private func checkExistingPermissions() {
         Task {
-            await viewModel.checkPermissionsStatus()
+            logger.info("Checking existing HealthKit permissions")
+            
+            // Force refresh to get an accurate reading of current permissions
+            await viewModel.checkPermissionsStatus(forceRefresh: true)
+            
+            // Check if permissions are granted using the published properties
+            let canContinue = viewModel.allPermissionsGranted || viewModel.criticalPermissionsGranted
+            
+            if canContinue {
+                logger.info("Sufficient permissions already granted by status check, continuing")
+                
+                // Clear any error state just to be safe
+                viewModel.clearErrorState()
+                
+                // Important: Call onContinue on the main thread
+                DispatchQueue.main.async {
+                    self.onContinue?()
+                }
+            } else {
+                logger.info("Permissions not detected by status check, trying data access validation")
+                
+                // Create a fresh HealthKit manager to avoid any caching issues
+                let healthKitManager = HealthKitManager(healthStore: HKHealthStore())
+                
+                // Important: Try to validate permissions by actually accessing health data
+                // This is the most reliable test of whether permissions are truly granted
+                let canAccessHealthData = await healthKitManager.validatePermissionsByAccessingData()
+                
+                if canAccessHealthData {
+                    logger.info("Successfully validated permissions by accessing health data")
+                    await viewModel.checkPermissionsStatus(forceRefresh: true)
+                    logger.info("Proceeding to next screen after successful data access validation")
+                    
+                    DispatchQueue.main.async {
+                        self.onContinue?()
+                    }
+                } else {
+                    logger.info("Permissions not yet granted, staying on permissions screen")
+                }
+            }
         }
     }
     
     /// Request HealthKit permissions directly from the view
     private func requestHealthKitPermissions() {
-        logger.info("User initiating direct HealthKit permission request")
+        // Clear any error state before proceeding
+        viewModel.clearErrorState()
         
-        // Create a health store directly
-        let healthStore = HKHealthStore()
+        logger.info("User initiating HealthKit permission request")
         
-        // Make sure HealthKit is available
-        guard HKHealthStore.isHealthDataAvailable() else {
-            viewModel.showError(with: "HealthKit is not available on this device.")
-            return
-        }
-        
-        viewModel.isRequestingPermissions = true
-        
-        // Prepare types to read
-        var typesToRead = Set<HKObjectType>()
-        
-        // Add core types we need
-        if let stepsType = HKQuantityType.quantityType(forIdentifier: .stepCount) {
-            typesToRead.insert(stepsType)
-        }
-        
-        if let heartRateType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate) {
-            typesToRead.insert(heartRateType)
-        }
-        
-        if let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
-            typesToRead.insert(sleepType)
-        }
-        
-        // Request authorization directly - this should trigger the system dialog
         Task {
-            do {
-                logger.info("Directly requesting HealthKit authorization via HKHealthStore")
-                
-                // This is the key line that should trigger the iOS permission dialog
-                try await healthStore.requestAuthorization(toShare: [], read: typesToRead)
-                
-                // Wait for the user to interact with the dialog
-                try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-                
-                logger.info("HealthKit authorization request completed")
-                
-                // Check if permissions were granted
-                let granted = typesToRead.allSatisfy { 
-                    healthStore.authorizationStatus(for: $0) == .sharingAuthorized 
-                }
-                
-                await MainActor.run {
-                    if granted {
-                        logger.info("User granted HealthKit permissions")
-                        viewModel.updateAllPermissionsGranted(true)
-                        
-                        // Delay slightly to allow UI to update before continuing
-                        Task {
-                            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-                            await MainActor.run {
-                                onContinue?()
-                            }
-                        }
-                    } else {
-                        logger.info("User declined HealthKit permissions")
-                        viewModel.showError(with: "Health permissions are required to use Amped. Please grant access to continue.")
-                    }
-                    viewModel.isRequestingPermissions = false
-                }
-            } catch {
-                logger.error("Error requesting HealthKit permissions: \(error.localizedDescription)")
-                await MainActor.run {
-                    viewModel.showError(with: "Error requesting health permissions: \(error.localizedDescription)")
-                    viewModel.isRequestingPermissions = false
-                }
-            }
-        }
-    }
-}
-
-// MARK: - ViewModel
-
-/// Structure representing a health metric for display
-struct HealthMetricDisplay: Identifiable {
-    let id = UUID()
-    let type: HealthMetricType
-    let icon: String
-    let title: String
-    let description: String
-    var isGranted: Bool = false
-}
-
-/// ViewModel for the HealthKit permissions view
-final class HealthKitPermissionsViewModel: ObservableObject {
-    // MARK: - Published Properties
-    
-    /// Health metrics to display and their permission status
-    @Published var healthMetrics: [HealthMetricDisplay] = []
-    
-    /// UI state properties
-    @Published var isRequestingPermissions = false
-    @Published var showError = false
-    @Published var errorMessage = ""
-    @Published var allPermissionsGranted = false
-    
-    // MARK: - Private Properties
-    
-    /// HealthKit manager for interacting with HealthKit
-    private var healthKitManager: HealthKitManager!
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.amped.Amped", category: "HealthKitPermissionsViewModel")
-    
-    // MARK: - Initialization
-    
-    init() {
-        // Initialize health metrics display array
-        setupHealthMetrics()
-        
-        // Initialize HealthKit manager on the main actor
-        Task { @MainActor in
-            self.healthKitManager = HealthKitManager()
-        }
-    }
-    
-    // MARK: - Public Methods
-    
-    /// Check the status of all permissions
-    @MainActor
-    func checkPermissionsStatus() async {
-        guard let healthKitManager = healthKitManager else { return }
-        
-        if healthKitManager.hasAllPermissions {
-            logger.info("HealthKit permissions already granted")
-            updateAllPermissionsGranted(true)
-        }
-    }
-    
-    /// Request HealthKit permissions
-    @MainActor
-    func requestHealthKitPermissions() async {
-        guard let healthKitManager = healthKitManager else {
-            showError(with: "HealthKit manager not initialized yet. Please try again.")
-            isRequestingPermissions = false
-            return
-        }
-        
-        isRequestingPermissions = true
-        
-        // Check if HealthKit is available
-        guard healthKitManager.isHealthKitAvailable else {
-            showError(with: "HealthKit is not available on this device.")
-            isRequestingPermissions = false
-            return
-        }
-        
-        // Request permissions - this will directly trigger the native iOS permissions dialog
-        logger.info("Directly requesting HealthKit authorization to trigger iOS system dialog")
-        
-        do {
-            // Call the authorization method directly - this is what triggers the iOS system dialog
-            let granted = await healthKitManager.requestAuthorization()
-            logger.info("HealthKit authorization result: \(granted)")
+            let granted = await viewModel.requestHealthKitPermissions()
             
-            if granted {
-                // User granted permissions in the iOS dialog
-                updateAllPermissionsGranted(true)
-                logger.info("User granted HealthKit permissions")
+            // Force a permission check again after the request
+            logger.info("Checking permission status after explicit request")
+            await viewModel.checkPermissionsStatus(forceRefresh: true)
+            
+            // Extra check to make sure we're considering the latest permission state
+            let hasPermissions = viewModel.allPermissionsGranted || viewModel.criticalPermissionsGranted
+            
+            if granted || hasPermissions {
+                logger.info("HealthKit permissions granted by status check, continuing to next screen")
+                
+                // Clear any error state just to be safe
+                viewModel.clearErrorState()
+                
+                // Important: Call onContinue on the main thread
+                DispatchQueue.main.async {
+                    self.onContinue?()
+                }
             } else {
-                // User declined permissions in the iOS dialog - since permissions are mandatory, 
-                // show an error explaining they need to grant permissions
-                logger.info("User declined HealthKit permissions")
-                showError(with: "Health permissions are required to use Amped. Please grant access to continue.")
+                logger.warning("HealthKit permissions not detected by status check, trying data access validation")
+                
+                // Create a fresh HealthKit manager to avoid any caching issues
+                let healthKitManager = HealthKitManager(healthStore: HKHealthStore())
+                
+                // Important: Try to validate permissions by actually accessing health data
+                let canAccessHealthData = await healthKitManager.validatePermissionsByAccessingData()
+                
+                if canAccessHealthData {
+                    logger.info("Successfully validated permissions by accessing health data")
+                    await viewModel.checkPermissionsStatus(forceRefresh: true)
+                    logger.info("Proceeding to next screen after successful data access validation")
+                    
+                    DispatchQueue.main.async {
+                        self.onContinue?()
+                    }
+                } else {
+                    logger.warning("Permissions not granted even after data access validation attempt")
+                }
             }
-            
-            // Set requesting to false to allow trying again
-            isRequestingPermissions = false
-            
-        } catch {
-            // An actual error occurred (not just the user declining permissions)
-            logger.error("Error requesting HealthKit permissions: \(error.localizedDescription)")
-            showError(with: "We encountered an error requesting health permissions. Please try again.")
-            isRequestingPermissions = false
         }
     }
     
-    // MARK: - Private Methods
-    
-    /// Initialize the health metrics display data
-    private func setupHealthMetrics() {
-        healthMetrics = [
-            HealthMetricDisplay(
-                type: .restingHeartRate,
-                icon: "heart.fill",
-                title: "Heart Rate",
-                description: "Track your resting and active heart rate"
-            ),
-            HealthMetricDisplay(
-                type: .activeEnergyBurned,
-                icon: "flame.fill",
-                title: "Active Energy",
-                description: "Monitor calories burned throughout the day"
-            ),
-            HealthMetricDisplay(
-                type: .sleepHours,
-                icon: "bed.double.fill",
-                title: "Sleep Analysis",
-                description: "Analyze your sleep duration and quality"
-            ),
-            HealthMetricDisplay(
-                type: .steps,
-                icon: "figure.walk",
-                title: "Steps & Distance",
-                description: "Track your daily movement activity"
-            ),
-            HealthMetricDisplay(
-                type: .heartRateVariability,
-                icon: "waveform.path.ecg",
-                title: "Heart Variability",
-                description: "Monitor your heart health and recovery"
-            ),
-            HealthMetricDisplay(
-                type: .vo2Max,
-                icon: "lungs.fill",
-                title: "Cardio Fitness",
-                description: "Track your cardiovascular fitness level"
-            )
-        ]
-    }
-    
-    /// Update the permission status for all metrics
-    func updateAllPermissionsGranted(_ granted: Bool) {
-        // Update all metrics
-        for i in 0..<healthMetrics.count {
-            healthMetrics[i].isGranted = granted
+    /// Open the iOS Settings app to allow the user to change permissions
+    private func openSettings() {
+        logger.info("Opening iOS Settings app for user to manage health permissions")
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
         }
-        
-        // Update the overall permission status
-        allPermissionsGranted = granted
-    }
-    
-    /// Show an error message
-    func showError(with message: String) {
-        errorMessage = message
-        showError = true
     }
 }
 
 // MARK: - Preview
 
+#if DEBUG
 struct HealthKitPermissionsView_Previews: PreviewProvider {
     static var previews: some View {
-        HealthKitPermissionsView(onContinue: {})
+        HealthKitPermissionsView(onContinue: {
+            print("Continue tapped in preview")
+        })
     }
-} 
+}
+#endif 
