@@ -152,10 +152,11 @@ final class QuestionnaireViewModel: ObservableObject {
     
     // Progress tracking for indicator
     var currentStep: Int {
-        currentQuestion.rawValue + 3 // Offset by 3 to account for previous onboarding steps
+        // Personalization Intro is step 1, so the first question starts at step 2
+        currentQuestion.rawValue + 2 
     }
     var totalSteps: Int {
-        7 // Match the total steps in the onboarding flow
+        10 // Total steps in the onboarding flow (excluding welcome and dashboard)
     }
     
     var isComplete: Bool {

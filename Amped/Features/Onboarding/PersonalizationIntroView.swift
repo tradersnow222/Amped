@@ -9,6 +9,7 @@ struct PersonalizationIntroView: View {
     @State private var nudgeAnimation = false
     @State private var nudgeOffset: CGFloat = 0
     @State private var nudgeTimer: Timer?
+    @State private var dragOffset: CGFloat = 0
     
     // Callback to proceed to next step
     var onContinue: (() -> Void)?
@@ -46,21 +47,21 @@ struct PersonalizationIntroView: View {
                     }
                     .padding(.horizontal, 24)
                     .padding(.bottom, 30)
-                    .offset(x: nudgeOffset)
+                    .offset(x: nudgeOffset + dragOffset)
                     
                     Spacer()
                 }
                 
                 // Progress indicator - fixed position
-                ProgressIndicator(currentStep: 2, totalSteps: 7)
+                ProgressIndicator(currentStep: 1, totalSteps: 10)
                     .padding(.bottom, 40)
             }
         }
         .edgesIgnoringSafeArea(.all)
         .navigationBarHidden(true)
         .onAppear {
-            // Start nudging animation after 3 seconds (reduced from 5)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            // Start nudging animation after 2 seconds (reduced from 3)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                 startNudgeAnimation()
             }
         }
@@ -70,15 +71,34 @@ struct PersonalizationIntroView: View {
             nudgeTimer = nil
         }
         .gesture(
-            DragGesture(minimumDistance: 20, coordinateSpace: .local)
-                .onEnded { value in
-                    if value.translation.width < -50 {
-                        // Left swipe - proceed to next screen
-                        withAnimation {
-                            nudgeTimer?.invalidate()
-                            nudgeTimer = nil
-                            onContinue?()
+            DragGesture(minimumDistance: 5, coordinateSpace: .local)
+                .onChanged { value in
+                    // Only handle horizontal drags
+                    if abs(value.translation.width) > abs(value.translation.height) {
+                        if value.translation.width < 0 {
+                            // Left swipe (proceed) - update offset in real-time
+                            dragOffset = value.translation.width
+                            
+                            // If drag exceeds threshold, proceed immediately
+                            if dragOffset < -50 {
+                                nudgeTimer?.invalidate()
+                                nudgeTimer = nil
+                                onContinue?()
+                            }
                         }
+                    }
+                }
+                .onEnded { value in
+                    // Reset drag offset with animation if we didn't exceed threshold
+                    withAnimation(.spring()) {
+                        dragOffset = 0
+                    }
+                    
+                    if value.translation.width < -20 {
+                        // Left swipe - proceed to next screen
+                        nudgeTimer?.invalidate()
+                        nudgeTimer = nil
+                        onContinue?()
                     }
                 }
         )

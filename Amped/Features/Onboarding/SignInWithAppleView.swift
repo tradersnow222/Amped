@@ -6,6 +6,8 @@ struct SignInWithAppleView: View {
     // MARK: - Properties
     
     @StateObject private var viewModel = SignInWithAppleViewModel()
+    @State private var buttonScale = 0.95
+    @State private var buttonOpacity = 0.0
     
     // Callback to proceed to next step
     var onContinue: (() -> Void)?
@@ -25,6 +27,7 @@ struct SignInWithAppleView: View {
                 .font(.headline)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
+                .padding(.bottom, 20)
             
             Spacer()
             
@@ -52,33 +55,58 @@ struct SignInWithAppleView: View {
             
             Spacer()
             
-            // Sign in with Apple button
-            SignInWithAppleButton(
-                onRequest: { request in
-                    // Configure the request
-                    request.requestedScopes = [.fullName, .email]
-                },
-                onCompletion: { result in
-                    // Handle the result
-                    handleSignInWithAppleResult(result)
+            // Sign in with Apple button - improved styling
+            VStack(spacing: 24) {
+                // Button container with subtle highlight
+                ZStack {
+                    // Subtle highlight around the button
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.white.opacity(0.08))
+                        .frame(height: 60)
+                        .padding(.horizontal, 36)
+                    
+                    SignInWithAppleButton(
+                        onRequest: { request in
+                            // Configure the request
+                            request.requestedScopes = [.fullName, .email]
+                        },
+                        onCompletion: { result in
+                            // Handle the result
+                            handleSignInWithAppleResult(result)
+                        }
+                    )
+                    .signInWithAppleButtonStyle(.white) // White looks better on dark backgrounds
+                    .frame(height: 44) // Apple's recommended touch target size
+                    .padding(.horizontal, 40)
                 }
-            )
-            .signInWithAppleButtonStyle(.black)
-            .frame(height: 50)
-            .padding(.horizontal, 40)
-            .cornerRadius(8)
-            
-            // Skip button
-            Button("I'll do this later") {
-                onContinue?()
+                .scaleEffect(buttonScale)
+                .opacity(buttonOpacity)
+                .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
+                .onAppear {
+                    withAnimation(.easeOut(duration: 0.5)) {
+                        buttonScale = 1.0
+                        buttonOpacity = 1.0
+                    }
+                }
+                
+                // Skip button
+                Button("I'll do this later") {
+                    onContinue?()
+                }
+                .font(.subheadline)
+                .foregroundColor(.gray.opacity(0.8))
+                .padding(.vertical, 12)
+                .padding(.horizontal, 20)
+                .background(Color.white.opacity(0.05))
+                .cornerRadius(20)
+                .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+                .opacity(buttonOpacity)
             }
-            .font(.subheadline)
-            .foregroundColor(.secondary)
-            .padding(.top, 20)
+            .padding(.bottom, 12)
             
             // Progress indicator
-            ProgressIndicator(currentStep: 5, totalSteps: 7)
-                .padding(.vertical, 30)
+            ProgressIndicator(currentStep: 9, totalSteps: 10)
+                .padding(.vertical, 24)
         }
         .alert(isPresented: $viewModel.showError) {
             Alert(

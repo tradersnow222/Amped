@@ -66,11 +66,9 @@ struct OnboardingStepsView: View {
                 
                 Spacer()
                 
-                // Progress indicator
-                ProgressView(value: 0.2, total: 1.0)
-                    .progressViewStyle(LinearProgressViewStyle(tint: Color("ampedGreen")))
-                    .frame(width: UIScreen.main.bounds.width * 0.5)
-                    .padding(.bottom, 20)
+                // Progress indicator - use the segmented version with same 10 steps as the main flow
+                ProgressIndicator(currentStep: 1, totalSteps: 10)
+                    .padding(.bottom, 40)
             }
         }
         .gesture(

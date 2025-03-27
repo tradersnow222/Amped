@@ -56,7 +56,7 @@ struct HealthKitPermissionsView: View {
                 .padding(.bottom, 20)
             
             // Progress indicator
-            ProgressIndicator(currentStep: 4, totalSteps: 7)
+            ProgressIndicator(currentStep: 8, totalSteps: 10)
                 .padding(.bottom, 40)
         }
         .withDeepBackground()

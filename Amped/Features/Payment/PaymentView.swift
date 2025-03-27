@@ -111,7 +111,11 @@ struct PaymentView: View {
                 }
                 .padding(.horizontal, 30)
                 .padding(.top, 10)
-                .padding(.bottom, 40)
+                .padding(.bottom, 15)
+                
+                // Progress indicator
+                ProgressIndicator(currentStep: 10, totalSteps: 10)
+                    .padding(.bottom, 40)
             }
             
             // Processing overlay

@@ -7,78 +7,81 @@ struct DashboardView: View {
     @StateObject private var viewModel = DashboardViewModel()
     @State private var selectedPeriod: ImpactDataPoint.PeriodType = .day
     @State private var showMetricDetail: HealthMetric? = nil
+    @EnvironmentObject var appState: AppState
     
     // MARK: - Body
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                // Period selector
-                PeriodSelector(selectedPeriod: $selectedPeriod)
-                    .onChange(of: selectedPeriod) { oldValue, newPeriod in
-                        viewModel.calculateImpact(for: newPeriod)
-                    }
-                
-                // Dual battery display
-                HStack(alignment: .top, spacing: 16) {
-                    // Life impact battery
-                    if let impactDataPoint = viewModel.impactDataPoint {
-                        BatteryLifeImpactCard(
-                            impactDataPoint: impactDataPoint,
-                            selectedPeriod: selectedPeriod
-                        )
-                        .frame(maxWidth: .infinity)
-                    } else {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    }
+        ZStack(alignment: .bottom) {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Period selector
+                    PeriodSelector(selectedPeriod: $selectedPeriod)
+                        .onChange(of: selectedPeriod) { oldValue, newPeriod in
+                            viewModel.calculateImpact(for: newPeriod)
+                        }
                     
-                    // Life projection battery
-                    if let lifeProjection = viewModel.lifeProjection {
-                        BatteryLifeProjectionCard(
-                            lifeProjection: lifeProjection,
-                            userAge: viewModel.userProfile.age ?? 30
-                        )
-                        .frame(maxWidth: .infinity)
-                    } else {
-                        ProgressView()
+                    // Dual battery display
+                    HStack(alignment: .top, spacing: 16) {
+                        // Life impact battery
+                        if let impactDataPoint = viewModel.impactDataPoint {
+                            BatteryLifeImpactCard(
+                                impactDataPoint: impactDataPoint,
+                                selectedPeriod: selectedPeriod
+                            )
                             .frame(maxWidth: .infinity)
-                    }
-                }
-                .padding(.horizontal)
-                
-                // Metrics section
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Power Sources")
-                        .font(.headline)
-                        .padding(.horizontal)
-                    
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 160))], spacing: 16) {
-                        ForEach(viewModel.metrics) { metric in
-                            BatteryMetricCard(metric: metric)
-                                .onTapGesture {
-                                    showMetricDetail = metric
-                                }
+                        } else {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        }
+                        
+                        // Life projection battery
+                        if let lifeProjection = viewModel.lifeProjection {
+                            BatteryLifeProjectionCard(
+                                lifeProjection: lifeProjection,
+                                userAge: viewModel.userProfile.age ?? 30
+                            )
+                            .frame(maxWidth: .infinity)
+                        } else {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
                         }
                     }
                     .padding(.horizontal)
-                }
-                
-                // Spacer for ScrollView
-                Spacer(minLength: 40)
-            }
-            .padding(.top)
-            
-            // Loading overlay during initial loading or background updates
-            .overlay(
-                Group {
-                    if viewModel.isLoading && viewModel.metrics.isEmpty {
-                        ProgressView("Charging...")
-                            .cornerRadius(10)
-                            .padding()
+                    
+                    // Metrics section
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Power Sources")
+                            .font(.headline)
+                            .padding(.horizontal)
+                        
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 160))], spacing: 16) {
+                            ForEach(viewModel.metrics) { metric in
+                                BatteryMetricCard(metric: metric)
+                                    .onTapGesture {
+                                        showMetricDetail = metric
+                                    }
+                            }
+                        }
+                        .padding(.horizontal)
                     }
+                    
+                    // Spacer for ScrollView
+                    Spacer(minLength: 40)
                 }
-            )
+                .padding(.top)
+                
+                // Loading overlay during initial loading or background updates
+                .overlay(
+                    Group {
+                        if viewModel.isLoading && viewModel.metrics.isEmpty {
+                            ProgressView("Charging...")
+                                .cornerRadius(10)
+                                .padding()
+                        }
+                    }
+                )
+            }
         }
         .navigationTitle("Battery Status")
         .sheet(item: $showMetricDetail) { metric in

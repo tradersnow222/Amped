@@ -135,7 +135,7 @@ struct WelcomeView: View {
                     .withButtonInitiatedTransition() // Apply slightly slower transition for button navigation
                     
                     // Add spacer with specific height to move button up from bottom
-                    Spacer().frame(height: geometry.size.height * 0.12)
+                    Spacer().frame(height: 120) // Increased from 100 to 120 to move button slightly higher
                 }
             }
         }
@@ -147,8 +147,8 @@ struct WelcomeView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isAppeared = true
                 
-                // Fade in button 0.5 seconds after main fade-in completes (2.5 + 0.5 seconds)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                // Fade in button - reduced delay to 1.75 seconds
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.75) {
                     buttonVisible = true
                     
                     // Start BOTH lightning bolt and button pulse animations at the same time
@@ -202,7 +202,7 @@ struct ProgressIndicator: View {
                                 .strokeBorder(Color.ampedGreen, lineWidth: borderWidth)
                         )
                     
-                    // Battery segments
+                    // Battery segments - one segment per onboarding step (including individual questions)
                     HStack(spacing: segmentSpacing) {
                         ForEach(0..<totalSteps, id: \.self) { index in
                             // Each segment has a chevron or forward-pointing shape
