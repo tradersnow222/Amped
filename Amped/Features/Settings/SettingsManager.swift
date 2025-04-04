@@ -121,4 +121,4 @@ final class SettingsManager: ObservableObject {
     }
 }
 
-// Note: UserDefaults extension moved to a central utility file to avoid duplication 
+// Note: UserDefaults extension is located in Core/Extensions/UserDefaultsExtensions.swift 

@@ -92,6 +92,40 @@ struct LifeProjection: Identifiable, Codable, Equatable {
         }
     }
     
+    // MARK: - Computed Properties for DashboardView
+    
+    /// Formatted string for the main value display (e.g., "~52")
+    /// - Parameter currentUserAge: The current age of the user.
+    /// - Returns: A formatted string representing estimated remaining years as a number.
+    func formattedProjectionValue(currentUserAge: Double) -> String {
+        let remainingYears = max(0, adjustedLifeExpectancyYears - currentUserAge)
+        // Format for better readability, just the number with tilde
+        return String(format: "~%.0f", remainingYears)
+    }
+    
+    /// Formatted string for the text inside the battery (e.g., "Lifespan remaining: 52 years")
+    /// - Parameter currentUserAge: The current age of the user.
+    /// - Returns: A formatted string representing the remaining lifespan description.
+    func formattedRemainingLifespanText(currentUserAge: Double) -> String {
+         let remainingYears = max(0, adjustedLifeExpectancyYears - currentUserAge)
+         return String(format: "Lifespan remaining: %.0f years", remainingYears)
+     }
+
+    /// Total projected age - No longer used directly in the main battery view
+    var formattedTotalProjectedAge: String {
+        return String(format: "Projected age: %.0f", adjustedLifeExpectancyYears)
+    }
+    
+    /// Projection percentage for the battery charge level (0.0 to 1.0)
+    /// - Parameter currentUserAge: The current age of the user.
+    /// - Returns: A CGFloat between 0.0 and 1.0 representing the fraction of life remaining.
+    func projectionPercentage(currentUserAge: Double) -> CGFloat {
+        // Represents the fraction of life remaining based on adjusted expectancy
+        guard adjustedLifeExpectancyYears > 0, currentUserAge < adjustedLifeExpectancyYears else { return 0.0 }
+        let percentage = (adjustedLifeExpectancyYears - currentUserAge) / adjustedLifeExpectancyYears
+        return max(0.0, min(1.0, CGFloat(percentage))) // Clamp between 0 and 1
+    }
+    
     static func == (lhs: LifeProjection, rhs: LifeProjection) -> Bool {
         lhs.id == rhs.id &&
         lhs.calculationDate == rhs.calculationDate &&

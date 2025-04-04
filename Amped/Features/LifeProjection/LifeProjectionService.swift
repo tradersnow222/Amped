@@ -32,8 +32,8 @@ final class LifeProjectionService: LifeProjectionServicing, ObservableObject {
     // MARK: - Public methods
     
     func calculateBaselineLifeExpectancy(for profile: UserProfile) -> Double {
-        guard let age = profile.age, let gender = profile.gender else {
-            logger.warning("Cannot calculate baseline life expectancy: Missing required profile data")
+        guard let age = profile.age else {
+            logger.warning("Cannot calculate baseline life expectancy: Missing age data")
             return 80.0 // Default global average
         }
         
@@ -41,13 +41,13 @@ final class LifeProjectionService: LifeProjectionServicing, ObservableObject {
         // In a real app, this would use more detailed actuarial tables
         var baselineYears: Double
         
-        switch gender {
+        switch profile.gender {
         case .male:
             baselineYears = 76.0
         case .female:
             baselineYears = 81.0
-        case .preferNotToSay:
-            baselineYears = 78.5
+        case .preferNotToSay, nil:
+            baselineYears = 78.5 // Average for unspecified gender
         }
         
         // Adjust for current age (older people have higher life expectancy)

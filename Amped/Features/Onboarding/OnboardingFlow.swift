@@ -59,13 +59,19 @@ struct OnboardingFlow: View {
                             // Reset flag first
                             shouldExitQuestionnaire = false
                             
-                            // Navigate back with trailing edge animation
+                            // Important: First set drag direction, then navigate
+                            isButtonNavigating = false
                             dragDirection = .trailing
-                            navigateTo(.personalizationIntro)
                             
-                            // Reset drag direction after animation
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                                dragDirection = nil
+                            // Navigate back with trailing edge animation
+                            // Use a slight delay to ensure the direction is set properly
+                            DispatchQueue.main.async {
+                                navigateTo(.personalizationIntro)
+                                
+                                // Reset drag direction after animation
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                    dragDirection = nil
+                                }
                             }
                         }
                     }
@@ -75,12 +81,17 @@ struct OnboardingFlow: View {
                             shouldCompleteQuestionnaire = false
                             
                             // Navigate forward with leading edge animation
+                            isButtonNavigating = false
                             dragDirection = .leading
-                            navigateTo(.healthKitPermissions)
                             
-                            // Reset drag direction after animation
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                                dragDirection = nil
+                            // Use a slight delay to ensure the direction is set properly
+                            DispatchQueue.main.async {
+                                navigateTo(.healthKitPermissions)
+                                
+                                // Reset drag direction after animation
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                    dragDirection = nil
+                                }
                             }
                         }
                     }
@@ -298,6 +309,18 @@ struct OnboardingFlow: View {
         
         // Use spring animation for smoother transitions
         isProgrammaticNavigation = true
+        
+        // Log the transition being used
+        if dragDirection == .trailing {
+            print("🔍 DEBUG: Using BACKWARD transition (trailing edge) - current screen should exit RIGHT")
+        } else if dragDirection == .leading {
+            print("🔍 DEBUG: Using FORWARD transition (leading edge) - current screen should exit LEFT")
+        } else if isButtonNavigating {
+            print("🔍 DEBUG: Using BUTTON-INITIATED transition - current screen should exit LEFT")
+        } else {
+            print("🔍 DEBUG: Using DEFAULT transition - current screen should exit LEFT")
+        }
+        
         withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
             currentStep = step
         }

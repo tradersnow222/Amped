@@ -19,45 +19,99 @@ struct HealthKitPermissionsView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            headerSection
-                .padding(.top, 40)
-                .padding(.bottom, 20)
+            // Back button
+            HStack {
+                Button(action: {
+                    // Handle back action
+                }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.gray)
+                        .padding()
+                }
+                Spacer()
+            }
+            .padding(.top, 8)
             
-            Spacer(minLength: 10)
+            // Spacer with flex to position content at rule of thirds
+            Spacer()
+                .frame(height: UIScreen.main.bounds.height * 0.1)
             
-            // Health metrics list with permissions
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    // Highlight critical metrics at the top
-                    if !viewModel.allPermissionsGranted {
-                        criticalMetricsSection
+            // 3D Heart Icon
+            ZStack {
+                // White rounded square with shadow
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(Color.white)
+                    .frame(width: 120, height: 120)
+                    .shadow(color: Color.white.opacity(0.1), radius: 15, x: 0, y: 8)
+                    .shadow(color: Color.white.opacity(0.05), radius: 5, x: 0, y: 3)
+                    .rotationEffect(.degrees(10))
+                
+                // Heart icon
+                Image(systemName: "heart.fill")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 50, height: 50)
+                    .foregroundColor(Color.ampedRed)
+                    .shadow(color: Color.ampedRed.opacity(0.3), radius: 4, x: 0, y: 2)
+                    .rotationEffect(.degrees(10))
+            }
+            .padding(.bottom, 40)
+            
+            // Concise health description text
+            Text("Connect your health data to power your life battery")
+                .font(.system(size: 24, weight: .bold))
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+                .padding(.bottom, 16)
+                
+            Text("See the direct impact of your daily habits on your lifespan")
+                .font(.system(size: 17))
+                .foregroundColor(.gray)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            
+            // Flexible spacing
+            Spacer(minLength: 60)
+            
+            // Continue button
+            Button(action: requestHealthKitPermissions) {
+                HStack {
+                    if viewModel.isRequestingPermissions {
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(0.8)
+                            .padding(.trailing, 6)
+                    } else {
+                        Image(systemName: "heart.fill")
+                            .foregroundColor(.white)
+                            .font(.system(size: 16))
+                            .padding(.trailing, 4)
                     }
                     
-                    // All metrics
-                    ForEach(viewModel.healthMetrics) { metric in
-                        healthDataRow(
-                            icon: metric.icon,
-                            title: metric.title,
-                            description: metric.description,
-                            isGranted: metric.isGranted,
-                            isCritical: metric.isCritical
-                        )
-                    }
+                    Text(viewModel.isRequestingPermissions ? "Requesting..." : "Continue")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
                 }
-                .padding(.horizontal, 30)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(
+                    Capsule()
+                        .fill(viewModel.isRequestingPermissions ? Color.gray : Color.ampedGreen)
+                )
+                .padding(.horizontal, 40)
             }
-            .scrollIndicators(.hidden)
+            .disabled(viewModel.isRequestingPermissions || viewModel.allPermissionsGranted)
+            .hapticFeedback()
+            .padding(.bottom, 40)
             
-            Spacer(minLength: 20)
-            
-            // Action buttons
-            actionButtonsSection
-                .padding(.bottom, 20)
-            
-            // Progress indicator
-            ProgressIndicator(currentStep: 8, totalSteps: 10)
-                .padding(.bottom, 40)
+            // Home indicator area
+            Rectangle()
+                .frame(width: 134, height: 5)
+                .cornerRadius(2.5)
+                .foregroundColor(.white.opacity(0.2))
+                .padding(.bottom, 8)
         }
         .withDeepBackground()
         .alert("Health Access Error", isPresented: $viewModel.showError) {
@@ -83,14 +137,11 @@ struct HealthKitPermissionsView: View {
             // Check if permissions were already granted when view appears
             checkExistingPermissions()
         }
-        // Critical addition: Monitor for iOS health permission dialog return
-        // This uses NotificationCenter to detect when the app becomes active again
-        // which happens after returning from the system permission dialog
+        // Monitor for iOS health permission dialog return
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             logger.info("App became active again - likely returned from Health permission dialog")
             Task {
                 // Skip waiting and immediately check for permissions
-                // The system should have already updated the authorization status
                 logger.info("Checking permissions status after app becomes active")
                 await viewModel.checkPermissionsStatus(forceRefresh: true)
                 
@@ -131,142 +182,6 @@ struct HealthKitPermissionsView: View {
                 }
             }
         }
-    }
-    
-    // MARK: - View Components
-    
-    /// Header section with title and description
-    private var headerSection: some View {
-        VStack(spacing: 12) {
-            Text("Health Access")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
-                .multilineTextAlignment(.center)
-                .accessibilityAddTraits(.isHeader)
-            
-            Text("Allow Amped to access health data to calculate your life battery")
-                .font(.headline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-                .accessibilityHint("This data helps personalize your experience")
-        }
-    }
-    
-    /// Action buttons section with primary and secondary buttons
-    private var actionButtonsSection: some View {
-        VStack(spacing: 16) {
-            // Primary action button - more prominent since permissions are mandatory
-            Button(action: requestHealthKitPermissions) {
-                HStack {
-                    if !viewModel.isRequestingPermissions {
-                        Image(systemName: "heart.fill")
-                            .font(.body)
-                            .foregroundColor(.white)
-                    }
-                    
-                    Text(viewModel.isRequestingPermissions ? "Requesting..." : "Continue")
-                        .fontWeight(.bold)
-                    
-                    if viewModel.isRequestingPermissions {
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(.white)
-                            .padding(.leading, 4)
-                    }
-                }
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16) // Taller button for emphasis
-                .background(viewModel.isRequestingPermissions ? Color.gray : Color.ampedGreen)
-                .foregroundColor(.white)
-                .cornerRadius(14)
-            }
-            .disabled(viewModel.isRequestingPermissions || viewModel.allPermissionsGranted)
-            .padding(.horizontal, 40)
-            .hapticFeedback()
-            .accessibilityHint("Continue and request access to health data")
-            
-            // Explanatory text to emphasize that permissions are mandatory
-            if !viewModel.allPermissionsGranted {
-                Text("Health data access is required to calculate your life battery")
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-            }
-        }
-    }
-    
-    /// Critical metrics section highlighting the most important permissions
-    private var criticalMetricsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Essential Health Data")
-                .font(.headline)
-                .foregroundColor(.primary)
-                .padding(.bottom, 4)
-            
-            Text("These metrics are required for basic app functionality:")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .padding(.bottom, 8)
-        }
-    }
-    
-    /// Health data row with icon, text, and status indicator
-    private func healthDataRow(icon: String, title: String, description: String, isGranted: Bool, isCritical: Bool = false) -> some View {
-        HStack(spacing: 20) {
-            // Icon
-            Image(systemName: icon)
-                .font(.system(size: 28))
-                .foregroundColor(isGranted ? .ampedGreen : (isCritical ? .ampedYellow : .ampedSilver))
-                .frame(width: 36, height: 36)
-                .accessibility(hidden: true)
-            
-            // Text content
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(title)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    
-                    if isCritical {
-                        Text("Required")
-                            .font(.caption)
-                            .foregroundColor(.ampedYellow)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.ampedYellow.opacity(0.2))
-                            .cornerRadius(4)
-                    }
-                }
-                
-                Text(description)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-            }
-            .accessibilityElement(children: .combine)
-            
-            Spacer()
-            
-            // Status indicator
-            if isGranted {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.ampedGreen)
-                    .accessibility(label: Text("Permission granted"))
-            } else if isCritical {
-                Image(systemName: "exclamationmark.circle.fill")
-                    .foregroundColor(.ampedYellow)
-                    .accessibility(label: Text("Required permission needed"))
-            }
-        }
-        .padding(.vertical, 4)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title) \(isGranted ? "permission granted" : "permission needed")\(isCritical ? ", required" : "")")
-        .accessibilityHint(description)
     }
     
     // MARK: - Helper Methods

@@ -20,10 +20,10 @@ final class QuestionnaireViewModel: ObservableObject {
         
         var displayName: String {
             switch self {
-            case .veryHealthy: return "Very Healthy (whole foods, plant-based)"
-            case .mostlyHealthy: return "Mostly Healthy (balanced diet)"
-            case .mixed: return "Mixed (some healthy, some processed)"
-            case .mostlyUnhealthy: return "Mostly Processed Foods"
+            case .veryHealthy: return "Very Healthy\n(whole foods, plant-based)"
+            case .mostlyHealthy: return "Mostly Healthy\n(balanced diet)"
+            case .mixed: return "Mixed\n(some healthy, some processed)"
+            case .mostlyUnhealthy: return "Mostly Processed\n(convenience foods)"
             }
         }
         
@@ -47,7 +47,7 @@ final class QuestionnaireViewModel: ObservableObject {
             switch self {
             case .daily: return "Daily"
             case .occasionally: return "Occasionally"
-            case .former: return "Former smoker"
+            case .former: return "Former smoker\n(quit in the past)"
             case .never: return "Never"
             }
         }
@@ -71,8 +71,8 @@ final class QuestionnaireViewModel: ObservableObject {
         var displayName: String {
             switch self {
             case .daily: return "Daily"
-            case .severalTimesWeek: return "Several times a week"
-            case .occasionally: return "Occasionally (weekly or less)"
+            case .severalTimesWeek: return "Several Times\n(per week)"
+            case .occasionally: return "Occasionally\n(weekly or less)"
             case .never: return "Never"
             }
         }
@@ -95,10 +95,10 @@ final class QuestionnaireViewModel: ObservableObject {
         
         var displayName: String {
             switch self {
-            case .veryStrong: return "Very Strong (daily meaningful interactions)"
-            case .good: return "Good (regular social engagement)"
-            case .moderate: return "Moderate (occasional social connections)"
-            case .limited: return "Limited (rare meaningful interactions)"
+            case .veryStrong: return "Very Strong\n(daily interactions)"
+            case .good: return "Good\n(regular engagement)"
+            case .moderate: return "Moderate\n(occasional connections)"
+            case .limited: return "Limited\n(rare interactions)"
             }
         }
         
@@ -136,7 +136,7 @@ final class QuestionnaireViewModel: ObservableObject {
     }
     
     // Gender
-    @Published var selectedGender: UserProfile.Gender = .preferNotToSay
+    @Published var selectedGender: UserProfile.Gender?
     
     // Nutrition
     @Published var selectedNutritionQuality: NutritionQuality?
@@ -169,7 +169,7 @@ final class QuestionnaireViewModel: ObservableObject {
         case .birthdate:
             return age >= 18 && age <= 120 // Validate age from birthdate
         case .gender:
-            return true // Always has a default
+            return selectedGender != nil // Require user to make a selection
         case .nutritionQuality:
             return selectedNutritionQuality != nil
         case .smokingStatus:
@@ -207,18 +207,15 @@ final class QuestionnaireViewModel: ObservableObject {
         guard canProceed else { return }
         
         if let nextQuestion = getNextQuestion() {
-            withAnimation(.interpolatingSpring(stiffness: 200, damping: 25, initialVelocity: 0.5)) {
-                currentQuestion = nextQuestion
-            }
+            // Remove animation here to consolidate animation control in the View
+            currentQuestion = nextQuestion
         }
     }
     
     // Move back to previous question with animation
     func moveBackToPreviousQuestion() {
         if let prevQuestion = getPreviousQuestion() {
-            withAnimation(.interpolatingSpring(stiffness: 150, damping: 20, initialVelocity: 0.3)) {
-                currentQuestion = prevQuestion
-            }
+            currentQuestion = prevQuestion
         }
     }
     

@@ -41,19 +41,10 @@ struct BatteryMetricCard: View {
                     .style(.headline)
                 
                 Spacer()
-                
-                // Power level indicator
-                HStack(spacing: 2) {
-                    ForEach(0..<5) { i in
-                        RoundedRectangle(cornerRadius: 1)
-                            .fill(i < powerLevel ? powerColor : Color.gray.opacity(0.3))
-                            .frame(width: 3, height: 8 + CGFloat(i))
-                    }
-                }
             }
             
             // Metric value
-            Text(metric.formattedValue)
+            metricValueText
                 .style(.metricValue, color: powerColor)
             
             // Battery visualization
@@ -88,6 +79,17 @@ struct BatteryMetricCard: View {
     }
     
     // MARK: - UI Components
+    
+    /// Text view for the metric value, including qualitative label for manual metrics
+    private var metricValueText: Text {
+        let baseText = metric.formattedValue
+        switch metric.type {
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+            return Text("\(baseText) - \(qualitativePowerLabel)")
+        default:
+            return Text(baseText)
+        }
+    }
     
     /// Battery visualization
     private var batteryVisualization: some View {
@@ -148,6 +150,17 @@ struct BatteryMetricCard: View {
         case .medium: return .mediumPower
         case .low: return .lowPower
         case .critical: return .criticalPower
+        }
+    }
+    
+    /// Get qualitative power level label
+    private var qualitativePowerLabel: String {
+        switch metric.powerLevel {
+        case .full: return "Excellent"
+        case .high: return "Good"
+        case .medium: return "Fair"
+        case .low: return "Poor"
+        case .critical: return "Critical"
         }
     }
 }

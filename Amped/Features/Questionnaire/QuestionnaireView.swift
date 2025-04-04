@@ -12,7 +12,7 @@ struct QuestionnaireView: View {
     @Binding var proceedToHealthPermissions: Bool
     
     // Gesture handler
-    private let gestureHandler: QuestionnaireGestureHandler
+    private var gestureHandler: QuestionnaireGestureHandler
     
     // Internal state
     @State private var animationCompleted = false
@@ -22,8 +22,14 @@ struct QuestionnaireView: View {
     init(exitToPersonalizationIntro: Binding<Bool>, proceedToHealthPermissions: Binding<Bool>) {
         self._exitToPersonalizationIntro = exitToPersonalizationIntro
         self._proceedToHealthPermissions = proceedToHealthPermissions
+        
+        // Create the StateObject before init completes
+        let viewModel = QuestionnaireViewModel()
+        self._viewModel = StateObject(wrappedValue: viewModel)
+        
+        // Use the same view model instance for the gesture handler
         self.gestureHandler = QuestionnaireGestureHandler(
-            viewModel: QuestionnaireViewModel(),
+            viewModel: viewModel,
             exitToPersonalizationIntro: exitToPersonalizationIntro
         )
     }
@@ -78,11 +84,16 @@ struct QuestionnaireView: View {
                                     .padding()
                                     .offset(x: gestureHandler.calculateOffset(for: question, geometry: geometry))
                                     .transition(gestureHandler.getTransition())
+                                    .id("question_\(question.rawValue)") // Add stable ID to help SwiftUI track view identity
                                     .zIndex(viewModel.currentQuestion == question ? 1 : 0)
                             }
                         }
                     }
-                    .animation(gestureHandler.dragDirection == nil ? .interpolatingSpring(stiffness: 150, damping: 20, initialVelocity: 0.3) : nil, value: viewModel.currentQuestion)
+                    // Use a clear, direct animation for transitions with a slightly higher stiffness for snappier movement
+                    .animation(
+                        .interpolatingSpring(stiffness: 180, damping: 20, initialVelocity: 0.5),
+                        value: viewModel.currentQuestion
+                    )
                     
                     Spacer()
                     
@@ -167,7 +178,9 @@ struct QuestionnaireView: View {
         }
         
         // For all other questions, proceed to next question within questionnaire
-        viewModel.proceedToNextQuestion()
+        withAnimation(.interpolatingSpring(stiffness: 180, damping: 20, initialVelocity: 0.5)) {
+            viewModel.proceedToNextQuestion()
+        }
         print("🔍 QUESTIONNAIRE: Continue to next question")
     }
 }
