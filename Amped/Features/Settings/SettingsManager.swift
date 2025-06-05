@@ -13,6 +13,7 @@ final class SettingsManager: ObservableObject {
         case privacyAnalyticsEnabled
         case preferredDisplayMode
         case reminderTime
+        case showUnavailableMetrics
     }
     
     // MARK: - Enums
@@ -78,6 +79,13 @@ final class SettingsManager: ObservableObject {
         }
     }
     
+    /// Whether to show metrics that have no data available
+    @Published var showUnavailableMetrics: Bool {
+        didSet {
+            UserDefaults.standard.set(showUnavailableMetrics, forKey: SettingKey.showUnavailableMetrics.rawValue)
+        }
+    }
+    
     // MARK: - Initialization
     
     init() {
@@ -102,6 +110,8 @@ final class SettingsManager: ObservableObject {
             components.minute = 0
             self.reminderTime = Calendar.current.date(from: components) ?? Date()
         }
+        
+        self.showUnavailableMetrics = defaults.bool(forKey: SettingKey.showUnavailableMetrics.rawValue, defaultValue: true)
     }
     
     // MARK: - Methods
@@ -118,6 +128,8 @@ final class SettingsManager: ObservableObject {
         components.hour = 8
         components.minute = 0
         reminderTime = Calendar.current.date(from: components) ?? Date()
+        
+        showUnavailableMetrics = true
     }
 }
 

@@ -60,8 +60,8 @@ struct BatteryLifeImpactCard: View {
                 .foregroundColor(.secondary)
         }
         .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
+        .background(Color.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
         .onAppear {
             withAnimation(.easeInOut(duration: 1.0)) {

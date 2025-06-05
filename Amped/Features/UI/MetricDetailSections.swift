@@ -35,7 +35,7 @@ struct MetricDetailSections {
                         }
                     }
                     .padding()
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.cardBackground))
                     .padding(.horizontal)
                 } else {
                     Text("Impact data unavailable")
@@ -145,7 +145,7 @@ struct MetricDetailSections {
                             .padding(.top, 4)
                     }
                     .padding()
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.cardBackground))
                     .padding(.horizontal)
                 } else {
                     Text("No research reference available")
@@ -206,7 +206,7 @@ struct MetricDetailSections {
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(Color.cardBackground)
             )
             .padding(.horizontal)
         }

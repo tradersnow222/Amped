@@ -80,8 +80,8 @@ struct MetricTipCard: View {
     
     /// Background color based on metric type
     private var cardBackgroundColor: Color {
-        let baseColor = metric.type.color.opacity(0.1)
-        return Color(.systemBackground).opacity(0.8).blended(with: baseColor)
+        // Use consistent theme background with slight metric color tint
+        return Color.cardBackground
     }
     
     /// Tip title based on metric type

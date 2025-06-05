@@ -37,7 +37,7 @@ import OSLog
                     sampleType: sleepType,
                     predicate: predicate,
                     limit: HKObjectQueryNoLimit,
-                    sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: true)]
+                    sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)] // Sort by most recent first
                 ) { _, samples, error in
                     if let error = error {
                         continuation.resume(throwing: error)
@@ -50,8 +50,21 @@ import OSLog
                 self.healthStore.execute(query)
             }
             
-            // Calculate total sleep time
-            var totalSleepTime: TimeInterval = 0
+            // CRITICAL FIX: Instead of summing ALL sleep over 7 days, find the most recent night's sleep
+            // Group samples by day and get the most recent complete sleep session
+            
+            if samples.isEmpty {
+                logger.info("No sleep samples found in the specified period")
+                return nil
+            }
+            
+            // Find the most recent sleep session (group samples that are close together)
+            var recentSleepTime: TimeInterval = 0
+            var latestSleepDate: Date = Date.distantPast
+            
+            // Group samples by calendar day to find the most recent complete sleep
+            let calendar = Calendar.current
+            var sleepByDate: [Date: TimeInterval] = [:]
             
             for sample in samples {
                 guard let categorySample = sample as? HKCategorySample else { continue }
@@ -63,24 +76,41 @@ import OSLog
                    categorySample.value == HKCategoryValueSleepAnalysis.asleepCore.rawValue {
                     
                     let sleepTime = categorySample.endDate.timeIntervalSince(categorySample.startDate)
-                    totalSleepTime += sleepTime
+                    let sleepDay = calendar.startOfDay(for: categorySample.endDate)
+                    
+                    sleepByDate[sleepDay, default: 0] += sleepTime
+                    
+                    // Track the latest sleep date
+                    if categorySample.endDate > latestSleepDate {
+                        latestSleepDate = categorySample.endDate
+                    }
                 }
             }
             
-            // Convert to hours
-            let sleepHours = totalSleepTime / 3600.0
+            // Get the most recent day's sleep
+            if let mostRecentDay = sleepByDate.keys.max(),
+               let mostRecentSleep = sleepByDate[mostRecentDay] {
+                recentSleepTime = mostRecentSleep
+                logger.info("Found most recent sleep session: \(recentSleepTime / 3600.0) hours on \(mostRecentDay)")
+            } else {
+                logger.info("No valid sleep data found in samples")
+                return nil
+            }
             
-            // Only create metric if we have valid sleep data
-            if sleepHours > 0 {
+            // Convert to hours
+            let sleepHours = recentSleepTime / 3600.0
+            
+            // Only create metric if we have valid sleep data (between 1-16 hours is reasonable)
+            if sleepHours > 1.0 && sleepHours < 16.0 {
                 return HealthMetric(
                     id: UUID().uuidString,
                     type: .sleepHours,
                     value: sleepHours,
-                    date: endDate,
+                    date: latestSleepDate,
                     source: .healthKit
                 )
             } else {
-                logger.info("No valid sleep data found in the specified period")
+                logger.warning("Invalid sleep duration calculated: \(sleepHours) hours - outside reasonable range")
                 return nil
             }
             

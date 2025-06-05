@@ -127,4 +127,29 @@ final class LifeProjectionService: LifeProjectionServicing, ObservableObject {
         
         return baseConfidence + additionalUncertainty
     }
+    
+    // MARK: - Dashboard Integration Methods
+    
+    /// Calculate life projection from health metrics for dashboard display
+    func calculateLifeProjection(from metrics: [HealthMetric], userProfile: UserProfile) -> LifeProjection? {
+        logger.info("🔮 Calculating life projection from \(metrics.count) health metrics")
+        
+        // Calculate cumulative impact from all metrics
+        var cumulativeImpactMinutes: Double = 0
+        
+        for metric in metrics {
+            if let impactDetails = metric.impactDetails {
+                cumulativeImpactMinutes += impactDetails.lifespanImpactMinutes
+            }
+        }
+        
+        logger.info("📊 Cumulative impact: \(String(format: "%.2f", cumulativeImpactMinutes)) minutes")
+        
+        // Generate the projection
+        let projection = generateLifeProjection(for: userProfile, cumulativeImpactMinutes: cumulativeImpactMinutes)
+        
+        logger.info("✅ Life projection calculated: \(String(format: "%.1f", projection.adjustedLifeExpectancyYears)) years")
+        
+        return projection
+    }
 } 

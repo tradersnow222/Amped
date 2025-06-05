@@ -83,13 +83,42 @@ struct QuestionViews {
 
                 Spacer()
 
-                // DatePicker positioned at bottom for thumb access
-                DatePicker("", selection: $viewModel.birthdate, in: viewModel.birthdateRange, displayedComponents: .date)
-                    .datePickerStyle(WheelDatePickerStyle())
-                    .labelsHidden()
+                // Custom Month/Year Picker positioned at bottom for thumb access
+                HStack(spacing: 0) {
+                    // Month Picker
+                    Picker("Month", selection: Binding(
+                        get: { viewModel.selectedBirthMonth },
+                        set: { viewModel.updateSelectedMonth($0) }
+                    )) {
+                        ForEach(viewModel.availableMonths, id: \.self) { month in
+                            Text(viewModel.monthName(for: month))
+                                .font(.system(size: 24))
+                                .foregroundColor(.white)
+                                .tag(month)
+                        }
+                    }
+                    .pickerStyle(WheelPickerStyle())
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
                     .colorScheme(.dark)
+                    
+                    // Year Picker
+                    Picker("Year", selection: Binding(
+                        get: { viewModel.selectedBirthYear },
+                        set: { viewModel.updateSelectedYear($0) }
+                    )) {
+                        ForEach(viewModel.availableYears, id: \.self) { year in
+                            Text(String(year))
+                                .font(.system(size: 24))
+                                .foregroundColor(.white)
+                                .tag(year)
+                        }
+                    }
+                    .pickerStyle(WheelPickerStyle())
+                    .frame(maxWidth: .infinity)
+                    .colorScheme(.dark)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
                 
                 // Continue button at very bottom
                 Button(action: handleContinue) {

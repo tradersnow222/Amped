@@ -148,41 +148,4 @@ enum HealthMetricSource: String, Codable {
     case healthKit
     case userInput
     case calculated
-}
-
-// MARK: - Mocks for Development and Testing
-
-extension HealthMetric {
-    /// Mock steps data for previews and testing
-    static var mockSteps: HealthMetric {
-        HealthMetric(
-            id: UUID().uuidString,
-            type: .steps,
-            value: 8500,
-            date: Date(),
-            source: .healthKit
-        )
-    }
-    
-    /// Mock sleep data for previews and testing
-    static var mockSleep: HealthMetric {
-        HealthMetric(
-            id: UUID().uuidString,
-            type: .sleepHours,
-            value: 7.5,
-            date: Date(),
-            source: .healthKit
-        )
-    }
-    
-    /// Mock heart rate data for previews and testing
-    static var mockHeartRate: HealthMetric {
-        HealthMetric(
-            id: UUID().uuidString,
-            type: .restingHeartRate,
-            value: 65,
-            date: Date(),
-            source: .healthKit
-        )
-    }
 } 

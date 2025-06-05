@@ -34,59 +34,59 @@ struct AmpedApp: App {
     
     var body: some Scene {
         WindowGroup {
-            #if DEBUG
-            // For previews and development
-            ContentView()
-                .environmentObject(appState)
-                .environmentObject(settingsManager)
-                .environmentObject(themeManager)
-                .accentColor(Color.ampedGreen) // Set app-wide accent color
-                .withDeepBackground() // Apply deep background image
-                .withBatteryTheme(themeManager) // Apply theme
-                .withFuturisticTheme() // Apply futuristic text styling
-                .onAppear {
-                    // Log app launch in analytics (if enabled)
-                    analyticsService.trackEvent(.appLaunch)
-                    
-                    // Refresh feature flags
-                    featureFlagManager.refreshFlags()
-                }
-            #else
-            // Production flow
-            if appState.hasCompletedOnboarding {
-                // User has completed onboarding, show dashboard
-                NavigationView {
-                    DashboardView()
+            // Both DEBUG and PRODUCTION now respect onboarding completion state
+            Group {
+                if appState.hasCompletedOnboarding {
+                    // User has completed onboarding, show dashboard
+                    if #available(iOS 16.0, *) {
+                        NavigationStack {
+                            DashboardView()
+                                .environmentObject(appState)
+                                .environmentObject(settingsManager)
+                                .environmentObject(themeManager)
+                        }
+                    } else {
+                        NavigationView {
+                            DashboardView()
+                                .environmentObject(appState)
+                                .environmentObject(settingsManager)
+                                .environmentObject(themeManager)
+                        }
+                        .navigationViewStyle(StackNavigationViewStyle())
+                    }
+                } else {
+                    // User needs onboarding - show different views for DEBUG vs PRODUCTION
+                    #if DEBUG
+                    // DEBUG mode: Show ContentView with debug controls
+                    ContentView()
                         .environmentObject(appState)
                         .environmentObject(settingsManager)
                         .environmentObject(themeManager)
+                    #else
+                    // PRODUCTION mode: Show OnboardingFlow directly
+                    OnboardingFlow()
+                        .environmentObject(appState)
+                        .environmentObject(settingsManager)
+                        .environmentObject(themeManager)
+                        .onAppear {
+                            // Track onboarding start
+                            analyticsService.trackOnboardingStep("welcome")
+                        }
+                    #endif
                 }
-                .accentColor(Color.ampedGreen) // Set app-wide accent color
-                .withDeepBackground() // Apply deep background image
-                .withBatteryTheme(themeManager) // Apply theme
-                .withFuturisticTheme() // Apply futuristic text styling
-                .onAppear {
-                    // Log app launch in analytics (if enabled)
-                    analyticsService.trackEvent(.appLaunch)
-                    
-                    // Refresh feature flags
-                    featureFlagManager.refreshFlags()
-                }
-            } else {
-                // User needs onboarding, use the new OnboardingFlow
-                OnboardingFlow()
-                    .environmentObject(appState)
-                    .environmentObject(settingsManager)
-                    .environmentObject(themeManager)
-                    .accentColor(Color.ampedGreen) // Set app-wide accent color
-                    .withBatteryTheme(themeManager) // Apply theme
-                    .withFuturisticTheme() // Apply futuristic text styling
-                    .onAppear {
-                        // Track onboarding start
-                        analyticsService.trackOnboardingStep("welcome")
-                    }
             }
-            #endif
+            // Apply common styling to the main content
+            .tint(Color.ampedGreen) // Set app-wide tint color
+            .withDeepBackground() // Apply deep background image
+            .withBatteryTheme(themeManager) // Apply theme
+            .withFuturisticTheme() // Apply futuristic text styling
+            .onAppear {
+                // Log app launch in analytics (if enabled)
+                analyticsService.trackEvent(.appLaunch)
+                
+                // Refresh feature flags
+                featureFlagManager.refreshFlags()
+            }
         }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             handleScenePhaseChange(from: oldPhase, to: newPhase)

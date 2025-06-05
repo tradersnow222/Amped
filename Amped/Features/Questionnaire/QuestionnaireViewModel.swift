@@ -118,6 +118,64 @@ final class QuestionnaireViewModel: ObservableObject {
     // Birthdate (replacing age)
     @Published var birthdate: Date = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date() // Default to 30 years ago
     
+    // Separate month and year selection for improved UX
+    @Published var selectedBirthMonth: Int = Calendar.current.component(.month, from: Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date())
+    @Published var selectedBirthYear: Int = Calendar.current.component(.year, from: Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date())
+    
+    // Update birthdate when month or year changes
+    private func updateBirthdateFromMonthYear() {
+        let calendar = Calendar.current
+        var components = DateComponents()
+        components.year = selectedBirthYear
+        components.month = selectedBirthMonth
+        components.day = 1 // Always use 1st of the month for consistency
+        
+        if let newDate = calendar.date(from: components) {
+            birthdate = newDate
+        }
+    }
+    
+    // Available months for picker - limit to current month if current year is selected
+    var availableMonths: [Int] {
+        let currentYear = Calendar.current.component(.year, from: Date())
+        let currentMonth = Calendar.current.component(.month, from: Date())
+        
+        if selectedBirthYear == currentYear {
+            // If current year is selected, only show months up to current month
+            return Array(1...currentMonth)
+        } else {
+            // For other years, show all months
+            return Array(1...12)
+        }
+    }
+    
+    // Available years for picker (18-120 years ago from current year)
+    var availableYears: [Int] {
+        let currentYear = Calendar.current.component(.year, from: Date())
+        let minYear = currentYear - 120
+        let maxYear = currentYear // Allow up to current year
+        return Array(minYear...maxYear) // Earliest first (removed .reversed())
+    }
+    
+    // Month name for display
+    func monthName(for month: Int) -> String {
+        let formatter = DateFormatter()
+        formatter.monthSymbols = formatter.monthSymbols
+        return formatter.monthSymbols[month - 1]
+    }
+    
+    // Update month selection
+    func updateSelectedMonth(_ month: Int) {
+        selectedBirthMonth = month
+        updateBirthdateFromMonthYear()
+    }
+    
+    // Update year selection
+    func updateSelectedYear(_ year: Int) {
+        selectedBirthYear = year
+        updateBirthdateFromMonthYear()
+    }
+    
     // Birthdate range calculation
     var birthdateRange: ClosedRange<Date> {
         let calendar = Calendar.current
@@ -239,5 +297,14 @@ final class QuestionnaireViewModel: ObservableObject {
     
     func saveAndProceed() {
         proceedToNextQuestion()
+    }
+    
+    // MARK: - Initialization
+    
+    init() {
+        // Sync the separate month/year properties with the default birthdate
+        let calendar = Calendar.current
+        selectedBirthMonth = calendar.component(.month, from: birthdate)
+        selectedBirthYear = calendar.component(.year, from: birthdate)
     }
 } 

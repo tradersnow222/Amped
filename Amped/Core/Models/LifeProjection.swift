@@ -126,6 +126,45 @@ struct LifeProjection: Identifiable, Codable, Equatable {
         return max(0.0, min(1.0, CGFloat(percentage))) // Clamp between 0 and 1
     }
     
+    // MARK: - DashboardViewModel Compatibility Properties
+    
+    /// Baseline life expectancy (alias for baselineLifeExpectancyYears)
+    var baselineLifeExpectancy: Double {
+        baselineLifeExpectancyYears
+    }
+    
+    /// Projected life expectancy (alias for adjustedLifeExpectancyYears)
+    var projectedLifeExpectancy: Double {
+        adjustedLifeExpectancyYears
+    }
+    
+    /// Current age in years (calculated from current date and baseline)
+    var currentAge: Double {
+        let calendar = Calendar.current
+        let currentYear = Double(calendar.component(.year, from: Date()))
+        // Estimate birth year from baseline expectancy and current year
+        // This is approximate since we don't have the actual birth year here
+        let estimatedBirthYear = currentYear - (baselineLifeExpectancyYears * 0.5) // Rough estimation
+        return currentYear - estimatedBirthYear
+    }
+    
+    /// Health adjustment in years (alias for netImpactYears)
+    var healthAdjustment: Double {
+        netImpactYears
+    }
+    
+    /// Years remaining based on adjusted life expectancy
+    var yearsRemaining: Double {
+        let currentAge = self.currentAge
+        return max(adjustedLifeExpectancyYears - currentAge, 0)
+    }
+    
+    /// Percentage of life remaining
+    var percentageRemaining: Double {
+        let remaining = yearsRemaining
+        return (remaining / adjustedLifeExpectancyYears) * 100.0
+    }
+    
     static func == (lhs: LifeProjection, rhs: LifeProjection) -> Bool {
         lhs.id == rhs.id &&
         lhs.calculationDate == rhs.calculationDate &&

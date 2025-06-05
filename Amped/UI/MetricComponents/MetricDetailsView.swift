@@ -58,16 +58,31 @@ struct MetricDetailsView: View {
             }
             .navigationTitle(metric.type.name)
             .navigationBarTitleDisplayMode(.inline)
+            .withDeepBackground()
+            .onAppear {
+                // Configure navigation bar appearance to match dark theme
+                let scrolledAppearance = UINavigationBarAppearance()
+                scrolledAppearance.configureWithDefaultBackground()
+                scrolledAppearance.backgroundColor = UIColor.black.withAlphaComponent(0.8)
+                scrolledAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+                
+                let transparentAppearance = UINavigationBarAppearance()
+                transparentAppearance.configureWithTransparentBackground()
+                transparentAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+                
+                UINavigationBar.appearance().standardAppearance = scrolledAppearance
+                UINavigationBar.appearance().scrollEdgeAppearance = transparentAppearance
+                UINavigationBar.appearance().compactAppearance = scrolledAppearance
+                
+                // Load historical data for this metric
+                viewModel.loadHistoricalData(for: metric, period: selectedPeriod)
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         onClose?()
                     }
                 }
-            }
-            .onAppear {
-                // Load historical data for this metric
-                viewModel.loadHistoricalData(for: metric, period: selectedPeriod)
             }
         }
     }

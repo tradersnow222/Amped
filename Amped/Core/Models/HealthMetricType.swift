@@ -89,7 +89,9 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .activeEnergyBurned:
             return .kilocalorie()
         case .vo2Max:
-            return HKUnit(from: "ml/kg/min")
+            return HKUnit.literUnit(with: .milli)
+                .unitDivided(by: .gramUnit(with: .kilo))
+                .unitDivided(by: .minute())
         case .oxygenSaturation:
             return .percent()
         case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
@@ -199,6 +201,59 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .vo2Max: return 45
         case .oxygenSaturation: return 100
         case .stressLevel: return 2
+        }
+    }
+    
+    /// Returns whether this metric type should prioritize sample queries over statistics
+    var preferSampleQuery: Bool {
+        switch self {
+        case .bodyMass, .oxygenSaturation, .vo2Max:
+            // These metrics should prioritize most recent reading
+            return true
+        default:
+            return false
+        }
+    }
+    
+    /// Returns the appropriate time interval to look back for historic data
+    var recommendedTimeInterval: DateComponents {
+        switch self {
+        case .steps, .exerciseMinutes, .activeEnergyBurned:
+            // Activity metrics - last day is most relevant
+            return DateComponents(day: 1)
+        case .sleepHours:
+            // Sleep data needs a week for proper averaging
+            return DateComponents(day: 7)
+        case .restingHeartRate, .heartRateVariability, .vo2Max:
+            // Cardiovascular metrics - last week
+            return DateComponents(day: 7)
+        case .bodyMass:
+            // Body mass doesn't change quickly - 30 days
+            return DateComponents(day: 30)
+        case .oxygenSaturation:
+            // Oxygen saturation - recent readings most relevant
+            return DateComponents(day: 2)
+        default:
+            // Default fallback
+            return DateComponents(day: 14)
+        }
+    }
+    
+    /// Returns the sample limit to use when fetching this metric type
+    var recommendedSampleLimit: Int {
+        switch self {
+        case .steps, .exerciseMinutes, .activeEnergyBurned:
+            return 24 // One per hour for a day
+        case .restingHeartRate:
+            return 7 // One per day for a week
+        case .heartRateVariability:
+            return 20 // Multiple readings for averaging
+        case .bodyMass, .vo2Max:
+            return 1 // Just the most recent
+        case .oxygenSaturation:
+            return 5 // A few recent readings
+        default:
+            return 10 // Default reasonable limit
         }
     }
 } 

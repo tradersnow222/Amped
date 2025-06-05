@@ -74,18 +74,19 @@ struct MetricContextCard: View {
             .padding(.horizontal, 12)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.systemGray6))
+                    .fill(Color.secondaryCardBackground)
             )
         }
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
+                .fill(Color.cardBackground)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 1)
         )
+        .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 1)
     }
     
     // MARK: - Computed Properties

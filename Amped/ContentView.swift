@@ -35,8 +35,7 @@ struct ContentView: View {
     }
     
     var body: some View {
-        #if DEBUG
-        // Development preview mode
+        // DEBUG development mode with view switcher controls
         ZStack {
             // The main content view takes up the full screen
             Group {
@@ -55,8 +54,16 @@ struct ContentView: View {
                     PaymentView(onContinue: {})
                         .environmentObject(appState)
                 case .dashboard:
-                    DashboardView()
-                        .navigationBarHidden(true)
+                    if #available(iOS 16.0, *) {
+                        NavigationStack {
+                            DashboardView()
+                        }
+                    } else {
+                        NavigationView {
+                            DashboardView()
+                        }
+                        .navigationViewStyle(StackNavigationViewStyle())
+                    }
                 case .onboardingFlow:
                     OnboardingFlow()
                         .environmentObject(appState)
@@ -69,14 +76,41 @@ struct ContentView: View {
                 VStack {
                     Spacer()
                     
-                    Picker("Select View", selection: $selectedView) {
-                        ForEach(AppView.allCases) { view in
-                            Text(view.displayName).tag(view)
+                    VStack(spacing: 12) {
+                        Text("DEBUG MODE")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Picker("Select View", selection: $selectedView) {
+                            ForEach(AppView.allCases) { view in
+                                Text(view.displayName).tag(view)
+                            }
                         }
+                        .pickerStyle(MenuPickerStyle())
+                        
+                        // Add button to reset onboarding state for testing
+                        Button("Reset Onboarding") {
+                            appState.hasCompletedOnboarding = false
+                            UserDefaults.standard.removeObject(forKey: "hasCompletedOnboarding")
+                        }
+                        .font(.caption)
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
+                        .background(Color.red.opacity(0.2))
+                        .cornerRadius(4)
+                        
+                        // Add button to complete onboarding for testing
+                        Button("Complete Onboarding") {
+                            appState.completeOnboarding()
+                        }
+                        .font(.caption)
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 8)
+                        .background(Color.green.opacity(0.2))
+                        .cornerRadius(4)
                     }
-                    .pickerStyle(MenuPickerStyle())
                     .padding()
-                    .background(Color(.systemBackground).opacity(0.8))
+                    .background(Color(.systemBackground).opacity(0.9))
                     .cornerRadius(10)
                     .padding(.horizontal)
                     .padding(.bottom, 20)
@@ -86,33 +120,22 @@ struct ContentView: View {
         // Add a tap gesture to the corner to show/hide debug controls
         .overlay(
             VStack {
+                Spacer()
+                
                 HStack {
-                    Spacer()
-                    
                     Rectangle()
                         .fill(Color.clear)
                         .frame(width: 50, height: 50)
                         .contentShape(Rectangle())
                         .onTapGesture(count: 3) {
+                            print("🐛 DEBUG: Triple-tap gesture triggered")
                             showDebugControls.toggle()
                         }
+                    
+                    Spacer()
                 }
-                
-                Spacer()
             }
         )
-        #else
-        // Production mode - follow normal app flow
-        if appState.hasCompletedOnboarding {
-            NavigationView {
-                DashboardView()
-            }
-            .navigationViewStyle(StackNavigationViewStyle())
-            .accentColor(Color.ampedGreen)
-        } else {
-            OnboardingFlow()
-        }
-        #endif
     }
 }
 

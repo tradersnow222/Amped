@@ -90,8 +90,8 @@ struct BatteryLifeProjectionCard: View {
             .padding(.top, 4)
         }
         .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
+        .background(Color.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
         .onAppear {
             withAnimation(.easeInOut(duration: 1.0)) {
@@ -226,7 +226,7 @@ struct BatteryLifeProjectionCard: View {
 struct BatteryLifeProjectionCard_Previews: PreviewProvider {
     static var previews: some View {
         VStack {
-            // Good projection
+            // Good projection example - represents a real user with good health habits
             BatteryLifeProjectionCard(
                 lifeProjection: LifeProjection(
                     calculationDate: Date(),
@@ -235,10 +235,10 @@ struct BatteryLifeProjectionCard_Previews: PreviewProvider {
                     confidencePercentage: 0.95,
                     confidenceIntervalYears: 2.0
                 ),
-                userAge: 35
+                userAge: 30 // Early career professional with healthy habits
             )
             
-            // Poor projection
+            // Moderate projection example - represents a real user needing improvement
             BatteryLifeProjectionCard(
                 lifeProjection: LifeProjection(
                     calculationDate: Date(),
@@ -247,7 +247,7 @@ struct BatteryLifeProjectionCard_Previews: PreviewProvider {
                     confidencePercentage: 0.95,
                     confidenceIntervalYears: 2.0
                 ),
-                userAge: 65
+                userAge: 45 // Mid-career professional with room for improvement
             )
         }
         .padding()

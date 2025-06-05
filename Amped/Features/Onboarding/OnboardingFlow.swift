@@ -140,7 +140,7 @@ struct OnboardingFlow: View {
                     .zIndex(currentStep == .dashboard ? 1 : 0)
                     .onAppear {
                         // Mark onboarding as complete once dashboard is shown
-                        appState.hasCompletedOnboarding = true
+                        appState.completeOnboarding()
                     }
                 }
             }

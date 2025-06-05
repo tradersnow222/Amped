@@ -23,7 +23,8 @@ struct PaymentView: View {
                 HStack {
                     Spacer()
                     Button(action: {
-                        viewModel.showDiscountPopup = true
+                        // Show discount popup with cheaper options when user tries to leave
+                        viewModel.showDiscountOffer()
                     }) {
                         Image(systemName: "xmark")
                             .font(.title2)
@@ -125,7 +126,7 @@ struct PaymentView: View {
             
             // Discount popup
             if viewModel.showDiscountPopup {
-                PaymentComponents.DiscountPopup(viewModel: viewModel)
+                PaymentComponents.DiscountPopup(viewModel: viewModel, onContinue: onContinue)
             }
         }
         .alert(isPresented: $viewModel.showError) {
@@ -134,6 +135,10 @@ struct PaymentView: View {
                 message: Text(viewModel.errorMessage),
                 dismissButton: .default(Text("OK"))
             )
+        }
+        .onAppear {
+            // Ensure viewModel has access to appState
+            viewModel.appState = appState
         }
         .withDeepBackground()
     }

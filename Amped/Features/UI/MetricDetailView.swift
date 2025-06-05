@@ -63,6 +63,27 @@ struct MetricDetailView: View {
         }
         .navigationTitle(metric.type.displayName)
         .navigationBarTitleDisplayMode(.inline)
+        .withDeepBackground()
+        .onAppear {
+            // Configure navigation bar appearance to match dark theme
+            let scrolledAppearance = UINavigationBarAppearance()
+            scrolledAppearance.configureWithDefaultBackground()
+            scrolledAppearance.backgroundColor = UIColor.black.withAlphaComponent(0.8)
+            scrolledAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+            
+            let transparentAppearance = UINavigationBarAppearance()
+            transparentAppearance.configureWithTransparentBackground()
+            transparentAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+            
+            UINavigationBar.appearance().standardAppearance = scrolledAppearance
+            UINavigationBar.appearance().scrollEdgeAppearance = transparentAppearance
+            UINavigationBar.appearance().compactAppearance = scrolledAppearance
+            
+            viewModel.loadData(for: metric)
+            AnalyticsService.shared.trackMetricSelected(metric.type.rawValue)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Details for \(metric.type.displayName)")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Done") {
@@ -70,12 +91,6 @@ struct MetricDetailView: View {
                 }
             }
         }
-        .onAppear {
-            viewModel.loadData(for: metric)
-            AnalyticsService.shared.trackMetricSelected(metric.type.rawValue)
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Details for \(metric.type.displayName)")
     }
 }
 
@@ -401,16 +416,17 @@ struct ChartView: View {
         // Placeholder for chart
         ZStack {
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.systemGray6))
+                .fill(Color.cardBackground)
             
             Text("Chart for \(metric.type.displayName) over \(period.rawValue)")
                 .font(.caption)
+                .foregroundColor(.white)
         }
     }
 }
 
 #Preview {
     NavigationView {
-        MetricDetailView(metric: HealthMetric.mockSteps)
+        MetricDetailView(metric: HealthMetric.sample(type: .steps, value: 8750))
     }
 } 

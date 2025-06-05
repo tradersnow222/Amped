@@ -3,29 +3,37 @@ import SwiftUI
 /// View for managing app settings and user preferences
 struct SettingsView: View {
     @EnvironmentObject private var settingsManager: SettingsManager
-    @Environment(\.dismiss) private var dismiss
     @State private var showResetConfirmation = false
     
     var body: some View {
-        NavigationView {
-            Form {
-                displaySection
-                unitSection
-                notificationSection
-                batterySection
-                privacySection
-                resetSection
-                aboutSection
-            }
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
+        Form {
+            preferencesSection
+            notificationsSection
+            privacySecuritySection
+            supportSection
+            aboutSection
+        }
+        .scrollContentBackground(.hidden) // Hide default Form background
+        .background(Color.clear) // Make Form background transparent
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        .withDeepBackground() // Apply app background theme
+        .onAppear {
+            // Configure navigation bar appearance to match dark theme
+            let scrolledAppearance = UINavigationBarAppearance()
+            scrolledAppearance.configureWithDefaultBackground()
+            scrolledAppearance.backgroundColor = UIColor.black.withAlphaComponent(0.8)
+            scrolledAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+            
+            let transparentAppearance = UINavigationBarAppearance()
+            transparentAppearance.configureWithTransparentBackground()
+            transparentAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+            
+            UINavigationBar.appearance().standardAppearance = scrolledAppearance
+            UINavigationBar.appearance().scrollEdgeAppearance = transparentAppearance
+            UINavigationBar.appearance().compactAppearance = scrolledAppearance
+            
+            print("🔧 SettingsView body appeared")
         }
         .alert("Reset Settings", isPresented: $showResetConfirmation) {
             Button("Cancel", role: .cancel) { }
@@ -37,95 +45,163 @@ struct SettingsView: View {
         }
     }
     
-    // MARK: - Display Section
+    // MARK: - Preferences Section
     
-    private var displaySection: some View {
-        Section(header: Text("Display")) {
-            Picker("Appearance", selection: $settingsManager.preferredDisplayMode) {
-                ForEach(SettingsManager.DisplayMode.allCases) { mode in
-                    Text(mode.displayName).tag(mode)
+    private var preferencesSection: some View {
+        Section {
+            // Appearance Setting
+            HStack {
+                Image(systemName: "paintbrush.fill")
+                    .foregroundColor(.ampedYellow)
+                    .frame(width: 20)
+                
+                Picker("Appearance", selection: $settingsManager.preferredDisplayMode) {
+                    ForEach(SettingsManager.DisplayMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+            
+            // Units Setting
+            HStack {
+                Image(systemName: "ruler.fill")
+                    .foregroundColor(.ampedYellow)
+                    .frame(width: 20)
+                
+                Toggle("Use Metric System", isOn: $settingsManager.useMetricSystem)
+                    .toggleStyle(.switch)
+                    .tint(.ampedGreen)
+            }
+            
+            // Metrics Visibility Setting
+            HStack {
+                Image(systemName: "chart.bar.fill")
+                    .foregroundColor(.ampedYellow)
+                    .frame(width: 20)
+                
+                Toggle("Show Unavailable Metrics", isOn: $settingsManager.showUnavailableMetrics)
+                    .toggleStyle(.switch)
+                    .tint(.ampedGreen)
+            }
+        } header: {
+            Text("Preferences")
+                .foregroundColor(.ampedYellow)
+        }
+        .listRowBackground(Color.black.opacity(0.6))
+    }
+    
+    // MARK: - Notifications Section
+    
+    private var notificationsSection: some View {
+        Section {
+            HStack {
+                Image(systemName: "bell.fill")
+                    .foregroundColor(.ampedYellow)
+                    .frame(width: 20)
+                
+                Toggle("Enable Notifications", isOn: $settingsManager.notificationsEnabled)
+                    .toggleStyle(.switch)
+                    .tint(.ampedGreen)
+            }
+        } header: {
+            Text("Notifications")
+                .foregroundColor(.ampedYellow)
+        }
+        .listRowBackground(Color.black.opacity(0.6))
+    }
+    
+    // MARK: - Privacy & Security Section
+    
+    private var privacySecuritySection: some View {
+        Section {
+            NavigationLink(destination: PrivacyPolicyView()) {
+                HStack {
+                    Image(systemName: "hand.raised.fill")
+                        .foregroundColor(.ampedYellow)
+                        .frame(width: 20)
+                    
+                    Text("Privacy Policy")
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
-            .pickerStyle(.menu)
+        } header: {
+            Text("Privacy & Security")
+                .foregroundColor(.ampedYellow)
         }
+        .listRowBackground(Color.black.opacity(0.6))
     }
     
-    // MARK: - Unit Section
+    // MARK: - Support Section
     
-    private var unitSection: some View {
-        Section(header: Text("Units")) {
-            Toggle("Use Metric System", isOn: $settingsManager.useMetricSystem)
-                .toggleStyle(.switch)
-            Text("Affects how measurements like weight and activity are displayed")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-    }
-    
-    // MARK: - Notification Section
-    
-    private var notificationSection: some View {
-        Section(header: Text("Notifications")) {
-            Toggle("Enable Notifications", isOn: $settingsManager.notificationsEnabled)
-                .toggleStyle(.switch)
-            
-            if settingsManager.notificationsEnabled {
-                DatePicker("Daily Reminder", selection: $settingsManager.reminderTime, displayedComponents: .hourAndMinute)
-            }
-        }
-    }
-    
-    // MARK: - Battery Section
-    
-    private var batterySection: some View {
-        Section(header: Text("Battery Visuals")) {
-            Toggle("Show Battery Animations", isOn: $settingsManager.showBatteryAnimation)
-                .toggleStyle(.switch)
-            
-            Text("Enables charging and power flow animations")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-    }
-    
-    // MARK: - Privacy Section
-    
-    private var privacySection: some View {
-        Section(header: Text("Privacy")) {
-            Toggle("Allow Anonymous Analytics", isOn: $settingsManager.privacyAnalyticsEnabled)
-                .toggleStyle(.switch)
-            
-            Text("Helps us improve the app with anonymous usage data. No personal or health data is ever shared.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            
-            NavigationLink("Privacy Policy") {
-                PrivacyPolicyView()
-            }
-        }
-    }
-    
-    // MARK: - Reset Section
-    
-    private var resetSection: some View {
+    private var supportSection: some View {
         Section {
+            NavigationLink(destination: TermsOfServiceView()) {
+                HStack {
+                    Image(systemName: "doc.text.fill")
+                        .foregroundColor(.ampedYellow)
+                        .frame(width: 20)
+                    
+                    Text("Terms of Service")
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
             Button(role: .destructive) {
                 showResetConfirmation = true
             } label: {
-                Text("Reset All Settings")
+                HStack {
+                    Image(systemName: "arrow.clockwise")
+                        .foregroundColor(.ampedRed)
+                        .frame(width: 20)
+                    
+                    Text("Reset All Settings")
+                        .foregroundColor(.ampedRed)
+                    
+                    Spacer()
+                }
             }
+        } header: {
+            Text("Support")
+                .foregroundColor(.ampedYellow)
         }
+        .listRowBackground(Color.black.opacity(0.6))
     }
     
     // MARK: - About Section
     
     private var aboutSection: some View {
-        Section(header: Text("About")) {
-            LabeledContent("Version", value: "1.0.0")
-            NavigationLink("Terms of Service") {
-                TermsOfServiceView()
+        Section {
+            HStack {
+                Image(systemName: "info.circle.fill")
+                    .foregroundColor(.ampedYellow)
+                    .frame(width: 20)
+                
+                Text("Version")
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Text("1.0.0")
+                    .foregroundColor(.secondary)
             }
+        } header: {
+            Text("About")
+                .foregroundColor(.ampedYellow)
         }
+        .listRowBackground(Color.black.opacity(0.6))
     }
 }
 
@@ -138,28 +214,51 @@ struct PrivacyPolicyView: View {
                 Text("Privacy Policy")
                     .font(.largeTitle)
                     .bold()
+                    .foregroundColor(.ampedGreen)
                     .padding(.bottom)
                 
                 Group {
                     Text("Data Collection")
                         .font(.headline)
+                        .foregroundColor(.ampedYellow)
                     
                     Text("Amped processes all health data locally on your device. We do not collect, store, or transmit your health data to any external servers.")
+                        .foregroundColor(.primary)
                     
                     Text("With your explicit permission, we may collect anonymous usage data to improve the app experience. This data is never linked to your personal identity.")
+                        .foregroundColor(.primary)
                     
                     Text("Analytics")
                         .font(.headline)
+                        .foregroundColor(.ampedYellow)
                     
                     Text("If you opt in to analytics, we collect anonymized information about app usage, features used, and performance metrics. You can disable this at any time in settings.")
+                        .foregroundColor(.primary)
                 }
                 
                 Spacer()
             }
             .padding()
         }
+        .background(Color.clear)
+        .withDeepBackground()
         .navigationTitle("Privacy Policy")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            // Configure navigation bar appearance to match dark theme
+            let scrolledAppearance = UINavigationBarAppearance()
+            scrolledAppearance.configureWithDefaultBackground()
+            scrolledAppearance.backgroundColor = UIColor.black.withAlphaComponent(0.8)
+            scrolledAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+            
+            let transparentAppearance = UINavigationBarAppearance()
+            transparentAppearance.configureWithTransparentBackground()
+            transparentAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+            
+            UINavigationBar.appearance().standardAppearance = scrolledAppearance
+            UINavigationBar.appearance().scrollEdgeAppearance = transparentAppearance
+            UINavigationBar.appearance().compactAppearance = scrolledAppearance
+        }
     }
 }
 
@@ -172,26 +271,48 @@ struct TermsOfServiceView: View {
                 Text("Terms of Service")
                     .font(.largeTitle)
                     .bold()
+                    .foregroundColor(.ampedGreen)
                     .padding(.bottom)
                 
                 Group {
                     Text("Agreement")
                         .font(.headline)
+                        .foregroundColor(.ampedYellow)
                     
                     Text("By using Amped, you agree to these terms of service. The app provides health insights based on scientific research but is not a medical device or a substitute for professional medical advice.")
+                        .foregroundColor(.primary)
                     
                     Text("Limitations of Liability")
                         .font(.headline)
+                        .foregroundColor(.ampedYellow)
                     
                     Text("Amped is provided \"as is\" without warranties of any kind. We are not liable for any damages arising from your use of the service.")
+                        .foregroundColor(.primary)
                 }
                 
                 Spacer()
             }
             .padding()
         }
+        .background(Color.clear)
+        .withDeepBackground()
         .navigationTitle("Terms of Service")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            // Configure navigation bar appearance to match dark theme
+            let scrolledAppearance = UINavigationBarAppearance()
+            scrolledAppearance.configureWithDefaultBackground()
+            scrolledAppearance.backgroundColor = UIColor.black.withAlphaComponent(0.8)
+            scrolledAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+            
+            let transparentAppearance = UINavigationBarAppearance()
+            transparentAppearance.configureWithTransparentBackground()
+            transparentAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+            
+            UINavigationBar.appearance().standardAppearance = scrolledAppearance
+            UINavigationBar.appearance().scrollEdgeAppearance = transparentAppearance
+            UINavigationBar.appearance().compactAppearance = scrolledAppearance
+        }
     }
 }
 

@@ -21,6 +21,21 @@ extension Color {
     static var mediumPowerFallback: Color { ampedYellowFallback }
     static var lowPowerFallback: Color { Color(red: 0.9, green: 0.6, blue: 0.3) }
     static var criticalPowerFallback: Color { ampedRedFallback }
+    
+    // MARK: - Consistent Background System
+    // Following user-specific rule for simplicity and consistency
+    
+    /// Primary card/row background for consistent theming (matches settings screen)
+    static var cardBackground: Color { Color.black.opacity(0.6) }
+    
+    /// Secondary card background for nested content
+    static var secondaryCardBackground: Color { Color.black.opacity(0.4) }
+    
+    /// Light card background for subtle elements
+    static var lightCardBackground: Color { Color.black.opacity(0.3) }
+    
+    /// Tertiary background for very subtle elements
+    static var tertiaryBackground: Color { Color.black.opacity(0.2) }
 }
 
 /// Custom namespace for theme colors to avoid conflicts with auto-generated asset symbols
@@ -99,6 +114,21 @@ enum AmpedColors {
             return Color.criticalPowerFallback
         }
     }
+    
+    // MARK: - Consistent Background System
+    // Apply user-specific rule: Simplicity is KING
+    
+    /// Primary card/row background for consistent theming
+    static var cardBackground: Color { Color.cardBackground }
+    
+    /// Secondary card background for nested content
+    static var secondaryCardBackground: Color { Color.secondaryCardBackground }
+    
+    /// Light card background for subtle elements
+    static var lightCardBackground: Color { Color.lightCardBackground }
+    
+    /// Tertiary background for very subtle elements
+    static var tertiaryBackground: Color { Color.tertiaryBackground }
 }
 
 /// A struct to create all the required colors in the asset catalog

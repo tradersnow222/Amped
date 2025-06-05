@@ -153,7 +153,7 @@ struct HealthKitPermissionsView: View {
                     logger.info("Permissions not detected by status check, trying direct data access validation")
                     
                     // Create a new HealthKit manager with a fresh store to avoid any caching issues
-                    let healthKitManager = HealthKitManager(healthStore: HKHealthStore())
+                    let healthKitManager = HealthKitManager()
                     
                     // Important: Instead of checking permissions, try to actually access health data
                     // This is more reliable because it tests what we actually need - data access
@@ -186,98 +186,92 @@ struct HealthKitPermissionsView: View {
     
     // MARK: - Helper Methods
     
-    /// Check if permissions have already been granted when the view appears
+    /// Helper method to check permissions and continue if granted
+    private func checkPermissionsAndContinue() async {
+        // Clear any error state to be safe
+        viewModel.clearErrorState()
+        
+        // Check permissions to ensure the UI is updated
+        await viewModel.checkPermissionsStatus(forceRefresh: true)
+        
+        // Important: Call onContinue on the main thread
+        DispatchQueue.main.async {
+            self.onContinue?()
+        }
+    }
+    
+    /// Check if permissions were already granted
     private func checkExistingPermissions() {
         Task {
-            logger.info("Checking existing HealthKit permissions")
+            logger.debug("Checking existing HealthKit permissions")
+            await viewModel.checkPermissionsStatus()
             
-            // Force refresh to get an accurate reading of current permissions
-            await viewModel.checkPermissionsStatus(forceRefresh: true)
-            
-            // Check if permissions are granted using the published properties
-            let canContinue = viewModel.allPermissionsGranted || viewModel.criticalPermissionsGranted
-            
-            if canContinue {
-                logger.info("Sufficient permissions already granted by status check, continuing")
-                
-                // Clear any error state just to be safe
-                viewModel.clearErrorState()
-                
-                // Important: Call onContinue on the main thread
+            if viewModel.allPermissionsGranted || viewModel.criticalPermissionsGranted {
+                logger.info("Existing permissions already granted")
                 DispatchQueue.main.async {
                     self.onContinue?()
                 }
             } else {
-                logger.info("Permissions not detected by status check, trying data access validation")
-                
-                // Create a fresh HealthKit manager to avoid any caching issues
-                let healthKitManager = HealthKitManager(healthStore: HKHealthStore())
-                
-                // Important: Try to validate permissions by actually accessing health data
-                // This is the most reliable test of whether permissions are truly granted
-                let canAccessHealthData = await healthKitManager.validatePermissionsByAccessingData()
-                
-                if canAccessHealthData {
-                    logger.info("Successfully validated permissions by accessing health data")
-                    await viewModel.checkPermissionsStatus(forceRefresh: true)
-                    logger.info("Proceeding to next screen after successful data access validation")
-                    
-                    DispatchQueue.main.async {
-                        self.onContinue?()
-                    }
-                } else {
-                    logger.info("Permissions not yet granted, staying on permissions screen")
-                }
+                logger.debug("Permissions not yet granted, staying on permissions screen")
             }
         }
     }
     
-    /// Request HealthKit permissions directly from the view
+    /// Request HealthKit permissions
     private func requestHealthKitPermissions() {
-        // Clear any error state before proceeding
-        viewModel.clearErrorState()
-        
         logger.info("User initiating HealthKit permission request")
-        
+        viewModel.clearErrorState()
+
         Task {
-            let granted = await viewModel.requestHealthKitPermissions()
+            // Request permissions and wait for the result
+            let success = await viewModel.requestHealthKitPermissions()
             
-            // Force a permission check again after the request
-            logger.info("Checking permission status after explicit request")
-            await viewModel.checkPermissionsStatus(forceRefresh: true)
-            
-            // Extra check to make sure we're considering the latest permission state
-            let hasPermissions = viewModel.allPermissionsGranted || viewModel.criticalPermissionsGranted
-            
-            if granted || hasPermissions {
-                logger.info("HealthKit permissions granted by status check, continuing to next screen")
-                
-                // Clear any error state just to be safe
-                viewModel.clearErrorState()
-                
-                // Important: Call onContinue on the main thread
-                DispatchQueue.main.async {
-                    self.onContinue?()
-                }
+            if success {
+                logger.info("HealthKit permissions request successful")
+                await checkPermissionsAndContinue()
             } else {
-                logger.warning("HealthKit permissions not detected by status check, trying data access validation")
+                logger.warning("HealthKit permissions request failed or was rejected")
+                // Add a final retry check after a delay - sometimes iOS updates permissions asynchronously
+                // and the immediate check in requestHealthKitPermissions might miss it
+                try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+                logger.info("Checking permission status after explicit request")
+                await viewModel.checkPermissionsStatus(forceRefresh: true)
                 
-                // Create a fresh HealthKit manager to avoid any caching issues
-                let healthKitManager = HealthKitManager(healthStore: HKHealthStore())
-                
-                // Important: Try to validate permissions by actually accessing health data
-                let canAccessHealthData = await healthKitManager.validatePermissionsByAccessingData()
-                
-                if canAccessHealthData {
-                    logger.info("Successfully validated permissions by accessing health data")
-                    await viewModel.checkPermissionsStatus(forceRefresh: true)
-                    logger.info("Proceeding to next screen after successful data access validation")
-                    
-                    DispatchQueue.main.async {
-                        self.onContinue?()
-                    }
+                // Check again if permissions are valid after our explicit refresh
+                if viewModel.allPermissionsGranted || viewModel.criticalPermissionsGranted {
+                    logger.info("Delayed permission check successful - proceeding")
+                    await checkPermissionsAndContinue()
                 } else {
-                    logger.warning("Permissions not granted even after data access validation attempt")
+                    logger.warning("HealthKit permissions not detected by status check, trying data access validation")
+                    
+                    // Create a fresh HealthKit manager to avoid any caching issues
+                    let healthKitManager = HealthKitManager()
+                    
+                    // Important: Try to validate permissions by actually accessing health data
+                    let canAccessHealthData = await healthKitManager.validatePermissionsByAccessingData()
+                    
+                    if canAccessHealthData {
+                        logger.info("Successfully validated permissions by accessing health data")
+                        await viewModel.checkPermissionsStatus(forceRefresh: true)
+                        logger.info("Proceeding to next screen after successful data access validation")
+                        
+                        DispatchQueue.main.async {
+                            self.onContinue?()
+                        }
+                    } else {
+                        logger.warning("Permissions not granted even after data access validation attempt")
+                        
+                        // One final check with a doubled delay - iOS can be very slow to update permissions
+                        try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
+                        await viewModel.checkPermissionsStatus(forceRefresh: true)
+                        
+                        if viewModel.allPermissionsGranted || viewModel.criticalPermissionsGranted {
+                            logger.info("Final delayed permission check successful - proceeding")
+                            DispatchQueue.main.async {
+                                self.onContinue?()
+                            }
+                        }
+                    }
                 }
             }
         }

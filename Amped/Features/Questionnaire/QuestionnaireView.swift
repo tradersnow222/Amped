@@ -5,6 +5,7 @@ struct QuestionnaireView: View {
     // MARK: - Properties
     
     @StateObject private var viewModel = QuestionnaireViewModel()
+    @StateObject private var questionnaireManager = QuestionnaireManager()
     @Environment(\.themeManager) private var themeManager
     
     // Navigation bindings
@@ -158,6 +159,9 @@ struct QuestionnaireView: View {
     
     private func completeQuestionnaire() {
         guard viewModel.canProceed else { return }
+        
+        // CRITICAL FIX: Save questionnaire data before proceeding
+        questionnaireManager.saveQuestionnaireData(from: viewModel)
         
         // Activate binding to trigger the transition to health permissions
         proceedToHealthPermissions = true

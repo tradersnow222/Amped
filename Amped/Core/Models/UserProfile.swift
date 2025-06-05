@@ -73,4 +73,32 @@ struct UserProfile: Codable, Equatable {
     static func == (lhs: UserProfile, rhs: UserProfile) -> Bool {
         lhs.id == rhs.id
     }
+    
+    /// Update profile with questionnaire data
+    mutating func updateFromQuestionnaire(birthYear: Int?, gender: Gender?, height: Double?, weight: Double?) {
+        self.birthYear = birthYear
+        self.gender = gender
+        self.height = height
+        self.weight = weight
+        self.hasCompletedQuestionnaire = true
+        self.lastActive = Date()
+    }
+    
+    /// Mark onboarding as completed
+    mutating func completeOnboarding() {
+        self.hasCompletedOnboarding = true
+        self.lastActive = Date()
+    }
+    
+    /// Mark HealthKit permissions as granted
+    mutating func grantHealthKitPermissions() {
+        self.hasGrantedHealthKitPermissions = true
+        self.lastActive = Date()
+    }
+    
+    /// Update subscription status
+    mutating func updateSubscriptionStatus(_ isSubscribed: Bool) {
+        self.isSubscribed = isSubscribed
+        self.lastActive = Date()
+    }
 } 

@@ -26,7 +26,7 @@ final class PaymentViewModel: ObservableObject {
             self.isProcessing = false
             
             // Mark onboarding as complete
-            self.appState?.hasCompletedOnboarding = true
+            self.appState?.completeOnboarding()
             
             // Continue to dashboard
             completion()
@@ -34,7 +34,7 @@ final class PaymentViewModel: ObservableObject {
     }
     
     // Process the discounted purchase
-    func processPurchaseWithDiscount() {
+    func processPurchaseWithDiscount(completion: @escaping () -> Void) {
         isProcessing = true
         
         // Simulate network request
@@ -42,13 +42,24 @@ final class PaymentViewModel: ObservableObject {
             self.isProcessing = false
             
             // Mark onboarding as complete
-            self.appState?.hasCompletedOnboarding = true
+            self.appState?.completeOnboarding()
+            
+            // Continue to dashboard
+            completion()
         }
     }
     
     // Skip payment
-    func skipPayment() {
+    func skipPayment(completion: @escaping () -> Void) {
         // Mark onboarding as complete but without premium access
-        appState?.hasCompletedOnboarding = true
+        appState?.completeOnboarding()
+        
+        // Continue to dashboard
+        completion()
+    }
+    
+    // Show discount popup (method that should be called by close button)
+    func showDiscountOffer() {
+        showDiscountPopup = true
     }
 } 

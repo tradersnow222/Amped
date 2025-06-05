@@ -132,6 +132,7 @@ struct PaymentComponents {
     /// Discount popup view
     struct DiscountPopup: View {
         @ObservedObject var viewModel: PaymentViewModel
+        let onContinue: (() -> Void)?
         
         var body: some View {
             ZStack {
@@ -172,7 +173,9 @@ struct PaymentComponents {
                         // Decline
                         Button(action: {
                             viewModel.showDiscountPopup = false
-                            viewModel.skipPayment()
+                            viewModel.skipPayment {
+                                onContinue?()
+                            }
                         }) {
                             Text("No thanks")
                                 .fontWeight(.medium)
@@ -187,7 +190,9 @@ struct PaymentComponents {
                         // Accept
                         Button(action: {
                             viewModel.showDiscountPopup = false
-                            viewModel.processPurchaseWithDiscount()
+                            viewModel.processPurchaseWithDiscount {
+                                onContinue?()
+                            }
                         }) {
                             Text("Accept Offer")
                                 .fontWeight(.bold)
@@ -202,7 +207,7 @@ struct PaymentComponents {
                     .padding(.top, 10)
                 }
                 .padding(30)
-                .background(Color(.systemBackground))
+                .background(Color.cardBackground)
                 .cornerRadius(20)
                 .shadow(radius: 20)
                 .padding(.horizontal, 30)
@@ -228,7 +233,7 @@ struct PaymentComponents {
                         .foregroundColor(.white)
                 }
                 .padding(30)
-                .background(Color(.systemBackground).opacity(0.8))
+                .background(Color.cardBackground)
                 .cornerRadius(10)
             }
         }

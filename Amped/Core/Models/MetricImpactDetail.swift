@@ -50,23 +50,68 @@ struct MetricImpactDetail: Identifiable, Codable, Equatable {
     /// A user-friendly description of the impact
     var impactDescription: String {
         let absImpact = abs(lifespanImpactMinutes)
+        let direction = lifespanImpactMinutes >= 0 ? "gained" : "lost"
         
-        if absImpact < 60 {
-            // Less than 1 hour
-            let minutes = Int(absImpact)
-            let direction = lifespanImpactMinutes >= 0 ? "gained" : "lost"
-            return "\(minutes) minute\(minutes == 1 ? "" : "s") \(direction)"
-        } else if absImpact < 1440 {
-            // Less than 1 day
-            let hours = Int(absImpact / 60)
-            let direction = lifespanImpactMinutes >= 0 ? "gained" : "lost"
-            return "\(hours) hour\(hours == 1 ? "" : "s") \(direction)"
-        } else {
-            // Days or more
-            let days = absImpact / 1440
-            let direction = lifespanImpactMinutes >= 0 ? "gained" : "lost"
-            return String(format: "%.1f day\(days == 1 ? "" : "s") \(direction)", days)
+        // Define time conversions
+        let minutesInHour = 60.0
+        let minutesInDay = 1440.0 // 60 * 24
+        let minutesInWeek = 10080.0 // 60 * 24 * 7
+        let minutesInMonth = 43200.0 // 60 * 24 * 30 (approximate)
+        let minutesInYear = 525600.0 // 60 * 24 * 365
+        
+        // Years
+        if absImpact >= minutesInYear {
+            let years = absImpact / minutesInYear
+            if years >= 2 {
+                return String(format: "%.0f years %@", years, direction)
+            } else {
+                return String(format: "%.1f year %@", years, direction)
+            }
         }
+        
+        // Months
+        if absImpact >= minutesInMonth {
+            let months = absImpact / minutesInMonth
+            if months >= 2 {
+                return String(format: "%.0f months %@", months, direction)
+            } else {
+                return String(format: "%.1f month %@", months, direction)
+            }
+        }
+        
+        // Weeks
+        if absImpact >= minutesInWeek {
+            let weeks = absImpact / minutesInWeek
+            if weeks >= 2 {
+                return String(format: "%.0f weeks %@", weeks, direction)
+            } else {
+                return String(format: "%.1f week %@", weeks, direction)
+            }
+        }
+        
+        // Days
+        if absImpact >= minutesInDay {
+            let days = absImpact / minutesInDay
+            if days >= 2 {
+                return String(format: "%.0f days %@", days, direction)
+            } else {
+                return String(format: "%.1f day %@", days, direction)
+            }
+        }
+        
+        // Hours
+        if absImpact >= minutesInHour {
+            let hours = absImpact / minutesInHour
+            if hours >= 2 {
+                return String(format: "%.0f hours %@", hours, direction)
+            } else {
+                return String(format: "%.1f hour %@", hours, direction)
+            }
+        }
+        
+        // Minutes
+        let minutes = Int(absImpact)
+        return "\(minutes) minute\(minutes == 1 ? "" : "s") \(direction)"
     }
     
     /// Formatted impact for UI display
