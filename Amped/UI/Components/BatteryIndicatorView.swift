@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 // Adheres to: Modularization, Reusable UI Components (coding-standards.mdc)
 // Adheres to: Apple Human Interface Guidelines (using standard shapes and text)
@@ -12,6 +13,16 @@ struct BatteryIndicatorView: View {
     let useYellowGradient: Bool // To handle the different color scheme for the projection battery
     let internalText: String? // Optional text to display inside the battery
     let helpAction: (() -> Void)? // Optional action for tapping the info icon
+    
+    // Realtime countdown properties  
+    let lifeProjection: LifeProjection? // Optional life projection for realtime countdown
+    let currentUserAge: Double? // Optional user age for realtime countdown
+    
+    @EnvironmentObject private var settingsManager: SettingsManager
+    @State private var currentTime = Date()
+    
+    // Timer for realtime updates - update every 1 second for proper countdown rate
+    private let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
 
     // Constants for visual styling - adjust as needed
     private let casingPadding: CGFloat = 8
@@ -21,14 +32,14 @@ struct BatteryIndicatorView: View {
     private let casingLineWidth: CGFloat = 3
     private let terminalHeight: CGFloat = 10
     private let terminalWidthRatio: CGFloat = 0.2
-    // Fixed battery height for consistency
-    private let fixedBatteryHeight: CGFloat = 190
-    // Fixed overall card height for consistency between cards
-    private let fixedCardHeight: CGFloat = 300
+    // Fixed battery height for consistency - increased slightly for better presence
+    private let fixedBatteryHeight: CGFloat = 260
+    // Fixed overall card height for consistency between cards - increased to accommodate larger battery
+    private let fixedCardHeight: CGFloat = 390
     // Info button size
     private let infoButtonSize: CGFloat = 18
-    // Title text font size - consistent across all text
-    private let titleFontSize: CGFloat = 16
+    // Title text font size - increased slightly for better visibility
+    private let titleFontSize: CGFloat = 18
 
     // Define colors based on project assets
     private let greenColor = Color.ampedGreen
@@ -43,14 +54,73 @@ struct BatteryIndicatorView: View {
 
     // Split title into words
     private var titleWords: [String] {
-        title.split(separator: " ").map(String.init)
+        title.components(separatedBy: " ")
+    }
+    
+    /// Display value with optional realtime countdown - just the number
+    private var displayNumericValue: String {
+        // Check if this is a lifespan display and realtime countdown is enabled
+        if let projection = lifeProjection,
+           let userAge = currentUserAge,
+           title.contains("Lifespan remaining") || title.contains("remaining"),
+           settingsManager.showRealtimeCountdown {
+            
+            let baseRemainingYears = projection.adjustedLifeExpectancyYears - userAge
+            
+            // Calculate time elapsed since start of current year to simulate countdown
+            let calendar = Calendar.current
+            let now = currentTime
+            let startOfYear = calendar.dateInterval(of: .year, for: now)?.start ?? now
+            let timeElapsed = now.timeIntervalSince(startOfYear)
+            let yearsElapsed = timeElapsed / (365.25 * 24 * 3600)
+            
+            let preciseRemainingYears = baseRemainingYears - yearsElapsed
+            
+            // Format with high precision showing seconds as decimal places (8 decimal places) - just the number
+            return String(format: "%.8f", max(preciseRemainingYears, 0.0))
+        } else {
+            // Use the original static value without unit
+            return value.replacingOccurrences(of: " years", with: "")
+                       .replacingOccurrences(of: " min", with: "")
+                       .replacingOccurrences(of: " steps", with: "")
+                       .replacingOccurrences(of: " bpm", with: "")
+                       .replacingOccurrences(of: " kcal", with: "")
+                       .replacingOccurrences(of: " hours", with: "")
+        }
+    }
+    
+    /// Display unit (e.g., "years", "min", etc.)
+    private var displayUnit: String {
+        // Check if this is a lifespan display
+        if let _ = lifeProjection,
+           let _ = currentUserAge,
+           title.contains("Lifespan remaining") || title.contains("remaining") {
+            return "years"
+        } else {
+            // Extract unit from original value if it exists
+            if value.contains(" years") {
+                return "years"
+            } else if value.contains(" min") {
+                return "min"
+            } else if value.contains(" steps") {
+                return "steps"
+            } else if value.contains(" bpm") {
+                return "bpm"
+            } else if value.contains(" kcal") {
+                return "kcal"
+            } else if value.contains(" hours") {
+                return "hours"
+            } else {
+                return "" // No unit for other values
+            }
+        }
     }
 
     var body: some View {
         VStack(spacing: 10) { // Reduced spacing for better layout
-            // Title section with words stacked vertically
-            HStack(alignment: .center, spacing: 6) {
-                // Stack each word of the title on its own line
+            // Title section with words stacked vertically - centered with overlaid info button
+            ZStack {
+                // Centered title text taking full width
                 VStack(spacing: 0) {
                     ForEach(titleWords, id: \.self) { word in
                         Text(word)
@@ -61,17 +131,19 @@ struct BatteryIndicatorView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
                 .accessibility(addTraits: .isHeader)
                 
-                // Info button
+                // Info button overlaid in top-right corner
                 if helpAction != nil {
-                    Button { helpAction?() } label: {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: infoButtonSize))
-                            .foregroundColor(.gray.opacity(0.8))
-                            .accessibilityLabel("Information about \(title)")
+                    HStack {
+                        Spacer()
+                        Button { helpAction?() } label: {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: infoButtonSize))
+                                .foregroundColor(.gray.opacity(0.8))
+                                .accessibilityLabel("Information about \(title)")
+                        }
+                        .buttonStyle(.plain)
+                        .frame(width: infoButtonSize + 4, height: infoButtonSize + 4)
                     }
-                    .buttonStyle(.plain)
-                    .frame(width: infoButtonSize + 4)
-                    .padding(.leading, 2)
                 }
             }
             .padding(.horizontal, 4)
@@ -81,16 +153,26 @@ struct BatteryIndicatorView: View {
             batteryBody()
                 .frame(height: fixedBatteryHeight) // Fixed height for all batteries
 
-            // Value display - fixed size with better consistency
-            Text(value)
-                .font(.system(size: 22, weight: .bold)) // Smaller, more consistent size
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8) // More aggressive scaling to handle longer values
-                .padding(.horizontal, 8)
-                .padding(.top, 4)
-                .padding(.bottom, 4)
+            // Value display - separated number and unit for better readability
+            VStack(spacing: 2) {
+                // Numeric value
+                Text(displayNumericValue)
+                    .font(.system(size: 25, weight: .bold).monospacedDigit())
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                
+                // Unit (if exists)
+                if !displayUnit.isEmpty {
+                    Text(displayUnit)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.horizontal, 8)
+            .padding(.top, 4)
+            .padding(.bottom, 4)
         }
         .padding(EdgeInsets(top: 12, leading: 12, bottom: 16, trailing: 12)) // Reduced padding to give more space
         .frame(height: fixedCardHeight) // Fixed height for entire card
@@ -104,6 +186,14 @@ struct BatteryIndicatorView: View {
         )
         .shadow(color: glowColor, radius: glowRadius, x: 0, y: 5)
         .shadow(color: glowColor.opacity(0.4), radius: glowRadius / 2, x: 0, y: 2)
+        .onAppear {
+            // Component appeared
+        }
+        .onReceive(timer) { _ in
+            if settingsManager.showRealtimeCountdown && lifeProjection != nil && currentUserAge != nil {
+                currentTime = Date()
+            }
+        }
     }
 
     // Builds the main battery structure
@@ -214,6 +304,34 @@ struct BatteryIndicatorView: View {
         // Return empty view to remove segment text as requested
         EmptyView()
     }
+
+    // MARK: - Initializers
+    
+    /// Full initializer with realtime countdown support
+    init(title: String, value: String, chargeLevel: CGFloat, numberOfSegments: Int, useYellowGradient: Bool, internalText: String?, helpAction: (() -> Void)?, lifeProjection: LifeProjection?, currentUserAge: Double?) {
+        self.title = title
+        self.value = value
+        self.chargeLevel = chargeLevel
+        self.numberOfSegments = numberOfSegments
+        self.useYellowGradient = useYellowGradient
+        self.internalText = internalText
+        self.helpAction = helpAction
+        self.lifeProjection = lifeProjection
+        self.currentUserAge = currentUserAge
+    }
+    
+    /// Convenience initializer for backwards compatibility (no realtime countdown)
+    init(title: String, value: String, chargeLevel: CGFloat, numberOfSegments: Int, useYellowGradient: Bool, internalText: String?, helpAction: (() -> Void)?) {
+        self.title = title
+        self.value = value
+        self.chargeLevel = chargeLevel
+        self.numberOfSegments = numberOfSegments
+        self.useYellowGradient = useYellowGradient
+        self.internalText = internalText
+        self.helpAction = helpAction
+        self.lifeProjection = nil
+        self.currentUserAge = nil
+    }
 }
 
 // Linear interpolation for color gradients (Helper)
@@ -255,7 +373,9 @@ struct BatteryIndicatorView_Previews: PreviewProvider {
                 numberOfSegments: 5,
                 useYellowGradient: false,
                 internalText: nil,
-                helpAction: { print("Info tapped for Impact") }
+                helpAction: { print("Info tapped for Impact") },
+                lifeProjection: nil,
+                currentUserAge: nil
             )
 
             BatteryIndicatorView(
@@ -265,7 +385,9 @@ struct BatteryIndicatorView_Previews: PreviewProvider {
                 numberOfSegments: 5,
                 useYellowGradient: true,
                 internalText: "Lifespan remaining: 46 years",
-                helpAction: { print("Info tapped for Projection") }
+                helpAction: { print("Info tapped for Projection") },
+                lifeProjection: nil,
+                currentUserAge: nil
             )
         }
         .padding()

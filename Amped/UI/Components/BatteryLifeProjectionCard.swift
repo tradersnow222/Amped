@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// A card that displays total projected life expectancy as a battery
 struct BatteryLifeProjectionCard: View {
@@ -7,8 +8,13 @@ struct BatteryLifeProjectionCard: View {
     let lifeProjection: LifeProjection
     let userAge: Int
     
+    @EnvironmentObject private var settingsManager: SettingsManager
     @State private var batteryFillPercent: Double = 0.0
-    @State private var showPercentRemaining: Bool = true // Toggle between years and percentage
+    @State private var showPercentRemaining: Bool = false // Toggle between years and percentage - default to years for realtime countdown
+    @State private var currentTime = Date()
+    
+    // Timer for realtime updates - update every 10ms for visible countdown
+    private let timer = Timer.publish(every: 0.01, on: .main, in: .common).autoconnect()
     
     // MARK: - UI Constants
     
@@ -31,9 +37,10 @@ struct BatteryLifeProjectionCard: View {
     
     var body: some View {
         VStack(alignment: .center, spacing: 16) {
-            // Title
-            Text("Life Projection")
+            // Title - centered over battery
+            Text("Lifespan remaining")
                 .font(.headline)
+                .multilineTextAlignment(.center)
             
             // Battery visualization
             verticalBatteryVisualization
@@ -52,8 +59,8 @@ struct BatteryLifeProjectionCard: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 } else {
-                    // Years remaining
-                    Text("\(formattedRemainingYears)")
+                    // Years remaining - with optional realtime countdown
+                    Text(formattedRemainingYears)
                         .font(.system(size: 40, weight: .bold, design: .rounded))
                         .foregroundColor(projectionColor)
                     
@@ -96,6 +103,11 @@ struct BatteryLifeProjectionCard: View {
         .onAppear {
             withAnimation(.easeInOut(duration: 1.0)) {
                 batteryFillPercent = remainingPercentage / 100.0
+            }
+        }
+        .onReceive(timer) { _ in
+            if settingsManager.showRealtimeCountdown {
+                currentTime = Date()
             }
         }
     }
@@ -186,8 +198,25 @@ struct BatteryLifeProjectionCard: View {
     
     /// Format remaining years
     private var formattedRemainingYears: String {
-        let remainingYears = lifeProjection.adjustedLifeExpectancyYears - Double(userAge)
-        return String(format: "%.1f", max(remainingYears, 0.0))
+        let baseRemainingYears = lifeProjection.adjustedLifeExpectancyYears - Double(userAge)
+        
+        if settingsManager.showRealtimeCountdown {
+            // Calculate time elapsed since start of current year to simulate countdown
+            let calendar = Calendar.current
+            let now = currentTime
+            let startOfYear = calendar.dateInterval(of: .year, for: now)?.start ?? now
+            let timeElapsed = now.timeIntervalSince(startOfYear)
+            let yearsElapsed = timeElapsed / (365.25 * 24 * 3600)
+            
+            let preciseRemainingYears = baseRemainingYears - yearsElapsed
+            
+            // Format with high precision showing seconds as decimal places
+            let result = String(format: "%.6f", max(preciseRemainingYears, 0.0))
+            return result
+        } else {
+            let result = String(format: "%.1f", max(baseRemainingYears, 0.0))
+            return result
+        }
     }
     
     /// Generate projection description
@@ -252,5 +281,6 @@ struct BatteryLifeProjectionCard_Previews: PreviewProvider {
         }
         .padding()
         .previewLayout(.sizeThatFits)
+        .environmentObject(SettingsManager())
     }
 } 

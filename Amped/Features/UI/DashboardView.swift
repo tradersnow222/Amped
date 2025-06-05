@@ -52,7 +52,7 @@ struct DashboardView: View {
         ZStack {
             // Main content area
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 0) {
                     // Custom period selector
                     PeriodSelectorView(
                         selectedPeriod: $selectedPeriod,
@@ -63,6 +63,11 @@ struct DashboardView: View {
                         }
                     )
                     .padding(.top, 8)
+                    .padding(.bottom, 24)
+                    
+                    // Balanced spacing above battery
+                    Spacer()
+                        .frame(height: 40)
                     
                     // The dashboard battery system
                     BatterySystemView(
@@ -70,6 +75,10 @@ struct DashboardView: View {
                         currentUserAge: viewModel.currentUserAge,
                         onProjectionHelpTapped: { showingProjectionHelp = true }
                     )
+                    
+                    // Balanced spacing below battery
+                    Spacer()
+                        .frame(height: 40)
                     
                     // Power Sources Metrics section
                     HealthMetricsListView(metrics: filteredMetrics) { metric in
@@ -112,8 +121,6 @@ struct DashboardView: View {
                 .shadow(radius: 10)
             }
         }
-        .navigationTitle("Energy Dashboard")
-        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 NavigationLink(destination: 
@@ -123,17 +130,28 @@ struct DashboardView: View {
                             print("🐛 SETTINGS: SettingsView successfully appeared!")
                         }
                 ) {
-                    Image(systemName: "gear")
-                        .font(.title2)
-                        .foregroundColor(.secondary)
+                    // Modern profile circle icon instead of gear - following user requirement for modern, sleek, unobtrusive design
+                    Image(systemName: "person.crop.circle")
+                        .font(.title3)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
                         .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
+                        .background(
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                                .opacity(0.8)
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(.tertiary, lineWidth: 0.5)
+                        )
+                        .contentShape(Circle())
                 }
                 .onAppear {
                     print("🐛 SETTINGS: NavigationLink appeared in toolbar")
                 }
-                .accessibilityLabel("Settings")
-                .accessibilityHint("Double tap to open settings")
+                .accessibilityLabel("Account & Settings")
+                .accessibilityHint("Double tap to open your account and settings")
             }
         }
         .sheet(item: $selectedMetric) { metric in
@@ -182,23 +200,76 @@ struct DashboardView: View {
     
     /// Help popover for projection battery
     private var projectionHelpPopover: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Life Projection")
-                .font(.headline)
-                .foregroundColor(.ampedYellow)
+        VStack(alignment: .leading, spacing: 16) {
+            // Header with battery icon and title
+            HStack(spacing: 12) {
+                // Battery icon to match theme
+                Image(systemName: "battery.100")
+                    .font(.title2)
+                    .foregroundColor(.ampedGreen)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Life Projection")
+                        .style(.cardTitle, color: .white)
+                    
+                    Text("Battery Indicator")
+                        .style(.caption, color: .secondary)
+                }
+                
+                Spacer()
+            }
             
-            Text("Shows your approximate (~) remaining lifespan based on your health data and habits.")
-                .font(.body)
+            // Main description
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Shows your approximate (~) remaining lifespan based on your health data and habits.")
+                    .style(.body, color: .white)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                Text("This battery updates gradually as your health habits create lasting impact.")
+                    .style(.body, color: .white.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             
-            Text("This battery updates gradually as your health habits create lasting impact.")
-                .padding(.bottom, 4)
+            // Divider
+            Rectangle()
+                .fill(Color.white.opacity(0.2))
+                .frame(height: 1)
+                .padding(.vertical, 4)
             
-            Text("Based on scientific research and health metrics.")
-                .font(.caption)
-                .italic()
+            // Footer with research note
+            HStack(spacing: 8) {
+                Image(systemName: "doc.text.magnifyingglass")
+                    .font(.caption)
+                    .foregroundColor(.ampedYellow)
+                
+                Text("Based on scientific research and health metrics.")
+                    .style(.caption, color: .secondary)
+                    .italic()
+            }
         }
-        .padding()
-        .frame(width: 300)
+        .padding(20)
+        .frame(width: 320)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(.ultraThinMaterial)
+        )
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.cardBackground)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    LinearGradient(
+                        colors: [.ampedGreen.opacity(0.6), .ampedYellow.opacity(0.3)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1.5
+                )
+        )
+        .shadow(color: .ampedGreen.opacity(0.1), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(0.3), radius: 12, x: 0, y: 8)
     }
 }
 

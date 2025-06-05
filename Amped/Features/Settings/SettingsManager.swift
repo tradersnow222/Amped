@@ -14,6 +14,7 @@ final class SettingsManager: ObservableObject {
         case preferredDisplayMode
         case reminderTime
         case showUnavailableMetrics
+        case showRealtimeCountdown
     }
     
     // MARK: - Enums
@@ -86,6 +87,13 @@ final class SettingsManager: ObservableObject {
         }
     }
     
+    /// Whether to show realtime countdown with decimal precision
+    @Published var showRealtimeCountdown: Bool {
+        didSet {
+            UserDefaults.standard.set(showRealtimeCountdown, forKey: SettingKey.showRealtimeCountdown.rawValue)
+        }
+    }
+    
     // MARK: - Initialization
     
     init() {
@@ -112,6 +120,7 @@ final class SettingsManager: ObservableObject {
         }
         
         self.showUnavailableMetrics = defaults.bool(forKey: SettingKey.showUnavailableMetrics.rawValue, defaultValue: true)
+        self.showRealtimeCountdown = defaults.bool(forKey: SettingKey.showRealtimeCountdown.rawValue, defaultValue: true)
     }
     
     // MARK: - Methods
@@ -130,6 +139,7 @@ final class SettingsManager: ObservableObject {
         reminderTime = Calendar.current.date(from: components) ?? Date()
         
         showUnavailableMetrics = true
+        showRealtimeCountdown = true
     }
 }
 

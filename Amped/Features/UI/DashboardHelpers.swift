@@ -147,7 +147,9 @@ struct LoadingBatteryPlaceholder: View {
             numberOfSegments: 5, 
             useYellowGradient: false,
             internalText: nil,
-            helpAction: nil
+            helpAction: nil,
+            lifeProjection: nil,
+            currentUserAge: nil
         )
         .opacity(0.5)
     }
@@ -173,7 +175,9 @@ struct BatterySystemView: View {
                         numberOfSegments: 5,
                         useYellowGradient: true,
                         internalText: nil,
-                        helpAction: onProjectionHelpTapped
+                        helpAction: onProjectionHelpTapped,
+                        lifeProjection: lifeProjection,
+                        currentUserAge: currentUserAge
                     )
                     .frame(maxWidth: 200) // Fixed width for single battery
                 } else {

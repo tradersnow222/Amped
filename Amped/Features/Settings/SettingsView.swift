@@ -84,6 +84,17 @@ struct SettingsView: View {
                     .toggleStyle(.switch)
                     .tint(.ampedGreen)
             }
+            
+            // Realtime Countdown Setting
+            HStack {
+                Image(systemName: "timer")
+                    .foregroundColor(.ampedYellow)
+                    .frame(width: 20)
+                
+                Toggle("Realtime Countdown", isOn: $settingsManager.showRealtimeCountdown)
+                    .toggleStyle(.switch)
+                    .tint(.ampedGreen)
+            }
         } header: {
             Text("Preferences")
                 .foregroundColor(.ampedYellow)
