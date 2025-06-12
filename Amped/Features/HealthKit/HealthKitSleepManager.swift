@@ -12,7 +12,7 @@ import OSLog
         self.healthStore = healthStore
     }
     
-    /// Process sleep data which requires special handling
+    /// Process sleep data for a specific day using Apple Health methodology
     func processSleepData(from startDate: Date, to endDate: Date) async -> HealthMetric? {
         guard HKHealthStore.isHealthDataAvailable() else {
             logger.warning("HealthKit is not available for sleep processing")
@@ -24,10 +24,24 @@ import OSLog
             return nil
         }
         
+        // CRITICAL FIX: Calculate sleep for the day being queried (endDate)
+        // Apple Health attributes sleep to the day you wake up, using a 3pm cutoff rule
+        let calendar = Calendar.current
+        let targetDay = calendar.startOfDay(for: endDate)
+        
+        // Create search range: from 3pm the day before to 3pm on the target day
+        // This captures all sleep that should be attributed to the target day
+        let threePM = calendar.date(bySettingHour: 15, minute: 0, second: 0, of: targetDay)!
+        let searchStartDate = calendar.date(byAdding: .day, value: -1, to: threePM)!
+        let searchEndDate = threePM
+        
+        logger.info("🛏️ Calculating sleep for day: \(targetDay)")
+        logger.info("🔍 Searching sleep data from \(searchStartDate) to \(searchEndDate)")
+        
         let predicate = HKQuery.predicateForSamples(
-            withStart: startDate,
-            end: endDate,
-            options: .strictEndDate
+            withStart: searchStartDate,
+            end: searchEndDate,
+            options: .strictStartDate
         )
         
         do {
@@ -37,7 +51,7 @@ import OSLog
                     sampleType: sleepType,
                     predicate: predicate,
                     limit: HKObjectQueryNoLimit,
-                    sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)] // Sort by most recent first
+                    sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]
                 ) { _, samples, error in
                     if let error = error {
                         continuation.resume(throwing: error)
@@ -50,63 +64,93 @@ import OSLog
                 self.healthStore.execute(query)
             }
             
-            // CRITICAL FIX: Instead of summing ALL sleep over 7 days, find the most recent night's sleep
-            // Group samples by day and get the most recent complete sleep session
+            logger.info("📊 Found \(samples.count) total sleep samples in search range")
             
             if samples.isEmpty {
                 logger.info("No sleep samples found in the specified period")
                 return nil
             }
             
-            // Find the most recent sleep session (group samples that are close together)
-            var recentSleepTime: TimeInterval = 0
-            var latestSleepDate: Date = Date.distantPast
-            
-            // Group samples by calendar day to find the most recent complete sleep
-            let calendar = Calendar.current
-            var sleepByDate: [Date: TimeInterval] = [:]
+            // CRITICAL FIX: Use Apple's methodology - filter for all asleep values and apply 3pm rule
+            var totalSleepDuration: TimeInterval = 0
+            var latestSleepEndDate: Date = Date.distantPast
+            var validSleepSamples = 0
             
             for sample in samples {
                 guard let categorySample = sample as? HKCategorySample else { continue }
                 
-                // Count only asleep states
-                if categorySample.value == HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue ||
-                   categorySample.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue ||
-                   categorySample.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue ||
-                   categorySample.value == HKCategoryValueSleepAnalysis.asleepCore.rawValue {
+                // CRITICAL FIX: Only count actual ASLEEP states, exclude inBed time
+                // Apple Health counts only: asleepUnspecified, asleepCore, asleepDeep, asleepREM
+                // NOTE: Excluding inBed as it represents time in bed but not necessarily asleep
+                let sleepValue = categorySample.value
+                if sleepValue == HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue ||
+                   sleepValue == HKCategoryValueSleepAnalysis.asleepCore.rawValue ||
+                   sleepValue == HKCategoryValueSleepAnalysis.asleepDeep.rawValue ||
+                   sleepValue == HKCategoryValueSleepAnalysis.asleepREM.rawValue {
                     
-                    let sleepTime = categorySample.endDate.timeIntervalSince(categorySample.startDate)
-                    let sleepDay = calendar.startOfDay(for: categorySample.endDate)
+                    let sleepDuration = categorySample.endDate.timeIntervalSince(categorySample.startDate)
                     
-                    sleepByDate[sleepDay, default: 0] += sleepTime
+                    // Apply 3pm cutoff rule: if sleep starts after 3pm, it belongs to the next day
+                    let sleepStartDay = calendar.startOfDay(for: categorySample.startDate)
+                    let threePMOnSleepDay = calendar.date(bySettingHour: 15, minute: 0, second: 0, of: sleepStartDay)!
                     
-                    // Track the latest sleep date
-                    if categorySample.endDate > latestSleepDate {
-                        latestSleepDate = categorySample.endDate
+                    let sleepAttributionDay: Date
+                    if categorySample.startDate >= threePMOnSleepDay {
+                        // Sleep starts after 3pm, belongs to next day
+                        sleepAttributionDay = calendar.date(byAdding: .day, value: 1, to: sleepStartDay)!
+                    } else {
+                        // Sleep starts before 3pm, belongs to same day
+                        sleepAttributionDay = sleepStartDay
                     }
+                    
+                    // Only count sleep that's attributed to our target day
+                    if calendar.isDate(sleepAttributionDay, inSameDayAs: targetDay) {
+                        totalSleepDuration += sleepDuration
+                        validSleepSamples += 1
+                        
+                        // Track the latest end date for our metric
+                        if categorySample.endDate > latestSleepEndDate {
+                            latestSleepEndDate = categorySample.endDate
+                        }
+                        
+                        logger.info("✅ ADDED Sleep Sample: \(String(format: "%.2f", sleepDuration/3600.0))h (\(sleepDuration/60.0) min) from \(categorySample.startDate) to \(categorySample.endDate) - State: \(sleepValue)")
+                    } else {
+                        logger.debug("⏭️ Skipped sleep sample (wrong day): \(sleepDuration/3600.0) hours attributed to \(sleepAttributionDay) instead of \(targetDay)")
+                    }
+                } else {
+                    // Log excluded sleep states for debugging
+                    let sleepDuration = categorySample.endDate.timeIntervalSince(categorySample.startDate)
+                    let stateName: String
+                    switch sleepValue {
+                    case HKCategoryValueSleepAnalysis.inBed.rawValue:
+                        stateName = "inBed"
+                    case HKCategoryValueSleepAnalysis.awake.rawValue:
+                        stateName = "awake"
+                    default:
+                        stateName = "unknown(\(sleepValue))"
+                    }
+                    logger.info("🚫 EXCLUDED Sleep Sample: \(String(format: "%.2f", sleepDuration/3600.0))h (\(sleepDuration/60.0) min) from \(categorySample.startDate) to \(categorySample.endDate) - State: \(stateName)")
                 }
             }
             
-            // Get the most recent day's sleep
-            if let mostRecentDay = sleepByDate.keys.max(),
-               let mostRecentSleep = sleepByDate[mostRecentDay] {
-                recentSleepTime = mostRecentSleep
-                logger.info("Found most recent sleep session: \(recentSleepTime / 3600.0) hours on \(mostRecentDay)")
-            } else {
-                logger.info("No valid sleep data found in samples")
+            logger.info("📈 Total sleep for \(targetDay): \(totalSleepDuration/3600.0) hours from \(validSleepSamples) samples")
+            
+            // Only create metric if we have valid sleep data
+            guard totalSleepDuration > 0 else {
+                logger.info("No valid sleep data found for the target day")
                 return nil
             }
             
             // Convert to hours
-            let sleepHours = recentSleepTime / 3600.0
+            let sleepHours = totalSleepDuration / 3600.0
             
-            // Only create metric if we have valid sleep data (between 1-16 hours is reasonable)
-            if sleepHours > 1.0 && sleepHours < 16.0 {
+            // Only create metric if we have reasonable sleep data (between 0.5-16 hours)
+            if sleepHours >= 0.5 && sleepHours <= 16.0 {
                 return HealthMetric(
                     id: UUID().uuidString,
                     type: .sleepHours,
                     value: sleepHours,
-                    date: latestSleepDate,
+                                         date: latestSleepEndDate == Date.distantPast ? endDate : latestSleepEndDate,
                     source: .healthKit
                 )
             } else {
@@ -142,7 +186,7 @@ import OSLog
                 return
             }
             
-            // When sleep data changes, process the updated data
+            // When sleep data changes, process the updated data for today
             Task { [weak self] in
                 // Create strong reference to avoid capture issues
                 guard let self = self else {
@@ -150,8 +194,9 @@ import OSLog
                     return
                 }
                 
-                // Process sleep data on the background
-                let sleepMetric = await self.processSleepData(from: Calendar.current.date(byAdding: .day, value: -7, to: Date())!, to: Date())
+                // Process sleep data for today
+                let today = Date()
+                let sleepMetric = await self.processSleepData(from: today, to: today)
                 
                 // Update sleep metrics on the main thread
                 await MainActor.run {

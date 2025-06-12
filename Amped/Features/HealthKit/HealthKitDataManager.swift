@@ -31,89 +31,203 @@ import OSLog
         
         logger.info("✅ HealthKit is available, proceeding with data fetch for \(metricType.displayName)")
         
-        // Special handling for sleep
-        if metricType == .sleepHours {
+        // CRITICAL FIX: Use the same methodology as HealthKitManager for consistency
+        switch metricType {
+        case .sleepHours:
+            // CRITICAL FIX: Sleep manager should only calculate for TODAY, not a 7-day range
             logger.info("🛏️ Using special sleep handling for \(metricType.displayName)")
-            let result = await sleepManager.processSleepData(from: Calendar.current.date(byAdding: .day, value: -7, to: Date())!, to: Date())
+            let today = Date()
+            let result = await sleepManager.processSleepData(from: today, to: today)
             if let result = result {
                 logger.info("✅ Sleep data fetched successfully: \(result.formattedValue)")
             } else {
                 logger.warning("⚠️ No sleep data found")
             }
             return result
+            
+        case .steps, .exerciseMinutes, .activeEnergyBurned:
+            // CUMULATIVE METRICS: Use today's total with HKStatisticsQuery
+            return await fetchCumulativeMetricForToday(metricType: metricType)
+            
+        case .restingHeartRate, .heartRateVariability:
+            // DAILY HEALTH STATUS METRICS: Get most recent daily value
+            return await fetchDailyHealthStatusMetric(metricType: metricType)
+            
+        case .bodyMass, .vo2Max, .oxygenSaturation:
+            // POINT-IN-TIME METRICS: Get most recent sample
+            return await fetchMostRecentSample(metricType: metricType)
+            
+        default:
+            logger.warning("⚠️ Unknown metric type \(metricType.displayName), using sample fallback")
+            return await fetchMostRecentSample(metricType: metricType)
         }
-        
-        guard let healthKitType = metricType.healthKitType else {
-            logger.warning("⚠️ Cannot fetch data for \(metricType.rawValue): Type not available or manual metric")
+    }
+    
+    /// Fetch today's cumulative total for a metric (steps, exercise minutes, active energy)
+    private func fetchCumulativeMetricForToday(metricType: HealthMetricType) async -> HealthMetric? {
+        guard let quantityType = metricType.healthKitType,
+              let unit = metricType.unit else {
+            logger.warning("⚠️ Cannot fetch data for \(metricType.rawValue): Type or unit not available")
             return nil
         }
         
-        guard let unit = metricType.unit else {
-            logger.warning("⚠️ Cannot fetch data for \(metricType.rawValue): No unit defined")
-            return nil
-        }
+        // CRITICAL FIX: Use today only for daily totals
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfToday = calendar.startOfDay(for: now)
         
-        logger.info("📊 Fetching HealthKit data for \(metricType.displayName) with type: \(healthKitType) and unit: \(unit)")
+        logger.info("🔢 Fetching cumulative \(metricType.displayName) for today: \(startOfToday) to \(now)")
         
-        // Query the most recent sample in the last 7 days
-        let startDate = Calendar.current.date(byAdding: .day, value: -7, to: Date())!
-        let endDate = Date()
-        let recentPredicate = HKQuery.predicateForSamples(
-            withStart: startDate,
-            end: endDate,
-            options: .strictEndDate
-        )
-        
-        logger.info("🗓️ Querying samples from \(startDate) to \(endDate)")
-        
-        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        let predicate = HKQuery.predicateForSamples(withStart: startOfToday, end: now, options: .strictEndDate)
         
         do {
-            logger.info("⚡ Executing HealthKit query for \(metricType.displayName)")
-            
-            // Execute the query with async/await pattern
-            let samples = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKSample], Error>) in
-                let query = HKSampleQuery(
-                    sampleType: healthKitType,
-                    predicate: recentPredicate,
-                    limit: 1,
-                    sortDescriptors: [sortDescriptor]
-                ) { _, samples, error in
+            let statistics = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<HKStatistics?, Error>) in
+                let query = HKStatisticsQuery(
+                    quantityType: quantityType,
+                    quantitySamplePredicate: predicate,
+                    options: .cumulativeSum  // This handles de-duplication automatically
+                ) { _, statistics, error in
                     if let error = error {
-                        self.logger.error("❌ Query error for \(metricType.displayName): \(error.localizedDescription)")
+                        self.logger.error("❌ HKStatisticsQuery error for \(metricType.displayName): \(error.localizedDescription)")
                         continuation.resume(throwing: error)
                         return
                     }
-                    
-                    self.logger.info("📋 Query completed for \(metricType.displayName), found \(samples?.count ?? 0) samples")
-                    continuation.resume(returning: samples ?? [])
+                    continuation.resume(returning: statistics)
                 }
-                
                 self.healthStore.execute(query)
-                self.logger.info("🚀 Query submitted to HealthStore for \(metricType.displayName)")
             }
             
-            guard let sample = samples.first as? HKQuantitySample else {
-                logger.warning("⚠️ No recent data found for \(metricType.displayName) (no samples or wrong type)")
+            guard let sumQuantity = statistics?.sumQuantity() else {
+                logger.info("⚠️ No cumulative data found for \(metricType.displayName) today")
                 return nil
             }
             
-            // Convert to HealthMetric
-            let value = sample.quantity.doubleValue(for: unit)
-            logger.info("✅ Successfully extracted value for \(metricType.displayName): \(value) \(unit.unitString)")
+            let value = sumQuantity.doubleValue(for: unit)
+            logger.info("✅ Today's \(metricType.displayName): \(value) \(unit.unitString)")
             
-            let healthMetric = HealthMetric(
+            return HealthMetric(
+                id: UUID().uuidString,
+                type: metricType,
+                value: value,
+                date: now,
+                source: .healthKit
+            )
+        } catch {
+            logger.error("❌ Error fetching cumulative \(metricType.displayName): \(error.localizedDescription)")
+            return nil
+        }
+    }
+    
+    /// Fetch daily health status metrics (resting heart rate, HRV) - get most recent daily value
+    private func fetchDailyHealthStatusMetric(metricType: HealthMetricType) async -> HealthMetric? {
+        guard let quantityType = metricType.healthKitType,
+              let unit = metricType.unit else {
+            logger.warning("⚠️ Cannot fetch data for \(metricType.rawValue): Type or unit not available")
+            return nil
+        }
+        
+        // CRITICAL FIX: For daily health metrics, get the most recent daily value (last 7 days max)
+        let calendar = Calendar.current
+        let now = Date()
+        let startDate = calendar.date(byAdding: .day, value: -7, to: now) ?? now
+        
+        logger.info("🫀 Fetching daily \(metricType.displayName) from last 7 days: \(startDate) to \(now)")
+        
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: now, options: .strictEndDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        
+        do {
+            let samples = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKSample], Error>) in
+                let query = HKSampleQuery(
+                    sampleType: quantityType,
+                    predicate: predicate,
+                    limit: 1,  // Just get the most recent daily value
+                    sortDescriptors: [sortDescriptor]
+                ) { _, results, error in
+                    if let error = error {
+                        self.logger.error("❌ Sample query error for \(metricType.displayName): \(error.localizedDescription)")
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    continuation.resume(returning: results ?? [])
+                }
+                self.healthStore.execute(query)
+            }
+            
+            guard let sample = samples.first as? HKQuantitySample else {
+                logger.info("⚠️ No recent daily \(metricType.displayName) data found")
+                return nil
+            }
+            
+            let value = sample.quantity.doubleValue(for: unit)
+            logger.info("✅ Latest daily \(metricType.displayName): \(value) \(unit.unitString) from \(sample.endDate)")
+            
+            return HealthMetric(
                 id: UUID().uuidString,
                 type: metricType,
                 value: value,
                 date: sample.endDate,
                 source: .healthKit
             )
-            
-            logger.info("🎯 Created HealthMetric for \(metricType.displayName): \(healthMetric.formattedValue)")
-            return healthMetric
         } catch {
-            logger.error("❌ Error fetching data for \(metricType.displayName): \(error.localizedDescription)")
+            logger.error("❌ Error fetching daily \(metricType.displayName): \(error.localizedDescription)")
+            return nil
+        }
+    }
+    
+    /// Fetch most recent sample for point-in-time metrics (body mass, VO2 max, oxygen saturation)
+    private func fetchMostRecentSample(metricType: HealthMetricType) async -> HealthMetric? {
+        guard let quantityType = metricType.healthKitType,
+              let unit = metricType.unit else {
+            logger.warning("⚠️ Cannot fetch data for \(metricType.rawValue): Type or unit not available")
+            return nil
+        }
+        
+        // CRITICAL FIX: For point-in-time metrics, search wider range but get most recent
+        let calendar = Calendar.current
+        let now = Date()
+        let startDate = calendar.date(byAdding: .month, value: -3, to: now) ?? now  // Last 3 months
+        
+        logger.info("📊 Fetching most recent \(metricType.displayName) from last 3 months: \(startDate) to \(now)")
+        
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: now, options: .strictEndDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        
+        do {
+            let samples = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKSample], Error>) in
+                let query = HKSampleQuery(
+                    sampleType: quantityType,
+                    predicate: predicate,
+                    limit: 1,  // Just get the most recent sample
+                    sortDescriptors: [sortDescriptor]
+                ) { _, results, error in
+                    if let error = error {
+                        self.logger.error("❌ Sample query error for \(metricType.displayName): \(error.localizedDescription)")
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    continuation.resume(returning: results ?? [])
+                }
+                self.healthStore.execute(query)
+            }
+            
+            guard let sample = samples.first as? HKQuantitySample else {
+                logger.info("⚠️ No recent \(metricType.displayName) data found")
+                return nil
+            }
+            
+            let value = sample.quantity.doubleValue(for: unit)
+            logger.info("✅ Most recent \(metricType.displayName): \(value) \(unit.unitString) from \(sample.endDate)")
+            
+            return HealthMetric(
+                id: UUID().uuidString,
+                type: metricType,
+                value: value,
+                date: sample.endDate,
+                source: .healthKit
+            )
+        } catch {
+            logger.error("❌ Error fetching \(metricType.displayName): \(error.localizedDescription)")
             return nil
         }
     }

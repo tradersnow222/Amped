@@ -12,3 +12,5 @@ alwaysApply: true
 - Ensure **full implementation**—no placeholders or missing functionality.
 - **Be concise**—minimize unnecessary explanations.
 - If uncertain about something, **say so instead of guessing**.
+- **Always let user run tests on their own connected iPhone** - never simulate your own tests
+- **Never create data placeholders or use fake data** - real data must be used and referenced in every part of the app.

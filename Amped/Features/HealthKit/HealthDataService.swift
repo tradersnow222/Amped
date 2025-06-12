@@ -286,35 +286,26 @@ struct MetricStatistics {
         return await fetchLatestMetrics()
     }
     
-    /// Fetch health metrics aggregated appropriately for the specified time period
+    /// Fetch health metrics aggregated appropriately for the specified time period using Apple's HealthKit methodology
     func fetchHealthMetricsForPeriod(timePeriod: TimePeriod) async throws -> [HealthMetric] {
-        logger.info("🏥 Fetching health metrics for time period: \(timePeriod.displayName)")
-        
-        // Calculate the date range for the period
-        let endDate = Date()
-        let startDate: Date
-        
-        switch timePeriod {
-        case .day:
-            // Last 24 hours
-            startDate = Calendar.current.date(byAdding: .day, value: -1, to: endDate) ?? endDate
-        case .month:
-            // Last 30 days
-            startDate = Calendar.current.date(byAdding: .day, value: -30, to: endDate) ?? endDate
-        case .year:
-            // Last 365 days
-            startDate = Calendar.current.date(byAdding: .day, value: -365, to: endDate) ?? endDate
-        }
-        
-        logger.info("📅 Date range: \(startDate) to \(endDate)")
+        logger.info("🏥 Fetching health metrics for time period: \(timePeriod.displayName) using Apple HealthKit methodology")
         
         var metrics: [HealthMetric] = []
+        var successfulMetrics = 0
+        var failedMetrics = 0
         
-        // Fetch data for each health metric type with period-appropriate aggregation
+        // Process HealthKit metrics using HKStatisticsCollectionQuery (Apple's method)
         await withTaskGroup(of: (HealthMetricType, HealthMetric?).self) { group in
             for metricType in HealthMetricType.healthKitTypes {
                 group.addTask {
-                    await self.fetchMetricForPeriod(metricType: metricType, from: startDate, to: endDate, timePeriod: timePeriod)
+                    await self.fetchMetricUsingAppleHealthKitMethodology(metricType: metricType, timePeriod: timePeriod)
+                }
+            }
+            
+            // Process manual metrics
+            for metricType in HealthMetricType.manualTypes {
+                group.addTask {
+                    await self.fetchManualMetricForPeriod(metricType: metricType, timePeriod: timePeriod)
                 }
             }
             
@@ -336,21 +327,496 @@ struct MetricStatistics {
                     )
                     
                     metrics.append(metricWithImpact)
-                    logger.info("✅ Added \(metricType.displayName) for \(timePeriod.displayName): \(metric.formattedValue)")
+                    successfulMetrics += 1
+                    logger.info("✅ Added \(metricType.displayName) for \(timePeriod.displayName): \(metric.formattedValue) (Impact: \(impactDetails.lifespanImpactMinutes) min)")
+                } else {
+                    failedMetrics += 1
+                    logger.warning("⚠️ No data for \(metricType.displayName) in \(timePeriod.displayName)")
                 }
             }
         }
         
-        // CRITICAL FIX: Add manual metrics from questionnaire
-        logger.info("📝 Adding manual metrics from questionnaire...")
-        let manualMetricInputs = questionnaireManager.getCurrentManualMetrics()
-        logger.info("📊 Found \(manualMetricInputs.count) manual metrics from questionnaire")
+        let totalHealthKitTypes = HealthMetricType.healthKitTypes.count
+        let totalManualTypes = HealthMetricType.manualTypes.count
         
-        // Convert manual inputs to health metrics with impact calculations
-        for manualInput in manualMetricInputs {
+        logger.info("🎉 Total metrics for \(timePeriod.displayName): \(metrics.count) (checked \(totalHealthKitTypes) HealthKit + \(totalManualTypes) manual types, \(failedMetrics) failed)")
+        
+        return metrics
+    }
+    
+    /// Fetch metric using Apple's exact HealthKit methodology (HKStatisticsCollectionQuery)
+    private func fetchMetricUsingAppleHealthKitMethodology(metricType: HealthMetricType, timePeriod: TimePeriod) async -> (HealthMetricType, HealthMetric?) {
+        
+        logger.info("🍎 Fetching \(metricType.displayName) using Apple HealthKit methodology for \(timePeriod.displayName)")
+        
+        switch metricType {
+        case .sleepHours:
+            return await fetchSleepForPeriod(timePeriod: timePeriod, endDate: Date())
+            
+        case .steps, .activeEnergyBurned, .exerciseMinutes:
+            return await fetchCumulativeMetricUsingHKStatisticsCollection(metricType: metricType, timePeriod: timePeriod)
+            
+        case .restingHeartRate, .heartRateVariability, .bodyMass, .vo2Max, .oxygenSaturation:
+            return await fetchStatusMetricUsingHKStatisticsCollection(metricType: metricType, timePeriod: timePeriod)
+            
+        @unknown default:
+            logger.info("❓ Unknown metric type \(metricType.displayName), using latest data")
+            let metric = await healthKitManager.fetchLatestData(for: metricType)
+            return (metricType, metric)
+        }
+    }
+    
+    /// Fetch cumulative metrics using HKStatisticsCollectionQuery (Apple's exact method)
+    private func fetchCumulativeMetricUsingHKStatisticsCollection(metricType: HealthMetricType, timePeriod: TimePeriod) async -> (HealthMetricType, HealthMetric?) {
+        
+        guard let quantityType = metricType.healthKitType, let unit = metricType.unit else {
+            logger.error("❌ Invalid type or unit for \(metricType.displayName)")
+            return (metricType, nil)
+        }
+        
+        logger.info("📊 Using HKStatisticsCollectionQuery for \(metricType.displayName) (\(timePeriod.displayName))")
+        
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // CRITICAL FIX: Set up dates using Apple Health's exact methodology
+        var interval = DateComponents()
+        let startDate: Date
+        let endDate: Date
+        let anchor: Date
+        
+        switch timePeriod {
+        case .day:
+            // Day: Just use today's total with HKStatisticsQuery (simpler for single day)
+            return await fetchDailyTotalUsingHKStatisticsQuery(metricType: metricType, quantityType: quantityType, unit: unit)
+            
+        case .month:
+            // CRITICAL FIX: Monthly = last 31 calendar days ending today (matches Apple Health "May 12—Jun 11")
+            interval.day = 1
+            let endOfToday = calendar.dateInterval(of: .day, for: now)?.end ?? now
+            endDate = endOfToday
+            
+            // Calculate start date: 31 days back from end of today (to include both endpoints)
+            guard let calculatedStartDate = calendar.date(byAdding: .day, value: -30, to: calendar.startOfDay(for: now)) else {
+                logger.error("❌ Could not calculate start date for monthly period")
+                return (metricType, nil)
+            }
+            startDate = calculatedStartDate
+            anchor = calendar.startOfDay(for: calculatedStartDate)
+            
+        case .year:
+            // CRITICAL FIX: Yearly = last 365 calendar days ending today  
+            interval.day = 1
+            let endOfToday = calendar.dateInterval(of: .day, for: now)?.end ?? now
+            endDate = endOfToday
+            
+            // Calculate start date: 365 days back from end of today
+            guard let calculatedStartDate = calendar.date(byAdding: .day, value: -364, to: calendar.startOfDay(for: now)) else {
+                logger.error("❌ Could not calculate start date for yearly period")
+                return (metricType, nil)
+            }
+            startDate = calculatedStartDate  
+            anchor = calendar.startOfDay(for: calculatedStartDate)
+        }
+        
+        logger.info("📅 FIXED HKStatisticsCollectionQuery range: \(startDate) to \(endDate)")
+        logger.info("🎯 Expected to match Apple Health: \(DateFormatter.localizedString(from: startDate, dateStyle: .medium, timeStyle: .none))—\(DateFormatter.localizedString(from: now, dateStyle: .medium, timeStyle: .none))")
+        
+        do {
+            let statisticsCollection = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<HKStatisticsCollection?, Error>) in
+                let query = HKStatisticsCollectionQuery(
+                    quantityType: quantityType,
+                    quantitySamplePredicate: nil,
+                    options: .cumulativeSum, // Apple uses cumulativeSum for these metrics
+                    anchorDate: anchor,
+                    intervalComponents: interval
+                )
+                
+                query.initialResultsHandler = { _, statisticsCollection, error in
+                    if let error = error {
+                        self.logger.error("❌ HKStatisticsCollectionQuery error for \(metricType.displayName): \(error.localizedDescription)")
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    continuation.resume(returning: statisticsCollection)
+                }
+                
+                healthKitManager.executeQuery(query)
+            }
+            
+            guard let collection = statisticsCollection else {
+                logger.warning("⚠️ No statistics collection for \(metricType.displayName)")
+                return (metricType, nil)
+            }
+            
+            // CRITICAL FIX: Extract daily values and calculate average (Apple's exact methodology)
+            var dailyValues: [Double] = []
+            var totalDays = 0
+            var activeDays = 0
+            var totalSum = 0.0
+            
+            collection.enumerateStatistics(from: startDate, to: endDate) { statistics, _ in
+                totalDays += 1
+                
+                if let sumQuantity = statistics.sumQuantity() {
+                    let dailyValue = sumQuantity.doubleValue(for: unit)
+                    dailyValues.append(dailyValue)
+                    totalSum += dailyValue
+                    
+                    if dailyValue > 0 {
+                        activeDays += 1
+                    }
+                    
+                    self.logger.debug("📊 \(statistics.startDate): \(String(format: "%.0f", dailyValue)) \(metricType.displayName)")
+                } else {
+                    // Include zero days (critical for accurate averages matching Apple Health)
+                    dailyValues.append(0.0)
+                    self.logger.debug("📊 \(statistics.startDate): 0 \(metricType.displayName)")
+                }
+            }
+            
+            guard !dailyValues.isEmpty else {
+                logger.warning("⚠️ No daily values found for \(metricType.displayName)")
+                return (metricType, nil)
+            }
+            
+            // CRITICAL FIX: Calculate average daily value exactly like Apple Health
+            let averageDailyValue = totalSum / Double(totalDays)
+            
+            logger.info("✅ FIXED Apple HealthKit result for \(metricType.displayName) (\(timePeriod.displayName)):")
+            logger.info("   📊 \(String(format: "%.0f", averageDailyValue)) cal/day average")
+            logger.info("   📈 \(String(format: "%.0f", totalSum)) cal total over \(totalDays) days (\(activeDays) active)")
+            logger.info("   🎯 This should now match Apple Health's \(metricType.displayName) calculation")
+            
+            let metric = HealthMetric(
+                id: UUID().uuidString,
+                type: metricType,
+                value: averageDailyValue,
+                date: now, // Use current time for metric timestamp
+                source: .healthKit
+            )
+            
+            return (metricType, metric)
+            
+        } catch {
+            logger.error("❌ Error with HKStatisticsCollectionQuery for \(metricType.displayName): \(error.localizedDescription)")
+            return (metricType, nil)
+        }
+    }
+    
+    /// Fetch daily total using HKStatisticsQuery for single-day calculations
+    private func fetchDailyTotalUsingHKStatisticsQuery(metricType: HealthMetricType, quantityType: HKQuantityType, unit: HKUnit) async -> (HealthMetricType, HealthMetric?) {
+        
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfToday = calendar.startOfDay(for: now)
+        
+        logger.info("📊 Using HKStatisticsQuery for today's \(metricType.displayName): \(startOfToday) to \(now)")
+        
+        let predicate = HKQuery.predicateForSamples(withStart: startOfToday, end: now, options: .strictEndDate)
+        
+        do {
+            let statistics = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<HKStatistics?, Error>) in
+                let query = HKStatisticsQuery(
+                    quantityType: quantityType,
+                    quantitySamplePredicate: predicate,
+                    options: .cumulativeSum
+                ) { _, statistics, error in
+                    if let error = error {
+                        self.logger.error("❌ HKStatisticsQuery error for \(metricType.displayName): \(error.localizedDescription)")
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    continuation.resume(returning: statistics)
+                }
+                
+                healthKitManager.executeQuery(query)
+            }
+            
+            guard let statistics = statistics, let sumQuantity = statistics.sumQuantity() else {
+                logger.info("⚠️ No daily data for \(metricType.displayName)")
+                return (metricType, nil)
+            }
+            
+            let value = sumQuantity.doubleValue(for: unit)
+            logger.info("✅ Today's \(metricType.displayName): \(String(format: "%.0f", value))")
+            
+            let metric = HealthMetric(
+                id: UUID().uuidString,
+                type: metricType,
+                value: value,
+                date: now,
+                source: .healthKit
+            )
+            
+            return (metricType, metric)
+            
+        } catch {
+            logger.error("❌ Error with daily HKStatisticsQuery for \(metricType.displayName): \(error.localizedDescription)")
+            return (metricType, nil)
+        }
+    }
+    
+    /// Fetch status metrics using HKStatisticsCollectionQuery for time periods
+    private func fetchStatusMetricUsingHKStatisticsCollection(metricType: HealthMetricType, timePeriod: TimePeriod) async -> (HealthMetricType, HealthMetric?) {
+        
+        guard let quantityType = metricType.healthKitType, let unit = metricType.unit else {
+            logger.error("❌ Invalid type or unit for \(metricType.displayName)")
+            return (metricType, nil)
+        }
+        
+        switch timePeriod {
+        case .day:
+            // Day: Get latest value
+            logger.info("🫀 Fetching latest \(metricType.displayName)")
+            let metric = await healthKitManager.fetchLatestData(for: metricType)
+            return (metricType, metric)
+            
+        case .month, .year:
+            // Use HKStatisticsCollectionQuery with daily intervals, then average
+            return await fetchStatusMetricAverageUsingHKStatisticsCollection(metricType: metricType, quantityType: quantityType, unit: unit, timePeriod: timePeriod)
+        }
+    }
+    
+    /// Fetch average status metric using HKStatisticsCollectionQuery
+    private func fetchStatusMetricAverageUsingHKStatisticsCollection(metricType: HealthMetricType, quantityType: HKQuantityType, unit: HKUnit, timePeriod: TimePeriod) async -> (HealthMetricType, HealthMetric?) {
+        
+        logger.info("📊 Using HKStatisticsCollectionQuery for \(metricType.displayName) average (\(timePeriod.displayName))")
+        
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // CRITICAL FIX: Use same date calculation logic as cumulative metrics
+        var interval = DateComponents()
+        interval.day = 1  // Daily intervals
+        
+        let startDate: Date
+        let endDate: Date
+        let anchor: Date
+        
+        switch timePeriod {
+        case .day:
+            logger.error("❌ Day period should not reach this method")
+            return (metricType, nil)
+            
+        case .month:
+            // CRITICAL FIX: Monthly = last 31 calendar days ending today
+            let endOfToday = calendar.dateInterval(of: .day, for: now)?.end ?? now
+            endDate = endOfToday
+            
+            guard let calculatedStartDate = calendar.date(byAdding: .day, value: -30, to: calendar.startOfDay(for: now)) else {
+                logger.error("❌ Could not calculate start date for monthly period")
+                return (metricType, nil)
+            }
+            startDate = calculatedStartDate
+            anchor = calendar.startOfDay(for: calculatedStartDate)
+            
+        case .year:
+            // CRITICAL FIX: Yearly = last 365 calendar days ending today
+            let endOfToday = calendar.dateInterval(of: .day, for: now)?.end ?? now
+            endDate = endOfToday
+            
+            guard let calculatedStartDate = calendar.date(byAdding: .day, value: -364, to: calendar.startOfDay(for: now)) else {
+                logger.error("❌ Could not calculate start date for yearly period")
+                return (metricType, nil)
+            }
+            startDate = calculatedStartDate
+            anchor = calendar.startOfDay(for: calculatedStartDate)
+        }
+        
+        logger.info("📅 FIXED Status metric HKStatisticsCollectionQuery range: \(startDate) to \(endDate)")
+        
+        do {
+            let statisticsCollection = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<HKStatisticsCollection?, Error>) in
+                let query = HKStatisticsCollectionQuery(
+                    quantityType: quantityType,
+                    quantitySamplePredicate: nil,
+                    options: .discreteAverage, // Use discreteAverage for status metrics
+                    anchorDate: anchor,
+                    intervalComponents: interval
+                )
+                
+                query.initialResultsHandler = { _, statisticsCollection, error in
+                    if let error = error {
+                        self.logger.error("❌ HKStatisticsCollectionQuery error for \(metricType.displayName): \(error.localizedDescription)")
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    continuation.resume(returning: statisticsCollection)
+                }
+                
+                healthKitManager.executeQuery(query)
+            }
+            
+            guard let collection = statisticsCollection else {
+                logger.warning("⚠️ No statistics collection for \(metricType.displayName)")
+                return (metricType, nil)
+            }
+            
+            // Extract daily averages and calculate overall average
+            var dailyAverages: [Double] = []
+            var totalDays = 0
+            var daysWithData = 0
+            
+            collection.enumerateStatistics(from: startDate, to: endDate) { statistics, _ in
+                totalDays += 1
+                
+                if let averageQuantity = statistics.averageQuantity() {
+                    let dailyAverage = averageQuantity.doubleValue(for: unit)
+                    dailyAverages.append(dailyAverage)
+                    daysWithData += 1
+                    
+                    self.logger.debug("📊 \(statistics.startDate): \(String(format: "%.1f", dailyAverage)) avg \(metricType.displayName)")
+                }
+            }
+            
+            guard !dailyAverages.isEmpty else {
+                logger.warning("⚠️ No daily averages found for \(metricType.displayName)")
+                return (metricType, nil)
+            }
+            
+            // Calculate overall average
+            let overallAverage = dailyAverages.reduce(0, +) / Double(dailyAverages.count)
+            
+            logger.info("✅ FIXED Apple HealthKit average for \(metricType.displayName) (\(timePeriod.displayName)): \(String(format: "%.1f", overallAverage)) over \(daysWithData) days with data out of \(totalDays) total days")
+            
+            let metric = HealthMetric(
+                id: UUID().uuidString,
+                type: metricType,
+                value: overallAverage,
+                date: now, // Use current time for metric timestamp
+                source: .healthKit
+            )
+            
+            return (metricType, metric)
+            
+        } catch {
+            logger.error("❌ Error with status metric HKStatisticsCollectionQuery for \(metricType.displayName): \(error.localizedDescription)")
+            return (metricType, nil)
+        }
+    }
+    
+    /// Fetch sleep with appropriate aggregation for time period
+    private func fetchSleepForPeriod(timePeriod: TimePeriod, endDate: Date) async -> (HealthMetricType, HealthMetric?) {
+        guard let concreteManager = healthKitManager as? HealthKitManager else {
+            logger.error("❌ Cannot access sleepManager - healthKitManager is not HealthKitManager")
+            return (.sleepHours, nil)
+        }
+        
+        switch timePeriod {
+        case .day:
+            // DAY: Last night's sleep (attributed to today)
+            let today = Date()
+            let sleepMetric = await concreteManager.sleepManager.processSleepData(from: today, to: today)
+            logger.info("😴 Today's sleep: \(sleepMetric?.formattedValue ?? "nil")")
+            return (.sleepHours, sleepMetric)
+            
+        case .month, .year:
+            // MONTH/YEAR: Average nightly sleep over the period
+            return await fetchAverageSleepForPeriod(timePeriod: timePeriod, endDate: endDate, sleepManager: concreteManager.sleepManager)
+        }
+    }
+    
+    /// Fetch average sleep for month/year periods  
+    private func fetchAverageSleepForPeriod(timePeriod: TimePeriod, endDate: Date, sleepManager: HealthKitSleepManager) async -> (HealthMetricType, HealthMetric?) {
+        let calendar = Calendar.current
+        
+        // CRITICAL FIX: Use same date calculation logic as other metrics
+        let daysToFetch: Int
+        let startDate: Date
+        
+        switch timePeriod {
+        case .day:
+            logger.error("❌ Day period should not reach this method")
+            return (.sleepHours, nil)
+            
+        case .month:
+            // CRITICAL FIX: Monthly = last 31 calendar days ending today (matches other metrics)
+            daysToFetch = 31
+            guard let calculatedStartDate = calendar.date(byAdding: .day, value: -30, to: calendar.startOfDay(for: endDate)) else {
+                logger.error("❌ Could not calculate start date for monthly sleep period")
+                return (.sleepHours, nil)
+            }
+            startDate = calculatedStartDate
+            
+        case .year:
+            // CRITICAL FIX: Yearly = last 365 calendar days ending today (matches other metrics)  
+            daysToFetch = 365
+            guard let calculatedStartDate = calendar.date(byAdding: .day, value: -364, to: calendar.startOfDay(for: endDate)) else {
+                logger.error("❌ Could not calculate start date for yearly sleep period")
+                return (.sleepHours, nil)
+            }
+            startDate = calculatedStartDate
+        }
+        
+        logger.info("😴 FIXED sleep calculation over \(daysToFetch) days for \(timePeriod.displayName)")
+        logger.info("📅 Sleep period range: \(startDate) to \(endDate)")
+        
+        var sleepValues: [Double] = []
+        var validNights = 0
+        var totalDaysChecked = 0
+        
+        // CRITICAL FIX: Process each night in the rolling period exactly like other metrics
+        for dayOffset in 0..<daysToFetch {
+            guard let targetDay = calendar.date(byAdding: .day, value: -dayOffset, to: endDate) else { 
+                logger.warning("⚠️ Could not calculate date for day offset \(dayOffset)")
+                continue 
+            }
+            
+            totalDaysChecked += 1
+            
+            if let sleepMetric = await sleepManager.processSleepData(from: targetDay, to: targetDay) {
+                sleepValues.append(sleepMetric.value)
+                validNights += 1
+                logger.debug("✅ Sleep for \(calendar.startOfDay(for: targetDay)): \(String(format: "%.2f", sleepMetric.value))h")
+            } else {
+                logger.debug("⚠️ No sleep data for \(calendar.startOfDay(for: targetDay))")
+            }
+        }
+        
+        logger.info("📊 FIXED sleep data summary for \(timePeriod.displayName): \(validNights) nights with data out of \(totalDaysChecked) days checked")
+        
+        guard !sleepValues.isEmpty else {
+            logger.warning("⚠️ No sleep data found for \(timePeriod.displayName) period (\(totalDaysChecked) days checked)")
+            return (.sleepHours, nil)
+        }
+        
+        // Calculate average sleep
+        let averageSleep = sleepValues.reduce(0, +) / Double(sleepValues.count)
+        let totalSleep = sleepValues.reduce(0, +)
+        let minSleep = sleepValues.min() ?? 0
+        let maxSleep = sleepValues.max() ?? 0
+        
+        logger.info("✅ FIXED average sleep for \(timePeriod.displayName): \(String(format: "%.2f", averageSleep))h over \(validNights) nights out of \(totalDaysChecked) total days")
+        logger.info("📈 Sleep totals: \(String(format: "%.1f", totalSleep))h total, \(String(format: "%.2f", averageSleep))h avg, min: \(String(format: "%.2f", minSleep))h, max: \(String(format: "%.2f", maxSleep))h")
+        logger.info("🎯 This should now match Apple Health's Sleep calculation")
+        
+        // CRITICAL FIX: Ensure the average is reasonable before creating metric
+        if averageSleep >= 0.5 && averageSleep <= 16.0 {
+            let averageMetric = HealthMetric(
+                id: UUID().uuidString,
+                type: .sleepHours,
+                value: averageSleep,
+                date: endDate,
+                source: .healthKit
+            )
+            
+            return (.sleepHours, averageMetric)
+        } else {
+            logger.warning("⚠️ Calculated average sleep \(String(format: "%.2f", averageSleep))h is outside reasonable range")
+            return (.sleepHours, nil)
+        }
+    }
+    
+    /// Fetch manual metrics for time period display
+    private func fetchManualMetricForPeriod(metricType: HealthMetricType, timePeriod: TimePeriod) async -> (HealthMetricType, HealthMetric?) {
+        // Get the manual metric from questionnaire
+        let manualMetricInputs = questionnaireManager.getCurrentManualMetrics()
+        
+        if let manualInput = manualMetricInputs.first(where: { $0.type == metricType }) {
             var healthMetric = manualInput.toHealthMetric()
             
-            // Calculate impact details for manual metric
+            // Calculate impact details for manual metric with time period context
             let tempLifeImpactService = LifeImpactService(userProfile: userProfile)
             let impactDetails = tempLifeImpactService.calculateImpact(for: healthMetric)
             
@@ -364,94 +830,12 @@ struct MetricStatistics {
                 impactDetails: impactDetails
             )
             
-            metrics.append(healthMetric)
-            logger.info("📋 Added manual metric: \(healthMetric.type.displayName) = \(healthMetric.formattedValue) (Impact: \(impactDetails.lifespanImpactMinutes) minutes)")
+            logger.info("📋 Manual metric \(metricType.displayName): \(healthMetric.formattedValue) (Impact: \(impactDetails.lifespanImpactMinutes) minutes)")
+            return (metricType, healthMetric)
         }
         
-        logger.info("🎉 Total metrics for \(timePeriod.displayName): \(metrics.count)")
-        
-        return metrics
-    }
-    
-    /// Fetch a single metric appropriately aggregated for the time period
-    private func fetchMetricForPeriod(metricType: HealthMetricType, from startDate: Date, to endDate: Date, timePeriod: TimePeriod) async -> (HealthMetricType, HealthMetric?) {
-        
-        logger.info("🔍 fetchMetricForPeriod: \(metricType.displayName) for \(timePeriod.displayName) from \(startDate) to \(endDate)")
-        
-        switch metricType {
-        case .sleepHours:
-            // Sleep: Always get most recent night regardless of period
-            let sleepMetric = await healthKitManager.fetchLatestData(for: metricType)
-            logger.info("😴 Sleep metric for \(timePeriod.displayName): \(sleepMetric?.formattedValue ?? "nil")")
-            return (metricType, sleepMetric)
-            
-        case .steps, .activeEnergyBurned, .exerciseMinutes:
-            // Activity metrics: Get TOTAL activity over the period (not average)
-            logger.info("🏃 Fetching historical data for \(metricType.displayName) over \(timePeriod.displayName)")
-            let metrics = await healthKitManager.fetchData(for: metricType, from: startDate, to: endDate)
-            logger.info("📊 Found \(metrics.count) historical samples for \(metricType.displayName)")
-            
-            if !metrics.isEmpty {
-                // CRITICAL FIX: For activity metrics, sum the values over the period
-                let totalValue = metrics.reduce(0) { $0 + $1.value }
-                
-                // Create a metric with the total value
-                let totalMetric = HealthMetric(
-                    id: UUID().uuidString,
-                    type: metricType,
-                    value: totalValue,
-                    date: endDate,
-                    source: .healthKit
-                )
-                
-                logger.info("📈 Total \(metricType.displayName) for \(timePeriod.displayName): \(totalMetric.formattedValue)")
-                return (metricType, totalMetric)
-            }
-            
-            // No data available
-            logger.warning("❌ No real data available for \(metricType.displayName) - will not show this metric")
-            return (metricType, nil)
-            
-        case .restingHeartRate, .heartRateVariability, .vo2Max, .oxygenSaturation:
-            // Physiological metrics: Get most recent measurement (represents current state)
-            let latest = await healthKitManager.fetchLatestData(for: metricType)
-            logger.info("❤️ Latest \(metricType.displayName): \(latest?.formattedValue ?? "nil")")
-            return (metricType, latest)
-            
-        case .bodyMass:
-            // Body composition: Get most recent measurement
-            let latest = await healthKitManager.fetchLatestData(for: metricType)
-            logger.info("⚖️ Latest \(metricType.displayName): \(latest?.formattedValue ?? "nil")")
-            return (metricType, latest)
-            
-        case .nutritionQuality, .stressLevel, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality:
-            // Lifestyle metrics: These are manual inputs, get latest
-            let latest = await healthKitManager.fetchLatestData(for: metricType)
-            logger.info("📝 Manual metric \(metricType.displayName): \(latest?.formattedValue ?? "nil")")
-            return (metricType, latest)
-            
-        @unknown default:
-            // Default: get latest
-            let latest = await healthKitManager.fetchLatestData(for: metricType)
-            logger.info("❓ Unknown metric \(metricType.displayName): \(latest?.formattedValue ?? "nil")")
-            return (metricType, latest)
-        }
-    }
-    
-    /// Calculate average metric from a collection of metrics
-    private func calculateAverageMetric(from metrics: [HealthMetric], metricType: HealthMetricType, endDate: Date) -> HealthMetric? {
-        guard !metrics.isEmpty else { return nil }
-        
-        let totalValue = metrics.reduce(0) { $0 + $1.value }
-        let averageValue = totalValue / Double(metrics.count)
-        
-        return HealthMetric(
-            id: UUID().uuidString,
-            type: metricType,
-            value: averageValue,
-            date: endDate,
-            source: .healthKit
-        )
+        logger.info("⚠️ No manual metric data found for \(metricType.displayName)")
+        return (metricType, nil)
     }
     
     // MARK: - Private Methods
