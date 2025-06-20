@@ -1,6 +1,6 @@
 # Amped - Power Up Your Life
 
-Amped is an iOS health metrics app that integrates with Apple HealthKit to calculate time gained or lost based on scientific research and personal health data. It presents this information with a battery-themed interface that visualizes health as energy levels.
+Amped is an iOS health metrics app that integrates with Apple HealthKit to calculate time (lifespan) gained or lost based on scientific research and personal health data. It presents this information with a battery-themed interface that visualizes health as energy levels.
 
 ## Key Features
 
