@@ -286,13 +286,9 @@ struct PaymentView: View {
             
             // Pricing details with clear trial terms
             VStack(spacing: 4) {
-                Text("Then $39.99/year after trial")
+                Text("Then $39.99/yr ($3.33/mo)")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(themeManager.textColor)
-                
-                Text("($3.33/mo) • Cancel anytime")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
             }
             
             // Legal links
