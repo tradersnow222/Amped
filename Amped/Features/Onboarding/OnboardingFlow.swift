@@ -1,13 +1,10 @@
 import SwiftUI
 
-/// Main enum to track the onboarding state
+/// Main enum to track the onboarding state - Rules: Removed signInWithApple from flow
 enum OnboardingStep: Equatable {
     case welcome
     case personalizationIntro
     case questionnaire
-    case healthKitPermissions
-    case lifeMotivation  // New step after HealthKit
-    case signInWithApple
     case payment
     case dashboard
 }
@@ -25,17 +22,7 @@ struct OnboardingFlow: View {
     @State private var shouldExitQuestionnaire: Bool = false
     @State private var shouldCompleteQuestionnaire: Bool = false
     
-    // Track if we're returning to questionnaire from HealthKit
-    @State private var returningFromHealthKit: Bool = false
-    
-    // Track if we should skip to life motivation (when user doesn't track health)
-    @State private var shouldSkipToLifeMotivation: Bool = false
-    
-    // Track if we're coming from device tracking question to auto-request permissions
-    @State private var comingFromDeviceTracking: Bool = false
-    
-    // Track if we should disable animation for instant transition
-    @State private var disableAnimation: Bool = false
+
     
     var body: some View {
         GeometryReader { geometry in
@@ -65,8 +52,7 @@ struct OnboardingFlow: View {
                 if currentStep == .questionnaire {
                     QuestionnaireView(
                         exitToPersonalizationIntro: $shouldExitQuestionnaire,
-                        proceedToHealthPermissions: $shouldCompleteQuestionnaire,
-                        returningFromHealthKit: returningFromHealthKit
+                        proceedToHealthPermissions: $shouldCompleteQuestionnaire
                     )
                     .onChange(of: shouldExitQuestionnaire) { newValue in
                         if newValue {
@@ -94,119 +80,23 @@ struct OnboardingFlow: View {
                             // Reset flag first
                             shouldCompleteQuestionnaire = false
                             
-                            // Clear the returning from HealthKit flag when moving forward
-                            returningFromHealthKit = false
-                            
                             // Navigate forward with leading edge animation
                             isButtonNavigating = false
                             dragDirection = .leading
                             
-                            // Check if user just completed life motivation within questionnaire
-                            let questionnaireManager = QuestionnaireManager()
-                            if let savedData = questionnaireManager.loadQuestionnaireData(),
-                               savedData.deviceTrackingStatus == .no,
-                               savedData.lifeMotivation != nil {
-                                // User completed life motivation in questionnaire (no device flow)
-                                // Skip directly to Sign in with Apple
-                                DispatchQueue.main.async {
-                                    navigateTo(.signInWithApple)
-                                    
-                                    // Reset drag direction after animation
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                                        dragDirection = nil
-                                    }
-                                }
-                            } else {
-                                // Check if we should skip to life motivation
-                                let hasTrackingDevice = checkIfUserHasTrackingDevice()
+                            // Questionnaire completed - go directly to Payment (skipping sign-in) - Rules: Skip sign-in until after payment
+                            DispatchQueue.main.async {
+                                navigateTo(.payment)
                                 
-                                // Use a slight delay to ensure the direction is set properly
-                                DispatchQueue.main.async {
-                                    if hasTrackingDevice {
-                                        // User selected "Yes, I track with a device"
-                                        comingFromDeviceTracking = true
-                                        // Rules: Disable animation for instant transition to permissions
-                                        disableAnimation = true
-                                        navigateTo(.healthKitPermissions)
-                                        // Re-enable animation after a brief delay
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                            disableAnimation = false
-                                        }
-                                    } else {
-                                        // Skip directly to life motivation
-                                        navigateTo(.lifeMotivation)
-                                    }
-                                    
-                                    // Reset drag direction after animation
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                                        dragDirection = nil
-                                    }
+                                // Reset drag direction after animation
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                    dragDirection = nil
                                 }
                             }
                         }
                     }
                     .transition(getTransition(forNavigatingTo: .questionnaire))
                     .zIndex(currentStep == .questionnaire ? 1 : 0)
-                }
-                
-                if currentStep == .healthKitPermissions {
-                    HealthKitPermissionsView(
-                        onContinue: { 
-                            isButtonNavigating = true
-                            dragDirection = nil
-                            comingFromDeviceTracking = false  // Reset flag after use
-                            navigateTo(.lifeMotivation)  // Navigate to life motivation instead of sign in
-                        },
-                        onBack: {
-                            isButtonNavigating = false
-                            dragDirection = .trailing
-                            returningFromHealthKit = true  // Set flag when going back to questionnaire
-                            comingFromDeviceTracking = false  // Reset flag when going back
-                            navigateTo(.questionnaire)
-                        },
-                        autoRequestPermissions: comingFromDeviceTracking
-                    )
-                    .offset(x: dragDirection == .leading ? dragOffset : (dragDirection == .trailing ? dragOffset : 0))
-                    .transition(getTransition(forNavigatingTo: .healthKitPermissions))
-                    .zIndex(currentStep == .healthKitPermissions ? 1 : 0)
-                }
-                
-                if currentStep == .lifeMotivation {
-                    LifeMotivationView(
-                        onContinue: {
-                            isButtonNavigating = true
-                            dragDirection = nil
-                            navigateTo(.signInWithApple)
-                        },
-                        onBack: {
-                            isButtonNavigating = false
-                            dragDirection = .trailing
-                            
-                            // Check if user has tracking device to determine where to go back
-                            let hasTrackingDevice = checkIfUserHasTrackingDevice()
-                            if hasTrackingDevice {
-                                // Go back to HealthKit permissions
-                                navigateTo(.healthKitPermissions)
-                            } else {
-                                // Go back to questionnaire (device tracking question)
-                                navigateTo(.questionnaire)
-                            }
-                        }
-                    )
-                    .offset(x: dragDirection == .leading ? dragOffset : (dragDirection == .trailing ? dragOffset : 0))
-                    .transition(getTransition(forNavigatingTo: .lifeMotivation))
-                    .zIndex(currentStep == .lifeMotivation ? 1 : 0)
-                }
-                
-                if currentStep == .signInWithApple {
-                    SignInWithAppleView(onContinue: { 
-                        isButtonNavigating = true
-                        dragDirection = nil
-                        navigateTo(.payment) 
-                    })
-                    .offset(x: dragDirection == .leading ? dragOffset : (dragDirection == .trailing ? dragOffset : 0))
-                    .transition(getTransition(forNavigatingTo: .signInWithApple))
-                    .zIndex(currentStep == .signInWithApple ? 1 : 0)
                 }
                 
                 if currentStep == .payment {
@@ -232,7 +122,7 @@ struct OnboardingFlow: View {
                     }
                 }
             }
-            .animation(disableAnimation ? nil : (isProgrammaticNavigation || dragDirection == nil ? .easeInOut(duration: 0.4) : nil), value: currentStep)
+            .animation((isProgrammaticNavigation || dragDirection == nil ? .easeInOut(duration: 0.4) : nil), value: currentStep)
             .gesture(
                 DragGesture()
                     .onChanged { gesture in
@@ -414,55 +304,29 @@ struct OnboardingFlow: View {
         }
     }
     
-    /// Get the next step in the onboarding flow
+    /// Get the next step in the onboarding flow - Rules: Updated to skip sign-in
     private func getNextStep(after step: OnboardingStep) -> OnboardingStep? {
         switch step {
         case .welcome: return .personalizationIntro
         case .personalizationIntro: return .questionnaire
-        case .questionnaire: return .healthKitPermissions
-        case .healthKitPermissions: return .lifeMotivation
-        case .lifeMotivation: return .signInWithApple
-        case .signInWithApple: return .payment
+        case .questionnaire: return .payment // Skip sign-in, go directly to payment
         case .payment: return .dashboard
         case .dashboard: return nil
         }
     }
     
-    /// Get the previous step in the onboarding flow
+    /// Get the previous step in the onboarding flow - Rules: Updated to skip sign-in
     private func getPreviousStep(before step: OnboardingStep) -> OnboardingStep? {
         switch step {
         case .welcome: return nil
         case .personalizationIntro: return .welcome
         case .questionnaire: return .personalizationIntro
-        case .healthKitPermissions: return .questionnaire
-        case .lifeMotivation: 
-            // Conditional navigation based on device tracking
-            let hasTrackingDevice = checkIfUserHasTrackingDevice()
-            return hasTrackingDevice ? .healthKitPermissions : .questionnaire
-        case .signInWithApple: return .lifeMotivation
-        case .payment: return .signInWithApple
+        case .payment: return .questionnaire // Skip sign-in when going back
         case .dashboard: return .payment
         }
     }
     
-    // Remove notification handlers that are no longer needed
-    private func setupQuestionnnaireNavigationNotifications() {
-        // This method can be removed or left empty as we're using bindings now
-    }
-    
-    // Check if user has a tracking device based on questionnaire response
-    private func checkIfUserHasTrackingDevice() -> Bool {
-        // Get the saved questionnaire data
-        let questionnaireManager = QuestionnaireManager()
-        let trackingStatus = questionnaireManager.loadQuestionnaireData()?.deviceTrackingStatus
-        
-        // Return true if they have any tracking device
-        return trackingStatus?.requiresHealthKit ?? false
-    }
-    
-    // These can be removed as they're replaced by the onChange handlers
-    private func navigateBackFromQuestionnaire() { }
-    private func navigateForwardFromQuestionnaire() { }
+
 }
 
 // Preview

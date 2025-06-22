@@ -1,4 +1,5 @@
 import SwiftUI
+import HealthKit
 
 /// Questionnaire view for collecting additional health metrics
 struct QuestionnaireView: View {
@@ -12,9 +13,6 @@ struct QuestionnaireView: View {
     @Binding var exitToPersonalizationIntro: Bool
     @Binding var proceedToHealthPermissions: Bool
     
-    // Add a parameter to indicate if we're returning from HealthKit
-    let returningFromHealthKit: Bool
-    
     // Gesture handler
     private var gestureHandler: QuestionnaireGestureHandler
     
@@ -23,29 +21,12 @@ struct QuestionnaireView: View {
     
     // MARK: - Initializers
     
-    init(exitToPersonalizationIntro: Binding<Bool>, proceedToHealthPermissions: Binding<Bool>, returningFromHealthKit: Bool = false) {
+    init(exitToPersonalizationIntro: Binding<Bool>, proceedToHealthPermissions: Binding<Bool>) {
         self._exitToPersonalizationIntro = exitToPersonalizationIntro
         self._proceedToHealthPermissions = proceedToHealthPermissions
-        self.returningFromHealthKit = returningFromHealthKit
         
         // Create the StateObject before init completes
-        // If returning from HealthKit, start at the socialConnections question
-        // If there's saved questionnaire data with device tracking = no, start at device tracking question
-        let viewModel: QuestionnaireViewModel
-        if returningFromHealthKit {
-            viewModel = QuestionnaireViewModel(startingAt: .socialConnections)
-        } else {
-            // Check if we're returning from life motivation (user selected no device)
-            let questionnaireManager = QuestionnaireManager()
-            if let savedData = questionnaireManager.loadQuestionnaireData(),
-               savedData.deviceTrackingStatus == .no {
-                // User is returning from life motivation, show device tracking question
-                viewModel = QuestionnaireViewModel(startingAt: .deviceTracking)
-            } else {
-                // Normal flow, start from beginning
-                viewModel = QuestionnaireViewModel()
-            }
-        }
+        let viewModel = QuestionnaireViewModel()
         self._viewModel = StateObject(wrappedValue: viewModel)
         
         // Use the same view model instance for the gesture handler
@@ -53,6 +34,8 @@ struct QuestionnaireView: View {
             viewModel: viewModel,
             exitToPersonalizationIntro: exitToPersonalizationIntro
         )
+        
+        print("🔍 QUESTIONNAIRE: Initialized with starting question: \(viewModel.currentQuestion)")
     }
     
     // MARK: - Body
@@ -134,6 +117,19 @@ struct QuestionnaireView: View {
                     }
             )
         }
+        .onAppear {
+            // OPTIMIZATION: Pre-warm HealthKit when questionnaire appears
+            // This ensures everything is ready by the time user reaches device tracking
+            if HKHealthStore.isHealthDataAvailable() {
+                Task { @MainActor in
+                    // Access the shared instance to trigger initialization
+                    _ = HealthKitManager.shared
+                    
+                    // Pre-compute health types if not already done
+                    _ = HealthKitManager.precomputedHealthTypes
+                }
+            }
+        }
     }
     
     // MARK: - Question Views
@@ -184,13 +180,19 @@ struct QuestionnaireView: View {
     // MARK: - Navigation Handling
     
     private func proceedToHealthKit() {
+        print("🔍 QUESTIONNAIRE: proceedToHealthKit called")
+        print("🔍 QUESTIONNAIRE: Current question before navigation: \(viewModel.currentQuestion)")
+        
         // Save questionnaire data before proceeding
         questionnaireManager.saveQuestionnaireData(from: viewModel)
         
-        // Activate binding to trigger the transition to health permissions
-        proceedToHealthPermissions = true
+        // Move directly to life motivation question after successful HealthKit authorization
+        withAnimation(.interpolatingSpring(stiffness: 180, damping: 20, initialVelocity: 0.5)) {
+            viewModel.currentQuestion = .lifeMotivation
+        }
         
-        print("🔍 QUESTIONNAIRE: User has tracking device, moving to health permissions")
+        print("🔍 QUESTIONNAIRE: HealthKit authorized, moving to life motivation question")
+        print("🔍 QUESTIONNAIRE: Current question after navigation: \(viewModel.currentQuestion)")
     }
     
     private func skipToLifeMotivation() {
@@ -207,6 +209,9 @@ struct QuestionnaireView: View {
         
         // CRITICAL FIX: Save questionnaire data before proceeding
         questionnaireManager.saveQuestionnaireData(from: viewModel)
+        
+        // Clear persisted questionnaire state since we're done
+        UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
         
         // If the current question is life motivation and we're in the questionnaire flow,
         // we should trigger navigation to sign in with Apple
@@ -248,6 +253,6 @@ struct QuestionnaireView: View {
 
 struct QuestionnaireView_Previews: PreviewProvider {
     static var previews: some View {
-        QuestionnaireView(exitToPersonalizationIntro: .constant(false), proceedToHealthPermissions: .constant(false), returningFromHealthKit: false)
+        QuestionnaireView(exitToPersonalizationIntro: .constant(false), proceedToHealthPermissions: .constant(false))
     }
 } 

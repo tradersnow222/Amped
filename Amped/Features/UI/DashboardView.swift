@@ -12,6 +12,10 @@ struct DashboardView: View {
     @State private var showingProjectionHelp = false
     @EnvironmentObject var appState: AppState
     
+    // Rules: Add state for sign-in popup
+    @State private var showSignInPopup = false
+    @State private var hasShownSignInPopup = false
+    
     // MARK: - Computed Properties
     
     /// Filtered metrics based on user settings
@@ -100,8 +104,8 @@ struct DashboardView: View {
                     }
                 }
             .withDeepBackground()
-            .blur(radius: showingProjectionHelp ? 6 : 0) // Reduced blur for more visibility
-            .brightness(showingProjectionHelp ? 0.1 : 0) // Slightly brighten background when info card shows
+            .blur(radius: showingProjectionHelp || showSignInPopup ? 6 : 0) // Rules: Blur when sign-in popup is shown
+            .brightness(showingProjectionHelp || showSignInPopup ? 0.1 : 0) // Rules: Darken when sign-in popup is shown
             
             // Error overlay if needed
             if let errorMessage = viewModel.errorMessage {
@@ -159,6 +163,15 @@ struct DashboardView: View {
                 }
                 .padding(.horizontal, 20)
                 .transition(.opacity)
+            }
+            
+            // Rules: Sign-in popup overlay
+            if showSignInPopup {
+                SignInPopupView(isPresented: $showSignInPopup)
+                    .environmentObject(appState)
+                    .environmentObject(BatteryThemeManager())
+                    .transition(.opacity)
+                    .zIndex(2)
             }
         }
         }
@@ -226,12 +239,23 @@ struct DashboardView: View {
             
             // Debug navigation context
             print("🔧 DashboardView navigation context check")
+            
+            // Rules: Show sign-in popup after 2 seconds if user hasn't authenticated
+            if !appState.isAuthenticated && !hasShownSignInPopup {
+                hasShownSignInPopup = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        showSignInPopup = true
+                    }
+                }
+            }
         }
         .refreshable {
             viewModel.refreshData()
             HapticManager.shared.playSuccess()
         }
         .animation(.easeInOut(duration: 0.2), value: showingProjectionHelp)
+        .animation(.easeInOut(duration: 0.2), value: showSignInPopup) // Rules: Animate sign-in popup
     }
     
     // MARK: - UI Components

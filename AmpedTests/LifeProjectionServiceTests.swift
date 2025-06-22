@@ -232,22 +232,10 @@ final class LifeProjectionServiceTests: XCTestCase {
             hasGrantedHealthKitPermissions: true
         )
         
-        let profileWithPreferNotToSay = UserProfile(
-            id: "test-prefer-not-to-say-id",
-            birthYear: 1990,
-            gender: .preferNotToSay,
-            isSubscribed: true,
-            hasCompletedOnboarding: true,
-            hasCompletedQuestionnaire: true,
-            hasGrantedHealthKitPermissions: true
-        )
-        
         // When
         let nilGenderExpectancy = lifeProjectionService.calculateBaselineLifeExpectancy(for: profileWithNilGender)
-        let preferNotToSayExpectancy = lifeProjectionService.calculateBaselineLifeExpectancy(for: profileWithPreferNotToSay)
         
         // Then
-        XCTAssertEqual(nilGenderExpectancy, preferNotToSayExpectancy, "Nil gender should be treated the same as 'Prefer not to say'")
         XCTAssertGreaterThan(nilGenderExpectancy, 75, "Gender-neutral expectancy should be reasonable")
         XCTAssertLessThan(nilGenderExpectancy, 85, "Gender-neutral expectancy should be reasonable")
     }

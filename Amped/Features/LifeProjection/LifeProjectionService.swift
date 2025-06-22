@@ -46,7 +46,7 @@ final class LifeProjectionService: LifeProjectionServicing, ObservableObject {
             baselineYears = 76.0
         case .female:
             baselineYears = 81.0
-        case .preferNotToSay, nil:
+        case nil:
             baselineYears = 78.5 // Average for unspecified gender
         }
         

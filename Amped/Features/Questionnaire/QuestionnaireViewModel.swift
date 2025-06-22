@@ -165,7 +165,12 @@ final class QuestionnaireViewModel: ObservableObject {
     }
     
     // Form data
-    @Published var currentQuestion: Question = .birthdate
+    @Published var currentQuestion: Question {
+        didSet {
+            // Persist current question to UserDefaults to survive app background/foreground transitions
+            UserDefaults.standard.set(currentQuestion.rawValue, forKey: "questionnaire_current_question")
+        }
+    }
     
     // Birthdate (replacing age)
     @Published var birthdate: Date = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date() // Default to 30 years ago
@@ -313,9 +318,8 @@ final class QuestionnaireViewModel: ObservableObject {
     
     // Check if we're at the last question
     var isLastQuestion: Bool {
-        // Note: deviceTracking is the last question in the normal questionnaire flow
-        // lifeMotivation will be shown after HealthKit permissions
-        return currentQuestion == .deviceTracking
+        // lifeMotivation is the actual last question
+        return currentQuestion == .lifeMotivation
     }
     
     var progressPercentage: Double {
@@ -378,6 +382,14 @@ final class QuestionnaireViewModel: ObservableObject {
     // MARK: - Initialization
     
     init() {
+        // Restore current question from UserDefaults if available
+        if let savedQuestionRawValue = UserDefaults.standard.object(forKey: "questionnaire_current_question") as? Int,
+           let savedQuestion = Question(rawValue: savedQuestionRawValue) {
+            self.currentQuestion = savedQuestion
+        } else {
+            self.currentQuestion = .birthdate
+        }
+        
         // Sync the separate month/year properties with the default birthdate
         let calendar = Calendar.current
         selectedBirthMonth = calendar.component(.month, from: birthdate)
@@ -388,6 +400,9 @@ final class QuestionnaireViewModel: ObservableObject {
     init(startingAt question: Question) {
         // Set the starting question
         self.currentQuestion = question
+        
+        // Save to UserDefaults immediately
+        UserDefaults.standard.set(question.rawValue, forKey: "questionnaire_current_question")
         
         // Sync the separate month/year properties with the default birthdate
         let calendar = Calendar.current

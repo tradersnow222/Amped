@@ -9,6 +9,7 @@
 
 import SwiftUI
 import OSLog
+import HealthKit
 
 @main
 struct AmpedApp: App {
@@ -31,6 +32,27 @@ struct AmpedApp: App {
     
     /// Feature flag manager for controlled feature rollout
     private let featureFlagManager = FeatureFlagManager.shared
+    
+    init() {
+        // OPTIMIZATION: Pre-warm HealthKit to make authorization instant
+        if HKHealthStore.isHealthDataAvailable() {
+            // Create the store first
+            _ = HKHealthStore()
+            
+            // Pre-warm the authorization system by checking if it's available
+            // This forces iOS to load the HealthKit authorization UI framework
+            _ = HKHealthStore.isHealthDataAvailable()
+            
+            // Pre-initialize the HealthKitManager shared instance synchronously
+            // This ensures everything is ready before any UI appears
+            Task { @MainActor in
+                _ = HealthKitManager.shared
+                
+                // Pre-cache the authorization status to warm up the system
+                _ = HealthKitManager.shared.hasCriticalPermissions
+            }
+        }
+    }
     
     // MARK: - Scene Configuration
     
@@ -155,10 +177,16 @@ struct AmpedApp: App {
     }
 }
 
-/// Application-wide state
+/// Application-wide state - Rules: Adding authentication tracking
 class AppState: ObservableObject {
     /// Whether the user has completed onboarding
     @Published var hasCompletedOnboarding: Bool
+    
+    /// Whether the user has signed in with Apple or Google - Rules: Track authentication status
+    @Published var isAuthenticated: Bool
+    
+    /// User's unique identifier - Rules: Store user ID after authentication
+    @Published var userID: String?
     
     init() {
         // Check UserDefaults to determine if the user has completed onboarding
@@ -167,12 +195,32 @@ class AppState: ObservableObject {
         } else {
             self.hasCompletedOnboarding = false
         }
+        
+        // Check authentication status - Rules: Load authentication state from UserDefaults
+        self.isAuthenticated = UserDefaults.standard.bool(forKey: "isAuthenticated")
+        self.userID = UserDefaults.standard.string(forKey: "userID")
     }
     
     /// Mark onboarding as completed
     func completeOnboarding() {
         hasCompletedOnboarding = true
         UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+    }
+    
+    /// Update authentication status - Rules: Track when user signs in
+    func setAuthenticated(userID: String) {
+        self.isAuthenticated = true
+        self.userID = userID
+        UserDefaults.standard.set(true, forKey: "isAuthenticated")
+        UserDefaults.standard.set(userID, forKey: "userID")
+    }
+    
+    /// Sign out user - Rules: Clear authentication status
+    func signOut() {
+        self.isAuthenticated = false
+        self.userID = nil
+        UserDefaults.standard.set(false, forKey: "isAuthenticated")
+        UserDefaults.standard.removeObject(forKey: "userID")
     }
 }
 

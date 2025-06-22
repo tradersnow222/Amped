@@ -54,10 +54,7 @@ final class QuestionnaireViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedGender, .female)
         XCTAssertTrue(viewModel.canProceed)
         
-        // Try prefer not to say
-        viewModel.selectedGender = .preferNotToSay
-        XCTAssertEqual(viewModel.selectedGender, .preferNotToSay)
-        XCTAssertTrue(viewModel.canProceed)
+
     }
     
     /// Test question navigation

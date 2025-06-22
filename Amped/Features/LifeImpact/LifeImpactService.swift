@@ -86,7 +86,7 @@ final class LifeImpactService: LifeImpactServicing, ObservableObject {
                 mlPerKgMin: metric.value,
                 date: metric.date,
                 age: userProfile.age ?? 0,
-                gender: userProfile.gender ?? .preferNotToSay
+                gender: userProfile.gender ?? .male
             )
             
         case .oxygenSaturation:

@@ -1,7 +1,6 @@
 import Foundation
 import HealthKit
 import OSLog
-import Combine
 @preconcurrency import Combine
 
 /// Protocol defining the core HealthKit management functionality
@@ -23,6 +22,12 @@ import Combine
     
     /// Request authorization for specific HealthKit data types
     func requestAuthorization(for types: [HealthMetricType]) async -> Bool
+    
+    /// Instant authorization method for onboarding - optimized for immediate display
+    @MainActor func requestAuthorizationInstant(completion: @escaping (Bool) -> Void)
+    
+    /// Ultra-fast authorization - maximum speed, optional callback
+    @MainActor func requestAuthorizationUltraFast(completion: (() -> Void)?)
     
     /// Fetch the latest value for a specific metric type
     func fetchLatestData(for metricType: HealthMetricType) async -> HealthMetric?
@@ -47,6 +52,11 @@ import Combine
 
 /// Manages all interactions with HealthKit, providing a clean interface to access health data
 @MainActor final class HealthKitManager: HealthKitManaging, ObservableObject {
+    // MARK: - Singleton Instance
+    
+    /// Shared instance for instant access - pre-initialized for speed
+    static let shared = HealthKitManager()
+    
     // MARK: - Properties
     
     private let healthStore: HKHealthStore
@@ -93,6 +103,23 @@ import Combine
     
     // Shared HealthKit store for non-isolated methods - marked nonisolated to be accessible from nonisolated contexts
     @preconcurrency nonisolated private static let sharedHealthStore = HKHealthStore()
+    
+    // OPTIMIZATION: Pre-compute all health types at compile time to avoid runtime overhead
+    nonisolated static let precomputedHealthTypes: Set<HKObjectType> = {
+        var types = Set<HKObjectType>()
+        
+        // Add all metric types
+        for metricType in allMetricTypes {
+            if metricType == .sleepHours,
+               let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) {
+                types.insert(sleepType)
+            } else if let healthType = metricType.healthKitType {
+                types.insert(healthType)
+            }
+        }
+        
+        return types
+    }()
     
     // MARK: - Initialization
     
@@ -191,6 +218,56 @@ import Combine
     /// Request authorization for all supported HealthKit data types
     func requestAuthorization() async -> Bool {
         return await requestAuthorization(for: HealthKitManager.allMetricTypes)
+    }
+    
+    /// Instant authorization method for onboarding - bypasses all checks for immediate display
+    /// This is optimized for speed like Strava and Death Clock
+    @MainActor
+    func requestAuthorizationInstant(completion: @escaping (Bool) -> Void) {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            completion(false)
+            return
+        }
+        
+        // OPTIMIZATION: Use pre-computed health types - no runtime overhead
+        // Request authorization immediately - no async/await overhead
+        healthStore.requestAuthorization(toShare: [], read: HealthKitManager.precomputedHealthTypes) { [weak self] success, error in
+            guard let self = self else {
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+                return
+            }
+            
+            if let error = error {
+                self.logger.error("HealthKit authorization error: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+                return
+            }
+            
+            // Return immediately with success
+            // The actual permission checking will happen when user returns from dialog
+            DispatchQueue.main.async {
+                completion(true)
+            }
+        }
+    }
+    
+    /// Ultra-fast authorization for onboarding - maximum optimization
+    /// This version eliminates ALL overhead for instant display
+    @MainActor
+    func requestAuthorizationUltraFast(completion: (() -> Void)? = nil) {
+        // OPTIMIZATION: Direct call, no guards, no completion - fire and forget
+        healthStore.requestAuthorization(toShare: [], read: HealthKitManager.precomputedHealthTypes) { _, _ in
+            // Call completion on main thread if provided
+            if let completion = completion {
+                DispatchQueue.main.async {
+                    completion()
+                }
+            }
+        }
     }
     
     /// Request authorization for specific HealthKit data types

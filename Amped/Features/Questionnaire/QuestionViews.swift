@@ -1,13 +1,28 @@
 import SwiftUI
+import HealthKit
+import UIKit
 
 /// Helper function to create formatted button content with primary and secondary text
+/// Automatically detects and styles text in parentheses as smaller, greyed subtext
 func FormattedButtonText(text: String, subtitle: String? = nil) -> some View {
     VStack(spacing: 4) {
-        Text(text)
+        // Parse the main text to separate primary text from parentheses content
+        let components = parseTextWithParentheses(text)
+        
+        Text(components.primary)
             .font(.system(size: 17, weight: .medium, design: .rounded))
             .foregroundColor(.white)
             .multilineTextAlignment(.center)
         
+        // Show parentheses content as smaller, greyed subtext
+        if let parenthesesText = components.parentheses {
+            Text(parenthesesText)
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(.white.opacity(0.65))
+                .multilineTextAlignment(.center)
+        }
+        
+        // Show additional subtitle if provided
         if let subtitle = subtitle {
             Text(subtitle)
                 .font(.system(size: 14, weight: .regular))
@@ -15,6 +30,32 @@ func FormattedButtonText(text: String, subtitle: String? = nil) -> some View {
                 .multilineTextAlignment(.center)
         }
     }
+}
+
+/// Helper function to parse text and extract content in parentheses
+private func parseTextWithParentheses(_ text: String) -> (primary: String, parentheses: String?) {
+    // Split by newline and look for parentheses in each line
+    let lines = text.components(separatedBy: "\n")
+    var primaryLines: [String] = []
+    var parenthesesText: String?
+    
+    for line in lines {
+        let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+        
+        // Check if line contains parentheses
+        if trimmedLine.hasPrefix("(") && trimmedLine.hasSuffix(")") {
+            // Extract content inside parentheses
+            let startIndex = trimmedLine.index(trimmedLine.startIndex, offsetBy: 1)
+            let endIndex = trimmedLine.index(trimmedLine.endIndex, offsetBy: -1)
+            parenthesesText = String(trimmedLine[startIndex..<endIndex])
+        } else {
+            // This is primary text
+            primaryLines.append(trimmedLine)
+        }
+    }
+    
+    let primaryText = primaryLines.joined(separator: "\n")
+    return (primary: primaryText, parentheses: parenthesesText)
 }
 
 /// Contains all the individual question views for the questionnaire
@@ -123,15 +164,6 @@ struct QuestionViews {
                         )
                         .hapticFeedback(.selection)
                     }
-                    
-                    Button(action: {
-                        viewModel.selectedGender = .preferNotToSay
-                        viewModel.proceedToNextQuestion()
-                    }) {
-                        Text("Prefer not to say")
-                    }
-                    .questionnaireButtonStyle(isSelected: viewModel.selectedGender == .preferNotToSay)
-                    .hapticFeedback(.selection)
                 }
                 .padding(.bottom, 30)
             }
@@ -301,6 +333,8 @@ struct QuestionViews {
         var proceedToHealthKit: () -> Void
         var skipToLifeMotivation: () -> Void
         
+        @State private var isWaitingForHealthKitAuth = false
+        
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
                 // Fitness tracker image (similar to screenshot)
@@ -327,7 +361,8 @@ struct QuestionViews {
                     // Yes option
                     Button(action: {
                         viewModel.selectedDeviceTrackingStatus = .yesBoth
-                        proceedToHealthKit()
+                        // Trigger HealthKit authorization directly and instantly
+                        requestHealthKitAuthorization()
                     }) {
                         Text("Yes, I track with a device")
                     }
@@ -350,6 +385,34 @@ struct QuestionViews {
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .onChange(of: viewModel.selectedDeviceTrackingStatus) { newValue in
+                print("🔍 DEVICE TRACKING: Device tracking status changed to: \(String(describing: newValue))")
+            }
+        }
+        
+        private func requestHealthKitAuthorization() {
+            print("🔍 DEVICE TRACKING: Requesting HealthKit authorization")
+            print("🔍 DEVICE TRACKING: Current question before auth: \(viewModel.currentQuestion)")
+            
+            // Set flag to track that we're waiting for authorization
+            isWaitingForHealthKitAuth = true
+            
+            // ULTRA-FAST: Fire the authorization immediately with completion handler
+            HealthKitManager.shared.requestAuthorizationUltraFast {
+                print("🔍 DEVICE TRACKING: HealthKit authorization completed")
+                
+                // Navigate to life motivation question when authorization completes
+                DispatchQueue.main.async {
+                    if self.isWaitingForHealthKitAuth {
+                        print("🔍 DEVICE TRACKING: Navigating to life motivation question")
+                        self.isWaitingForHealthKitAuth = false
+                        self.proceedToHealthKit()
+                    }
+                }
+            }
+            
+            // DO NOT navigate yet - stay on current screen while dialog is shown
+            // Navigation will happen when authorization completes
         }
     }
     

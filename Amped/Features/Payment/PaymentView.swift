@@ -132,15 +132,41 @@ struct PaymentView: View {
     }
     
     private var personalHeadlineView: some View {
-        Text("Try Amped for free")
-            .font(.system(size: 32, weight: .bold, design: .rounded))
-            .foregroundColor(themeManager.textColor)
-            .multilineTextAlignment(.center)
-            .lineSpacing(4)
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                Text("Try Amped")
+                    .font(.system(size: 32, weight: .medium, design: .default))
+                    .foregroundColor(themeManager.textColor)
+                
+                Text("for free")
+                    .font(.system(size: 32, weight: .bold, design: .default))
+                    .foregroundColor(.ampedGreen)
+                    .shadow(color: .ampedGreen.opacity(0.3), radius: 4, x: 0, y: 2)
+                    .overlay(
+                        // Subtle electric glow effect
+                        Text("for free")
+                            .font(.system(size: 32, weight: .bold, design: .default))
+                            .foregroundColor(.ampedGreen.opacity(0.1))
+                            .blur(radius: 8)
+                    )
+                    .scaleEffect(animateBattery ? 1.0 : 0.8)
+                    .opacity(animateBattery ? 1.0 : 0.0)
+                    .animation(.easeOut(duration: 0.8).delay(0.3), value: animateBattery)
+            }
+            .tracking(0.5) // Slightly spaced out for modern feel
+        }
+        .multilineTextAlignment(.center)
+        .padding(.bottom, 24) // Ample space below headline
     }
     
     private var visualDemonstrationView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
+            // Moved description above batteries
+            Text("See how your daily habits impact your life")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            
             // Battery visualization
             HStack(spacing: 20) {
                 // Life Impact Battery
@@ -181,11 +207,6 @@ struct PaymentView: View {
                         .foregroundColor(.ampedGreen)
                 }
             }
-            
-            Text("See how your daily habits impact your life")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
         }
         .padding(.vertical, 20)
     }
@@ -226,7 +247,7 @@ struct PaymentView: View {
                 // Dark background square
                 RoundedRectangle(cornerRadius: 32)
                     .fill(Color.black.opacity(0.15))
-                    .frame(height: 88)
+                    .frame(height: 108)
                     .padding(.horizontal, 22)
                 
                 // Main CTA button
@@ -263,14 +284,14 @@ struct PaymentView: View {
                 .hapticFeedback(.heavy)
             }
             
-            // Pricing details
-            HStack(spacing: 4) {
-                Text("Just $49.99 per year")
+            // Pricing details with clear trial terms
+            VStack(spacing: 4) {
+                Text("Then $39.99/year after trial")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(themeManager.textColor)
                 
-                Text("($4.17/mo)")
-                    .font(.system(size: 16, weight: .medium))
+                Text("($3.33/mo) • Cancel anytime")
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.secondary)
             }
             

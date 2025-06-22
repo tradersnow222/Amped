@@ -248,6 +248,7 @@ final class QuestionnaireManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "user_profile")
         UserDefaults.standard.removeObject(forKey: "manual_metrics")
         UserDefaults.standard.removeObject(forKey: "questionnaire_data")
+        UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
         currentUserProfile = nil
         manualMetrics = []
         questionnaireData = nil

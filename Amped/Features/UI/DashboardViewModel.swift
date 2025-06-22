@@ -51,7 +51,7 @@ class DashboardViewModel: ObservableObject {
             self.userProfile = UserProfile(
                 id: UUID().uuidString,
                 birthYear: currentYear - 30, // Default to 30 years old for reasonable baseline calculations
-                gender: .preferNotToSay, // Use prefer not to say as default neutral gender
+                gender: nil, // Use nil as default neutral gender
                 height: nil,
                 weight: nil,
                 isSubscribed: false,

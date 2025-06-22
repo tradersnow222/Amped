@@ -85,8 +85,6 @@ struct CardiovascularImpactCalculator {
             baseline = 60.0 - (Double(age) / 3.0)
         case .female:
             baseline = 50.0 - (Double(age) / 3.0)
-        case .preferNotToSay:
-            baseline = 55.0 - (Double(age) / 3.0)
         }
         
         let difference = mlPerKgMin - baseline

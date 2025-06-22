@@ -26,98 +26,111 @@ struct HealthKitPermissionsView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Back button - Rules: Using consistent BackButton component
-            HStack {
-                BackButton(action: { 
-                    onBack?() 
-                }, showText: false)
+            // Only show UI elements if not auto-requesting or if request failed
+            if !autoRequestPermissions || viewModel.showError {
+                // Back button - Rules: Using consistent BackButton component
+                HStack {
+                    BackButton(action: { 
+                        onBack?() 
+                    }, showText: false)
+                    Spacer()
+                }
+                .padding(.top, 16)
+                .padding(.leading, 8)
+                
+                // Spacer with flex to position content at rule of thirds
+                Spacer()
+                    .frame(height: UIScreen.main.bounds.height * 0.1)
+                
+                // 3D Heart Icon
+                ZStack {
+                    // White rounded square with shadow
+                    RoundedRectangle(cornerRadius: 24)
+                        .fill(Color.white)
+                        .frame(width: 120, height: 120)
+                        .shadow(color: Color.white.opacity(0.1), radius: 15, x: 0, y: 8)
+                        .shadow(color: Color.white.opacity(0.05), radius: 5, x: 0, y: 3)
+                        .rotationEffect(.degrees(10))
+                    
+                    // Heart icon
+                    Image(systemName: "heart.fill")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 50, height: 50)
+                        .foregroundColor(Color.ampedRed)
+                        .shadow(color: Color.ampedRed.opacity(0.3), radius: 4, x: 0, y: 2)
+                        .rotationEffect(.degrees(10))
+                }
+                .padding(.bottom, 40)
+                
+                // Concise health description text
+                Text("Connect your health data to power your life battery")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+                    .padding(.bottom, 16)
+                    
+                Text("See the direct impact of your daily habits on your lifespan")
+                    .font(.system(size: 17))
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+                
+                // Flexible spacing
+                Spacer(minLength: 60)
+                
+                // Continue button
+                Button(action: requestHealthKitPermissions) {
+                    HStack {
+                        if viewModel.isRequestingPermissions {
+                            ProgressView()
+                                .tint(.white)
+                                .scaleEffect(0.8)
+                                .padding(.trailing, 6)
+                        } else {
+                            Image(systemName: "heart.fill")
+                                .foregroundColor(.white)
+                                .font(.system(size: 16))
+                                .padding(.trailing, 4)
+                        }
+                        
+                        Text(viewModel.isRequestingPermissions ? "Requesting..." : "Continue")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(
+                        Capsule()
+                            .fill(viewModel.isRequestingPermissions ? Color.gray : Color.ampedGreen)
+                    )
+                    .padding(.horizontal, 40)
+                }
+                .disabled(viewModel.isRequestingPermissions || viewModel.allPermissionsGranted)
+                .hapticFeedback()
+                .padding(.bottom, 40)
+                
+                // Home indicator area
+                Rectangle()
+                    .frame(width: 134, height: 5)
+                    .cornerRadius(2.5)
+                    .foregroundColor(.white.opacity(0.2))
+                    .padding(.bottom, 8)
+            } else {
+                // When auto-requesting, show a minimal loading state
+                Spacer()
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .scaleEffect(1.2)
+                Text("Connecting to Apple Health...")
+                    .font(.system(size: 17))
+                    .foregroundColor(.gray)
+                    .padding(.top, 20)
                 Spacer()
             }
-            .padding(.top, 16)
-            .padding(.leading, 8)
-            
-            // Spacer with flex to position content at rule of thirds
-            Spacer()
-                .frame(height: UIScreen.main.bounds.height * 0.1)
-            
-            // 3D Heart Icon
-            ZStack {
-                // White rounded square with shadow
-                RoundedRectangle(cornerRadius: 24)
-                    .fill(Color.white)
-                    .frame(width: 120, height: 120)
-                    .shadow(color: Color.white.opacity(0.1), radius: 15, x: 0, y: 8)
-                    .shadow(color: Color.white.opacity(0.05), radius: 5, x: 0, y: 3)
-                    .rotationEffect(.degrees(10))
-                
-                // Heart icon
-                Image(systemName: "heart.fill")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 50, height: 50)
-                    .foregroundColor(Color.ampedRed)
-                    .shadow(color: Color.ampedRed.opacity(0.3), radius: 4, x: 0, y: 2)
-                    .rotationEffect(.degrees(10))
-            }
-            .padding(.bottom, 40)
-            
-            // Concise health description text
-            Text("Connect your health data to power your life battery")
-                .font(.system(size: 24, weight: .bold))
-                .foregroundColor(.white)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-                .padding(.bottom, 16)
-                
-            Text("See the direct impact of your daily habits on your lifespan")
-                .font(.system(size: 17))
-                .foregroundColor(.gray)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-            
-            // Flexible spacing
-            Spacer(minLength: 60)
-            
-            // Continue button
-            Button(action: requestHealthKitPermissions) {
-                HStack {
-                    if viewModel.isRequestingPermissions {
-                        ProgressView()
-                            .tint(.white)
-                            .scaleEffect(0.8)
-                            .padding(.trailing, 6)
-                    } else {
-                        Image(systemName: "heart.fill")
-                            .foregroundColor(.white)
-                            .font(.system(size: 16))
-                            .padding(.trailing, 4)
-                    }
-                    
-                    Text(viewModel.isRequestingPermissions ? "Requesting..." : "Continue")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 56)
-                .background(
-                    Capsule()
-                        .fill(viewModel.isRequestingPermissions ? Color.gray : Color.ampedGreen)
-                )
-                .padding(.horizontal, 40)
-            }
-            .disabled(viewModel.isRequestingPermissions || viewModel.allPermissionsGranted)
-            .hapticFeedback()
-            .padding(.bottom, 40)
-            
-            // Home indicator area
-            Rectangle()
-                .frame(width: 134, height: 5)
-                .cornerRadius(2.5)
-                .foregroundColor(.white.opacity(0.2))
-                .padding(.bottom, 8)
         }
         .withDeepBackground()
-        .opacity(autoRequestPermissions && !viewModel.allPermissionsGranted && !viewModel.criticalPermissionsGranted ? 0 : 1)
         .alert("Health Access Error", isPresented: $viewModel.showError) {
             Button("Open Settings", role: .none) {
                 openSettings()

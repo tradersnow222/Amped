@@ -22,27 +22,31 @@ struct PersonalizationIntroView: View {
                 // Main content
                 ScrollView {
                     VStack(spacing: 32) {
-                        // Header section
-                        VStack(spacing: 16) {
-                            Text("Backed by science,\nPowered by AI.")
+                        // Header section - positioned for rule of thirds
+                        VStack(spacing: 0) {
+                            Text("Driven by Data,\nFueled by AI.")
                                 .font(.system(size: 32, weight: .semibold, design: .serif))
                                 .foregroundColor(.white)
                                 .multilineTextAlignment(.center)
                                 .opacity(animateElements ? 1 : 0)
                                 .offset(y: animateElements ? 0 : 20)
                                 .animation(.easeOut(duration: 0.6), value: animateElements)
-                            
+                        }
+                        .padding(.top, 120) // Moved down to follow rule of thirds
+                        
+                        // Additional spacing between headline and statistics
+                        Spacer().frame(height: 60)
+                        
+                        // Statistics section with paired subtitle
+                        VStack(spacing: 16) {
                             Text("Our algorithms are trained on")
                                 .font(.system(size: 18, weight: .regular, design: .serif))
                                 .foregroundColor(.white.opacity(0.7))
                                 .multilineTextAlignment(.center)
                                 .opacity(animateElements ? 1 : 0)
                                 .animation(.easeOut(duration: 0.6).delay(0.1), value: animateElements)
-                        }
-                        .padding(.top, 60)
-                        
-                        // Statistics section
-                        VStack(spacing: 8) {
+                            
+                            VStack(spacing: 8) {
                             HStack(spacing: 8) {
                                 Text("200+")
                                     .font(.system(size: 36, weight: .semibold, design: .serif))
@@ -63,6 +67,7 @@ struct PersonalizationIntroView: View {
                                 Text("participants")
                                     .font(.system(size: 20, weight: .regular, design: .serif))
                                     .foregroundColor(.white)
+                            }
                             }
                         }
                         .opacity(animateElements ? 1 : 0)
