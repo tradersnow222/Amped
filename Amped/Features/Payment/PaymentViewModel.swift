@@ -145,6 +145,13 @@ final class PaymentViewModel: ObservableObject {
         completion()
     }
     
+    /// Restore previous purchases
+    func restorePurchases() {
+        Task {
+            await storeKitManager.restorePurchases()
+        }
+    }
+    
     // MARK: - Private Methods
     
     private func showError(message: String) {
@@ -189,7 +196,7 @@ final class PaymentViewModel: ObservableObject {
         case .monthly:
             return monthlyProduct?.formattedPrice ?? "$9.99"
         case .annual:
-            return annualProduct?.formattedPrice ?? "$39.99"
+            return annualProduct?.formattedPrice ?? "$49.99"
         }
     }
     

@@ -1,21 +1,15 @@
 import SwiftUI
 
-/// Introduction to personalization and questionnaire
+/// Introduction to personalization and questionnaire - builds credibility with scientific backing
 struct PersonalizationIntroView: View {
     // MARK: - Properties
     
     @StateObject private var viewModel = PersonalizationIntroViewModel()
-    @State private var isAnimating = false
-    @State private var nudgeAnimation = false
-    @State private var nudgeOffset: CGFloat = 0
-    @State private var nudgeTimer: Timer?
-    @State private var dragOffset: CGFloat = 0
+    @State private var animateElements = false
+    @EnvironmentObject var themeManager: BatteryThemeManager
     
     // Callback to proceed to next step
     var onContinue: (() -> Void)?
-    
-    // MARK: - UI Constants
-    private let nudgeDistance: CGFloat = 20
     
     // MARK: - Body
     
@@ -24,115 +18,165 @@ struct PersonalizationIntroView: View {
             // Background
             Color.clear.withDeepBackground()
             
-            // Content with fixed progress indicator at bottom
             VStack(spacing: 0) {
-                // Main content - can be nudged
-                VStack(spacing: 0) {
-                    // Expanded spacer to push content to center
-                    Spacer()
-                    
-                    // Main content - centered in the screen
-                    VStack(spacing: 24) {
-                        // Headline text - larger and more prominent
-                        Text("First, let's go through a few questions")
-                            .font(.title2.bold().monospaced())
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
+                // Main content
+                ScrollView {
+                    VStack(spacing: 32) {
+                        // Header section
+                        VStack(spacing: 16) {
+                            Text("Backed by science,\nPowered by AI.")
+                                .font(.system(size: 32, weight: .semibold, design: .serif))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.center)
+                                .opacity(animateElements ? 1 : 0)
+                                .offset(y: animateElements ? 0 : 20)
+                                .animation(.easeOut(duration: 0.6), value: animateElements)
+                            
+                            Text("Our algorithms are trained on")
+                                .font(.system(size: 18, weight: .regular, design: .serif))
+                                .foregroundColor(.white.opacity(0.7))
+                                .multilineTextAlignment(.center)
+                                .opacity(animateElements ? 1 : 0)
+                                .animation(.easeOut(duration: 0.6).delay(0.1), value: animateElements)
+                        }
+                        .padding(.top, 60)
                         
-                        // Subheadline - increased size for better visibility
-                        Text("takes about 2 minutes")
-                            .font(.subheadline.monospaced())
-                            .foregroundColor(.white.opacity(0.8))
-                            .multilineTextAlignment(.center)
+                        // Statistics section
+                        VStack(spacing: 8) {
+                            HStack(spacing: 8) {
+                                Text("200+")
+                                    .font(.system(size: 36, weight: .semibold, design: .serif))
+                                    .foregroundColor(.ampedGreen)
+                                Text("peer-reviewed studies")
+                                    .font(.system(size: 20, weight: .regular, design: .serif))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            Text("with over")
+                                .font(.system(size: 16, weight: .regular, design: .serif))
+                                .foregroundColor(.white.opacity(0.7))
+                            
+                            HStack(spacing: 8) {
+                                Text("10 million")
+                                    .font(.system(size: 36, weight: .semibold, design: .serif))
+                                    .foregroundColor(.ampedGreen)
+                                Text("participants")
+                                    .font(.system(size: 20, weight: .regular, design: .serif))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                        .opacity(animateElements ? 1 : 0)
+                        .scaleEffect(animateElements ? 1 : 0.9)
+                        .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2), value: animateElements)
+                        
+                        // Visual element - Battery with scientific symbols
+                        scientificBatteryView
+                            .opacity(animateElements ? 1 : 0)
+                            .scaleEffect(animateElements ? 1 : 0.8)
+                            .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.3), value: animateElements)
+                        
+                        // University partnerships
+                        VStack(spacing: 24) {
+                            Text("With insights from experts at:")
+                                .font(.system(size: 16, weight: .regular, design: .serif))
+                                .foregroundColor(.white.opacity(0.7))
+                            
+                            // University logos in horizontal layout
+                            HStack(spacing: 24) {
+                                ForEach(ResearchInstitute.allCases, id: \.self) { institute in
+                                    universityLogoView(for: institute)
+                                }
+                            }
+                            .fixedSize(horizontal: true, vertical: false) // Prevent horizontal wrapping
+                        }
+                        .opacity(animateElements ? 1 : 0)
+                        .animation(.easeOut(duration: 0.6).delay(0.4), value: animateElements)
+                        
+                        Spacer(minLength: 100)
                     }
                     .padding(.horizontal, 24)
-                    .padding(.bottom, 30)
-                    .offset(x: nudgeOffset + dragOffset)
-                    
-                    Spacer()
                 }
                 
-                // Progress indicator - fixed position
-                ProgressIndicator(currentStep: 1, totalSteps: 10)
+                // Bottom section with button
+                VStack(spacing: 0) {
+                    Button(action: {
+                        onContinue?()
+                    }) {
+                        Text("Continue")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(Color.ampedGreen)
+                            .cornerRadius(28)
+                    }
+                    .padding(.horizontal, 40)
                     .padding(.bottom, 40)
+                    .hapticFeedback(.heavy)
+                    .opacity(animateElements ? 1 : 0)
+                    .animation(.easeOut(duration: 0.6).delay(0.5), value: animateElements)
+                }
             }
         }
         .edgesIgnoringSafeArea(.all)
         .navigationBarHidden(true)
         .onAppear {
-            // Start nudging animation after 2 seconds (reduced from 3)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                startNudgeAnimation()
+            withAnimation {
+                animateElements = true
             }
-        }
-        .onDisappear {
-            // Clean up timer when view disappears
-            nudgeTimer?.invalidate()
-            nudgeTimer = nil
-        }
-        .gesture(
-            DragGesture(minimumDistance: 5, coordinateSpace: .local)
-                .onChanged { value in
-                    // Only handle horizontal drags
-                    if abs(value.translation.width) > abs(value.translation.height) {
-                        if value.translation.width < 0 {
-                            // Left swipe (proceed) - update offset in real-time
-                            dragOffset = value.translation.width
-                            
-                            // If drag exceeds threshold, proceed immediately
-                            if dragOffset < -50 {
-                                nudgeTimer?.invalidate()
-                                nudgeTimer = nil
-                                onContinue?()
-                            }
-                        }
-                    }
-                }
-                .onEnded { value in
-                    // Reset drag offset with animation if we didn't exceed threshold
-                    withAnimation(.spring()) {
-                        dragOffset = 0
-                    }
-                    
-                    if value.translation.width < -20 {
-                        // Left swipe - proceed to next screen
-                        nudgeTimer?.invalidate()
-                        nudgeTimer = nil
-                        onContinue?()
-                    }
-                }
-        )
-        .onTapGesture {
-            // Tap gesture for easier navigation as well
-            nudgeTimer?.invalidate()
-            nudgeTimer = nil
-            onContinue?()
         }
     }
     
-    // MARK: - Helper Methods
+    // MARK: - Subviews
     
-    private func startNudgeAnimation() {
-        // Initial nudge
-        performNudge()
-        
-        // Set up repeating timer with 2 second interval (1s for animation + 1s pause)
-        nudgeTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
-            performNudge()
+    private var scientificBatteryView: some View {
+        ZStack {
+            // Battery outline with scientific elements
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.ampedGreen, lineWidth: 3)
+                .frame(width: 120, height: 60)
+                .overlay(
+                    HStack(spacing: 0) {
+                        // DNA helix symbol
+                        Image(systemName: "waveform.path.ecg")
+                            .font(.system(size: 24))
+                            .foregroundColor(.ampedGreen)
+                        
+                        // Plus sign
+                        Image(systemName: "plus")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white.opacity(0.7))
+                            .padding(.horizontal, 8)
+                        
+                        // AI brain symbol
+                        Image(systemName: "brain")
+                            .font(.system(size: 24))
+                            .foregroundColor(.ampedGreen)
+                    }
+                )
+            
+            // Battery tip
+            RoundedRectangle(cornerRadius: 3)
+                .fill(Color.ampedGreen)
+                .frame(width: 6, height: 30)
+                .offset(x: 68)
         }
     }
     
-    private func performNudge() {
-        // Animate to nudged position (increased to 0.6 seconds)
-        withAnimation(.easeInOut(duration: 0.6)) {
-            nudgeOffset = -nudgeDistance
-        }
-        
-        // Animate back after nudge completes (0.6 seconds delay with 0.4 seconds duration)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-            withAnimation(.easeInOut(duration: 0.4)) {
-                nudgeOffset = 0
+    private func universityLogoView(for institute: ResearchInstitute) -> some View {
+        HStack(spacing: 6) {
+            // University icon/symbol for NYU
+            if institute == .nyu {
+                Image(systemName: "building.columns.fill")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
             }
+            
+            // University name
+            Text(institute.rawValue)
+                .font(.system(size: 16, weight: .regular, design: .serif))
+                .foregroundColor(.white.opacity(0.8))
+                .fixedSize()
         }
     }
 }
@@ -152,5 +196,6 @@ final class PersonalizationIntroViewModel: ObservableObject {
 struct PersonalizationIntroView_Previews: PreviewProvider {
     static var previews: some View {
         PersonalizationIntroView(onContinue: {})
+            .environmentObject(BatteryThemeManager())
     }
 } 

@@ -1,6 +1,13 @@
 import Foundation
 import OSLog
 
+/// Stores questionnaire response data
+struct QuestionnaireData: Codable {
+    let deviceTrackingStatus: QuestionnaireViewModel.DeviceTrackingStatus?
+    let lifeMotivation: QuestionnaireViewModel.LifeMotivation?
+    let savedDate: Date
+}
+
 /// Manages questionnaire data collection, storage, and conversion to health metrics
 final class QuestionnaireManager: ObservableObject {
     
@@ -11,12 +18,14 @@ final class QuestionnaireManager: ObservableObject {
     @Published var hasCompletedQuestionnaire: Bool = false
     @Published var currentUserProfile: UserProfile?
     @Published var manualMetrics: [ManualMetricInput] = []
+    @Published var questionnaireData: QuestionnaireData?
     
     // MARK: - Initialization
     
     init() {
         loadUserProfile()
         loadManualMetrics()
+        loadQuestionnaireDataFromDefaults()
     }
     
     // MARK: - Public Methods
@@ -47,6 +56,14 @@ final class QuestionnaireManager: ObservableObject {
         // Save to UserDefaults
         saveUserProfile(profile)
         
+        // Save questionnaire-specific data
+        let questionnaireData = QuestionnaireData(
+            deviceTrackingStatus: viewModel.selectedDeviceTrackingStatus,
+            lifeMotivation: viewModel.selectedLifeMotivation,
+            savedDate: Date()
+        )
+        saveQuestionnaireData(questionnaireData)
+        
         // Convert questionnaire answers to manual metrics
         let metrics = convertQuestionnaireToMetrics(from: viewModel)
         saveManualMetrics(metrics)
@@ -65,6 +82,11 @@ final class QuestionnaireManager: ObservableObject {
     /// Get current user profile
     func getCurrentUserProfile() -> UserProfile? {
         return currentUserProfile
+    }
+    
+    /// Load questionnaire data
+    func loadQuestionnaireData() -> QuestionnaireData? {
+        return questionnaireData
     }
     
     // MARK: - Private Methods
@@ -193,12 +215,42 @@ final class QuestionnaireManager: ObservableObject {
         }
     }
     
+    /// Load questionnaire data from UserDefaults
+    private func loadQuestionnaireDataFromDefaults() {
+        guard let data = UserDefaults.standard.data(forKey: "questionnaire_data") else {
+            logger.info("📂 No existing questionnaire data found")
+            return
+        }
+        
+        do {
+            let questionnaireData = try JSONDecoder().decode(QuestionnaireData.self, from: data)
+            self.questionnaireData = questionnaireData
+            logger.info("✅ Loaded questionnaire data from UserDefaults")
+        } catch {
+            logger.error("❌ Failed to load questionnaire data: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Save questionnaire data to UserDefaults
+    private func saveQuestionnaireData(_ questionnaireData: QuestionnaireData) {
+        do {
+            let data = try JSONEncoder().encode(questionnaireData)
+            UserDefaults.standard.set(data, forKey: "questionnaire_data")
+            self.questionnaireData = questionnaireData
+            logger.info("💾 Questionnaire data saved to UserDefaults")
+        } catch {
+            logger.error("❌ Failed to save questionnaire data: \(error.localizedDescription)")
+        }
+    }
+    
     /// Clear all questionnaire data (for testing or reset)
     func clearAllData() {
         UserDefaults.standard.removeObject(forKey: "user_profile")
         UserDefaults.standard.removeObject(forKey: "manual_metrics")
+        UserDefaults.standard.removeObject(forKey: "questionnaire_data")
         currentUserProfile = nil
         manualMetrics = []
+        questionnaireData = nil
         hasCompletedQuestionnaire = false
         logger.info("🗑️ All questionnaire data cleared")
     }

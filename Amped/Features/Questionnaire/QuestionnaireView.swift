@@ -29,10 +29,23 @@ struct QuestionnaireView: View {
         self.returningFromHealthKit = returningFromHealthKit
         
         // Create the StateObject before init completes
-        // If returning from HealthKit, start at the last question
-        let viewModel = returningFromHealthKit 
-            ? QuestionnaireViewModel(startingAt: .socialConnections)
-            : QuestionnaireViewModel()
+        // If returning from HealthKit, start at the socialConnections question
+        // If there's saved questionnaire data with device tracking = no, start at device tracking question
+        let viewModel: QuestionnaireViewModel
+        if returningFromHealthKit {
+            viewModel = QuestionnaireViewModel(startingAt: .socialConnections)
+        } else {
+            // Check if we're returning from life motivation (user selected no device)
+            let questionnaireManager = QuestionnaireManager()
+            if let savedData = questionnaireManager.loadQuestionnaireData(),
+               savedData.deviceTrackingStatus == .no {
+                // User is returning from life motivation, show device tracking question
+                viewModel = QuestionnaireViewModel(startingAt: .deviceTracking)
+            } else {
+                // Normal flow, start from beginning
+                viewModel = QuestionnaireViewModel()
+            }
+        }
         self._viewModel = StateObject(wrappedValue: viewModel)
         
         // Use the same view model instance for the gesture handler
@@ -152,6 +165,16 @@ struct QuestionnaireView: View {
             )
         case .socialConnections:
             QuestionViews.SocialConnectionsQuestionView(
+                viewModel: viewModel
+            )
+        case .deviceTracking:
+            QuestionViews.DeviceTrackingQuestionView(
+                viewModel: viewModel,
+                proceedToHealthKit: proceedToHealthKit,
+                skipToLifeMotivation: skipToLifeMotivation
+            )
+        case .lifeMotivation:
+            QuestionViews.LifeMotivationQuestionView(
                 viewModel: viewModel,
                 completeQuestionnaire: completeQuestionnaire
             )
@@ -160,16 +183,45 @@ struct QuestionnaireView: View {
     
     // MARK: - Navigation Handling
     
+    private func proceedToHealthKit() {
+        // Save questionnaire data before proceeding
+        questionnaireManager.saveQuestionnaireData(from: viewModel)
+        
+        // Activate binding to trigger the transition to health permissions
+        proceedToHealthPermissions = true
+        
+        print("🔍 QUESTIONNAIRE: User has tracking device, moving to health permissions")
+    }
+    
+    private func skipToLifeMotivation() {
+        // User doesn't track health, move directly to life motivation question
+        withAnimation(.interpolatingSpring(stiffness: 180, damping: 20, initialVelocity: 0.5)) {
+            viewModel.currentQuestion = .lifeMotivation
+        }
+        
+        print("🔍 QUESTIONNAIRE: User doesn't track, skipping to life motivation question")
+    }
+    
     private func completeQuestionnaire() {
         guard viewModel.canProceed else { return }
         
         // CRITICAL FIX: Save questionnaire data before proceeding
         questionnaireManager.saveQuestionnaireData(from: viewModel)
         
-        // Activate binding to trigger the transition to health permissions
-        proceedToHealthPermissions = true
+        // If the current question is life motivation and we're in the questionnaire flow,
+        // we should trigger navigation to sign in with Apple
+        if viewModel.currentQuestion == .lifeMotivation {
+            // This means user completed life motivation within questionnaire (no device tracking)
+            // We need to signal to move to Sign in with Apple
+            // Since we can't directly navigate from here, we'll use the proceedToHealthPermissions
+            // binding but the parent will need to check this condition
+            proceedToHealthPermissions = true
+        } else {
+            // Normal flow - proceed to health permissions
+            proceedToHealthPermissions = true
+        }
         
-        print("🔍 QUESTIONNAIRE: Completed questionnaire, moving to health permissions")
+        print("🔍 QUESTIONNAIRE: Completed questionnaire, moving to next step")
     }
     
     private func handleContinue() {

@@ -10,6 +10,8 @@ final class QuestionnaireViewModel: ObservableObject {
         case smokingStatus
         case alcoholConsumption
         case socialConnections
+        case deviceTracking // New question about health tracking devices
+        case lifeMotivation // Moved to last - will be shown after HealthKit
     }
     
     enum NutritionQuality: CaseIterable {
@@ -112,6 +114,56 @@ final class QuestionnaireViewModel: ObservableObject {
         }
     }
     
+    enum DeviceTrackingStatus: String, CaseIterable, Codable {
+        case yesBoth = "yesBoth"          // Tracking both activity and sleep
+        case yesActivityOnly = "yesActivityOnly"   // Only tracking activity
+        case yesSleepOnly = "yesSleepOnly"      // Only tracking sleep
+        case no = "no"                // Not using any device
+        
+        var displayName: String {
+            switch self {
+            case .yesBoth: return "Yes, tracking both"
+            case .yesActivityOnly: return "Only tracking activity"
+            case .yesSleepOnly: return "Only tracking sleep"
+            case .no: return "No, not using any device"
+            }
+        }
+        
+        var requiresHealthKit: Bool {
+            switch self {
+            case .yesBoth, .yesActivityOnly, .yesSleepOnly:
+                return true
+            case .no:
+                return false
+            }
+        }
+    }
+    
+    enum LifeMotivation: String, CaseIterable, Codable {
+        case family = "family"
+        case dreams = "dreams"
+        case experience = "experience"
+        case contribution = "contribution"
+        
+        var displayName: String {
+            switch self {
+            case .family: return "Watch my family grow"
+            case .dreams: return "Achieve my dreams"
+            case .experience: return "Simply to experience life longer"
+            case .contribution: return "Give more back to the world"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .family: return "figure.2.and.child.holdinghands"
+            case .dreams: return "star.fill"
+            case .experience: return "sun.max.fill"
+            case .contribution: return "globe.americas.fill"
+            }
+        }
+    }
+    
     // Form data
     @Published var currentQuestion: Question = .birthdate
     
@@ -208,6 +260,12 @@ final class QuestionnaireViewModel: ObservableObject {
     // Social Connections
     @Published var selectedSocialConnectionsQuality: SocialConnectionsQuality?
     
+    // Device Tracking
+    @Published var selectedDeviceTrackingStatus: DeviceTrackingStatus?
+    
+    // Life Motivation
+    @Published var selectedLifeMotivation: LifeMotivation?
+    
     // Progress tracking for indicator
     var currentStep: Int {
         // Personalization Intro is step 1, so the first question starts at step 2
@@ -218,7 +276,7 @@ final class QuestionnaireViewModel: ObservableObject {
     }
     
     var isComplete: Bool {
-        currentQuestion == Question.socialConnections && canProceed
+        currentQuestion == Question.lifeMotivation && canProceed
     }
     
     // Check if it's possible to proceed to the next question
@@ -236,6 +294,10 @@ final class QuestionnaireViewModel: ObservableObject {
             return selectedAlcoholFrequency != nil
         case .socialConnections:
             return selectedSocialConnectionsQuality != nil
+        case .deviceTracking:
+            return selectedDeviceTrackingStatus != nil
+        case .lifeMotivation:
+            return selectedLifeMotivation != nil
         }
     }
     
@@ -251,7 +313,9 @@ final class QuestionnaireViewModel: ObservableObject {
     
     // Check if we're at the last question
     var isLastQuestion: Bool {
-        return currentQuestion == .socialConnections
+        // Note: deviceTracking is the last question in the normal questionnaire flow
+        // lifeMotivation will be shown after HealthKit permissions
+        return currentQuestion == .deviceTracking
     }
     
     var progressPercentage: Double {
@@ -320,7 +384,7 @@ final class QuestionnaireViewModel: ObservableObject {
         selectedBirthYear = calendar.component(.year, from: birthdate)
     }
     
-    // Add a new initializer to start at a specific question - for returning from HealthKit permissions
+    // Add a new initializer to start at a specific question - for returning from HealthKit
     init(startingAt question: Question) {
         // Set the starting question
         self.currentQuestion = question

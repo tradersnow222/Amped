@@ -9,6 +9,12 @@ struct PaymentView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var themeManager: BatteryThemeManager
     @Environment(\.presentationMode) private var presentationMode
+    @State private var showDiscountOffer = false
+    @State private var animateBattery = false
+    @State private var buttonPulsing = false // Track button pulse animation state
+    
+    // Animation constants
+    private let pulseAnimationDuration: Double = 1.0
     
     // Callback to proceed to next step
     var onContinue: (() -> Void)?
@@ -18,35 +24,67 @@ struct PaymentView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                // Clean header with minimal close button
+                // Clean header with restore button
                 headerView
                 
-                // Main content in scrollable area
-                ScrollView {
-                    VStack(spacing: 32) {
-                        // Hero section with battery animation
-                        heroSectionView
-                        
-                        // Clean subscription options
-                        subscriptionSectionView
-                        
-                        // Simple benefits
-                        benefitsSectionView
-                        
-                        // Legal/trial info only
-                        legalSectionView
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 20)
+                // Main content without scroll
+                VStack(spacing: 20) {
+                    // Personal headline
+                    personalHeadlineView
+                    
+                    // Visual demonstration with battery
+                    visualDemonstrationView
+                    
+                    // Social proof
+                    socialProofView
+                    
+                    Spacer()
+                    
+                    // Zero-friction benefits
+                    benefitsListView
+                    
+                    Spacer()
                 }
+                .padding(.horizontal, 24)
+                .padding(.top, 8)
                 
-                // Bottom CTA and progress
-                bottomSectionView
+                // Bottom CTA section
+                if !showDiscountOffer {
+                    bottomCTASection
+                }
             }
+            .blur(radius: showDiscountOffer ? 6 : 0)
+            .brightness(showDiscountOffer ? 0.1 : 0)
             
             // Processing overlay
             if viewModel.isProcessing {
                 ProcessingOverlay()
+            }
+            
+            // Discount offer overlay
+            if showDiscountOffer {
+                DiscountOfferView(
+                    onAccept: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showDiscountOffer = false
+                        }
+                        viewModel.selectedPlan = .annual
+                        processPurchase()
+                    },
+                    onDecline: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showDiscountOffer = false
+                        }
+                        viewModel.skipPayment {
+                            onContinue?()
+                        }
+                    }
+                )
+                .transition(.asymmetric(
+                    insertion: .scale(scale: 0.95).combined(with: .opacity),
+                    removal: .scale(scale: 0.95).combined(with: .opacity)
+                ))
+                .zIndex(1)
             }
         }
         .alert(isPresented: $viewModel.showError) {
@@ -58,21 +96,25 @@ struct PaymentView: View {
         }
         .onAppear {
             viewModel.appState = appState
+            animateBattery = true
+            
+            // Start button pulsing after a short delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                buttonPulsing = true
+            }
         }
         .withDeepBackground()
+        .animation(.easeInOut(duration: 0.2), value: showDiscountOffer)
     }
     
     // MARK: - View Components
     
     private var headerView: some View {
         HStack {
-            Spacer()
-            
-            // Minimal close button
+            // Skip button (X)
             Button(action: {
-                // Simple skip option - continue with free version
-                viewModel.skipPayment {
-                    onContinue?()
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showDiscountOffer = true
                 }
             }) {
                 Image(systemName: "xmark")
@@ -82,188 +124,179 @@ struct PaymentView: View {
                     .background(Color.gray.opacity(0.1))
                     .clipShape(Circle())
             }
+            
+            Spacer()
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
     }
     
-    private var heroSectionView: some View {
-        VStack(spacing: 20) {
-            // Battery charging animation
-            BatteryChargingAnimation()
-                .frame(width: 80, height: 40)
-            
-            // Simple, powerful headline
-            Text("Unlock Full Power")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(themeManager.textColor)
-                .multilineTextAlignment(.center)
-            
-            // Benefit-focused subtitle
-            Text("Get deeper insights and maximize your health potential")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 16)
-        }
+    private var personalHeadlineView: some View {
+        Text("Try Amped for free")
+            .font(.system(size: 32, weight: .bold, design: .rounded))
+            .foregroundColor(themeManager.textColor)
+            .multilineTextAlignment(.center)
+            .lineSpacing(4)
     }
     
-    private var subscriptionSectionView: some View {
+    private var visualDemonstrationView: some View {
         VStack(spacing: 16) {
-            if viewModel.areProductsLoaded {
-                // Clean subscription options
-                subscriptionOptionsView
-            } else if viewModel.isProcessing {
-                // Simple loading state
-                loadingStateView
-            } else {
-                // Graceful fallback with retry
-                fallbackOptionsView
-            }
-        }
-    }
-    
-    private var subscriptionOptionsView: some View {
-        VStack(spacing: 12) {
-            // Annual option (highlighted as best value)
-            if let annualProduct = viewModel.annualProduct {
-                SubscriptionOptionCard(
-                    title: "Annual",
-                    price: annualProduct.formattedPrice,
-                    period: "year",
-                    monthlyEquivalent: calculateMonthlyEquivalent(for: annualProduct),
-                    discount: "Save 58%",
-                    isSelected: viewModel.selectedPlan == .annual,
-                    isBestValue: true
-                ) {
-                    viewModel.selectedPlan = .annual
-                }
-            }
-            
-            // Monthly option
-            if let monthlyProduct = viewModel.monthlyProduct {
-                SubscriptionOptionCard(
-                    title: "Monthly",
-                    price: monthlyProduct.formattedPrice,
-                    period: "month",
-                    isSelected: viewModel.selectedPlan == .monthly
-                ) {
-                    viewModel.selectedPlan = .monthly
-                }
-            }
-        }
-    }
-    
-    private var loadingStateView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: .ampedGreen))
-                .scaleEffect(1.2)
-            
-            Text("Loading options...")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.secondary)
-        }
-        .frame(height: 140)
-    }
-    
-    private var fallbackOptionsView: some View {
-        VStack(spacing: 16) {
-            // Show fallback options with predefined pricing
-            SubscriptionOptionCard(
-                title: "Annual",
-                price: "$39.99",
-                period: "year",
-                monthlyEquivalent: "$3.33/month",
-                discount: "Save 58%",
-                isSelected: viewModel.selectedPlan == .annual,
-                isBestValue: true
-            ) {
-                viewModel.selectedPlan = .annual
-            }
-            
-            SubscriptionOptionCard(
-                title: "Monthly",
-                price: "$9.99",
-                period: "month",
-                isSelected: viewModel.selectedPlan == .monthly
-            ) {
-                viewModel.selectedPlan = .monthly
-            }
-            
-            // Subtle retry option
-            Button("Refresh pricing") {
-                viewModel.loadProducts()
-            }
-            .font(.system(size: 14, weight: .medium))
-            .foregroundColor(.ampedGreen)
-            .padding(.top, 8)
-        }
-    }
-    
-    private var benefitsSectionView: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("What you'll get:")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(themeManager.textColor)
-            
-            // Streamlined benefits
-            CleanBenefitRow(icon: "chart.line.uptrend.xyaxis", text: "Advanced health analytics")
-            CleanBenefitRow(icon: "heart.text.square", text: "Detailed heart insights")
-            CleanBenefitRow(icon: "clock.arrow.2.circlepath", text: "Historical data access")
-            CleanBenefitRow(icon: "bell.badge", text: "Smart notifications")
-        }
-        .padding(.horizontal, 4)
-    }
-    
-    private var legalSectionView: some View {
-        VStack(spacing: 12) {
-            Text("7-day free trial • Cancel anytime")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.secondary)
-        }
-    }
-    
-    private var bottomSectionView: some View {
-        VStack(spacing: 16) {
-            // Primary CTA button
-            Button(action: {
-                processPurchase()
-            }) {
-                HStack {
-                    if viewModel.isProcessing {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(0.8)
-                    }
+            // Battery visualization
+            HStack(spacing: 20) {
+                // Life Impact Battery
+                VStack(spacing: 8) {
+                    Text("Life Impact")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
                     
-                    Text(viewModel.isProcessing ? "Processing..." : "Start Free Trial")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.white)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 56)
-                .background(
-                    LinearGradient(
-                        colors: [Color.ampedGreen, Color.ampedGreen.opacity(0.8)],
-                        startPoint: .leading,
-                        endPoint: .trailing
+                    SimpleBatteryView(
+                        percentage: animateBattery ? 0.85 : 0.3
                     )
-                )
-                .cornerRadius(16)
-                .shadow(color: Color.ampedGreen.opacity(0.3), radius: 8, y: 4)
+                    .frame(width: 60, height: 30)
+                    .animation(.easeInOut(duration: 1.5).delay(0.5), value: animateBattery)
+                    
+                    Text("+2.4 hrs")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.ampedGreen)
+                }
+                
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 20))
+                    .foregroundColor(.ampedGreen.opacity(0.6))
+                
+                // Life Projection Battery
+                VStack(spacing: 8) {
+                    Text("Life Expectancy")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                    
+                    SimpleBatteryView(
+                        percentage: animateBattery ? 0.92 : 0.88
+                    )
+                    .frame(width: 60, height: 30)
+                    .animation(.easeInOut(duration: 1.5).delay(0.8), value: animateBattery)
+                    
+                    Text("91.2 yrs")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.ampedGreen)
+                }
             }
-            .disabled(viewModel.isProcessing)
-            .padding(.horizontal, 24)
-            .hapticFeedback(.heavy)
             
-            // Progress indicator
-            ProgressIndicator(currentStep: 6, totalSteps: 6)
-                .padding(.bottom, 20)
+            Text("See how your daily habits impact your life")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.vertical, 20)
+    }
+    
+    private var socialProofView: some View {
+        VStack(spacing: 8) {
+            Text("\"The Health App That\nWill Change Your Life\"")
+                .font(.system(size: 20, weight: .semibold, design: .serif))
+                .foregroundColor(themeManager.textColor)
+                .multilineTextAlignment(.center)
+                .italic()
+            
+            Text("— FEATURED IN APP STORE")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.secondary)
+                .tracking(1.2)
+        }
+    }
+    
+    private var benefitsListView: some View {
+        VStack(alignment: .center, spacing: 12) {
+            BenefitRow(icon: "checkmark", text: "No Payment Due Now", isHighlighted: true)
+                .frame(maxWidth: 300)
+            BenefitRow(icon: "chart.line.uptrend.xyaxis", text: "Real-time health tracking")
+                .frame(maxWidth: 300)
+            BenefitRow(icon: "battery.100.bolt", text: "Personalized life insights")
+                .frame(maxWidth: 300)
+            BenefitRow(icon: "lock.shield", text: "100% private on-device")
+                .frame(maxWidth: 300)
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    private var bottomCTASection: some View {
+        VStack(spacing: 16) {
+            // Background for button
+            ZStack {
+                // Dark background square
+                RoundedRectangle(cornerRadius: 32)
+                    .fill(Color.black.opacity(0.15))
+                    .frame(height: 88)
+                    .padding(.horizontal, 22)
+                
+                // Main CTA button
+                Button(action: {
+                    processPurchase()
+                }) {
+                    VStack(spacing: 4) {
+                        Text("Try For $0.00")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.white)
+                            .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
+                        
+                        Text("7-day free trial")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.95))
+                            .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 64)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.ampedGreen.opacity(0.9), Color.ampedGreen],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(32)
+                    .shadow(color: Color.ampedGreen.opacity(0.3), radius: 12, y: 6)
+                }
+                .disabled(viewModel.isProcessing)
+                .padding(.horizontal, 24)
+                .scaleEffect(buttonPulsing ? 1.05 : 1.0) // Pulse animation
+                .animation(.easeInOut(duration: pulseAnimationDuration).repeatForever(autoreverses: true), value: buttonPulsing)
+                .hapticFeedback(.heavy)
+            }
+            
+            // Pricing details
+            HStack(spacing: 4) {
+                Text("Just $49.99 per year")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(themeManager.textColor)
+                
+                Text("($4.17/mo)")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+            
+            // Legal links
+            HStack(spacing: 16) {
+                Button("Privacy Policy") {
+                    // Open privacy policy
+                }
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+                
+                Text("•")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary.opacity(0.5))
+                
+                Button("Terms of Use") {
+                    // Open terms
+                }
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+            }
+            .padding(.bottom, 20)
         }
         .background(
             Color.cardBackground
-                .shadow(color: .black.opacity(0.1), radius: 10, y: -5)
+                .shadow(color: .black.opacity(0.08), radius: 10, y: -5)
         )
     }
     
@@ -274,191 +307,57 @@ struct PaymentView: View {
             onContinue?()
         }
     }
-    
-    private func calculateMonthlyEquivalent(for product: Product) -> String? {
-        guard product.isAnnual else { return nil }
-        
-        let monthlyPrice = product.price / 12
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = product.priceFormatStyle.locale
-        
-        if let formattedPrice = formatter.string(from: NSDecimalNumber(decimal: monthlyPrice)) {
-            return "\(formattedPrice)/month"
-        }
-        
-        return nil
-    }
 }
 
 // MARK: - Supporting Views
 
-struct BatteryChargingAnimation: View {
-    @State private var isCharging = false
+struct SimpleBatteryView: View {
+    let percentage: Double
     
     var body: some View {
-        ZStack {
-            // Battery outline
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.ampedGreen, lineWidth: 2)
-                .frame(width: 60, height: 32)
-            
-            // Battery fill with animation
-            HStack(spacing: 2) {
-                ForEach(0..<4) { index in
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(Color.ampedGreen)
-                        .frame(width: 10, height: 20)
-                        .opacity(isCharging ? 1.0 : (index < 2 ? 1.0 : 0.3))
-                        .animation(
-                            Animation.easeInOut(duration: 0.6)
-                                .repeatForever()
-                                .delay(Double(index) * 0.15),
-                            value: isCharging
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                // Battery outline
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.ampedGreen, lineWidth: 2)
+                
+                // Battery fill
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.ampedGreen, Color.ampedGreen.opacity(0.8)],
+                            startPoint: .leading,
+                            endPoint: .trailing
                         )
-                }
+                    )
+                    .frame(width: geometry.size.width * CGFloat(percentage) - 4)
+                    .padding(2)
+                
+                // Battery tip
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color.ampedGreen)
+                    .frame(width: 4, height: geometry.size.height * 0.5)
+                    .offset(x: geometry.size.width - 2)
             }
-            
-            // Battery tip
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color.ampedGreen)
-                .frame(width: 4, height: 16)
-                .offset(x: 35)
-        }
-        .onAppear {
-            isCharging = true
         }
     }
 }
 
-struct SubscriptionOptionCard: View {
-    let title: String
-    let price: String
-    let period: String
-    let monthlyEquivalent: String?
-    let discount: String?
-    let isSelected: Bool
-    let isBestValue: Bool
-    let action: () -> Void
-    
-    init(
-        title: String,
-        price: String,
-        period: String,
-        monthlyEquivalent: String? = nil,
-        discount: String? = nil,
-        isSelected: Bool,
-        isBestValue: Bool = false,
-        action: @escaping () -> Void
-    ) {
-        self.title = title
-        self.price = price
-        self.period = period
-        self.monthlyEquivalent = monthlyEquivalent
-        self.discount = discount
-        self.isSelected = isSelected
-        self.isBestValue = isBestValue
-        self.action = action
-    }
-    
-    var body: some View {
-        Button(action: action) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(title)
-                            .font(.system(size: 18, weight: .semibold))
-                        
-                        if let discount = discount {
-                            Text(discount)
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.ampedGreen)
-                                .cornerRadius(8)
-                        }
-                    }
-                    
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(price)
-                            .font(.system(size: 22, weight: .bold))
-                        
-                        Text("/ \(period)")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    if let monthlyEquivalent = monthlyEquivalent {
-                        Text(monthlyEquivalent)
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.ampedGreen)
-                    }
-                }
-                
-                Spacer()
-                
-                // Selection indicator
-                Circle()
-                    .stroke(isSelected ? Color.ampedGreen : Color.gray.opacity(0.4), lineWidth: 2)
-                    .frame(width: 24, height: 24)
-                    .overlay(
-                        Circle()
-                            .fill(Color.ampedGreen)
-                            .frame(width: 12, height: 12)
-                            .opacity(isSelected ? 1 : 0)
-                    )
-            }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.cardBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(
-                                isSelected ? Color.ampedGreen : Color.gray.opacity(0.2),
-                                lineWidth: isSelected ? 2 : 1
-                            )
-                    )
-            )
-            .overlay(
-                // Best value badge
-                Group {
-                    if isBestValue {
-                        Text("BEST VALUE")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 4)
-                            .background(Color.ampedGreen)
-                            .cornerRadius(8)
-                            .offset(y: -16)
-                    }
-                },
-                alignment: .top
-            )
-        }
-        .foregroundColor(.primary)
-        .hapticFeedback(.selection)
-    }
-}
-
-struct CleanBenefitRow: View {
+struct BenefitRow: View {
     let icon: String
     let text: String
+    var isHighlighted: Bool = false
     
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(.ampedGreen)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(isHighlighted ? .ampedGreen : .secondary)
                 .frame(width: 24, height: 24)
             
             Text(text)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.primary)
-            
-            Spacer()
+                .font(.system(size: 16, weight: isHighlighted ? .semibold : .medium))
+                .foregroundColor(isHighlighted ? .primary : .secondary)
         }
     }
 }
@@ -482,6 +381,103 @@ struct ProcessingOverlay: View {
             .background(Color.cardBackground)
             .cornerRadius(16)
             .shadow(radius: 20)
+        }
+    }
+}
+
+// MARK: - Discount Offer View
+
+struct DiscountOfferView: View {
+    let onAccept: () -> Void
+    let onDecline: () -> Void
+    @EnvironmentObject var themeManager: BatteryThemeManager
+    
+    var body: some View {
+        ZStack {
+            // Dark background overlay
+            Color.black.opacity(0.3)
+                .edgesIgnoringSafeArea(.all)
+            
+            VStack(spacing: 20) {
+                // Info card style container
+                VStack(spacing: 24) {
+                    // Icon and title
+                    VStack(spacing: 16) {
+                        Image(systemName: "gift.fill")
+                            .font(.system(size: 48))
+                            .foregroundColor(.ampedGreen)
+                        
+                        Text("Wait! Special Offer")
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                        
+                        Text("Get 50% off your first year")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                    
+                    // Offer details
+                    HStack {
+                        Text("Annual Plan")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                        
+                        Spacer()
+                        
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("$49.99")
+                                .font(.system(size: 14))
+                                .strikethrough()
+                                .foregroundColor(.white.opacity(0.5))
+                            Text("$24.99")
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundColor(.ampedGreen)
+                        }
+                    }
+                    
+                    Text("First year only • Then $49.99/year")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+                .padding(28)
+                .background(Color.cardBackground)
+                .cornerRadius(20)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.3), radius: 20, y: 10)
+                
+                // Action buttons
+                VStack(spacing: 12) {
+                    Button(action: onAccept) {
+                        Text("Claim 50% Off")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.ampedGreen.opacity(0.9), Color.ampedGreen],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(28)
+                            .shadow(color: Color.ampedGreen.opacity(0.3), radius: 8, y: 4)
+                    }
+                    .hapticFeedback(.heavy)
+                    
+                    Button(action: onDecline) {
+                        Text("No thanks, continue")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white.opacity(0.6))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                    }
+                }
+            }
+            .padding(.horizontal, 32)
         }
     }
 }

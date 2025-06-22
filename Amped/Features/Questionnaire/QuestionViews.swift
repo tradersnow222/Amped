@@ -258,7 +258,6 @@ struct QuestionViews {
     
     struct SocialConnectionsQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
-        var completeQuestionnaire: () -> Void
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -277,9 +276,7 @@ struct QuestionViews {
                     ForEach(QuestionnaireViewModel.SocialConnectionsQuality.allCases, id: \.self) { quality in
                         Button(action: {
                             viewModel.selectedSocialConnectionsQuality = quality
-                            
-                            // This is the final question, so we need to move to the next onboarding step
-                            completeQuestionnaire()
+                            viewModel.proceedToNextQuestion()
                         }) {
                             FormattedButtonText(
                                 text: quality.displayName,
@@ -287,6 +284,108 @@ struct QuestionViews {
                             )
                         }
                         .questionnaireButtonStyle(isSelected: viewModel.selectedSocialConnectionsQuality == quality)
+                        .hapticFeedback(.selection)
+                    }
+                }
+                .padding(.bottom, 30)
+            }
+            .padding(.horizontal, 24)
+            .frame(maxHeight: .infinity)
+        }
+    }
+    
+    // MARK: - Device Tracking Question
+    
+    struct DeviceTrackingQuestionView: View {
+        @ObservedObject var viewModel: QuestionnaireViewModel
+        var proceedToHealthKit: () -> Void
+        var skipToLifeMotivation: () -> Void
+        
+        var body: some View {
+            VStack(alignment: .center, spacing: 0) {
+                // Fitness tracker image (similar to screenshot)
+                Image(systemName: "applewatch")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 120, height: 120)
+                    .foregroundColor(.white.opacity(0.9))
+                    .padding(.bottom, 40)
+                
+                // Question text - shorter and more scannable
+                Text("Do you track your health\nwith a device?")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 10)
+                    .frame(maxWidth: .infinity)
+                
+                Spacer()
+                
+                // Options at bottom for thumb access - simplified to 2 options
+                VStack(spacing: 12) {
+                    // Yes option
+                    Button(action: {
+                        viewModel.selectedDeviceTrackingStatus = .yesBoth
+                        proceedToHealthKit()
+                    }) {
+                        Text("Yes, I track with a device")
+                    }
+                    .questionnaireButtonStyle(isSelected: viewModel.selectedDeviceTrackingStatus == .yesBoth || 
+                                                       viewModel.selectedDeviceTrackingStatus == .yesActivityOnly ||
+                                                       viewModel.selectedDeviceTrackingStatus == .yesSleepOnly)
+                    .hapticFeedback(.selection)
+                    
+                    // No option
+                    Button(action: {
+                        viewModel.selectedDeviceTrackingStatus = .no
+                        skipToLifeMotivation()
+                    }) {
+                        Text("No, I don't use any device")
+                    }
+                    .questionnaireButtonStyle(isSelected: viewModel.selectedDeviceTrackingStatus == .no)
+                    .hapticFeedback(.selection)
+                }
+                .padding(.bottom, 30)
+            }
+            .padding(.horizontal, 24)
+            .frame(maxHeight: .infinity)
+        }
+    }
+    
+    // MARK: - Life Motivation Question
+    
+    struct LifeMotivationQuestionView: View {
+        @ObservedObject var viewModel: QuestionnaireViewModel
+        var completeQuestionnaire: () -> Void
+        
+        var body: some View {
+            VStack(alignment: .center, spacing: 0) {
+                // Question placed higher - consistent with other questions
+                Text("What is the main reason you might want to live longer?")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, 10)
+                    .frame(maxWidth: .infinity)
+                
+                Spacer()
+                
+                // Options at bottom for thumb access - using consistent questionnaire styling
+                VStack(spacing: 12) {
+                    ForEach(QuestionnaireViewModel.LifeMotivation.allCases, id: \.self) { motivation in
+                        Button(action: {
+                            viewModel.selectedLifeMotivation = motivation
+                            
+                            // This is the final question, so we need to move to the next onboarding step
+                            completeQuestionnaire()
+                        }) {
+                            FormattedButtonText(
+                                text: motivation.displayName,
+                                subtitle: nil
+                            )
+                        }
+                        .questionnaireButtonStyle(isSelected: viewModel.selectedLifeMotivation == motivation)
                         .hapticFeedback(.selection)
                     }
                 }

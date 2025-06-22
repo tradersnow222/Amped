@@ -59,58 +59,7 @@ struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
-/// Shape for drawing corner-only borders
-struct CornerBorder: Shape {
-    let cornerRadius: CGFloat
-    let cornerLength: CGFloat
-    
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        
-        // Top-left corner
-        path.move(to: CGPoint(x: rect.minX + cornerRadius, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.minX + cornerLength, y: rect.minY))
-        path.move(to: CGPoint(x: rect.minX, y: rect.minY + cornerRadius))
-        path.addArc(center: CGPoint(x: rect.minX + cornerRadius, y: rect.minY + cornerRadius),
-                    radius: cornerRadius,
-                    startAngle: .degrees(180),
-                    endAngle: .degrees(270),
-                    clockwise: false)
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + cornerLength))
-        
-        // Top-right corner
-        path.move(to: CGPoint(x: rect.maxX - cornerLength, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX - cornerRadius, y: rect.minY))
-        path.addArc(center: CGPoint(x: rect.maxX - cornerRadius, y: rect.minY + cornerRadius),
-                    radius: cornerRadius,
-                    startAngle: .degrees(270),
-                    endAngle: .degrees(0),
-                    clockwise: false)
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + cornerLength))
-        
-        // Bottom-right corner
-        path.move(to: CGPoint(x: rect.maxX, y: rect.maxY - cornerLength))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - cornerRadius))
-        path.addArc(center: CGPoint(x: rect.maxX - cornerRadius, y: rect.maxY - cornerRadius),
-                    radius: cornerRadius,
-                    startAngle: .degrees(0),
-                    endAngle: .degrees(90),
-                    clockwise: false)
-        path.addLine(to: CGPoint(x: rect.maxX - cornerLength, y: rect.maxY))
-        
-        // Bottom-left corner
-        path.move(to: CGPoint(x: rect.minX + cornerLength, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.minX + cornerRadius, y: rect.maxY))
-        path.addArc(center: CGPoint(x: rect.minX + cornerRadius, y: rect.maxY - cornerRadius),
-                    radius: cornerRadius,
-                    startAngle: .degrees(90),
-                    endAngle: .degrees(180),
-                    clockwise: false)
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - cornerLength))
-        
-        return path
-    }
-}
+
 
 /// Sleek, glass-themed button style for questionnaire - matches health metric cards
 struct QuestionnaireButtonStyle: ButtonStyle {
@@ -129,16 +78,22 @@ struct QuestionnaireButtonStyle: ButtonStyle {
             .background(
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.cardBackground)
-                    .overlay(
-                        // Green corner-only outline
-                        CornerBorder(cornerRadius: 12, cornerLength: 30)
-                            .stroke(
-                                Color.ampedGreen.opacity(isSelected ? 0.8 : 0.3),
-                                lineWidth: isSelected ? 2 : 1
-                            )
-                    )
             )
             .foregroundColor(.white)
+            .overlay(
+                // Subtle glow effect instead of harsh corner borders
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(
+                        Color.ampedGreen.opacity(isSelected ? 0.6 : 0.2),
+                        lineWidth: isSelected ? 1.5 : 0.5
+                    )
+            )
+            .shadow(
+                color: Color.ampedGreen.opacity(isSelected ? 0.4 : 0.1),
+                radius: isSelected ? 8 : 4,
+                x: 0,
+                y: 0
+            )
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
             .animation(.easeInOut(duration: 0.2), value: isSelected)

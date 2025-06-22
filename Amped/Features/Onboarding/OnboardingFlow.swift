@@ -6,6 +6,7 @@ enum OnboardingStep: Equatable {
     case personalizationIntro
     case questionnaire
     case healthKitPermissions
+    case lifeMotivation  // New step after HealthKit
     case signInWithApple
     case payment
     case dashboard
@@ -26,6 +27,15 @@ struct OnboardingFlow: View {
     
     // Track if we're returning to questionnaire from HealthKit
     @State private var returningFromHealthKit: Bool = false
+    
+    // Track if we should skip to life motivation (when user doesn't track health)
+    @State private var shouldSkipToLifeMotivation: Bool = false
+    
+    // Track if we're coming from device tracking question to auto-request permissions
+    @State private var comingFromDeviceTracking: Bool = false
+    
+    // Track if we should disable animation for instant transition
+    @State private var disableAnimation: Bool = false
     
     var body: some View {
         GeometryReader { geometry in
@@ -91,13 +101,46 @@ struct OnboardingFlow: View {
                             isButtonNavigating = false
                             dragDirection = .leading
                             
-                            // Use a slight delay to ensure the direction is set properly
-                            DispatchQueue.main.async {
-                                navigateTo(.healthKitPermissions)
+                            // Check if user just completed life motivation within questionnaire
+                            let questionnaireManager = QuestionnaireManager()
+                            if let savedData = questionnaireManager.loadQuestionnaireData(),
+                               savedData.deviceTrackingStatus == .no,
+                               savedData.lifeMotivation != nil {
+                                // User completed life motivation in questionnaire (no device flow)
+                                // Skip directly to Sign in with Apple
+                                DispatchQueue.main.async {
+                                    navigateTo(.signInWithApple)
+                                    
+                                    // Reset drag direction after animation
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                        dragDirection = nil
+                                    }
+                                }
+                            } else {
+                                // Check if we should skip to life motivation
+                                let hasTrackingDevice = checkIfUserHasTrackingDevice()
                                 
-                                // Reset drag direction after animation
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                                    dragDirection = nil
+                                // Use a slight delay to ensure the direction is set properly
+                                DispatchQueue.main.async {
+                                    if hasTrackingDevice {
+                                        // User selected "Yes, I track with a device"
+                                        comingFromDeviceTracking = true
+                                        // Rules: Disable animation for instant transition to permissions
+                                        disableAnimation = true
+                                        navigateTo(.healthKitPermissions)
+                                        // Re-enable animation after a brief delay
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                            disableAnimation = false
+                                        }
+                                    } else {
+                                        // Skip directly to life motivation
+                                        navigateTo(.lifeMotivation)
+                                    }
+                                    
+                                    // Reset drag direction after animation
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                        dragDirection = nil
+                                    }
                                 }
                             }
                         }
@@ -111,18 +154,48 @@ struct OnboardingFlow: View {
                         onContinue: { 
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.signInWithApple) 
+                            comingFromDeviceTracking = false  // Reset flag after use
+                            navigateTo(.lifeMotivation)  // Navigate to life motivation instead of sign in
                         },
                         onBack: {
                             isButtonNavigating = false
                             dragDirection = .trailing
                             returningFromHealthKit = true  // Set flag when going back to questionnaire
+                            comingFromDeviceTracking = false  // Reset flag when going back
                             navigateTo(.questionnaire)
-                        }
+                        },
+                        autoRequestPermissions: comingFromDeviceTracking
                     )
                     .offset(x: dragDirection == .leading ? dragOffset : (dragDirection == .trailing ? dragOffset : 0))
                     .transition(getTransition(forNavigatingTo: .healthKitPermissions))
                     .zIndex(currentStep == .healthKitPermissions ? 1 : 0)
+                }
+                
+                if currentStep == .lifeMotivation {
+                    LifeMotivationView(
+                        onContinue: {
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.signInWithApple)
+                        },
+                        onBack: {
+                            isButtonNavigating = false
+                            dragDirection = .trailing
+                            
+                            // Check if user has tracking device to determine where to go back
+                            let hasTrackingDevice = checkIfUserHasTrackingDevice()
+                            if hasTrackingDevice {
+                                // Go back to HealthKit permissions
+                                navigateTo(.healthKitPermissions)
+                            } else {
+                                // Go back to questionnaire (device tracking question)
+                                navigateTo(.questionnaire)
+                            }
+                        }
+                    )
+                    .offset(x: dragDirection == .leading ? dragOffset : (dragDirection == .trailing ? dragOffset : 0))
+                    .transition(getTransition(forNavigatingTo: .lifeMotivation))
+                    .zIndex(currentStep == .lifeMotivation ? 1 : 0)
                 }
                 
                 if currentStep == .signInWithApple {
@@ -159,7 +232,7 @@ struct OnboardingFlow: View {
                     }
                 }
             }
-            .animation(isProgrammaticNavigation || dragDirection == nil ? .easeInOut(duration: 0.4) : nil, value: currentStep)
+            .animation(disableAnimation ? nil : (isProgrammaticNavigation || dragDirection == nil ? .easeInOut(duration: 0.4) : nil), value: currentStep)
             .gesture(
                 DragGesture()
                     .onChanged { gesture in
@@ -347,7 +420,8 @@ struct OnboardingFlow: View {
         case .welcome: return .personalizationIntro
         case .personalizationIntro: return .questionnaire
         case .questionnaire: return .healthKitPermissions
-        case .healthKitPermissions: return .signInWithApple
+        case .healthKitPermissions: return .lifeMotivation
+        case .lifeMotivation: return .signInWithApple
         case .signInWithApple: return .payment
         case .payment: return .dashboard
         case .dashboard: return nil
@@ -361,7 +435,11 @@ struct OnboardingFlow: View {
         case .personalizationIntro: return .welcome
         case .questionnaire: return .personalizationIntro
         case .healthKitPermissions: return .questionnaire
-        case .signInWithApple: return .healthKitPermissions
+        case .lifeMotivation: 
+            // Conditional navigation based on device tracking
+            let hasTrackingDevice = checkIfUserHasTrackingDevice()
+            return hasTrackingDevice ? .healthKitPermissions : .questionnaire
+        case .signInWithApple: return .lifeMotivation
         case .payment: return .signInWithApple
         case .dashboard: return .payment
         }
@@ -370,6 +448,16 @@ struct OnboardingFlow: View {
     // Remove notification handlers that are no longer needed
     private func setupQuestionnnaireNavigationNotifications() {
         // This method can be removed or left empty as we're using bindings now
+    }
+    
+    // Check if user has a tracking device based on questionnaire response
+    private func checkIfUserHasTrackingDevice() -> Bool {
+        // Get the saved questionnaire data
+        let questionnaireManager = QuestionnaireManager()
+        let trackingStatus = questionnaireManager.loadQuestionnaireData()?.deviceTrackingStatus
+        
+        // Return true if they have any tracking device
+        return trackingStatus?.requiresHealthKit ?? false
     }
     
     // These can be removed as they're replaced by the onChange handlers
