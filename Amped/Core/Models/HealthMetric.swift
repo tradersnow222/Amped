@@ -58,6 +58,9 @@ struct HealthMetric: Identifiable, Equatable {
         numberFormatter.numberStyle = .decimal
         numberFormatter.maximumFractionDigits = 1
         
+        // Access the settings manager to check metric system preference
+        let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem", defaultValue: true)
+        
         switch type {
         case .steps:
             return "\(Int(value))"
@@ -74,7 +77,9 @@ struct HealthMetric: Identifiable, Equatable {
         case .exerciseMinutes:
             return "\(Int(value))"
         case .bodyMass:
-            return "\(Int(value))"
+            // Value is stored in kg internally, convert if user wants imperial
+            let displayValue = useMetric ? value : value * 2.20462 // Convert kg to lbs
+            return "\(Int(displayValue))"
         case .activeEnergyBurned:
             return "\(Int(value))"
         case .vo2Max:
@@ -89,6 +94,9 @@ struct HealthMetric: Identifiable, Equatable {
     
     /// Get the unit string for the metric
     var unitString: String {
+        // Access the settings manager to check metric system preference
+        let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem", defaultValue: true)
+        
         switch type {
         case .steps:
             return "steps"
@@ -101,7 +109,7 @@ struct HealthMetric: Identifiable, Equatable {
         case .heartRateVariability:
             return "ms"
         case .bodyMass:
-            return "kg"
+            return useMetric ? "kg" : "lbs"
         case .activeEnergyBurned:
             return "kcal"
         case .vo2Max:

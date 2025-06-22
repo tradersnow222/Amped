@@ -705,10 +705,22 @@ import OSLog
             let metrics = samples.compactMap { sample -> HealthMetric? in
                 guard let quantitySample = sample as? HKQuantitySample else { return nil }
                 let value = quantitySample.quantity.doubleValue(for: unit)
+                
+                // Convert body mass from pounds to kilograms for internal storage
+                let convertedValue: Double
+                if metricType == .bodyMass {
+                    // HealthKit returns pounds, but we store in kg internally
+                    convertedValue = value / 2.20462
+                    logger.info("✅ Most recent \(metricType.displayName): \(value) lbs (\(convertedValue) kg) from \(quantitySample.endDate)")
+                } else {
+                    convertedValue = value
+                    logger.info("✅ Most recent \(metricType.displayName): \(value) \(unit.unitString) from \(quantitySample.endDate)")
+                }
+                
                 return HealthMetric(
                     id: UUID().uuidString,
                     type: metricType,
-                    value: value,
+                    value: convertedValue,
                     date: quantitySample.endDate,
                     source: .healthKit
                 )
@@ -892,12 +904,22 @@ import OSLog
             }
             
             let value = sumQuantity.doubleValue(for: unit)
-            logger.info("✅ Today's \(metricType.displayName): \(value) \(unit.unitString)")
+            
+            // Convert body mass from pounds to kilograms for internal storage
+            let convertedValue: Double
+            if metricType == .bodyMass {
+                // HealthKit returns pounds, but we store in kg internally
+                convertedValue = value / 2.20462
+                logger.info("✅ Today's \(metricType.displayName): \(value) lbs (\(convertedValue) kg)")
+            } else {
+                convertedValue = value
+                logger.info("✅ Today's \(metricType.displayName): \(value) \(unit.unitString)")
+            }
             
             return HealthMetric(
                 id: UUID().uuidString,
                 type: metricType,
-                value: value,
+                value: convertedValue,
                 date: now,
                 source: .healthKit
             )
@@ -943,12 +965,22 @@ import OSLog
             }
             
             let value = sample.quantity.doubleValue(for: unit)
-            logger.info("✅ Latest daily \(metricType.displayName): \(value) \(unit.unitString) from \(sample.endDate)")
+            
+            // Convert body mass from pounds to kilograms for internal storage
+            let convertedValue: Double
+            if metricType == .bodyMass {
+                // HealthKit returns pounds, but we store in kg internally
+                convertedValue = value / 2.20462
+                logger.info("✅ Latest daily \(metricType.displayName): \(value) lbs (\(convertedValue) kg) from \(sample.endDate)")
+            } else {
+                convertedValue = value
+                logger.info("✅ Latest daily \(metricType.displayName): \(value) \(unit.unitString) from \(sample.endDate)")
+            }
             
             return HealthMetric(
                 id: UUID().uuidString,
                 type: metricType,
-                value: value,
+                value: convertedValue,
                 date: sample.endDate,
                 source: .healthKit
             )
@@ -994,12 +1026,22 @@ import OSLog
             }
             
             let value = sample.quantity.doubleValue(for: unit)
-            logger.info("✅ Most recent \(metricType.displayName): \(value) \(unit.unitString) from \(sample.endDate)")
+            
+            // Convert body mass from pounds to kilograms for internal storage
+            let convertedValue: Double
+            if metricType == .bodyMass {
+                // HealthKit returns pounds, but we store in kg internally
+                convertedValue = value / 2.20462
+                logger.info("✅ Most recent \(metricType.displayName): \(value) lbs (\(convertedValue) kg) from \(sample.endDate)")
+            } else {
+                convertedValue = value
+                logger.info("✅ Most recent \(metricType.displayName): \(value) \(unit.unitString) from \(sample.endDate)")
+            }
             
             return HealthMetric(
                 id: UUID().uuidString,
                 type: metricType,
-                value: value,
+                value: convertedValue,
                 date: sample.endDate,
                 source: .healthKit
             )
