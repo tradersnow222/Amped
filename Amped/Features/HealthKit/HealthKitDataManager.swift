@@ -281,7 +281,7 @@ import OSLog
             }
             
             // Convert all samples to HealthMetric objects
-            return samples.compactMap { sample in
+            return samples.compactMap { sample -> HealthMetric? in
                 guard let quantitySample = sample as? HKQuantitySample else { return nil }
                 let value = quantitySample.quantity.doubleValue(for: metricType.unit ?? HKUnit.count())
                 return HealthMetric(

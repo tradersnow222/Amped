@@ -1,5 +1,5 @@
 import SwiftUI
-import Combine
+@preconcurrency import Combine
 
 // Adheres to: Modularization, Reusable UI Components (coding-standards.mdc)
 // Adheres to: Apple Human Interface Guidelines (using standard shapes and text)
@@ -19,6 +19,7 @@ struct BatteryIndicatorView: View {
     let currentUserAge: Double? // Optional user age for realtime countdown
     
     @EnvironmentObject private var settingsManager: SettingsManager
+    @Environment(\.glassTheme) private var glassTheme
     @State private var currentTime = Date()
     
     // Timer for realtime updates - update every 1 second for proper countdown rate
@@ -32,10 +33,10 @@ struct BatteryIndicatorView: View {
     private let casingLineWidth: CGFloat = 3
     private let terminalHeight: CGFloat = 10
     private let terminalWidthRatio: CGFloat = 0.2
-    // Fixed battery height for consistency - increased slightly for better presence
-    private let fixedBatteryHeight: CGFloat = 260
-    // Fixed overall card height for consistency between cards - increased to accommodate larger battery
-    private let fixedCardHeight: CGFloat = 390
+    // Fixed battery height for consistency - reduced to show more health factors
+    private let fixedBatteryHeight: CGFloat = 220  // Reduced from 260
+    // Fixed overall card height for consistency between cards - reduced proportionally
+    private let fixedCardHeight: CGFloat = 350  // Reduced from 390
     // Info button size
     private let infoButtonSize: CGFloat = 18
     // Title text font size - increased slightly for better visibility
@@ -135,14 +136,20 @@ struct BatteryIndicatorView: View {
                 if helpAction != nil {
                     HStack {
                         Spacer()
-                        Button { helpAction?() } label: {
-                            Image(systemName: "info.circle")
+                        Button { 
+                            HapticManager.shared.playSelection()
+                            helpAction?() 
+                        } label: {
+                            Image(systemName: "info.circle.fill")
                                 .font(.system(size: infoButtonSize))
-                                .foregroundColor(.gray.opacity(0.8))
+                                .foregroundStyle(.quaternary)
+                                .symbolRenderingMode(.hierarchical)
                                 .accessibilityLabel("Information about \(title)")
+                                .accessibilityHint("Tap to learn more")
                         }
                         .buttonStyle(.plain)
-                        .frame(width: infoButtonSize + 4, height: infoButtonSize + 4)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Circle())
                     }
                 }
             }
@@ -176,16 +183,7 @@ struct BatteryIndicatorView: View {
         }
         .padding(EdgeInsets(top: 12, leading: 12, bottom: 16, trailing: 12)) // Reduced padding to give more space
         .frame(height: fixedCardHeight) // Fixed height for entire card
-        .background(
-            // Use Material for background depth
-            .ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius * 1.5)
-        )
-        .overlay(
-             RoundedRectangle(cornerRadius: cornerRadius * 1.5)
-                 .stroke(casingGradient, lineWidth: 1.5)
-        )
-        .shadow(color: glowColor, radius: glowRadius, x: 0, y: 5)
-        .shadow(color: glowColor.opacity(0.4), radius: glowRadius / 2, x: 0, y: 2)
+        .glassBackground(.regular, cornerRadius: cornerRadius * 1.5)
         .onAppear {
             // Component appeared
         }

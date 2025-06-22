@@ -1,251 +1,411 @@
 import SwiftUI
-import Combine
+@preconcurrency import Combine
 
-/// A card that displays total projected life expectancy as a battery
+/// Card showing total life projection as a battery with glass effects
 struct BatteryLifeProjectionCard: View {
     // MARK: - Properties
     
     let lifeProjection: LifeProjection
-    let userAge: Int
+    @State private var animateGlow: Bool = false
+    @Environment(\.glassTheme) private var glassTheme
     
-    @EnvironmentObject private var settingsManager: SettingsManager
-    @State private var batteryFillPercent: Double = 0.0
-    @State private var showPercentRemaining: Bool = false // Toggle between years and percentage - default to years for realtime countdown
-    @State private var currentTime = Date()
+    // MARK: - Computed Properties
     
-    // Timer for realtime updates - update every 10ms for visible countdown
-    private let timer = Timer.publish(every: 0.01, on: .main, in: .common).autoconnect()
+    /// Battery charge level based on life projection (0.0 to 1.0)
+    private var chargeLevel: Double {
+        // Calculate charge based on projected vs. baseline lifespan
+        let baselineLifespan: Double = 75.0 // Average baseline
+        let projectedLifespan = lifeProjection.projectedTotalYears
+        
+        // Normalize to 0-100% where 75 years = 50%
+        let chargePercent = (projectedLifespan / baselineLifespan) * 0.5
+        return max(0.1, min(1.0, chargePercent))
+    }
     
-    // MARK: - UI Constants
+    /// Battery color based on charge level
+    private var batteryColor: Color {
+        switch chargeLevel {
+        case 0.8...1.0: return .fullPower
+        case 0.6..<0.8: return .highPower
+        case 0.4..<0.6: return .mediumPower
+        case 0.2..<0.4: return .lowPower
+        default: return .criticalPower
+        }
+    }
     
-    private let batteryHeight: CGFloat = 180
-    private let batteryWidth: CGFloat = 90
-    private let batteryCornerRadius: CGFloat = 12
-    private let batteryTerminalWidth: CGFloat = 30
-    private let batteryTerminalHeight: CGFloat = 12
-    private let segmentCount: Int = 10
-    private let segmentSpacing: CGFloat = 3
+    /// Formatted projection text
+    private var projectionText: String {
+        let years = Int(lifeProjection.projectedTotalYears)
+        return "\(years) years"
+    }
     
-    // MARK: - Initialization
+    /// Confidence level description
+    private var confidenceDescription: String {
+        switch lifeProjection.confidenceLevel {
+        case 0.9...1.0: return "High confidence"
+        case 0.7..<0.9: return "Good confidence"
+        case 0.5..<0.7: return "Moderate confidence"
+        default: return "Low confidence"
+        }
+    }
     
-    init(lifeProjection: LifeProjection, userAge: Int) {
-        self.lifeProjection = lifeProjection
-        self.userAge = userAge
+    /// Formatted remaining time
+    private var remainingTimeText: String {
+        let remaining = lifeProjection.projectedTotalYears - lifeProjection.currentAge
+        let years = Int(remaining)
+        return "\(years) years left"
     }
     
     // MARK: - Body
     
     var body: some View {
-        VStack(alignment: .center, spacing: 16) {
-            // Title - centered over battery
-            Text("Lifespan remaining")
-                .font(.headline)
-                .multilineTextAlignment(.center)
+        VStack(spacing: 16) {
+            // Header
+            headerView
             
-            // Battery visualization
-            verticalBatteryVisualization
-                .frame(height: batteryHeight + batteryTerminalHeight + 10)
-                .padding(.horizontal)
+            // Main projection display
+            projectionVisualization
             
-            // Impact value display (toggleable between years and percentage)
-            VStack(alignment: .center) {
-                if showPercentRemaining {
-                    // Percentage remaining
-                    Text("\(Int(remainingPercentage))%")
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
-                        .foregroundColor(projectionColor)
-                    
-                    Text("Energy Remaining")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                } else {
-                    // Years remaining - with optional realtime countdown
-                    Text(formattedRemainingYears)
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
-                        .foregroundColor(projectionColor)
-                    
-                    Text("Years Remaining")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .onTapGesture {
-                withAnimation {
-                    showPercentRemaining.toggle()
-                }
-            }
-            
-            // Impact description
-            Text(projectionDescription)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-                .fixedSize(horizontal: false, vertical: true)
-            
-            // Net Impact
-            HStack {
-                Spacer()
-                Text("Net impact: \(lifeProjection.formattedNetImpact)")
-                    .font(.caption)
-                    .foregroundColor(
-                        lifeProjection.netImpactYears > 0 ? .ampedGreen : 
-                        lifeProjection.netImpactYears < 0 ? .ampedRed : .secondary
-                    )
-                Spacer()
-            }
-            .padding(.top, 4)
+            // Details section
+            detailsView
         }
-        .padding()
-        .background(Color.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+        .padding(20)
+        .prominentGlass(cornerRadius: glassTheme.largeGlassCornerRadius)
         .onAppear {
-            withAnimation(.easeInOut(duration: 1.0)) {
-                batteryFillPercent = remainingPercentage / 100.0
+            withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
+                animateGlow = true
             }
-        }
-        .onReceive(timer) { _ in
-            if settingsManager.showRealtimeCountdown {
-                currentTime = Date()
+                }
             }
+            
+    // MARK: - Subviews
+    
+    /// Header section with title
+    private var headerView: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text("Life Projection Battery")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                Text(confidenceDescription)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white.opacity(0.8))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .glassBackground(.ultraThin, cornerRadius: glassTheme.smallGlassCornerRadius)
+            }
+            
+            Text("Total projected lifespan based on your health data")
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.7))
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
     
-    // MARK: - UI Components
-    
-    /// Vertical battery visualization
-    private var verticalBatteryVisualization: some View {
-        VStack(spacing: 0) {
-            // Battery terminal (top)
-            RoundedRectangle(cornerRadius: 3)
-                .fill(Color.gray)
-                .frame(width: batteryTerminalWidth, height: batteryTerminalHeight)
+    /// Main projection visualization
+    private var projectionVisualization: some View {
+        HStack(spacing: 24) {
+            // Large battery icon
+            largeBatteryIcon
             
-            // Battery body
-            ZStack(alignment: .bottom) {
-                // Battery outline
-                RoundedRectangle(cornerRadius: batteryCornerRadius)
-                    .stroke(Color.gray, lineWidth: 3)
-                    .frame(width: batteryWidth, height: batteryHeight)
+            // Projection values
+            VStack(alignment: .leading, spacing: 12) {
+                // Total years
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Total Lifespan")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.white.opacity(0.8))
+                    
+                    Text(projectionText)
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                        .foregroundColor(batteryColor)
+                        .shadow(color: batteryColor.opacity(0.4), radius: 6, x: 0, y: 3)
+                }
                 
-                // Battery fill with segments
-                GeometryReader { geometry in
-                    VStack(spacing: segmentSpacing) {
-                        ForEach(0..<segmentCount, id: \.self) { index in
-                            batterySegment(index: index, totalHeight: geometry.size.height)
+                // Remaining time
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Time Remaining")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.white.opacity(0.8))
+                    
+                    Text(remainingTimeText)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                }
+                
+                // Charge level bar
+                projectionBar
+            }
+            
+            Spacer()
+        }
+    }
+    
+    /// Large battery icon with glass effects
+    private var largeBatteryIcon: some View {
+        ZStack {
+            // Battery outline with prominent glass effect
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            batteryColor.opacity(0.8),
+                            batteryColor.opacity(0.4)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 4
+                )
+                .frame(width: 80, height: 50)
+            
+            // Battery terminal (top nub)
+            RoundedRectangle(cornerRadius: 3)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.9),
+                            Color.white.opacity(0.7)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 20, height: 8)
+                .offset(y: -29)
+            
+            // Battery charge fill with advanced animation
+            GeometryReader { geometry in
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                batteryColor,
+                                batteryColor.opacity(0.8),
+                                batteryColor.opacity(0.6)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(height: geometry.size.height * chargeLevel)
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .overlay(
+                        // Animated glass shine effect
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(animateGlow ? 0.6 : 0.3),
+                                Color.clear,
+                                Color.white.opacity(animateGlow ? 0.4 : 0.1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        .mask(RoundedRectangle(cornerRadius: 10))
+                    )
+                    .overlay(
+                        // Inner glow effect
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.3),
+                                        Color.clear
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 2
+                            )
+                    )
+                    .animation(.easeInOut(duration: 1.5), value: chargeLevel)
+            }
+            .frame(width: 72, height: 42)
+        }
+        .shadow(color: batteryColor.opacity(0.4), radius: 12, x: 0, y: 6)
+    }
+    
+    /// Projection level bar indicator
+    private var projectionBar: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                // Background track with prominent glass effect
+                Capsule()
+                    .fill(.thickMaterial)
+                    .overlay(
+                        Capsule()
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.3),
+                                        Color.white.opacity(0.1)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.5
+                            )
+                    )
+                
+                // Charge fill with enhanced glass effects
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                batteryColor,
+                                batteryColor.opacity(0.8),
+                                batteryColor.opacity(0.9)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: geometry.size.width * chargeLevel)
+                    .overlay(
+                        // Multi-layer glass shine
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.4),
+                                        Color.clear,
+                                        Color.white.opacity(0.2)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: geometry.size.width * chargeLevel)
+                    )
+                    .overlay(
+                        // Inner highlight
+                        Capsule()
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.5),
+                                        Color.clear
+                                    ],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                                lineWidth: 1
+                            )
+                            .frame(width: geometry.size.width * chargeLevel)
+                    )
+                    .animation(.easeOut(duration: 2.0), value: chargeLevel)
+            }
+        }
+        .frame(height: 12)
+    }
+    
+    /// Details section with projection information
+    private var detailsView: some View {
+        VStack(spacing: 12) {
+            // Projection factors
+            if !lifeProjection.impactFactors.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Key Projection Factors")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                    
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                        ForEach(Array(lifeProjection.impactFactors.prefix(4)), id: \.factor) { factor in
+                            projectionFactorRow(factor)
                         }
                     }
-                    .padding(6)
                 }
-                .frame(width: batteryWidth, height: batteryHeight)
-                
-                // Battery percentage
-                Text("\(Int(remainingPercentage))%")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .shadow(color: .black.opacity(0.5), radius: 1, x: 0, y: 1)
-                    .padding(.bottom, 24)
-                    .opacity(batteryFillPercent > 0.15 ? 1.0 : 0.0)
+                .padding(.top, 8)
             }
-        }
-    }
-    
-    /// Individual battery segment
-    private func batterySegment(index: Int, totalHeight: CGFloat) -> some View {
-        let reversedIndex = segmentCount - 1 - index
-        let segmentHeight = (totalHeight - (CGFloat(segmentCount - 1) * segmentSpacing) - 12) / CGFloat(segmentCount)
-        let segmentFillPercent = min(max(batteryFillPercent * Double(segmentCount) - Double(reversedIndex), 0), 1)
-        
-        return HStack {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(segmentColor(index: index))
-                .frame(height: segmentHeight)
-                .scaleEffect(x: CGFloat(segmentFillPercent), anchor: .leading)
-                .animation(.easeInOut(duration: 0.3), value: segmentFillPercent)
-        }
-    }
-    
-    // MARK: - Helper Methods
-    
-    /// Calculate the segment color based on position
-    private func segmentColor(index: Int) -> Color {
-        // Colors go from red at bottom to green at top
-        switch index {
-        case 0, 1:
-            return .fullPower
-        case 2, 3:
-            return .highPower
-        case 4, 5:
-            return .mediumPower
-        case 6, 7:
-            return .lowPower
-        case 8, 9:
-            return .criticalPower
-        default:
-            return .mediumPower
-        }
-    }
-    
-    /// Calculate remaining percentage
-    private var remainingPercentage: Double {
-        let ageInYears = Double(userAge)
-        let remainingYears = lifeProjection.adjustedLifeExpectancyYears - ageInYears
-        
-        // Calculate percentage (cap between 0 and 100)
-        return min(max((remainingYears / lifeProjection.adjustedLifeExpectancyYears) * 100.0, 0.0), 100.0)
-    }
-    
-    /// Format remaining years
-    private var formattedRemainingYears: String {
-        let baseRemainingYears = lifeProjection.adjustedLifeExpectancyYears - Double(userAge)
-        
-        if settingsManager.showRealtimeCountdown {
-            // Calculate time elapsed since start of current year to simulate countdown
-            let calendar = Calendar.current
-            let now = currentTime
-            let startOfYear = calendar.dateInterval(of: .year, for: now)?.start ?? now
-            let timeElapsed = now.timeIntervalSince(startOfYear)
-            let yearsElapsed = timeElapsed / (365.25 * 24 * 3600)
             
-            let preciseRemainingYears = baseRemainingYears - yearsElapsed
+            // Last updated info
+            HStack {
+                Text("Last updated: \(formattedLastUpdated)")
+                    .font(.caption2)
+                    .foregroundColor(.white.opacity(0.7))
+                
+                Spacer()
+                
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(batteryColor)
+                        .frame(width: 8, height: 8)
+                        .shadow(color: batteryColor.opacity(0.6), radius: 4)
+                    
+                    Text("\(Int(chargeLevel * 100))% Life Energy")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .foregroundColor(.white.opacity(0.8))
+                }
+            }
+            .padding(.top, 8)
+        }
+    }
+    
+    /// Individual projection factor row with glass styling
+    private func projectionFactorRow(_ factor: LifeProjection.ImpactFactor) -> some View {
+        HStack(spacing: 8) {
+            // Factor icon
+            Image(systemName: factor.iconName)
+                .font(.caption)
+                .foregroundColor(.ampedGreen)
+                .frame(width: 16)
             
-            // Format with high precision showing seconds as decimal places
-            let result = String(format: "%.6f", max(preciseRemainingYears, 0.0))
-            return result
-        } else {
-            let result = String(format: "%.1f", max(baseRemainingYears, 0.0))
-            return result
+            // Factor name
+            Text(factor.factor)
+                .font(.caption2)
+                .foregroundColor(.white.opacity(0.8))
+                .lineLimit(1)
+            
+            Spacer(minLength: 0)
+            
+            // Impact indicator
+            let isPositive = factor.impact > 0
+            
+            Text(isPositive ? "+" : "-")
+                .font(.caption2)
+                .fontWeight(.bold)
+                .foregroundColor(isPositive ? .fullPower : .criticalPower)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .glassBackground(.ultraThin, cornerRadius: 6)
+    }
+    
+    /// Formatted last updated date
+    private var formattedLastUpdated: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: lifeProjection.lastUpdated)
         }
     }
     
-    /// Generate projection description
-    private var projectionDescription: String {
-        if lifeProjection.netImpactYears > 3.0 {
-            return "Your healthy habits are significantly extending your life expectancy!"
-        } else if lifeProjection.netImpactYears > 1.0 {
-            return "Your habits are adding valuable time to your life expectancy."
-        } else if lifeProjection.netImpactYears > 0 {
-            return "You're gaining some time from your current lifestyle."
-        } else if lifeProjection.netImpactYears > -1.0 {
-            return "Your habits are slightly reducing your projected lifespan."
-        } else {
-            return "Consider changing habits to increase your battery life."
-        }
-    }
-    
-    /// Calculate projection color
-    private var projectionColor: Color {
-        if remainingPercentage > 80 {
-            return .ampedGreen
-        } else if remainingPercentage > 60 {
-            return .ampedGreen.opacity(0.8)
-        } else if remainingPercentage > 40 {
-            return .ampedYellow
-        } else if remainingPercentage > 20 {
-            return .ampedYellow.opacity(0.8)
-        } else {
-            return .ampedRed
+// MARK: - Extensions
+
+extension LifeProjection.ImpactFactor {
+    /// Icon name for the impact factor
+    var iconName: String {
+        switch factor.lowercased() {
+        case "exercise", "activity": return "figure.run"
+        case "sleep": return "bed.double.fill"
+        case "heart", "cardiovascular": return "heart.fill"
+        case "nutrition", "diet": return "leaf.fill"
+        case "stress": return "brain.head.profile"
+        case "weight", "bmi": return "scalemass.fill"
+        case "smoking": return "smoke.fill"
+        case "alcohol": return "wineglass.fill"
+        case "social": return "person.2.fill"
+        default: return "chart.line.uptrend.xyaxis"
         }
     }
 }
@@ -254,33 +414,20 @@ struct BatteryLifeProjectionCard: View {
 
 struct BatteryLifeProjectionCard_Previews: PreviewProvider {
     static var previews: some View {
-        VStack {
-            // Good projection example - represents a real user with good health habits
-            BatteryLifeProjectionCard(
-                lifeProjection: LifeProjection(
-                    calculationDate: Date(),
-                    baselineLifeExpectancyYears: 80.0,
-                    adjustedLifeExpectancyYears: 83.5,
-                    confidencePercentage: 0.95,
-                    confidenceIntervalYears: 2.0
-                ),
-                userAge: 30 // Early career professional with healthy habits
-            )
-            
-            // Moderate projection example - represents a real user needing improvement
-            BatteryLifeProjectionCard(
-                lifeProjection: LifeProjection(
-                    calculationDate: Date(),
-                    baselineLifeExpectancyYears: 80.0,
-                    adjustedLifeExpectancyYears: 77.2,
-                    confidencePercentage: 0.95,
-                    confidenceIntervalYears: 2.0
-                ),
-                userAge: 45 // Mid-career professional with room for improvement
-            )
-        }
+        let sampleProjection = LifeProjection(
+            baselineLifeExpectancyYears: 78.0,
+            adjustedLifeExpectancyYears: 82.5,
+            confidencePercentage: 0.85
+        )
+        
+        BatteryLifeProjectionCard(lifeProjection: sampleProjection)
         .padding()
-        .previewLayout(.sizeThatFits)
-        .environmentObject(SettingsManager())
+            .withGlassTheme()
+            .background(
+                Image("DeepBackground")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .ignoresSafeArea()
+            )
     }
 } 

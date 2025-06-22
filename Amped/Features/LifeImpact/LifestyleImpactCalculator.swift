@@ -188,4 +188,66 @@ struct LifestyleImpactCalculator {
             comparisonToBaseline: comparison
         )
     }
+    
+    /// Calculate impact for body mass (weight)
+    static func calculateBodyMassImpact(kg: Double, date: Date, height: Double?) -> MetricImpactDetail {
+        // Calculate BMI if height is available, otherwise use weight categories
+        var impactMinutes: Double = 0
+        var comparison: ComparisonResult = .same
+        
+        if let height = height {
+            // Calculate BMI (kg/m²)
+            let bmi = kg / (height * height)
+            
+            // BMI ranges based on WHO standards:
+            // Underweight: < 18.5
+            // Normal: 18.5-24.9
+            // Overweight: 25-29.9
+            // Obese: >= 30
+            
+            if bmi < 18.5 {
+                // Underweight - negative impact
+                let deficit = 18.5 - bmi
+                impactMinutes = -deficit * 15.0
+                comparison = .worse
+            } else if bmi <= 24.9 {
+                // Normal weight - positive impact
+                impactMinutes = 10.0
+                comparison = .better
+            } else if bmi <= 29.9 {
+                // Overweight - moderate negative impact
+                let excess = bmi - 25.0
+                impactMinutes = -excess * 8.0
+                comparison = .worse
+            } else {
+                // Obese - significant negative impact
+                let excess = bmi - 30.0
+                impactMinutes = -40.0 - (excess * 12.0)
+                comparison = .worse
+            }
+        } else {
+            // If no height available, use rough weight categories (less accurate)
+            // This is a fallback for when height data isn't available
+            if kg < 50 {
+                // Potentially underweight
+                impactMinutes = -20.0
+                comparison = .worse
+            } else if kg <= 90 {
+                // Reasonable weight range
+                impactMinutes = 5.0
+                comparison = .same
+            } else {
+                // Potentially overweight
+                let excess = kg - 90
+                impactMinutes = -excess * 2.0
+                comparison = .worse
+            }
+        }
+        
+        return MetricImpactDetail(
+            metricType: .bodyMass,
+            lifespanImpactMinutes: impactMinutes,
+            comparisonToBaseline: comparison
+        )
+    }
 } 

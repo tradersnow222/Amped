@@ -24,6 +24,9 @@ struct OnboardingFlow: View {
     @State private var shouldExitQuestionnaire: Bool = false
     @State private var shouldCompleteQuestionnaire: Bool = false
     
+    // Track if we're returning to questionnaire from HealthKit
+    @State private var returningFromHealthKit: Bool = false
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -52,7 +55,8 @@ struct OnboardingFlow: View {
                 if currentStep == .questionnaire {
                     QuestionnaireView(
                         exitToPersonalizationIntro: $shouldExitQuestionnaire,
-                        proceedToHealthPermissions: $shouldCompleteQuestionnaire
+                        proceedToHealthPermissions: $shouldCompleteQuestionnaire,
+                        returningFromHealthKit: returningFromHealthKit
                     )
                     .onChange(of: shouldExitQuestionnaire) { newValue in
                         if newValue {
@@ -80,6 +84,9 @@ struct OnboardingFlow: View {
                             // Reset flag first
                             shouldCompleteQuestionnaire = false
                             
+                            // Clear the returning from HealthKit flag when moving forward
+                            returningFromHealthKit = false
+                            
                             // Navigate forward with leading edge animation
                             isButtonNavigating = false
                             dragDirection = .leading
@@ -100,11 +107,19 @@ struct OnboardingFlow: View {
                 }
                 
                 if currentStep == .healthKitPermissions {
-                    HealthKitPermissionsView(onContinue: { 
-                        isButtonNavigating = true
-                        dragDirection = nil
-                        navigateTo(.signInWithApple) 
-                    })
+                    HealthKitPermissionsView(
+                        onContinue: { 
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.signInWithApple) 
+                        },
+                        onBack: {
+                            isButtonNavigating = false
+                            dragDirection = .trailing
+                            returningFromHealthKit = true  // Set flag when going back to questionnaire
+                            navigateTo(.questionnaire)
+                        }
+                    )
                     .offset(x: dragDirection == .leading ? dragOffset : (dragDirection == .trailing ? dragOffset : 0))
                     .transition(getTransition(forNavigatingTo: .healthKitPermissions))
                     .zIndex(currentStep == .healthKitPermissions ? 1 : 0)

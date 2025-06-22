@@ -107,6 +107,20 @@ struct LifeImpactData: Identifiable, Codable, Equatable {
         // Clamp to reasonable range
         return min(max(batteryLevel, 5.0), 95.0)
     }
+    
+    // MARK: - UI Compatibility Methods
+    
+    /// Get total impact for a specific period - returns the current totalImpact
+    func totalImpactForPeriod(_ period: TimePeriod) -> ImpactValue {
+        // For now, return the current totalImpact regardless of period
+        // In future iterations, this could calculate period-specific impacts
+        return totalImpact
+    }
+    
+    /// Get metric impacts as an array for UI compatibility
+    var metricImpacts: [MetricImpactDetail] {
+        return Array(metricContributions.values)
+    }
 }
 
 /// Represents an impact value with magnitude, unit, and direction

@@ -226,7 +226,7 @@ struct MetricChartSection: View {
         let direction = percentChange > 0 ? "increased" : "decreased"
         let qualifier = (percentChange > 0) == metricType.isHigherBetter ? "improved" : "declined"
         
-        return "Your \(metricType.name.lowercased()) has \(direction) by \(String(format: "%.1f", abs(absoluteChange))) \(metricType.unit) (\(String(format: "%.1f", abs(percentChange)))%), which has \(qualifier) your battery."
+        return "Your \(metricType.name.lowercased()) has \(direction) by \(String(format: "%.1f", abs(absoluteChange))) units (\(String(format: "%.1f", abs(percentChange)))%), which has \(qualifier) your battery."
     }
     
     /// Get insight icon based on data trend

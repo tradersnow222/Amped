@@ -11,6 +11,7 @@ struct HealthKitPermissionsView: View {
     
     /// Callbacks for navigation
     var onContinue: (() -> Void)?
+    var onBack: (() -> Void)?
     
     /// Logger for tracking user interactions
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.amped.Amped", category: "HealthKitPermissionsView")
@@ -19,19 +20,15 @@ struct HealthKitPermissionsView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Back button
+            // Back button - Rules: Using consistent BackButton component
             HStack {
-                Button(action: {
-                    // Handle back action
-                }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.gray)
-                        .padding()
-                }
+                BackButton(action: { 
+                    onBack?() 
+                }, showText: false)
                 Spacer()
             }
-            .padding(.top, 8)
+            .padding(.top, 16)
+            .padding(.leading, 8)
             
             // Spacer with flex to position content at rule of thirds
             Spacer()
@@ -291,9 +288,14 @@ struct HealthKitPermissionsView: View {
 #if DEBUG
 struct HealthKitPermissionsView_Previews: PreviewProvider {
     static var previews: some View {
-        HealthKitPermissionsView(onContinue: {
-            print("Continue tapped in preview")
-        })
+        HealthKitPermissionsView(
+            onContinue: {
+                print("Continue tapped in preview")
+            },
+            onBack: {
+                print("Back tapped in preview")
+            }
+        )
     }
 }
 #endif 

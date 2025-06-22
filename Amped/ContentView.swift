@@ -144,13 +144,12 @@ struct ContentView: View {
 #Preview {
     let themeManager = BatteryThemeManager()
     
-    return ContentView()
+    ContentView()
         .environmentObject(AppState())
         .environmentObject(SettingsManager())
         .environmentObject(themeManager)
         .accentColor(Color.ampedGreen)
         .withDeepBackground()
         .withBatteryTheme(themeManager)
-        .withFuturisticTheme()
 }
 #endif

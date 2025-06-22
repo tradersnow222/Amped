@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// A card that displays an individual health metric with battery power level visualization
+/// A card that displays an individual health metric with battery power level visualization and intuitive context
 struct BatteryMetricCard: View {
     // MARK: - Properties
     
     let metric: HealthMetric
     let showDetails: Bool
     
-    @Environment(\.themeManager) private var themeManager
+    @Environment(\.glassTheme) private var glassTheme
     
     // MARK: - UI Constants
     
@@ -31,22 +31,12 @@ struct BatteryMetricCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Metric name and icon
-            HStack {
-                Image(systemName: metric.type.symbolName)
-                    .font(.title3)
-                    .foregroundColor(powerColor)
-                
-                Text(metric.type.displayName)
-                    .style(.headline)
-                
-                Spacer()
-            }
+            // Metric name with contextual description
+            headerSection
             
-            // Metric value
-            metricValueText
-                .style(.metricValue, color: powerColor)
-            
+            // Metric value with battery description
+            metricValueSection
+                
             // Battery visualization
             batteryVisualization
                 .frame(height: batteryHeight)
@@ -57,28 +47,53 @@ struct BatteryMetricCard: View {
                 Divider()
                     .padding(.vertical, 4)
                 
-                HStack {
-                    Image(systemName: impact.comparisonToBaseline.symbol)
-                        .foregroundColor(Color(impact.comparisonToBaseline.color))
-                    
-                    Text(impact.formattedImpact)
-                        .style(.callout, color: impact.lifespanImpactMinutes >= 0 ? .ampedGreen : .ampedRed)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "info.circle")
-                        .foregroundColor(.secondary)
-                }
+                impactSection(impact)
             }
         }
         .padding()
         .frame(height: showDetails ? nil : cardHeight)
-        .background(Color.cardBackground)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .glassBackground(.regular, cornerRadius: glassTheme.glassCornerRadius)
     }
     
     // MARK: - UI Components
+    
+    /// Header with metric name and subtle context
+    private var headerSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Image(systemName: metric.type.iconName)
+                    .font(.title3)
+                    .foregroundColor(powerColor)
+                
+                Text(metric.type.displayName)
+                    .font(.headline)
+                    .foregroundColor(.white)
+                
+                Spacer()
+            }
+            
+            // Subtle contextual description
+            Text(metric.type.contextualDescription)
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.7))
+                .padding(.leading, 28) // Align with text above
+        }
+    }
+    
+    /// Metric value with intuitive battery description
+    private var metricValueSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            metricValueText
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundColor(powerColor)
+            
+            // Battery-themed status description
+            Text(metric.type.batteryDescription(for: metric.powerLevel))
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.white.opacity(0.8))
+        }
+    }
     
     /// Text view for the metric value, including qualitative label for manual metrics
     private var metricValueText: Text {
@@ -91,14 +106,24 @@ struct BatteryMetricCard: View {
         }
     }
     
-    /// Battery visualization
+    /// Battery visualization with glass effects
     private var batteryVisualization: some View {
         HStack(spacing: 2) {
             // Battery body
             ZStack(alignment: .leading) {
-                // Battery outline
+                // Battery outline with glass effect
                 RoundedRectangle(cornerRadius: batteryCornerRadius)
-                    .stroke(Color.gray, lineWidth: 1)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.6),
+                                Color.white.opacity(0.3)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.5
+                    )
                     .frame(width: batteryWidth, height: batteryHeight)
                 
                 // Battery fill with segments
@@ -113,20 +138,74 @@ struct BatteryMetricCard: View {
                 .frame(width: batteryWidth, height: batteryHeight)
             }
             
-            // Battery terminal
+            // Battery terminal with glass effect
             RoundedRectangle(cornerRadius: 1)
-                .fill(Color.gray)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.8),
+                            Color.white.opacity(0.6)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 .frame(width: batteryTerminalWidth, height: batteryTerminalHeight)
         }
     }
     
-    /// Individual battery segment
+    /// Individual battery segment with glass effects
     private func batterySegment(index: Int, totalWidth: CGFloat) -> some View {
         let segmentWidth = (totalWidth - (CGFloat(segmentCount - 1) * segmentSpacing) - 6) / CGFloat(segmentCount)
+        let isFilled = index < powerLevel
         
         return RoundedRectangle(cornerRadius: 2)
-            .fill(index < powerLevel ? powerColor : Color.gray.opacity(0.2))
+            .fill(
+                isFilled ? 
+                LinearGradient(
+                    colors: [powerColor, powerColor.opacity(0.8)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                ) :
+                LinearGradient(
+                    colors: [Color.gray.opacity(0.2), Color.gray.opacity(0.1)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .overlay(
+                // Glass shine effect for filled segments
+                isFilled ?
+                RoundedRectangle(cornerRadius: 2)
+                    .stroke(Color.white.opacity(0.3), lineWidth: 0.5) : nil
+            )
             .frame(width: segmentWidth, height: batteryHeight - 6)
+    }
+    
+    /// Impact section with emotional context
+    private func impactSection(_ impact: MetricImpactDetail) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: impact.comparisonToBaseline.symbol)
+                    .foregroundColor(impactColor(for: impact))
+                
+                Text("Impact: \(impact.formattedImpact)")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(impactColor(for: impact))
+                
+                Spacer()
+                
+                Image(systemName: "info.circle")
+                    .foregroundColor(.white.opacity(0.6))
+            }
+            
+            // Subtle emotional context about what this means
+            Text(metric.type.outcomeDescription)
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.7))
+                .italic()
+        }
     }
     
     // MARK: - Helper Methods
@@ -163,6 +242,11 @@ struct BatteryMetricCard: View {
         case .critical: return "Critical"
         }
     }
+    
+    /// Get impact color
+    private func impactColor(for impact: MetricImpactDetail) -> Color {
+        return impact.lifespanImpactMinutes >= 0 ? .fullPower : .criticalPower
+    }
 }
 
 // MARK: - Preview
@@ -181,7 +265,8 @@ struct BatteryMetricCard_Previews: PreviewProvider {
                     impactDetails: MetricImpactDetail(
                         metricType: .steps,
                         lifespanImpactMinutes: 10,
-                        comparisonToBaseline: .better
+                        comparisonToBaseline: .better,
+                        scientificReference: "Steps and Longevity Study"
                     )
                 ),
                 showDetails: true
@@ -202,20 +287,27 @@ struct BatteryMetricCard_Previews: PreviewProvider {
             BatteryMetricCard(
                 metric: HealthMetric(
                     id: UUID().uuidString,
-                    type: .restingHeartRate,
-                    value: 85,
+                    type: .heartRateVariability,
+                    value: 25,
                     date: Date(),
                     source: .healthKit,
                     impactDetails: MetricImpactDetail(
-                        metricType: .restingHeartRate,
-                        lifespanImpactMinutes: -30,
-                        comparisonToBaseline: .worse
+                        metricType: .heartRateVariability,
+                        lifespanImpactMinutes: -5,
+                        comparisonToBaseline: .worse,
+                        scientificReference: "HRV and Recovery Study"
                     )
                 ),
                 showDetails: true
             )
         }
         .padding()
-        .previewLayout(.sizeThatFits)
+        .withGlassTheme()
+        .background(
+            Image("DeepBackground")
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .ignoresSafeArea()
+        )
     }
 } 

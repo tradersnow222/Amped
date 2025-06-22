@@ -49,48 +49,59 @@ struct DashboardView: View {
     // MARK: - Body
     
     var body: some View {
-        ZStack {
-            // Main content area
-            ScrollView {
+        GeometryReader { geometry in
+            ZStack {
+                // Main content area
                 VStack(spacing: 0) {
-                    // Custom period selector
-                    PeriodSelectorView(
-                        selectedPeriod: $selectedPeriod,
-                        onPeriodChanged: { period in
-                            // Update the view model's selected time period
-                            let timePeriod = TimePeriod(from: period)
-                            viewModel.selectedTimePeriod = timePeriod
-                        }
-                    )
-                    .padding(.top, 8)
-                    .padding(.bottom, 24)
-                    
-                    // Balanced spacing above battery
-                    Spacer()
-                        .frame(height: 40)
-                    
-                    // The dashboard battery system
-                    BatterySystemView(
-                        lifeProjection: viewModel.lifeProjection,
-                        currentUserAge: viewModel.currentUserAge,
-                        onProjectionHelpTapped: { showingProjectionHelp = true }
-                    )
-                    
-                    // Balanced spacing below battery
-                    Spacer()
-                        .frame(height: 40)
-                    
-                    // Power Sources Metrics section
-                    HealthMetricsListView(metrics: filteredMetrics) { metric in
-                        selectedMetric = metric
-                        HapticManager.shared.playSelection()
+                    // Fixed header section with period selector
+                    VStack(spacing: 0) {
+                        // Custom period selector
+                        PeriodSelectorView(
+                            selectedPeriod: $selectedPeriod,
+                            onPeriodChanged: { period in
+                                // Update the view model's selected time period
+                                let timePeriod = TimePeriod(from: period)
+                                viewModel.selectedTimePeriod = timePeriod
+                            }
+                        )
+                        .padding(.top, 8)
+                        .padding(.bottom, 24)
+                        
+                        // Balanced spacing above battery
+                        Spacer()
+                            .frame(height: 24)
+                        
+                        // The dashboard battery system
+                        BatterySystemView(
+                            lifeProjection: viewModel.lifeProjection,
+                            currentUserAge: viewModel.currentUserAge,
+                            onProjectionHelpTapped: { 
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showingProjectionHelp = true
+                                }
+                            }
+                        )
+                        
+                        // Balanced spacing below battery
+                        Spacer()
+                            .frame(height: 24)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.bottom, 32)
+                    .padding(.horizontal)
+                    
+                    // Scrollable metrics section
+                    ScrollView {
+                        // Power Sources Metrics section
+                        HealthMetricsListView(metrics: filteredMetrics) { metric in
+                            selectedMetric = metric
+                            HapticManager.shared.playSelection()
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.bottom, 32)
+                    }
                 }
-                .padding(.horizontal)
-            }
             .withDeepBackground()
+            .blur(radius: showingProjectionHelp ? 6 : 0) // Reduced blur for more visibility
+            .brightness(showingProjectionHelp ? 0.1 : 0) // Slightly brighten background when info card shows
             
             // Error overlay if needed
             if let errorMessage = viewModel.errorMessage {
@@ -120,6 +131,36 @@ struct DashboardView: View {
                 .cornerRadius(16)
                 .shadow(radius: 10)
             }
+            
+            // Custom info card overlay
+            if showingProjectionHelp {
+                // Blurred background
+                Color.black.opacity(0.3) // Reduced opacity for brighter background
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showingProjectionHelp = false
+                        }
+                    }
+                
+                // Info card overlay
+                VStack {
+                    Spacer()
+                        .frame(height: geometry.size.height * 0.2) // Position card in upper portion of screen
+                    
+                    projectionHelpPopover
+                        .transition(.asymmetric(
+                            insertion: .scale(scale: 0.95).combined(with: .opacity),
+                            removal: .scale(scale: 0.95).combined(with: .opacity)
+                        ))
+                        .zIndex(1)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .transition(.opacity)
+            }
+        }
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -190,86 +231,120 @@ struct DashboardView: View {
             viewModel.refreshData()
             HapticManager.shared.playSuccess()
         }
-        // Help popovers
-        .popover(isPresented: $showingProjectionHelp) {
-            projectionHelpPopover
-        }
+        .animation(.easeInOut(duration: 0.2), value: showingProjectionHelp)
     }
     
     // MARK: - UI Components
     
     /// Help popover for projection battery
     private var projectionHelpPopover: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 20) {
             // Header with battery icon and title
             HStack(spacing: 12) {
                 // Battery icon to match theme
                 Image(systemName: "battery.100")
-                    .font(.title2)
+                    .font(.largeTitle)
                     .foregroundColor(.ampedGreen)
+                    .symbolRenderingMode(.hierarchical)
                 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Life Projection")
-                        .style(.cardTitle, color: .white)
-                    
-                    Text("Battery Indicator")
-                        .style(.caption, color: .secondary)
-                }
+                Text("Life Projection")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
                 
                 Spacer()
             }
             
-            // Main description
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Shows your approximate (~) remaining lifespan based on your health data and habits.")
-                    .style(.body, color: .white)
-                    .fixedSize(horizontal: false, vertical: true)
+            // Main description with improved readability
+            VStack(alignment: .leading, spacing: 16) {
+                // Key point 1 with icon
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "clock.fill")
+                        .font(.body)
+                        .foregroundColor(.ampedGreen)
+                        .frame(width: 24)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Years Left")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                        
+                        Text("Your estimated remaining lifespan")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
                 
-                Text("This battery updates gradually as your health habits create lasting impact.")
-                    .style(.body, color: .white.opacity(0.8))
-                    .fixedSize(horizontal: false, vertical: true)
+                // Key point 2 with icon
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.body)
+                        .foregroundColor(.ampedYellow)
+                        .frame(width: 24)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Updates Gradually")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                        
+                        Text("Changes slowly as habits improve")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+                
+                // Key point 3 with icon
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "heart.text.square.fill")
+                        .font(.body)
+                        .foregroundColor(.ampedRed)
+                        .frame(width: 24)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Health-Based")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                        
+                        Text("Calculated from your real data")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
             }
             
-            // Divider
-            Rectangle()
-                .fill(Color.white.opacity(0.2))
-                .frame(height: 1)
-                .padding(.vertical, 4)
-            
-            // Footer with research note
+            // Visual separator
             HStack(spacing: 8) {
-                Image(systemName: "doc.text.magnifyingglass")
+                ForEach(0..<3) { _ in
+                    Circle()
+                        .fill(Color.white.opacity(0.2))
+                        .frame(width: 4, height: 4)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            
+            // Scientific backing note - simplified
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.seal.fill")
                     .font(.caption)
-                    .foregroundColor(.ampedYellow)
+                    .foregroundColor(.ampedGreen.opacity(0.8))
                 
-                Text("Based on scientific research and health metrics.")
-                    .style(.caption, color: .secondary)
-                    .italic()
+                Text("Backed by research")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.6))
+                    .fontWeight(.medium)
             }
         }
-        .padding(20)
-        .frame(width: 320)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-        )
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.cardBackground)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(
-                    LinearGradient(
-                        colors: [.ampedGreen.opacity(0.6), .ampedYellow.opacity(0.3)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1.5
-                )
-        )
-        .shadow(color: .ampedGreen.opacity(0.1), radius: 8, x: 0, y: 4)
-        .shadow(color: .black.opacity(0.3), radius: 12, x: 0, y: 8)
+        .padding(24)
+        .frame(idealWidth: 320, maxWidth: 340)
+        .glassBackground(.thick, cornerRadius: 16, withBorder: true, withShadow: true) // Changed to thick for better readability
+        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+        .transition(.asymmetric(
+            insertion: .scale.combined(with: .opacity),
+            removal: .scale(scale: 0.95).combined(with: .opacity)
+        ))
     }
 }
 

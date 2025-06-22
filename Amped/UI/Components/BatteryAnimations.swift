@@ -85,7 +85,7 @@ struct BatteryAnimations {
                     
                     particleOffset = CGSize(width: xPos, height: yPos)
                 }
-                .onChange(of: phase) { oldValue, newValue in
+                .onChange(of: phase) { newValue in
                     // Update position as animation phase changes
                     let xPos = CGFloat.random(in: 4...(width - 8))
                     let yPos = height + 10 - (height * CGFloat(newValue) * randomFactor())
@@ -191,7 +191,7 @@ struct BatteryAnimations {
                 .frame(width: 6, height: 6)
                 .position(particlePosition())
                 .opacity(particleOpacity())
-                .onChange(of: phase) { oldValue, newValue in
+                .onChange(of: phase) { newValue in
                     // Particle moves from start to end repeatedly
                     updatePosition(newValue)
                 }

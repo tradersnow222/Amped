@@ -4,13 +4,16 @@ import SwiftUI
 struct QuestionnaireView: View {
     // MARK: - Properties
     
-    @StateObject private var viewModel = QuestionnaireViewModel()
+    @StateObject private var viewModel: QuestionnaireViewModel
     @StateObject private var questionnaireManager = QuestionnaireManager()
-    @Environment(\.themeManager) private var themeManager
+    @EnvironmentObject var themeManager: BatteryThemeManager
     
     // Navigation bindings
     @Binding var exitToPersonalizationIntro: Bool
     @Binding var proceedToHealthPermissions: Bool
+    
+    // Add a parameter to indicate if we're returning from HealthKit
+    let returningFromHealthKit: Bool
     
     // Gesture handler
     private var gestureHandler: QuestionnaireGestureHandler
@@ -20,12 +23,16 @@ struct QuestionnaireView: View {
     
     // MARK: - Initializers
     
-    init(exitToPersonalizationIntro: Binding<Bool>, proceedToHealthPermissions: Binding<Bool>) {
+    init(exitToPersonalizationIntro: Binding<Bool>, proceedToHealthPermissions: Binding<Bool>, returningFromHealthKit: Bool = false) {
         self._exitToPersonalizationIntro = exitToPersonalizationIntro
         self._proceedToHealthPermissions = proceedToHealthPermissions
+        self.returningFromHealthKit = returningFromHealthKit
         
         // Create the StateObject before init completes
-        let viewModel = QuestionnaireViewModel()
+        // If returning from HealthKit, start at the last question
+        let viewModel = returningFromHealthKit 
+            ? QuestionnaireViewModel(startingAt: .socialConnections)
+            : QuestionnaireViewModel()
         self._viewModel = StateObject(wrappedValue: viewModel)
         
         // Use the same view model instance for the gesture handler
@@ -44,23 +51,12 @@ struct QuestionnaireView: View {
                 Color.clear.withDeepBackground()
                 
                 VStack(spacing: 12) {
-                    // Navigation header with back button
+                    // Navigation header with back button - Rules: Using consistent BackButton component
                     if viewModel.canMoveBack {
                         HStack {
-                            Button(action: {
+                            BackButton(action: {
                                 gestureHandler.handleBackNavigation()
-                            }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "chevron.left")
-                                        .font(.system(size: 16, weight: .semibold))
-                                    Text("Back")
-                                        .font(.system(size: 16, weight: .regular))
-                                }
-                                .foregroundColor(.ampedGreen)
-                                .padding(.vertical, 10)
-                                .padding(.horizontal, 16)
-                            }
-                            .accessibilityLabel("Go back to previous question")
+                            }, showText: false)
                             
                             Spacer()
                         }
@@ -80,16 +76,23 @@ struct QuestionnaireView: View {
                     // Current question view with proper bidirectional transitions
                     ZStack {
                         ForEach(QuestionnaireViewModel.Question.allCases, id: \.self) { question in
-                            if viewModel.currentQuestion == question {
+                            // Show current question and adjacent questions for smooth transitions
+                            let questionIndex = viewModel.questionIndex(for: question)
+                            let currentIndex = viewModel.currentQuestionIndex
+                            let isVisible = abs(questionIndex - currentIndex) <= 1
+                            
+                            if isVisible {
                                 questionView(for: question)
                                     .padding()
                                     .offset(x: gestureHandler.calculateOffset(for: question, geometry: geometry))
                                     .transition(gestureHandler.getTransition())
                                     .id("question_\(question.rawValue)") // Add stable ID to help SwiftUI track view identity
                                     .zIndex(viewModel.currentQuestion == question ? 1 : 0)
+                                    .opacity(viewModel.currentQuestion == question ? 1 : 0)
                             }
                         }
                     }
+                    .clipped() // Ensure off-screen views don't show
                     // Use a clear, direct animation for transitions with a slightly higher stiffness for snappier movement
                     .animation(
                         .interpolatingSpring(stiffness: 180, damping: 20, initialVelocity: 0.5),
@@ -193,6 +196,6 @@ struct QuestionnaireView: View {
 
 struct QuestionnaireView_Previews: PreviewProvider {
     static var previews: some View {
-        QuestionnaireView(exitToPersonalizationIntro: .constant(false), proceedToHealthPermissions: .constant(false))
+        QuestionnaireView(exitToPersonalizationIntro: .constant(false), proceedToHealthPermissions: .constant(false), returningFromHealthKit: false)
     }
 } 

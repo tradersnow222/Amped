@@ -84,139 +84,139 @@ struct MetricTipCard: View {
         return Color.cardBackground
     }
     
-    /// Tip title based on metric type
+    /// Tip title based on metric type - using battery metaphors
     private var tipTitle: String {
         switch metric.type {
         case .steps:
-            return "Increase Your Daily Steps"
+            return "Charge Up Your Daily Energy"
         case .sleepHours:
-            return "Improve Sleep Quality"
+            return "Recharge Your Recovery Battery"
         case .activeEnergyBurned:
-            return "Boost Your Active Energy"
+            return "Boost Your Power Output"
         case .restingHeartRate:
-            return "Optimize Heart Health"
+            return "Optimize Your Heart Engine"
         case .heartRateVariability:
-            return "Enhance Recovery"
+            return "Supercharge Your Recovery"
         case .oxygenSaturation:
-            return "Maintain Optimal Oxygen Levels"
+            return "Maximize Your Oxygen Flow"
         case .vo2Max:
-            return "Increase Cardio Fitness"
+            return "Increase Your Peak Power"
         case .nutritionQuality:
-            return "Improve Nutrition Quality"
+            return "Fuel Your Energy System"
         case .stressLevel:
-            return "Manage Stress Levels"
+            return "Protect Your Energy Reserves"
         case .exerciseMinutes:
-            return "Maximize Exercise Benefits"
+            return "Power Up Through Movement"
         case .bodyMass:
-            return "Maintain Healthy Weight"
+            return "Balance Your Energy System"
         case .smokingStatus:
-            return "Reduce Smoking Impact"
+            return "Stop Energy Drain"
         case .alcoholConsumption:
-            return "Moderate Alcohol Intake"
+            return "Preserve Your System Power"
         case .socialConnectionsQuality:
-            return "Strengthen Social Connections"
+            return "Energize Through Connection"
         }
     }
     
-    /// First tip detail based on metric type
+    /// First tip detail based on metric type - focused on immediate benefits
     private var primaryTip: String {
         switch metric.type {
         case .steps:
-            return "Take a 10-minute walk after each meal"
+            return "A 10-minute walk after meals helps your body process energy more efficiently and keeps your battery charged throughout the day."
         case .sleepHours:
-            return "Establish a consistent sleep schedule"
+            return "Consistent sleep times help your body's natural recharge cycle work at peak efficiency, giving you more energy when awake."
         case .activeEnergyBurned:
-            return "Mix cardio and strength training"
+            return "Mixing cardio and strength training creates a powerful energy system that keeps you feeling strong and capable."
         case .restingHeartRate:
-            return "Practice deep breathing exercises"
+            return "Deep breathing exercises train your heart to work more efficiently, like optimizing your body's engine."
         case .heartRateVariability:
-            return "Include recovery days in your routine"
+            return "Recovery days allow your system to repair and recharge, preventing energy drain from overuse."
         case .oxygenSaturation:
-            return "Practice diaphragmatic breathing"
+            return "Better breathing techniques help your body use oxygen more efficiently, powering every cell."
         case .vo2Max:
-            return "Add interval training to your workouts"
+            return "Interval training builds your body's capacity to generate and sustain energy during activities."
         case .nutritionQuality:
-            return "Add more colorful vegetables to meals"
+            return "Colorful vegetables provide the nutrients your body needs to maintain high energy levels naturally."
         case .stressLevel:
-            return "Practice daily mindfulness meditation"
+            return "Mindfulness helps prevent stress from draining your energy reserves throughout the day."
         case .exerciseMinutes:
-            return "Include both cardio and strength exercises"
+            return "Regular movement keeps your energy systems running smoothly and prevents power loss."
         case .bodyMass:
-            return "Focus on whole foods and regular exercise"
+            return "A balanced approach helps your body operate at its most efficient energy level."
         case .smokingStatus:
-            return "Gradually reduce daily consumption"
+            return "Reducing smoking stops one of the biggest energy drains on your system."
         case .alcoholConsumption:
-            return "Track and limit weekly consumption"
+            return "Limiting alcohol helps your body focus energy on repair and restoration instead of processing toxins."
         case .socialConnectionsQuality:
-            return "Schedule regular social activities"
+            return "Strong relationships provide emotional energy that powers your overall wellbeing."
         }
     }
     
-    /// Second tip detail based on metric type
+    /// Second tip detail based on metric type - practical and encouraging
     private var secondaryTip: String {
         switch metric.type {
         case .steps:
-            return "Park farther away and take stairs when possible"
+            return "Small changes like parking farther away add up to big energy gains over time."
         case .sleepHours:
-            return "Limit screen time 1 hour before bed"
+            return "Your bedroom environment affects how well your body can recharge - keep it cool and dark."
         case .activeEnergyBurned:
-            return "Find activities you enjoy to stay motivated"
+            return "Find activities that feel energizing rather than draining - your body will thank you."
         case .restingHeartRate:
-            return "Stay well hydrated throughout the day"
+            return "Staying hydrated helps your heart pump more efficiently with less effort."
         case .heartRateVariability:
-            return "Prioritize quality sleep and relaxation"
+            return "Quality sleep and relaxation are like overnight charging for your recovery system."
         case .oxygenSaturation:
-            return "Consider air quality in your environment"
+            return "Fresh air and good posture help your breathing system work at peak efficiency."
         case .vo2Max:
-            return "Gradually increase workout intensity"
+            return "Gradual improvements prevent system overload while building your energy capacity."
         case .nutritionQuality:
-            return "Focus on whole foods and limit processed items"
+            return "Think of food as fuel - quality ingredients create sustainable energy without crashes."
         case .stressLevel:
-            return "Take a 5-minute mindfulness break"
+            return "Even short breaks can prevent stress from completely draining your energy reserves."
         case .exerciseMinutes:
-            return "Break up exercise into smaller sessions if needed"
+            return "Breaking movement into smaller sessions helps maintain steady energy without burnout."
         case .bodyMass:
-            return "Prioritize sustainable habits over rapid changes"
+            return "Focus on habits that give you energy rather than drain it - your body will find its balance."
         case .smokingStatus:
-            return "Consider professional support for quitting"
+            return "Each cigarette avoided is energy saved for things that matter to you."
         case .alcoholConsumption:
-            return "Try alcohol-free alternatives for social occasions"
+            return "Alcohol-free days give your system time to fully recharge and restore."
         case .socialConnectionsQuality:
-            return "Foster meaningful conversations with friends and family"
+            return "Meaningful conversations recharge your emotional battery in ways nothing else can."
         }
     }
     
-    /// Actionable step based on metric type
+    /// Actionable step based on metric type - immediate and achievable
     private var actionableStep: String? {
         switch metric.type {
         case .steps:
-            return "Take a 10-minute walk after lunch"
+            return "Take the stairs or walk while talking on the phone"
         case .sleepHours:
-            return "Set a regular bedtime tonight"
+            return "Set a phone alarm for your ideal bedtime tonight"
         case .activeEnergyBurned:
-            return "Schedule a 20-minute workout today"
+            return "Do 10 jumping jacks or push-ups right now"
         case .restingHeartRate:
-            return "Practice deep breathing for 5 minutes"
+            return "Take 5 deep breaths and feel your heart rate slow"
         case .heartRateVariability:
-            return "Add a 10-minute recovery session today"
+            return "Schedule 15 minutes of gentle stretching today"
         case .oxygenSaturation:
-            return "Practice diaphragmatic breathing"
+            return "Step outside for 5 minutes and breathe deeply"
         case .vo2Max:
-            return "Add interval training to your next workout"
+            return "Add 30 seconds of high intensity to your next walk"
         case .nutritionQuality:
-            return "Add one extra vegetable serving today"
+            return "Add berries or greens to your next meal"
         case .stressLevel:
-            return "Take a 5-minute mindfulness break now"
+            return "Close your eyes and breathe deeply for 1 minute"
         case .exerciseMinutes:
-            return "Get 30 minutes of moderate exercise today"
+            return "Dance to one favorite song or walk around the block"
         case .bodyMass:
-            return "Plan balanced meals for tomorrow"
+            return "Drink a full glass of water before your next meal"
         case .smokingStatus:
-            return "Skip one cigarette today"
+            return "Delay your next cigarette by 30 minutes"
         case .alcoholConsumption:
-            return "Have an alcohol-free day today"
+            return "Try sparkling water with lime instead of alcohol today"
         case .socialConnectionsQuality:
-            return "Call or message a friend today"
+            return "Send an encouraging text to someone you care about"
         }
     }
     

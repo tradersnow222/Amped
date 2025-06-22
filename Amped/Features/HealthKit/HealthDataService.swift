@@ -359,6 +359,9 @@ struct MetricStatistics {
         case .restingHeartRate, .heartRateVariability, .bodyMass, .vo2Max, .oxygenSaturation:
             return await fetchStatusMetricUsingHKStatisticsCollection(metricType: metricType, timePeriod: timePeriod)
             
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+            return await fetchManualMetricForPeriod(metricType: metricType, timePeriod: timePeriod)
+            
         @unknown default:
             logger.info("❓ Unknown metric type \(metricType.displayName), using latest data")
             let metric = await healthKitManager.fetchLatestData(for: metricType)

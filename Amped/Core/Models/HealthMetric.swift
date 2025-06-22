@@ -1,6 +1,37 @@
 import Foundation
 import HealthKit
 
+/// Power level for battery visualization
+enum PowerLevel: String, CaseIterable {
+    case full
+    case high
+    case medium
+    case low
+    case critical
+    
+    /// Color name for this power level
+    var color: String {
+        switch self {
+        case .full: return "ampedGreen"
+        case .high: return "ampedGreen"
+        case .medium: return "ampedYellow"
+        case .low: return "ampedRed"
+        case .critical: return "ampedRed"
+        }
+    }
+    
+    /// Fill percentage for battery visualization
+    var fillPercent: Double {
+        switch self {
+        case .full: return 1.0
+        case .high: return 0.75
+        case .medium: return 0.5
+        case .low: return 0.25
+        case .critical: return 0.1
+        }
+    }
+}
+
 /// Represents a single health metric with its value and metadata
 struct HealthMetric: Identifiable, Equatable {
     /// Unique identifier for the metric
@@ -41,15 +72,15 @@ struct HealthMetric: Identifiable, Equatable {
                 return "\(hours)h"
             }
         case .exerciseMinutes:
-            return "\(Int(value)) min"
+            return "\(Int(value))"
         case .bodyMass:
-            return "\(Int(value)) kg"
+            return "\(Int(value))"
         case .activeEnergyBurned:
-            return "\(Int(value)) kcal"
+            return "\(Int(value))"
         case .vo2Max:
             return numberFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
         case .oxygenSaturation:
-            return "\(Int(value))%"
+            return "\(Int(value))"
         case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
             // Manual metrics use a 1-10 scale
             return "\(Int(value))/10"

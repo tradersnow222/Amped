@@ -161,7 +161,7 @@ struct MetricDetailSections {
     struct RecommendationsSection: View {
         let recommendations: [MetricRecommendation]
         let logAction: (MetricRecommendation) -> Void
-        @Environment(\.themeManager) private var themeManager
+        @EnvironmentObject var themeManager: BatteryThemeManager
         
         var body: some View {
             VStack(alignment: .leading, spacing: 16) {
@@ -256,7 +256,7 @@ struct MetricDetailSections {
         let metric: HealthMetric
         let powerLevel: Int
         let powerColor: Color
-        @Environment(\.themeManager) private var themeManager
+        @EnvironmentObject var themeManager: BatteryThemeManager
         
         var body: some View {
             VStack(alignment: .leading, spacing: 16) {

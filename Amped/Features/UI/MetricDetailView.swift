@@ -9,7 +9,7 @@ struct MetricDetailView: View {
     
     // Environment
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.themeManager) private var themeManager
+    @EnvironmentObject var themeManager: BatteryThemeManager
     
     // Convenience property for accessing current metric
     private var metric: HealthMetric {
@@ -410,7 +410,7 @@ struct ChartView: View {
     let metric: HealthMetric
     let period: ImpactDataPoint.PeriodType
     
-    @Environment(\.themeManager) private var themeManager
+    @EnvironmentObject var themeManager: BatteryThemeManager
     
     var body: some View {
         // Placeholder for chart

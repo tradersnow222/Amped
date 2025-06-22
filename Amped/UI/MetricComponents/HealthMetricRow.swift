@@ -76,7 +76,7 @@ struct HealthMetricRow: View {
         )
         .contentShape(Rectangle()) // Make entire row tappable
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(metric.type.displayName), \(metric.formattedValue) \(metric.unitString)")
+        .accessibilityLabel(accessibilityLabelText)
         .accessibilityValue(accessibilityImpactValue)
         .accessibilityHint("Tap for details")
         .accessibilityAddTraits(.isButton)
@@ -162,6 +162,17 @@ struct HealthMetricRow: View {
         
         let direction = impact.lifespanImpactMinutes >= 0 ? "Gaining" : "Losing"
         return "\(direction) \(formattedImpact(minutes: impact.lifespanImpactMinutes))"
+    }
+    
+    /// Get appropriate accessibility label text
+    private var accessibilityLabelText: String {
+        // For sleep hours, the formattedValue already includes units (e.g., "7h 30m")
+        // For other metrics, we need to append the unit
+        if metric.type == .sleepHours || metric.unitString.isEmpty {
+            return "\(metric.type.displayName), \(metric.formattedValue)"
+        } else {
+            return "\(metric.type.displayName), \(metric.formattedValue) \(metric.unitString)"
+        }
     }
 }
 

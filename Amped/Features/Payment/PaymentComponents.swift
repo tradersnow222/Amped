@@ -140,7 +140,7 @@ struct PaymentComponents {
                     .edgesIgnoringSafeArea(.all)
                     .onTapGesture {
                         // Dismiss by tapping outside
-                        viewModel.showDiscountPopup = false
+                        // viewModel.showDiscountPopup = false
                     }
                 
                 VStack(spacing: 20) {
@@ -172,7 +172,7 @@ struct PaymentComponents {
                     HStack(spacing: 20) {
                         // Decline
                         Button(action: {
-                            viewModel.showDiscountPopup = false
+                            // viewModel.showDiscountPopup = false
                             viewModel.skipPayment {
                                 onContinue?()
                             }
@@ -187,13 +187,13 @@ struct PaymentComponents {
                         }
                         .hapticFeedback(.light)
                         
-                        // Accept
-                        Button(action: {
-                            viewModel.showDiscountPopup = false
-                            viewModel.processPurchaseWithDiscount {
-                                onContinue?()
-                            }
-                        }) {
+                                                  // Accept
+                          Button(action: {
+                             // viewModel.showDiscountPopup = false
+                              viewModel.processPurchase {
+                                  onContinue?()
+                              }
+                          }) {
                             Text("Accept Offer")
                                 .fontWeight(.bold)
                                 .frame(maxWidth: .infinity)
@@ -202,7 +202,7 @@ struct PaymentComponents {
                                 .foregroundColor(.white)
                                 .cornerRadius(14)
                         }
-                        .successFeedback()
+                        .hapticFeedback(.heavy)
                     }
                     .padding(.top, 10)
                 }
@@ -213,6 +213,10 @@ struct PaymentComponents {
                 .padding(.horizontal, 30)
             }
             .transition(.opacity)
+            .onAppear {
+                // Remove the popup functionality - not needed for clean payment flow
+                // viewModel.showDiscountPopup = false
+            }
         }
     }
     

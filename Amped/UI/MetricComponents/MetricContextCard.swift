@@ -8,74 +8,15 @@ struct MetricContextCard: View {
     /// The health metric to show context for
     let metric: HealthMetric
     
-    @Environment(\.themeManager) private var themeManager
+    @EnvironmentObject var themeManager: BatteryThemeManager
     
     // MARK: - Body
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Header
-            HStack(spacing: 8) {
-                Image(systemName: "info.circle.fill")
-                    .foregroundColor(metric.type.color)
-                
-                Text("About \(metric.type.name)")
-                    .style(.cardTitle)
-                
-                Spacer()
-            }
-            
-            // Explanation
-            VStack(alignment: .leading, spacing: 12) {
-                Text(explanationTitle)
-                    .style(.subheadlineBold)
-                
-                Text(explanationText)
-                    .style(.bodySecondary)
-                
-                if let scientificRef = metric.impactDetails?.scientificReference {
-                    Divider()
-                    
-                    // Research reference
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Research Reference")
-                            .style(.subheadlineBold)
-                        
-                        Text(scientificRef)
-                            .style(.caption)
-                    }
-                }
-            }
-            
-            // Baseline comparison
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Recommended")
-                        .style(.caption)
-                    
-                    Text("\(formatValue(metric.type.baselineValue)) \(metric.type.unit ?? HKUnit.count())")
-                        .style(.bodyMedium)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                
-                Divider()
-                    .frame(height: 30)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Your Value")
-                        .style(.caption)
-                    
-                    Text("\(formatValue(metric.value)) \(metric.type.unit ?? HKUnit.count())")
-                        .style(.bodyMedium, color: comparisonColor)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.secondaryCardBackground)
-            )
+            headerSection
+            explanationSection
+            comparisonSection
         }
         .padding(16)
         .background(
@@ -87,6 +28,79 @@ struct MetricContextCard: View {
                 .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 1)
+    }
+    
+    // MARK: - UI Components
+    
+    private var headerSection: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "info.circle.fill")
+                .foregroundColor(metric.type.color)
+            
+            Text("About \(metric.type.name)")
+                .font(.headline)
+            
+            Spacer()
+        }
+    }
+    
+    private var explanationSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(explanationTitle)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+            
+            Text(explanationText)
+                .font(.body)
+                .foregroundColor(.secondary)
+            
+            if let scientificRef = metric.impactDetails?.scientificReference {
+                Divider()
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Research Reference")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    
+                    Text(scientificRef)
+                        .font(.caption)
+                }
+            }
+        }
+    }
+    
+    private var comparisonSection: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Recommended")
+                    .font(.caption)
+                
+                Text("\(formatValue(metric.type.baselineValue)) units")
+                    .font(.body)
+                    .fontWeight(.medium)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            
+            Divider()
+                .frame(height: 30)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Your Value")
+                    .font(.caption)
+                
+                Text("\(formatValue(metric.value)) units")
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(comparisonColor)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.gray.opacity(0.1))
+        )
     }
     
     // MARK: - Computed Properties

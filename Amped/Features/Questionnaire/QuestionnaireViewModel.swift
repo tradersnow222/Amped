@@ -13,10 +13,10 @@ final class QuestionnaireViewModel: ObservableObject {
     }
     
     enum NutritionQuality: CaseIterable {
-        case veryHealthy
-        case mostlyHealthy
-        case mixed
-        case mostlyUnhealthy
+        case veryHealthy        // 9.0 - Most positive
+        case mostlyHealthy      // 7.0
+        case mixed              // 5.0
+        case mostlyUnhealthy    // 3.0 - Most negative
         
         var displayName: String {
             switch self {
@@ -38,60 +38,60 @@ final class QuestionnaireViewModel: ObservableObject {
     }
     
     enum SmokingStatus: CaseIterable {
-        case daily
-        case occasionally
-        case former
-        case never
+        case never              // 9.0 - Most positive
+        case former             // 6.0
+        case occasionally       // 3.0
+        case daily              // 1.0 - Most negative
         
         var displayName: String {
             switch self {
-            case .daily: return "Daily"
-            case .occasionally: return "Occasionally"
-            case .former: return "Former smoker\n(quit in the past)"
             case .never: return "Never"
+            case .former: return "Former smoker\n(quit in the past)"
+            case .occasionally: return "Occasionally"
+            case .daily: return "Daily"
             }
         }
         
         var smokingValue: Double {
             switch self {
-            case .daily: return 1.0
-            case .occasionally: return 3.0
-            case .former: return 6.0
             case .never: return 9.0
+            case .former: return 6.0
+            case .occasionally: return 3.0
+            case .daily: return 1.0
             }
         }
     }
     
     enum AlcoholFrequency: CaseIterable {
-        case daily
-        case severalTimesWeek
-        case occasionally
-        case never
+        case never              // 9.0 - Most positive
+        case occasionally       // 7.0
+        case severalTimesWeek   // 4.0
+        case daily              // 3.0 - Most negative
         
         var displayName: String {
             switch self {
-            case .daily: return "Daily"
-            case .severalTimesWeek: return "Several Times\n(per week)"
-            case .occasionally: return "Occasionally\n(weekly or less)"
             case .never: return "Never"
+            case .occasionally: return "Occasionally\n(weekly or less)"
+            case .severalTimesWeek: return "Several Times\n(per week)"
+            case .daily: return "Daily"
             }
         }
         
         var alcoholValue: Double {
             switch self {
-            case .daily: return 3.0
-            case .severalTimesWeek: return 4.0
-            case .occasionally: return 7.0
             case .never: return 9.0
+            case .occasionally: return 7.0
+            case .severalTimesWeek: return 4.0
+            case .daily: return 3.0
             }
         }
     }
     
     enum SocialConnectionsQuality: CaseIterable {
-        case veryStrong
-        case good
-        case moderate
-        case limited
+        case veryStrong         // 9.0 - Most positive
+        case good               // 7.0
+        case moderate           // 5.0
+        case limited            // 2.0 - Most negative
         
         var displayName: String {
             switch self {
@@ -299,9 +299,32 @@ final class QuestionnaireViewModel: ObservableObject {
         proceedToNextQuestion()
     }
     
+    // MARK: - Helper Methods for View Transitions
+    
+    // Get the index of a question
+    func questionIndex(for question: Question) -> Int {
+        return question.rawValue
+    }
+    
+    // Get the current question index
+    var currentQuestionIndex: Int {
+        return currentQuestion.rawValue
+    }
+    
     // MARK: - Initialization
     
     init() {
+        // Sync the separate month/year properties with the default birthdate
+        let calendar = Calendar.current
+        selectedBirthMonth = calendar.component(.month, from: birthdate)
+        selectedBirthYear = calendar.component(.year, from: birthdate)
+    }
+    
+    // Add a new initializer to start at a specific question - for returning from HealthKit permissions
+    init(startingAt question: Question) {
+        // Set the starting question
+        self.currentQuestion = question
+        
         // Sync the separate month/year properties with the default birthdate
         let calendar = Calendar.current
         selectedBirthMonth = calendar.component(.month, from: birthdate)

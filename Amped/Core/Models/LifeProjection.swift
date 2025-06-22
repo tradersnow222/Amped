@@ -9,6 +9,19 @@ struct LifeProjection: Identifiable, Codable, Equatable {
     let confidencePercentage: Double
     let confidenceIntervalYears: Double
     
+    /// Impact factor for UI compatibility
+    struct ImpactFactor: Identifiable, Codable, Equatable {
+        let id: UUID
+        let factor: String
+        let impact: Double
+        
+        init(id: UUID = UUID(), factor: String, impact: Double) {
+            self.id = id
+            self.factor = factor
+            self.impact = impact
+        }
+    }
+    
     /// Standard initialization
     init(
         id: UUID = UUID(),
@@ -170,5 +183,32 @@ struct LifeProjection: Identifiable, Codable, Equatable {
         lhs.calculationDate == rhs.calculationDate &&
         lhs.baselineLifeExpectancyYears == rhs.baselineLifeExpectancyYears &&
         lhs.adjustedLifeExpectancyYears == rhs.adjustedLifeExpectancyYears
+    }
+    
+    // MARK: - UI Compatibility Properties
+    
+    /// UI alias for adjustedLifeExpectancyYears
+    var projectedTotalYears: Double {
+        return adjustedLifeExpectancyYears
+    }
+    
+    /// UI alias for confidencePercentage
+    var confidenceLevel: Double {
+        return confidencePercentage
+    }
+    
+    /// Mock impact factors for UI compatibility
+    var impactFactors: [ImpactFactor] {
+        return [
+            ImpactFactor(factor: "Exercise", impact: 3.2),
+            ImpactFactor(factor: "Sleep", impact: 1.8),
+            ImpactFactor(factor: "Nutrition", impact: 2.1),
+            ImpactFactor(factor: "Stress", impact: -0.5)
+        ]
+    }
+    
+    /// UI alias for calculationDate
+    var lastUpdated: Date {
+        return calculationDate
     }
 } 

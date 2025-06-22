@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A view that displays a sorted list of health metrics with their impact on battery life
+/// A view that displays health metrics with a simple list layout
 struct HealthMetricsListView: View {
     // MARK: - Properties
     
@@ -8,30 +8,28 @@ struct HealthMetricsListView: View {
     let onMetricTap: (HealthMetric) -> Void
     
     @State private var isAnimating = false
+    @Environment(\.glassTheme) private var glassTheme
     
     // MARK: - Initialization
     
     init(metrics: [HealthMetric], onMetricTap: @escaping (HealthMetric) -> Void) {
-        // Sort metrics by absolute impact (most impactful first)
-        self.metrics = metrics.sorted {
-            abs($0.impactDetails?.lifespanImpactMinutes ?? 0) > abs($1.impactDetails?.lifespanImpactMinutes ?? 0)
-        }
+        self.metrics = metrics
         self.onMetricTap = onMetricTap
     }
     
     // MARK: - Body
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header section with connection to battery
+        VStack(alignment: .leading, spacing: 24) {
+            // Header section with battery connection
             headerSection
                 .accessibilityAddTraits(.isHeader)
             
-            // List of metrics
+            // Simple metrics list
             if metrics.isEmpty {
                 emptyStateView
             } else {
-                metricsList
+                metricsListView
             }
         }
         .onAppear {
@@ -41,75 +39,42 @@ struct HealthMetricsListView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Health Factors")
-        .accessibilityHint("Displays health metrics that impact your battery life, sorted by most impactful")
+        .accessibilityHint("Displays your health metrics with their impact on lifespan")
     }
     
     // MARK: - UI Components
     
     /// Header section with visual connection to the battery
     private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Title with connection to battery
-            HStack(spacing: 8) {
-                // Energy flow icon
-                Image(systemName: "bolt.fill")
-                    .font(.system(size: 18))
-                    .foregroundColor(.ampedGreen)
-                    .opacity(isAnimating ? 1 : 0)
-                    .scaleEffect(isAnimating ? 1 : 0.5)
-                    .accessibilityHidden(true)
-                
-                Text("Health Factors")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(.white)
-                
-                // Visual connector to battery
-                ZStack {
-                    Rectangle()
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [Color.ampedGreen.opacity(0.7), Color.ampedGreen.opacity(0)]),
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(height: 1)
-                    
-                    // Animated energy pulse
-                    if isAnimating {
-                        HStack(spacing: 8) {
-                            ForEach(0..<3, id: \.self) { index in
-                                Circle()
-                                    .fill(Color.ampedGreen)
-                                    .frame(width: 3, height: 3)
-                                    .offset(x: isAnimating ? 30 : 0)
-                                    .opacity(isAnimating ? 0 : 1)
-                                    .animation(
-                                        Animation.easeInOut(duration: 1.5)
-                                            .repeatForever(autoreverses: false)
-                                            .delay(Double(index) * 0.3),
-                                        value: isAnimating
-                                    )
-                            }
-                        }
-                    }
-                }
-                .accessibilityHidden(true)
+        HStack(alignment: .center, spacing: 8) {
+            // Battery icon with animation
+            ZStack {
+                Image(systemName: "battery.100")
+                    .font(.title2)
+                    .foregroundColor(.fullPower)
+                    .scaleEffect(isAnimating ? 1.1 : 1.0)
+                    .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isAnimating)
             }
             
-            // Subtitle explaining connection to battery
-            Text("These factors power your battery life")
-                .font(.system(size: 14))
-                .foregroundColor(.gray)
-                .padding(.leading, 2)
-                .padding(.bottom, 4)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Your Health Factors")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                
+                Text("Powering your life energy")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.8))
+            }
+            
+            Spacer()
         }
     }
     
-    /// List of health metrics
-    private var metricsList: some View {
-        VStack(spacing: 12) {
-            ForEach(metrics) { metric in
+    /// Simple list of health metrics
+    private var metricsListView: some View {
+        VStack(spacing: 8) {
+            ForEach(sortedMetrics) { metric in
                 HealthMetricRow(metric: metric)
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -118,120 +83,104 @@ struct HealthMetricsListView: View {
                     .transition(.opacity)
             }
         }
-        .accessibilitySortPriority(1) // Prioritize metrics list in accessibility focus order
+        .accessibilitySortPriority(1)
     }
     
     /// Empty state when no metrics are available
     private var emptyStateView: some View {
         VStack(spacing: 16) {
-            Image(systemName: "heart.slash")
-                .font(.system(size: 40))
-                .foregroundColor(.gray)
-                .padding(.top, 24)
-                .accessibilityHidden(true)
+            Image(systemName: "battery.0")
+                .font(.system(size: 48))
+                .foregroundColor(.criticalPower)
             
-            Text("No health data available")
-                .font(.system(size: 16, weight: .medium))
+            Text("No Health Data")
+                .font(.headline)
                 .foregroundColor(.white)
             
-            Text("Check your Health app permissions or complete the health questionnaire")
-                .font(.system(size: 14))
-                .foregroundColor(.gray)
+            Text("Connect your health data to power up your battery")
+                .font(.subheadline)
+                .foregroundColor(.white.opacity(0.8))
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
         }
+        .padding(.vertical, 40)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.cardBackground)
-        )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("No health data available")
-        .accessibilityHint("Check your Health app permissions or complete the health questionnaire")
+        .glassBackground(.ultraThin, cornerRadius: glassTheme.glassCornerRadius)
     }
     
-    /// State when permissions are granted but no health data exists yet
-    private var placeholderStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "figure.walk")
-                .font(.system(size: 40))
-                .foregroundColor(.ampedGreen)
-                .padding(.top, 24)
-                .accessibilityHidden(true)
+    // MARK: - Helper Methods
+    
+    /// Sort metrics by impact magnitude (highest impact first)
+    private var sortedMetrics: [HealthMetric] {
+        return metrics.sorted(by: { metric1, metric2 in
+            // Sort by absolute impact value if available
+            if let impact1 = metric1.impactDetails?.lifespanImpactMinutes,
+               let impact2 = metric2.impactDetails?.lifespanImpactMinutes {
+                return abs(impact1) > abs(impact2)
+            }
             
-            Text("Health tracking ready")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.white)
-            
-            Text("Permissions granted! Start using the Health app or your Apple Watch to record health metrics and they'll appear here.")
-                .font(.system(size: 14))
-                .foregroundColor(.gray)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
+            // Fallback to power level comparison
+            return metric1.powerLevel.sortOrder > metric2.powerLevel.sortOrder
+        })
+    }
+}
+
+// MARK: - Extensions
+
+extension PowerLevel {
+    /// Sort order for power levels (higher is better)
+    var sortOrder: Int {
+        switch self {
+        case .full: return 5
+        case .high: return 4
+        case .medium: return 3
+        case .low: return 2
+        case .critical: return 1
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.cardBackground)
-        )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Health tracking ready")
-        .accessibilityHint("Start using the Health app or your Apple Watch to record health metrics")
     }
 }
 
 // MARK: - Preview
 
-#Preview {
-    // Preview with metrics
-    HealthMetricsListView(
-        metrics: [
-            // Sleep - positive impact
+struct HealthMetricsListView_Previews: PreviewProvider {
+    static var previews: some View {
+        let sampleMetrics = [
+            HealthMetric(
+                id: UUID().uuidString,
+                type: .steps,
+                value: 8500,
+                date: Date(),
+                source: .healthKit,
+                impactDetails: MetricImpactDetail(
+                    metricType: .steps,
+                    lifespanImpactMinutes: 15,
+                    comparisonToBaseline: .better,
+                    scientificReference: "Daily Steps and Mortality Study"
+                )
+            ),
             HealthMetric(
                 id: UUID().uuidString,
                 type: .sleepHours,
                 value: 7.5,
                 date: Date(),
-                source: .healthKit,
-                impactDetails: MetricImpactDetail(
-                    metricType: .sleepHours,
-                    lifespanImpactMinutes: 45,
-                    comparisonToBaseline: .better
-                )
+                source: .healthKit
             ),
-            // Stress - negative impact
             HealthMetric(
                 id: UUID().uuidString,
-                type: .stressLevel,
-                value: 7.0,
+                type: .heartRateVariability,
+                value: 45,
                 date: Date(),
-                source: .userInput,
-                impactDetails: MetricImpactDetail(
-                    metricType: .stressLevel,
-                    lifespanImpactMinutes: -15,
-                    comparisonToBaseline: .worse
-                )
-            ),
-            // Nutrition - positive impact
-            HealthMetric(
-                id: UUID().uuidString,
-                type: .nutritionQuality,
-                value: 7.0,
-                date: Date(),
-                source: .userInput,
-                impactDetails: MetricImpactDetail(
-                    metricType: .nutritionQuality,
-                    lifespanImpactMinutes: 30,
-                    comparisonToBaseline: .better
-                )
+                source: .healthKit
             )
-        ],
-        onMetricTap: { _ in }
-    )
-    .padding()
-    .background(Color.black)
+        ]
+        
+        HealthMetricsListView(metrics: sampleMetrics) { _ in }
+            .padding()
+            .withGlassTheme()
+            .background(
+                Image("DeepBackground")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .ignoresSafeArea()
+            )
+    }
 } 

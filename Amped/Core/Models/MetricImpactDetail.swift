@@ -135,6 +135,15 @@ struct MetricImpactDetail: Identifiable, Codable, Equatable {
             return .critical
         }
     }
+    
+    // MARK: - UI Compatibility Methods
+    
+    /// Get impact for a specific period - returns current impact for compatibility
+    func impactForPeriod(_ period: TimePeriod) -> Double {
+        // For now, return the current lifespanImpactMinutes regardless of period
+        // In future iterations, this could calculate period-specific impacts
+        return lifespanImpactMinutes
+    }
 }
 
 /// Result of comparing a metric to baseline
@@ -170,33 +179,4 @@ extension ComparisonResult {
     }
 }
 
-/// Power level for battery visualization
-enum PowerLevel: String, CaseIterable {
-    case full
-    case high
-    case medium
-    case low
-    case critical
-    
-    /// Color name for this power level
-    var color: String {
-        switch self {
-        case .full: return "ampedGreen"
-        case .high: return "ampedGreen"
-        case .medium: return "ampedYellow"
-        case .low: return "ampedRed"
-        case .critical: return "ampedRed"
-        }
-    }
-    
-    /// Fill percentage for battery visualization
-    var fillPercent: Double {
-        switch self {
-        case .full: return 1.0
-        case .high: return 0.75
-        case .medium: return 0.5
-        case .low: return 0.25
-        case .critical: return 0.1
-        }
-    }
-} 
+ 

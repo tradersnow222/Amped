@@ -106,7 +106,7 @@ struct MetricDetailsView: View {
             .pickerStyle(SegmentedPickerStyle())
             .frame(width: 200)
         }
-        .onChange(of: selectedPeriod) { oldValue, newValue in
+        .onChange(of: selectedPeriod) { newValue in
             viewModel.loadHistoricalData(for: metric, period: newValue)
         }
     }

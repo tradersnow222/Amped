@@ -95,6 +95,13 @@ final class LifeImpactService: LifeImpactServicing, ObservableObject {
                 date: metric.date
             )
             
+        case .bodyMass:
+            return LifestyleImpactCalculator.calculateBodyMassImpact(
+                kg: metric.value,
+                date: metric.date,
+                height: userProfile.height
+            )
+            
         case .nutritionQuality:
             return LifestyleImpactCalculator.calculateNutritionImpact(
                 quality: metric.value,

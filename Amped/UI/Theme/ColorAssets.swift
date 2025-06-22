@@ -22,16 +22,13 @@ extension Color {
     static var lowPowerFallback: Color { Color(red: 0.9, green: 0.6, blue: 0.3) }
     static var criticalPowerFallback: Color { ampedRedFallback }
     
-    // MARK: - Consistent Background System
-    // Following user-specific rule for simplicity and consistency
+    // MARK: - Glass/Card Backgrounds
+    static var cardBackground: Color { Color.black.opacity(0.7) }
     
-    /// Primary card/row background for consistent theming (matches settings screen)
-    static var cardBackground: Color { Color.black.opacity(0.6) }
-    
-    /// Secondary card background for nested content
+    // Additional glass background variants
     static var secondaryCardBackground: Color { Color.black.opacity(0.4) }
     
-    /// Light card background for subtle elements
+    // Lighter variant for nested cards
     static var lightCardBackground: Color { Color.black.opacity(0.3) }
     
     /// Tertiary background for very subtle elements

@@ -25,11 +25,11 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
     
     var id: String { rawValue }
     
-    /// Returns the localized display name for this metric type
+    /// Returns the localized display name for this metric type (using Apple's official names)
     var displayName: String {
         switch self {
         case .steps: return "Steps"
-        case .exerciseMinutes: return "Exercise"
+        case .exerciseMinutes: return "Exercise Minutes"
         case .sleepHours: return "Sleep"
         case .restingHeartRate: return "Resting Heart Rate"
         case .heartRateVariability: return "Heart Rate Variability"
@@ -39,9 +39,111 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .alcoholConsumption: return "Alcohol"
         case .socialConnectionsQuality: return "Social Connections"
         case .activeEnergyBurned: return "Active Energy"
-        case .vo2Max: return "VO2 Max"
-        case .oxygenSaturation: return "Oxygen Saturation"
+        case .vo2Max: return "Cardio Fitness"
+        case .oxygenSaturation: return "Blood Oxygen"
         case .stressLevel: return "Stress Level"
+        }
+    }
+    
+    /// Subtle contextual description that explains what the metric does for you
+    var contextualDescription: String {
+        switch self {
+        case .steps: return "Daily movement"
+        case .exerciseMinutes: return "Active energy burn"
+        case .sleepHours: return "Recovery recharge"
+        case .restingHeartRate: return "Heart efficiency"
+        case .heartRateVariability: return "Recovery readiness"
+        case .bodyMass: return "Body composition"
+        case .nutritionQuality: return "Fuel quality"
+        case .smokingStatus: return "Lung health"
+        case .alcoholConsumption: return "System impact"
+        case .socialConnectionsQuality: return "Mental wellbeing"
+        case .activeEnergyBurned: return "Energy output"
+        case .vo2Max: return "Peak performance"
+        case .oxygenSaturation: return "Oxygen efficiency"
+        case .stressLevel: return "Mental load"
+        }
+    }
+    
+    /// Intuitive grouping by what the metric does for your health
+    var functionalGroup: MetricFunctionalGroup {
+        switch self {
+        case .steps, .exerciseMinutes, .activeEnergyBurned:
+            return .energySources
+        case .sleepHours, .heartRateVariability, .restingHeartRate:
+            return .recoveryIndicators
+        case .vo2Max, .oxygenSaturation, .bodyMass:
+            return .performanceMetrics
+        case .nutritionQuality, .stressLevel, .socialConnectionsQuality:
+            return .lifestyleFactors
+        case .smokingStatus, .alcoholConsumption:
+            return .healthRisks
+        }
+    }
+    
+    /// Battery-themed power description for different charge levels
+    func batteryDescription(for powerLevel: PowerLevel) -> String {
+        switch self {
+        case .sleepHours:
+            switch powerLevel {
+            case .full: return "Fully recharged and ready"
+            case .high: return "Well-rested energy"
+            case .medium: return "Moderate recharge"
+            case .low: return "Running low on rest"
+            case .critical: return "Energy critically low"
+            }
+        case .steps, .exerciseMinutes:
+            switch powerLevel {
+            case .full: return "High energy output"
+            case .high: return "Good activity power"
+            case .medium: return "Moderate energy burn"
+            case .low: return "Low power mode"
+            case .critical: return "Minimal energy use"
+            }
+        case .heartRateVariability:
+            switch powerLevel {
+            case .full: return "Peak recovery state"
+            case .high: return "Good recovery power"
+            case .medium: return "Moderate recovery"
+            case .low: return "Recovery needed"
+            case .critical: return "System strain detected"
+            }
+        case .vo2Max:
+            switch powerLevel {
+            case .full: return "Peak performance ready"
+            case .high: return "Strong cardio power"
+            case .medium: return "Good fitness level"
+            case .low: return "Building cardio base"
+            case .critical: return "Fitness improvement needed"
+            }
+        default:
+            switch powerLevel {
+            case .full: return "Optimal power"
+            case .high: return "Good energy"
+            case .medium: return "Moderate level"
+            case .low: return "Needs attention"
+            case .critical: return "Action required"
+            }
+        }
+    }
+    
+    /// Emotional outcome description - what this metric gives you
+    var outcomeDescription: String {
+        switch self {
+        case .steps: return "Energizes your day"
+        case .exerciseMinutes: return "Builds your strength"
+        case .sleepHours: return "Powers your recovery"
+        case .restingHeartRate: return "Shows heart health"
+        case .heartRateVariability: return "Tracks your resilience"
+        case .bodyMass: return "Reflects your balance"
+        case .nutritionQuality: return "Fuels your potential"
+        case .smokingStatus: return "Protects your lungs"
+        case .alcoholConsumption: return "Impacts your clarity"
+        case .socialConnectionsQuality: return "Nurtures your spirit"
+        case .activeEnergyBurned: return "Measures your drive"
+        case .vo2Max: return "Shows your endurance"
+        case .oxygenSaturation: return "Reflects oxygen flow"
+        case .stressLevel: return "Affects your peace"
         }
     }
     
@@ -49,54 +151,63 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
     var healthKitType: HKQuantityType? {
         switch self {
         case .steps:
-            return HKQuantityType(.stepCount)
+            return HKQuantityType.quantityType(forIdentifier: .stepCount)
         case .exerciseMinutes:
-            return HKQuantityType(.appleExerciseTime)
+            return HKQuantityType.quantityType(forIdentifier: .appleExerciseTime)
         case .restingHeartRate:
-            return HKQuantityType(.restingHeartRate)
+            return HKQuantityType.quantityType(forIdentifier: .restingHeartRate)
         case .heartRateVariability:
-            return HKQuantityType(.heartRateVariabilitySDNN)
-        case .sleepHours:
-            return nil // Sleep requires special handling with HKCategoryType
+            return HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN)
         case .bodyMass:
-            return HKQuantityType(.bodyMass)
+            return HKQuantityType.quantityType(forIdentifier: .bodyMass)
         case .activeEnergyBurned:
-            return HKQuantityType(.activeEnergyBurned)
+            return HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)
         case .vo2Max:
-            return HKQuantityType(.vo2Max)
+            return HKQuantityType.quantityType(forIdentifier: .vo2Max)
         case .oxygenSaturation:
-            return HKQuantityType(.oxygenSaturation)
-        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
-            return nil // These are manual metrics, not from HealthKit
+            return HKQuantityType.quantityType(forIdentifier: .oxygenSaturation)
+        case .sleepHours, .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+            return nil // These are handled separately
         }
     }
     
-    /// Returns the appropriate unit for this metric type
-    var unit: HKUnit? {
+    /// Returns the appropriate HK unit for this metric type
+    var healthKitUnit: HKUnit? {
         switch self {
         case .steps:
-            return .count()
+            return HKUnit.count()
         case .exerciseMinutes:
-            return .minute()
+            return HKUnit.minute()
         case .restingHeartRate:
-            return .count().unitDivided(by: .minute())
+            return HKUnit(from: "count/min")
         case .heartRateVariability:
-            return .secondUnit(with: .milli)
-        case .sleepHours:
-            return .hour()
+            return HKUnit.secondUnit(with: .milli)
         case .bodyMass:
-            return .gramUnit(with: .kilo)
+            return HKUnit.pound()
         case .activeEnergyBurned:
-            return .kilocalorie()
+            return HKUnit.kilocalorie()
         case .vo2Max:
-            return HKUnit.literUnit(with: .milli)
-                .unitDivided(by: .gramUnit(with: .kilo))
-                .unitDivided(by: .minute())
+            return HKUnit(from: "ml/kg*min")
         case .oxygenSaturation:
-            return .percent()
-        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
-            return nil // These use a custom scale, not HealthKit units
+            return HKUnit.percent()
+        case .sleepHours, .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+            return nil
         }
+    }
+    
+    /// Alias for healthKitUnit to maintain compatibility
+    var unit: HKUnit? {
+        return healthKitUnit
+    }
+    
+    /// Returns collection of HealthKit types for requesting permissions
+    static var healthKitTypes: [HealthMetricType] {
+        return [.steps, .exerciseMinutes, .sleepHours, .restingHeartRate, .heartRateVariability, .bodyMass, .activeEnergyBurned, .vo2Max, .oxygenSaturation]
+    }
+    
+    /// Returns collection of manual/questionnaire types
+    static var manualTypes: [HealthMetricType] {
+        return [.nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel]
     }
     
     /// Returns whether this metric type is derived from HealthKit
@@ -127,16 +238,6 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .oxygenSaturation: return "drop.fill"
         case .stressLevel: return "brain.head.profile"
         }
-    }
-    
-    /// Returns all metric types that come from HealthKit
-    static var healthKitTypes: [HealthMetricType] {
-        Self.allCases.filter { $0.isHealthKitMetric }
-    }
-    
-    /// Returns all metric types that are manually entered
-    static var manualTypes: [HealthMetricType] {
-        Self.allCases.filter { !$0.isHealthKitMetric }
     }
     
     /// Returns the name of the metric (alias for displayName for compatibility)
@@ -254,6 +355,48 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
             return 5 // A few recent readings
         default:
             return 10 // Default reasonable limit
+        }
+    }
+}
+
+/// Functional grouping of metrics by what they do for your health
+enum MetricFunctionalGroup: String, CaseIterable {
+    case energySources = "Energy Sources"
+    case recoveryIndicators = "Recovery Indicators" 
+    case performanceMetrics = "Performance Metrics"
+    case lifestyleFactors = "Lifestyle Factors"
+    case healthRisks = "Health Risks"
+    
+    /// Subtle description of what this group does
+    var description: String {
+        switch self {
+        case .energySources: return "Fuel your daily power"
+        case .recoveryIndicators: return "Track your restoration"
+        case .performanceMetrics: return "Measure your potential"
+        case .lifestyleFactors: return "Shape your wellbeing"
+        case .healthRisks: return "Protect your future"
+        }
+    }
+    
+    /// Icon for the functional group
+    var iconName: String {
+        switch self {
+        case .energySources: return "bolt.fill"
+        case .recoveryIndicators: return "moon.fill"
+        case .performanceMetrics: return "speedometer"
+        case .lifestyleFactors: return "heart.fill"
+        case .healthRisks: return "shield.fill"
+        }
+    }
+    
+    /// Battery metaphor for the group
+    var batteryMetaphor: String {
+        switch self {
+        case .energySources: return "charging your battery"
+        case .recoveryIndicators: return "showing charge level"
+        case .performanceMetrics: return "measuring max capacity"
+        case .lifestyleFactors: return "affecting efficiency"
+        case .healthRisks: return "draining your power"
         }
     }
 } 
