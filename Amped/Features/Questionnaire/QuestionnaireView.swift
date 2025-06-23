@@ -99,7 +99,8 @@ struct QuestionnaireView: View {
                     
                     // Progress indicator at bottom - consistent with other screens
                     ProgressIndicator(currentStep: viewModel.currentStep, totalSteps: viewModel.totalSteps)
-                        .padding(.bottom, 40)
+                        .padding(.top, -10) // Negative padding to bring it closer to the button
+                        .padding(.bottom, 10) // Further reduced to allow button to sit closer
                 }
                 .withDeepBackgroundTheme()
             }

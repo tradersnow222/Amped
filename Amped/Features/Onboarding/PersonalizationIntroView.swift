@@ -21,7 +21,7 @@ struct PersonalizationIntroView: View {
             VStack(spacing: 0) {
                 // Main content
                 ScrollView {
-                    VStack(spacing: 32) {
+                    VStack(spacing: 48) {
                         // Header section - positioned for rule of thirds
                         VStack(spacing: 0) {
                             Text("Driven by Data,\nFueled by AI.")
@@ -32,14 +32,11 @@ struct PersonalizationIntroView: View {
                                 .offset(y: animateElements ? 0 : 20)
                                 .animation(.easeOut(duration: 0.6), value: animateElements)
                         }
-                        .padding(.top, 120) // Moved down to follow rule of thirds
-                        
-                        // Additional spacing between headline and statistics
-                        Spacer().frame(height: 60)
+                        .padding(.top, 100)
                         
                         // Statistics section with paired subtitle
                         VStack(spacing: 16) {
-                            Text("Our algorithms are trained on")
+                            Text("Our AI lifespan models are based on")
                                 .font(.system(size: 18, weight: .regular, design: .serif))
                                 .foregroundColor(.white.opacity(0.7))
                                 .multilineTextAlignment(.center)
@@ -76,6 +73,7 @@ struct PersonalizationIntroView: View {
                         
                         // Visual element - Battery with scientific symbols
                         scientificBatteryView
+                            .padding(.vertical, 20)
                             .opacity(animateElements ? 1 : 0)
                             .scaleEffect(animateElements ? 1 : 0.8)
                             .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.3), value: animateElements)
@@ -97,7 +95,7 @@ struct PersonalizationIntroView: View {
                         .opacity(animateElements ? 1 : 0)
                         .animation(.easeOut(duration: 0.6).delay(0.4), value: animateElements)
                         
-                        Spacer(minLength: 100)
+                        Spacer(minLength: 48)
                     }
                     .padding(.horizontal, 24)
                 }
@@ -108,18 +106,23 @@ struct PersonalizationIntroView: View {
                         onContinue?()
                     }) {
                         Text("Continue")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.white)
+                            .fontWeight(.bold)
+                            .font(.system(.title3, design: .monospaced))
                             .frame(maxWidth: .infinity)
-                            .frame(height: 56)
+                            .padding()
                             .background(Color.ampedGreen)
-                            .cornerRadius(28)
+                            .foregroundColor(.white)
+                            .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
+                            .cornerRadius(14)
                     }
-                    .padding(.horizontal, 40)
-                    .padding(.bottom, 40)
                     .hapticFeedback(.heavy)
+                    .padding(.horizontal, 40)
+                    .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
                     .opacity(animateElements ? 1 : 0)
                     .animation(.easeOut(duration: 0.6).delay(0.5), value: animateElements)
+                    
+                    // Add spacer to match WelcomeView button position
+                    Spacer().frame(height: 120)
                 }
             }
         }

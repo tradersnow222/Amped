@@ -59,8 +59,6 @@ struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
-
-
 /// Sleek, glass-themed button style for questionnaire - matches health metric cards
 struct QuestionnaireButtonStyle: ButtonStyle {
     let isSelected: Bool
@@ -76,31 +74,55 @@ struct QuestionnaireButtonStyle: ButtonStyle {
             .padding(.vertical, 16)
             .padding(.horizontal, 20)
             .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.cardBackground)
+                ZStack {
+                    // Base background
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.cardBackground)
+                        .opacity(configuration.isPressed ? 0.8 : 1.0)
+                    
+                    // Green overlay for selection/press state
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.ampedGreen)
+                        .opacity(isSelected ? 0.15 : (configuration.isPressed ? 0.08 : 0))
+                }
             )
             .foregroundColor(.white)
             .overlay(
-                // Subtle glow effect instead of harsh corner borders
+                // Enhanced glow effect with smoother transitions
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(
-                        Color.ampedGreen.opacity(isSelected ? 0.6 : 0.2),
-                        lineWidth: isSelected ? 1.5 : 0.5
+                        Color.ampedGreen.opacity(
+                            isSelected ? 0.7 : (configuration.isPressed ? 0.4 : 0.2)
+                        ),
+                        lineWidth: isSelected ? 2 : (configuration.isPressed ? 1.5 : 0.5)
                     )
             )
             .shadow(
-                color: Color.ampedGreen.opacity(isSelected ? 0.4 : 0.1),
-                radius: isSelected ? 8 : 4,
+                color: Color.ampedGreen.opacity(
+                    isSelected ? 0.5 : (configuration.isPressed ? 0.3 : 0.1)
+                ),
+                radius: isSelected ? 12 : (configuration.isPressed ? 8 : 4),
                 x: 0,
                 y: 0
             )
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
-            .animation(.easeInOut(duration: 0.2), value: isSelected)
+            // More pronounced scale effect
+            .scaleEffect(configuration.isPressed ? 0.95 : (isSelected ? 1.02 : 1.0))
+            // Add subtle brightness change
+            .brightness(configuration.isPressed ? -0.05 : 0)
+            // Smoother spring animation for press
+            .animation(
+                .spring(response: 0.3, dampingFraction: 0.7, blendDuration: 0),
+                value: configuration.isPressed
+            )
+            // Smooth animation for selection with slight bounce
+            .animation(
+                .spring(response: 0.4, dampingFraction: 0.65, blendDuration: 0),
+                value: isSelected
+            )
     }
 }
 
-/// Compact continue button style for questionnaire
+/// Continue button style for questionnaire - matches standard button height
 struct ContinueButtonStyle: ButtonStyle {
     let isEnabled: Bool
     
@@ -110,10 +132,10 @@ struct ContinueButtonStyle: ButtonStyle {
     
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 17, weight: .semibold, design: .rounded))
+            .fontWeight(.bold)
+            .font(.system(.title3, design: .monospaced))
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .padding(.horizontal, 24)
+            .padding()
             .background(
                 RoundedRectangle(cornerRadius: 14)
                     .fill(
@@ -121,7 +143,8 @@ struct ContinueButtonStyle: ButtonStyle {
                     )
             )
             .foregroundColor(.white)
-            .shadow(color: Color.ampedGreen.opacity(isEnabled ? 0.3 : 0.1), radius: 6, y: 3)
+            .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
+            .shadow(color: Color.ampedGreen.opacity(isEnabled ? 0.3 : 0.1), radius: 5, x: 0, y: 2)
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
             .opacity(isEnabled ? 1.0 : 0.6)
             .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)

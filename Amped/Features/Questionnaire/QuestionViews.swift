@@ -68,67 +68,81 @@ struct QuestionViews {
         var handleContinue: () -> Void
         
         var body: some View {
-            VStack(alignment: .center, spacing: 0) {
-                // Question text placed higher
-                Text("When were you born?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity)
+            VStack(spacing: 0) {
+                // Main content area with its own padding
+                VStack(alignment: .center, spacing: 0) {
+                    // Question text placed higher
+                    Text("When were you born?")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(.bottom, 10)
+                        .frame(maxWidth: .infinity)
 
-                Spacer()
+                    Spacer()
 
-                // Custom Month/Year Picker positioned at bottom for thumb access
-                HStack(spacing: 0) {
-                    // Month Picker
-                    Picker("Month", selection: Binding(
-                        get: { viewModel.selectedBirthMonth },
-                        set: { viewModel.updateSelectedMonth($0) }
-                    )) {
-                        ForEach(viewModel.availableMonths, id: \.self) { month in
-                            Text(viewModel.monthName(for: month))
-                                .font(.system(size: 24))
-                                .foregroundColor(.white)
-                                .tag(month)
+                    // Custom Month/Year Picker positioned at bottom for thumb access
+                    HStack(spacing: 0) {
+                        // Month Picker
+                        Picker("Month", selection: Binding(
+                            get: { viewModel.selectedBirthMonth },
+                            set: { viewModel.updateSelectedMonth($0) }
+                        )) {
+                            ForEach(viewModel.availableMonths, id: \.self) { month in
+                                Text(viewModel.monthName(for: month))
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.white)
+                                    .tag(month)
+                            }
                         }
+                        .pickerStyle(WheelPickerStyle())
+                        .frame(maxWidth: .infinity)
+                        .colorScheme(.dark)
+                        
+                        // Year Picker
+                        Picker("Year", selection: Binding(
+                            get: { viewModel.selectedBirthYear },
+                            set: { viewModel.updateSelectedYear($0) }
+                        )) {
+                            ForEach(viewModel.availableYears, id: \.self) { year in
+                                Text(String(year))
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.white)
+                                    .tag(year)
+                            }
+                        }
+                        .pickerStyle(WheelPickerStyle())
+                        .frame(maxWidth: .infinity)
+                        .colorScheme(.dark)
                     }
-                    .pickerStyle(WheelPickerStyle())
                     .frame(maxWidth: .infinity)
-                    .colorScheme(.dark)
+                    .padding(.vertical, 10)
                     
-                    // Year Picker
-                    Picker("Year", selection: Binding(
-                        get: { viewModel.selectedBirthYear },
-                        set: { viewModel.updateSelectedYear($0) }
-                    )) {
-                        ForEach(viewModel.availableYears, id: \.self) { year in
-                            Text(String(year))
-                                .font(.system(size: 24))
-                                .foregroundColor(.white)
-                                .tag(year)
-                        }
-                    }
-                    .pickerStyle(WheelPickerStyle())
-                    .frame(maxWidth: .infinity)
-                    .colorScheme(.dark)
+                    Spacer() // Add spacer here to push button down
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 24)
+                .frame(maxHeight: .infinity)
                 
-                // Continue button at very bottom
+                // Bottom section with button - positioned near progress indicator
                 Button(action: handleContinue) {
                     Text("Continue")
+                        .fontWeight(.bold)
+                        .font(.system(.title3, design: .monospaced))
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.ampedGreen)
+                        .foregroundColor(.white)
+                        .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
+                        .cornerRadius(14)
                 }
-                .continueButtonStyle(isEnabled: viewModel.canProceed)
-                .hapticFeedback(.selection)
+                .hapticFeedback(.heavy)
                 .padding(.horizontal, 40)
-                .padding(.top, 20)
-                .padding(.bottom, 30)
+                .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
+                .padding(.bottom, 20) // Reduced padding to move button closer to progress indicator
+                .opacity(viewModel.canProceed ? 1 : 0.6)
                 .disabled(!viewModel.canProceed)
             }
-            .padding(.horizontal, 24)
-            .frame(maxHeight: .infinity)
+            .edgesIgnoringSafeArea(.bottom) // Allow content to extend into bottom safe area
         }
     }
     
@@ -151,7 +165,7 @@ struct QuestionViews {
                 
                 // Options at bottom for thumb access
                 VStack(spacing: 12) {
-                    ForEach(["Male", "Female"], id: \.self) { gender in
+                    ForEach(["Female", "Male"], id: \.self) { gender in
                         Button(action: {
                             viewModel.selectedGender = gender == "Male" ? .male : .female
                             viewModel.proceedToNextQuestion()
@@ -162,7 +176,7 @@ struct QuestionViews {
                             isSelected: (gender == "Male" && viewModel.selectedGender == .male) || 
                                        (gender == "Female" && viewModel.selectedGender == .female)
                         )
-                        .hapticFeedback(.selection)
+                        .hapticFeedback(.heavy)
                     }
                 }
                 .padding(.bottom, 30)
@@ -202,7 +216,7 @@ struct QuestionViews {
                             )
                         }
                         .questionnaireButtonStyle(isSelected: viewModel.selectedNutritionQuality == nutrition)
-                        .hapticFeedback(.selection)
+                        .hapticFeedback(.heavy)
                     }
                 }
                 .padding(.bottom, 30)
@@ -239,7 +253,7 @@ struct QuestionViews {
                             FormattedButtonText(text: status.displayName)
                         }
                         .questionnaireButtonStyle(isSelected: viewModel.selectedSmokingStatus == status)
-                        .hapticFeedback(.selection)
+                        .hapticFeedback(.heavy)
                     }
                 }
                 .padding(.bottom, 30)
@@ -276,7 +290,7 @@ struct QuestionViews {
                             FormattedButtonText(text: frequency.displayName)
                         }
                         .questionnaireButtonStyle(isSelected: viewModel.selectedAlcoholFrequency == frequency)
-                        .hapticFeedback(.selection)
+                        .hapticFeedback(.heavy)
                     }
                 }
                 .padding(.bottom, 30)
@@ -316,7 +330,7 @@ struct QuestionViews {
                             )
                         }
                         .questionnaireButtonStyle(isSelected: viewModel.selectedSocialConnectionsQuality == quality)
-                        .hapticFeedback(.selection)
+                        .hapticFeedback(.heavy)
                     }
                 }
                 .padding(.bottom, 30)
@@ -369,7 +383,7 @@ struct QuestionViews {
                     .questionnaireButtonStyle(isSelected: viewModel.selectedDeviceTrackingStatus == .yesBoth || 
                                                        viewModel.selectedDeviceTrackingStatus == .yesActivityOnly ||
                                                        viewModel.selectedDeviceTrackingStatus == .yesSleepOnly)
-                    .hapticFeedback(.selection)
+                    .hapticFeedback(.heavy)
                     
                     // No option
                     Button(action: {
@@ -379,7 +393,7 @@ struct QuestionViews {
                         Text("No, I don't use any device")
                     }
                     .questionnaireButtonStyle(isSelected: viewModel.selectedDeviceTrackingStatus == .no)
-                    .hapticFeedback(.selection)
+                    .hapticFeedback(.heavy)
                 }
                 .padding(.bottom, 30)
             }
@@ -449,7 +463,7 @@ struct QuestionViews {
                             )
                         }
                         .questionnaireButtonStyle(isSelected: viewModel.selectedLifeMotivation == motivation)
-                        .hapticFeedback(.selection)
+                        .hapticFeedback(.heavy)
                     }
                 }
                 .padding(.bottom, 30)
