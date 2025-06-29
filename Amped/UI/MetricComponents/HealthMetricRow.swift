@@ -46,6 +46,7 @@ struct HealthMetricRow: View {
             
             // Impact value
             if let impact = metric.impactDetails {
+                // Always show exact impact with arrow - following rule: ACCURATE DATA DISPLAYED TO THE USER IS KING
                 HStack(spacing: 4) {
                     Image(systemName: impact.lifespanImpactMinutes >= 0 ? "arrow.up" : "arrow.down")
                         .font(.system(size: 12))
@@ -87,6 +88,8 @@ struct HealthMetricRow: View {
     /// Get impact color based on whether impact is positive or negative
     private var impactColor: Color {
         guard let impact = metric.impactDetails else { return .gray }
+        
+        // Always show proper color based on direction - following rule: ACCURATE DATA DISPLAYED TO THE USER IS KING
         return impact.lifespanImpactMinutes >= 0 ? .ampedGreen : .ampedRed
     }
     
@@ -152,8 +155,25 @@ struct HealthMetricRow: View {
             }
         }
         
-        // Minutes
-        return "\(Int(absMinutes)) min \(direction)"
+        // Minutes - show exact value even if less than 1
+        if absMinutes >= 1.0 {
+            return "\(Int(absMinutes)) min \(direction)"
+        }
+        
+        // Seconds - convert minutes to seconds
+        // Following rule: smallest units at seconds to avoid confusion with "No impact data"
+        let absSeconds = absMinutes * 60.0
+        
+        // For very small values (less than 0.1 seconds), show in decimal format
+        if absSeconds < 0.1 {
+            return String(format: "%.3f sec %@", absSeconds, direction)
+        } else if absSeconds < 1.0 {
+            return String(format: "%.2f sec %@", absSeconds, direction)
+        } else if absSeconds < 10.0 {
+            return String(format: "%.1f sec %@", absSeconds, direction)
+        } else {
+            return String(format: "%.0f sec %@", absSeconds, direction)
+        }
     }
     
     /// Formatted impact value for accessibility
@@ -209,6 +229,34 @@ struct HealthMetricRow: View {
                     lifespanImpactMinutes: -15,
                     comparisonToBaseline: .worse
                 )
+            )
+        )
+        
+        // Very small positive impact (seconds)
+        HealthMetricRow(
+            metric: HealthMetric(
+                id: UUID().uuidString,
+                type: .activeEnergyBurned,
+                value: 382,
+                date: Date(),
+                source: .healthKit,
+                impactDetails: MetricImpactDetail(
+                    metricType: .activeEnergyBurned,
+                    lifespanImpactMinutes: 0.001, // 0.06 seconds
+                    comparisonToBaseline: .better
+                )
+            )
+        )
+        
+        // No data metric - following rule: show "No impact data" for unavailable metrics
+        HealthMetricRow(
+            metric: HealthMetric(
+                id: UUID().uuidString,
+                type: .vo2Max,
+                value: 0,
+                date: Date(),
+                source: .healthKit,
+                impactDetails: nil // No impact data
             )
         )
     }

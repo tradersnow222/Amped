@@ -16,37 +16,176 @@ struct DashboardView: View {
     @State private var showSignInPopup = false
     @State private var hasShownSignInPopup = false
     
+    // Rules: Track user interactions - following "make it so sign-in only shows after interaction" requirement
+    @State private var hasInteractedWithDashboard = false
+    @State private var scrollOffset: CGFloat = 0
+    
+    // Pull-to-refresh state
+    @State private var pullDistance: CGFloat = 0
+    @State private var isRefreshing = false
+    private let refreshThreshold: CGFloat = 80
+    private let maxPullDistance: CGFloat = 150 // iOS standard maximum pull distance
+    
+    // Battery animation state
+    @State private var isBatteryAnimating = false
+    
     // MARK: - Computed Properties
     
     /// Filtered metrics based on user settings
     private var filteredMetrics: [HealthMetric] {
-        let allMetrics = viewModel.healthMetrics
-        print("🔍 DashboardView: Total metrics available: \(allMetrics.count)")
-        for metric in allMetrics {
-            print("  - \(metric.type.displayName): value=\(metric.value), source=\(metric.source), hasImpact=\(metric.impactDetails != nil)")
+        var metrics = viewModel.healthMetrics
+        
+        // Debug: Log the metrics state
+        print("🔍 DashboardView: Total metrics before filtering: \(metrics.count)")
+        for metric in metrics {
+            print("  - \(metric.type.displayName): value=\(metric.value), hasImpact=\(metric.impactDetails != nil)")
         }
         
+        // If "Show metrics with no data" is enabled, include all HealthKit types
         if settingsManager.showUnavailableMetrics {
-            // CRITICAL FIX: Filter out manual metrics even when showing unavailable metrics
-            let filtered = viewModel.healthMetrics.filter { metric in
-                // Exclude manual metrics (questionnaire data) from display
-                metric.source != .userInput
+            // Get all currently loaded metric types (excluding manual/questionnaire)
+            let loadedMetricTypes = Set(metrics.filter { $0.source != .userInput }.map { $0.type })
+            
+            // Add placeholder metrics for any missing HealthKit types
+            for metricType in HealthMetricType.healthKitTypes {
+                if !loadedMetricTypes.contains(metricType) {
+                    // Create a placeholder metric with no data
+                    let placeholderMetric = HealthMetric(
+                        id: UUID().uuidString,
+                        type: metricType,
+                        value: 0,
+                        date: Date(),
+                        source: .healthKit,
+                        impactDetails: nil // No impact data for unavailable metrics
+                    )
+                    metrics.append(placeholderMetric)
+                    print("  + Added placeholder for: \(metricType.displayName)")
+                }
             }
-            print("🔍 DashboardView: After filtering (showUnavailable=true): \(filtered.count) metrics")
-            return filtered
         } else {
-            // CRITICAL FIX: Show metrics that have meaningful data
-            // This includes both metrics with non-zero values AND metrics with impact details
-            let filtered = viewModel.healthMetrics.filter { metric in
-                // Exclude manual metrics (questionnaire data) from display
-                // AND show metric if it has a meaningful value OR has impact details calculated
-                metric.source != .userInput && (
-                metric.value > 0 || 
-                metric.impactDetails != nil
-                )
+            // Filter out unavailable metrics if showUnavailable is false
+            let filtered = metrics.filter { metric in
+                // A metric is considered available if it has either:
+                // 1. A non-zero value, OR
+                // 2. Valid impact details (even if value is 0)
+                let isAvailable = metric.value != 0 || metric.impactDetails != nil
+                if !isAvailable {
+                    print("  ❌ Filtering out unavailable: \(metric.type.displayName)")
+                }
+                return isAvailable
             }
             print("🔍 DashboardView: After filtering (showUnavailable=false): \(filtered.count) metrics")
-            return filtered
+            metrics = filtered
+        }
+        
+        // Sort metrics by impact (highest to lowest), with unavailable metrics at the end
+        return metrics.sorted { lhs, rhs in
+            // First priority: Check if either metric has no impact data at all
+            let lhsHasImpact = lhs.impactDetails != nil
+            let rhsHasImpact = rhs.impactDetails != nil
+            
+            // If one has impact data and the other doesn't, the one with impact comes first
+            if lhsHasImpact != rhsHasImpact {
+                return lhsHasImpact // Metrics with any impact data come first
+            }
+            
+            // If both have no impact data, maintain their relative order
+            if !lhsHasImpact && !rhsHasImpact {
+                return false // Keep original order for metrics without impact
+            }
+            
+            // Both have impact data - sort by absolute impact value, highest first
+            let lhsImpact = abs(lhs.impactDetails?.lifespanImpactMinutes ?? 0)
+            let rhsImpact = abs(rhs.impactDetails?.lifespanImpactMinutes ?? 0)
+            
+            return lhsImpact > rhsImpact
+        }
+    }
+    
+    /// Calculate total time impact from all filtered metrics
+    private var totalTimeImpact: Double {
+        filteredMetrics
+            .compactMap { $0.impactDetails?.lifespanImpactMinutes }
+            .reduce(0, +)
+    }
+    
+    /// Format the total time impact for display
+    private var formattedTotalImpact: String {
+        let absMinutes = abs(totalTimeImpact)
+        let direction = totalTimeImpact >= 0 ? "gained" : "lost"
+        
+        // Use similar formatting as HealthMetricRow but for larger values
+        let minutesInHour = 60.0
+        let minutesInDay = 1440.0
+        let minutesInWeek = 10080.0
+        let minutesInMonth = 43200.0
+        let minutesInYear = 525600.0
+        
+        // Years
+        if absMinutes >= minutesInYear {
+            let years = absMinutes / minutesInYear
+            if years >= 2 {
+                return String(format: "%.0f years %@", years, direction)
+            } else {
+                return String(format: "%.1f year %@", years, direction)
+            }
+        }
+        
+        // Months
+        if absMinutes >= minutesInMonth {
+            let months = absMinutes / minutesInMonth
+            if months >= 2 {
+                return String(format: "%.0f months %@", months, direction)
+            } else {
+                return String(format: "%.1f month %@", months, direction)
+            }
+        }
+        
+        // Weeks
+        if absMinutes >= minutesInWeek {
+            let weeks = absMinutes / minutesInWeek
+            if weeks >= 2 {
+                return String(format: "%.0f weeks %@", weeks, direction)
+            } else {
+                return String(format: "%.1f week %@", weeks, direction)
+            }
+        }
+        
+        // Days
+        if absMinutes >= minutesInDay {
+            let days = absMinutes / minutesInDay
+            if days >= 2 {
+                return String(format: "%.0f days %@", days, direction)
+            } else {
+                return String(format: "%.1f day %@", days, direction)
+            }
+        }
+        
+        // Hours
+        if absMinutes >= minutesInHour {
+            let hours = absMinutes / minutesInHour
+            if hours >= 2 {
+                return String(format: "%.0f hours %@", hours, direction)
+            } else {
+                return String(format: "%.1f hour %@", hours, direction)
+            }
+        }
+        
+        // Minutes
+        if absMinutes >= 1.0 {
+            return "\(Int(absMinutes)) min \(direction)"
+        }
+        
+        // For very small values, show seconds
+        let absSeconds = absMinutes * 60.0
+        if absSeconds < 0.1 {
+            return String(format: "%.3f sec %@", absSeconds, direction)
+        } else if absSeconds < 1.0 {
+            return String(format: "%.2f sec %@", absSeconds, direction)
+        } else if absSeconds < 10.0 {
+            return String(format: "%.1f sec %@", absSeconds, direction)
+        } else {
+            return String(format: "%.0f sec %@", absSeconds, direction)
         }
     }
     
@@ -55,54 +194,181 @@ struct DashboardView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
+                // Pull-to-refresh indicator
+                if pullDistance > 0 || isRefreshing {
+                    VStack {
+                        ZStack {
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                                .frame(width: 50, height: 50)
+                            
+                            if isRefreshing {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .ampedGreen))
+                                    .scaleEffect(1.2)
+                            } else {
+                                Image(systemName: "arrow.down")
+                                    .font(.system(size: 20, weight: .medium))
+                                    .foregroundColor(.ampedGreen)
+                                    .rotationEffect(.degrees(pullDistance > refreshThreshold ? 180 : 0))
+                                    .animation(.easeInOut(duration: 0.2), value: pullDistance > refreshThreshold)
+                            }
+                        }
+                        .offset(y: min(pullDistance - 50, 40)) // Capped at 40 for cleaner appearance
+                        .opacity(min(pullDistance / refreshThreshold, 1))
+                        .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.8), value: pullDistance)
+                        
+                        Spacer()
+                    }
+                    .zIndex(1)
+                }
+                
                 // Main content area
                 VStack(spacing: 0) {
-                    // Fixed header section with period selector
-                    VStack(spacing: 0) {
-                        // Custom period selector
-                        PeriodSelectorView(
-                            selectedPeriod: $selectedPeriod,
-                            onPeriodChanged: { period in
-                                // Update the view model's selected time period
-                                let timePeriod = TimePeriod(from: period)
-                                viewModel.selectedTimePeriod = timePeriod
+                    // Fixed header section with period selector only
+                    PeriodSelectorView(
+                        selectedPeriod: $selectedPeriod,
+                        onPeriodChanged: { period in
+                            // Update the view model's selected time period
+                            let timePeriod = TimePeriod(from: period)
+                            viewModel.selectedTimePeriod = timePeriod
+                            
+                            // Rules: Track period selection as user interaction
+                            if !hasInteractedWithDashboard {
+                                hasInteractedWithDashboard = true
+                                checkAndShowSignInIfNeeded()
                             }
-                        )
-                        .padding(.top, 8)
-                        .padding(.bottom, 24)
-                        
-                        // Balanced spacing above battery
-                        Spacer()
-                            .frame(height: 24)
-                        
-                        // The dashboard battery system
-                        BatterySystemView(
-                            lifeProjection: viewModel.lifeProjection,
-                            currentUserAge: viewModel.currentUserAge,
-                            onProjectionHelpTapped: { 
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    showingProjectionHelp = true
-                                }
-                            }
-                        )
-                        
-                        // Balanced spacing below battery
-                        Spacer()
-                            .frame(height: 24)
-                    }
-                    .padding(.horizontal)
-                    
-                    // Scrollable metrics section
-                    ScrollView {
-                        // Power Sources Metrics section
-                        HealthMetricsListView(metrics: filteredMetrics) { metric in
-                            selectedMetric = metric
-                            HapticManager.shared.playSelection()
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.bottom, 32)
+                    )
+                    .padding(.top, 8)
+                    .padding(.bottom, 16)
+                    
+                    // Scrollable content including battery and metrics
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            // Balanced spacing above battery
+                            Spacer()
+                                .frame(height: 8)
+                            
+                            // The dashboard battery system
+                            BatterySystemView(
+                                lifeProjection: viewModel.lifeProjection,
+                                currentUserAge: viewModel.currentUserAge,
+                                onProjectionHelpTapped: { 
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        showingProjectionHelp = true
+                                    }
+                                    
+                                    // Rules: Track battery help tap as user interaction
+                                    if !hasInteractedWithDashboard {
+                                        hasInteractedWithDashboard = true
+                                        checkAndShowSignInIfNeeded()
+                                    }
+                                }
+                            )
+                            .padding(.horizontal)
+                            
+                            // Balanced spacing below battery
+                            Spacer()
+                                .frame(height: 24)
+                            
+                            // Health factors header
+                            HStack(alignment: .center, spacing: 8) {
+                                // Battery icon with animation
+                                ZStack {
+                                    Image(systemName: "battery.100")
+                                        .font(.title2)
+                                        .foregroundColor(.fullPower)
+                                        .scaleEffect(isBatteryAnimating ? 1.1 : 1.0)
+                                        .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isBatteryAnimating)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Your Health Factors")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                    
+                                    Text("Powering your lifespan")
+                                        .font(.subheadline)
+                                        .foregroundColor(.white.opacity(0.8))
+                                }
+                                
+                                Spacer()
+                            }
+                            .padding(.horizontal)
+                            .padding(.vertical, 16)
+                            .accessibilityAddTraits(.isHeader)
+                            
+                            // Total Impact Summary
+                            if totalTimeImpact != 0 {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("\(selectedPeriod.rawValue) Total")
+                                            .font(.subheadline)
+                                            .foregroundColor(.white.opacity(0.7))
+                                        
+                                        HStack(spacing: 6) {
+                                            Image(systemName: totalTimeImpact >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                                                .font(.title3)
+                                                .foregroundColor(totalTimeImpact >= 0 ? .ampedGreen : .ampedRed)
+                                            
+                                            Text(formattedTotalImpact)
+                                                .font(.title3)
+                                                .fontWeight(.semibold)
+                                                .foregroundColor(totalTimeImpact >= 0 ? .ampedGreen : .ampedRed)
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color.cardBackground)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(totalTimeImpact >= 0 ? Color.ampedGreen.opacity(0.3) : Color.ampedRed.opacity(0.3), lineWidth: 1)
+                                        )
+                                )
+                                .padding(.horizontal)
+                                .padding(.bottom, 12)
+                            }
+                            
+                            // Power Sources Metrics section
+                            HealthMetricsListView(metrics: filteredMetrics) { metric in
+                                selectedMetric = metric
+                                HapticManager.shared.playSelection()
+                                
+                                // Rules: Track metric tap as user interaction
+                                checkAndShowSignInIfNeeded()
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.bottom, 32)
+                        }
+                        
+                        // Rules: Track scroll position to detect user interaction
+                        GeometryReader { geometry in
+                            Color.clear.preference(
+                                key: ScrollOffsetPreferenceKey.self,
+                                value: -geometry.frame(in: .named("scroll")).origin.y
+                            )
+                        }
+                        .frame(height: 0)
+                    }
+                    .coordinateSpace(name: "scroll")
+                    .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                        // Rules: Track significant scrolling as user interaction
+                        scrollOffset = value
+                        if abs(value) > 20 && !hasInteractedWithDashboard {
+                            hasInteractedWithDashboard = true
+                            checkAndShowSignInIfNeeded()
+                        }
                     }
                 }
+                .offset(y: pullDistance)
+                .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.85), value: pullDistance)
             .withDeepBackground()
             .blur(radius: showingProjectionHelp || showSignInPopup ? 6 : 0) // Rules: Blur when sign-in popup is shown
             .brightness(showingProjectionHelp || showSignInPopup ? 0.1 : 0) // Rules: Darken when sign-in popup is shown
@@ -174,6 +440,47 @@ struct DashboardView: View {
                     .zIndex(2)
             }
         }
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    // Only allow downward pull when not already refreshing
+                    if !isRefreshing {
+                        // Apply iOS-standard rubber band effect
+                        pullDistance = applyRubberBandEffect(to: value.translation.height)
+                    }
+                }
+                .onEnded { value in
+                    if pullDistance > refreshThreshold && !isRefreshing {
+                        // Trigger refresh
+                        isRefreshing = true
+                        HapticManager.shared.playSelection()
+                        
+                        // Keep the indicator visible while refreshing
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            pullDistance = 60
+                        }
+                        
+                        // Perform the refresh
+                        Task {
+                            await viewModel.refreshData()
+                            
+                            // Reset states after refresh completes
+                            await MainActor.run {
+                                HapticManager.shared.playSuccess()
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    isRefreshing = false
+                                    pullDistance = 0
+                                }
+                            }
+                        }
+                    } else {
+                        // Spring back if threshold not reached
+                        withAnimation(.interactiveSpring(response: 0.3)) {
+                            pullDistance = 0
+                        }
+                    }
+                }
+        )
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -237,22 +544,13 @@ struct DashboardView: View {
             viewModel.loadData()
             HapticManager.shared.prepareHaptics()
             
+            // Start battery animation
+            withAnimation(.easeInOut(duration: 0.6).delay(0.2)) {
+                isBatteryAnimating = true
+            }
+            
             // Debug navigation context
             print("🔧 DashboardView navigation context check")
-            
-            // Rules: Show sign-in popup after 2 seconds if user hasn't authenticated
-            if !appState.isAuthenticated && !hasShownSignInPopup {
-                hasShownSignInPopup = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        showSignInPopup = true
-                    }
-                }
-            }
-        }
-        .refreshable {
-            viewModel.refreshData()
-            HapticManager.shared.playSuccess()
         }
         .animation(.easeInOut(duration: 0.2), value: showingProjectionHelp)
         .animation(.easeInOut(duration: 0.2), value: showSignInPopup) // Rules: Animate sign-in popup
@@ -369,6 +667,65 @@ struct DashboardView: View {
             insertion: .scale.combined(with: .opacity),
             removal: .scale(scale: 0.95).combined(with: .opacity)
         ))
+    }
+    
+    // MARK: - Helper Methods
+    
+    /// Apply iOS-standard rubber band effect to pull distance
+    /// Following iOS Human Interface Guidelines for pull-to-refresh
+    private func applyRubberBandEffect(to dragDistance: CGFloat) -> CGFloat {
+        // Don't apply effect for upward drags
+        guard dragDistance > 0 else { return 0 }
+        
+        // For distances up to the threshold, use 1:1 mapping
+        if dragDistance <= refreshThreshold {
+            return dragDistance
+        }
+        
+        // Beyond threshold, apply progressive dampening
+        let beyondThreshold = dragDistance - refreshThreshold
+        let dampingFactor: CGFloat
+        
+        // Progressive dampening based on how far beyond threshold
+        if beyondThreshold <= refreshThreshold {
+            // First phase: gentle dampening (0.5 to 0.3)
+            let progress = beyondThreshold / refreshThreshold
+            dampingFactor = 0.5 - (0.2 * progress)
+        } else {
+            // Second phase: strong dampening (0.3 to 0.1)
+            let progress = min((beyondThreshold - refreshThreshold) / refreshThreshold, 1.0)
+            dampingFactor = 0.3 - (0.2 * progress)
+        }
+        
+        // Apply dampening and cap at maximum
+        let dampenedDistance = refreshThreshold + (beyondThreshold * dampingFactor)
+        return min(dampenedDistance, maxPullDistance)
+    }
+    
+    /// Check if sign-in popup should be shown after user interaction - Rules: Following user requirement
+    private func checkAndShowSignInIfNeeded() {
+        // Only show popup if user is not authenticated and hasn't seen it before
+        if !appState.isAuthenticated && !hasShownSignInPopup && hasInteractedWithDashboard {
+            hasShownSignInPopup = true
+            
+            // Small delay so the interaction feels natural before showing popup
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    showSignInPopup = true
+                }
+            }
+        }
+    }
+}
+
+// MARK: - ScrollOffset Preference Key
+
+/// Preference key to track scroll offset - Rules: Track user scrolling interaction
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 

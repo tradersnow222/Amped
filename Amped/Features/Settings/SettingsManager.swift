@@ -119,7 +119,7 @@ final class SettingsManager: ObservableObject {
             self.reminderTime = Calendar.current.date(from: components) ?? Date()
         }
         
-        self.showUnavailableMetrics = defaults.bool(forKey: SettingKey.showUnavailableMetrics.rawValue, defaultValue: true)
+        self.showUnavailableMetrics = defaults.bool(forKey: SettingKey.showUnavailableMetrics.rawValue, defaultValue: false)
         self.showRealtimeCountdown = defaults.bool(forKey: SettingKey.showRealtimeCountdown.rawValue, defaultValue: true)
     }
     
@@ -138,7 +138,7 @@ final class SettingsManager: ObservableObject {
         components.minute = 0
         reminderTime = Calendar.current.date(from: components) ?? Date()
         
-        showUnavailableMetrics = true
+        showUnavailableMetrics = false
         showRealtimeCountdown = true
     }
 }

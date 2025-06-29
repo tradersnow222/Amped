@@ -33,19 +33,21 @@ struct ActivityImpactCalculator {
     
     /// Calculate impact for active energy burned
     static func calculateActiveEnergyImpact(calories: Double, date: Date) -> MetricImpactDetail {
-        // Baseline: 400 calories/day is neutral (simplified)
-        // Each 100 calories over/under affects lifespan by 3 minutes
+        // Following rule: ACCURATE DATA DISPLAYED TO THE USER IS KING
+        // Always calculate exact impact based on optimal baseline of 400 calories
+        // Each 100 calories over/under affects lifespan by 2 minutes
         
-        let baseline = 400.0
-        let caloriesImpactPer100 = 3.0 // minutes per 100 calories
+        let optimalBaseline = 400.0 // Midpoint of previous neutral zone
+        let caloriesImpactPer100 = 2.0 // minutes per 100 calories
         
-        let difference = calories - baseline
+        // Calculate exact impact from optimal baseline
+        let difference = calories - optimalBaseline
         let impactMinutes = (difference / 100.0) * caloriesImpactPer100
         
         let comparison: ComparisonResult
-        if calories > baseline * 1.2 {
+        if calories > optimalBaseline * 1.25 { // Above 500
             comparison = .better
-        } else if calories < baseline * 0.8 {
+        } else if calories < optimalBaseline * 0.75 { // Below 300
             comparison = .worse
         } else {
             comparison = .same

@@ -16,7 +16,6 @@ struct SignInPopupView: View {
     // Animation states
     @State private var showContent = false
     @State private var animateAppleButton = false
-    @State private var animateGoogleButton = false
     
     // MARK: - Body
     
@@ -33,24 +32,25 @@ struct SignInPopupView: View {
             // Main card content - Rules: Similar style to battery info cards
             VStack(spacing: 0) {
                 // Header section with title
-                VStack(spacing: 12) {
-                    // Title with brand emphasis
-                    Text("Create an account to")
-                        .font(.system(size: 24, weight: .medium))
+                VStack(spacing: 8) {
+                    // Simple, realistic messaging - Rules: Following user requirement for not overpromising
+                    Text("Join early")
+                        .font(.system(size: 32, weight: .bold))
                         .foregroundColor(themeManager.textColor)
                     
-                    Text("save your progress.")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(themeManager.textColor)
+                    // Vague but enticing subtitle
+                    Text("Get future perks")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.ampedGreen)
                 }
                 .multilineTextAlignment(.center)
-                .padding(.top, 32)
+                .padding(.top, 40)
                 .padding(.horizontal, 24)
-                .padding(.bottom, 32)
+                .padding(.bottom, 40)
                 
-                // Sign-in buttons section
-                VStack(spacing: 16) {
-                    // Sign in with Apple button - Rules: Primary option
+                // Single sign-in button - Rules: Apple Sign-In only
+                VStack(spacing: 20) {
+                    // Sign in with Apple button - Rules: Only option for simplicity
                     SignInWithAppleButtonWrapper(
                         onRequest: { request in
                             request.requestedScopes = [.fullName, .email]
@@ -60,60 +60,25 @@ struct SignInPopupView: View {
                             handleSignInWithAppleResult(result)
                         }
                     )
-                    .frame(height: 50)
-                    .cornerRadius(8)
-                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                    .frame(height: 52)
+                    .cornerRadius(10)
+                    .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
                     .scaleEffect(animateAppleButton ? 1.0 : 0.95)
                     .opacity(animateAppleButton ? 1.0 : 0.0)
                     
-                    // Sign in with Google button - Rules: Secondary option
+                    // Subtle skip option - Rules: Less prominent to encourage sign-up
                     Button(action: {
-                        handleGoogleSignIn()
+                        dismissPopup()
                     }) {
-                        HStack(spacing: 12) {
-                            // Rules: Use "G" text as placeholder until Google logo asset is added
-                            Text("G")
-                                .font(.system(size: 20, weight: .bold, design: .serif))
-                                .foregroundColor(.init(red: 0.25, green: 0.52, blue: 0.96)) // Google blue
-                                .frame(width: 20, height: 20)
-                            
-                            Text("Continue with Google")
-                                .font(.system(size: 17, weight: .medium))
-                                .foregroundColor(.black)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Color.white)
-                        .cornerRadius(8)
-                        .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                        Text("Maybe later")
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(themeManager.textColor.opacity(0.4))
                     }
-                    .scaleEffect(animateGoogleButton ? 1.0 : 0.95)
-                    .opacity(animateGoogleButton ? 1.0 : 0.0)
-                    .hapticFeedback(.medium)
-                    
-                    // Continue with Email option - Rules: Tertiary option
-                    Button(action: {
-                        handleEmailSignIn()
-                    }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "envelope.fill")
-                                .font(.system(size: 18))
-                                .foregroundColor(.gray)
-                            
-                            Text("Continue with Email")
-                                .font(.system(size: 17, weight: .medium))
-                                .foregroundColor(.gray)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(8)
-                    }
-                    .opacity(animateGoogleButton ? 1.0 : 0.0)
+                    .opacity(animateAppleButton ? 1.0 : 0.0)
                     .hapticFeedback(.light)
                 }
                 .padding(.horizontal, 24)
-                .padding(.bottom, 40)
+                .padding(.bottom, 28)
             }
             .background(Color.cardBackground)
             .cornerRadius(20)
@@ -149,12 +114,6 @@ struct SignInPopupView: View {
                 animateAppleButton = true
             }
         }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            withAnimation(.easeOut(duration: 0.3)) {
-                animateGoogleButton = true
-            }
-        }
     }
     
     private func dismissPopup() {
@@ -186,24 +145,6 @@ struct SignInPopupView: View {
             viewModel.errorMessage = error.localizedDescription
             viewModel.showError = true
         }
-    }
-    
-    private func handleGoogleSignIn() {
-        logger.info("🔍 Google Sign In tapped")
-        
-        // TODO: Implement Google Sign-In SDK integration
-        // For now, show coming soon message
-        viewModel.errorMessage = "Google Sign-In coming soon!"
-        viewModel.showError = true
-    }
-    
-    private func handleEmailSignIn() {
-        logger.info("✉️ Email Sign In tapped")
-        
-        // TODO: Implement email sign-in flow
-        // For now, show coming soon message
-        viewModel.errorMessage = "Email Sign-In coming soon!"
-        viewModel.showError = true
     }
 }
 

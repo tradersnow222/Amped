@@ -248,9 +248,9 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
     /// Returns the color associated with this metric type
     var color: Color {
         switch self {
-        case .steps, .exerciseMinutes, .heartRateVariability, .sleepHours, .nutritionQuality, .socialConnectionsQuality, .vo2Max, .oxygenSaturation:
+        case .steps, .exerciseMinutes, .heartRateVariability, .sleepHours, .nutritionQuality, .socialConnectionsQuality, .activeEnergyBurned, .vo2Max, .oxygenSaturation:
             return Color.ampedGreen
-        case .restingHeartRate, .bodyMass, .smokingStatus, .alcoholConsumption, .activeEnergyBurned, .stressLevel:
+        case .restingHeartRate, .bodyMass, .smokingStatus, .alcoholConsumption, .stressLevel:
             return Color.ampedRed
         }
     }
@@ -278,9 +278,9 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
     /// Indicates whether a higher value is better for this metric
     var isHigherBetter: Bool {
         switch self {
-        case .steps, .exerciseMinutes, .heartRateVariability, .sleepHours, .nutritionQuality, .socialConnectionsQuality, .vo2Max, .oxygenSaturation:
+        case .steps, .exerciseMinutes, .heartRateVariability, .sleepHours, .nutritionQuality, .socialConnectionsQuality, .activeEnergyBurned, .vo2Max, .oxygenSaturation:
             return true
-        case .restingHeartRate, .bodyMass, .smokingStatus, .alcoholConsumption, .activeEnergyBurned, .stressLevel:
+        case .restingHeartRate, .bodyMass, .smokingStatus, .alcoholConsumption, .stressLevel:
             return false
         }
     }

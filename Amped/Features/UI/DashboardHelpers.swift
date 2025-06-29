@@ -141,7 +141,7 @@ struct PeriodSelectorView: View {
 struct LoadingBatteryPlaceholder: View {
     var body: some View {
         BatteryIndicatorView(
-            title: "Loading...", 
+            title: "Calculating your lifespan...", 
             value: "--", 
             chargeLevel: 0.0, 
             numberOfSegments: 5, 
@@ -179,10 +179,10 @@ struct BatterySystemView: View {
                         lifeProjection: lifeProjection,
                         currentUserAge: currentUserAge
                     )
-                    .frame(maxWidth: 200) // Fixed width for single battery
+                    .frame(maxWidth: 170) // Reduced width from 200 to give more space to metrics
                 } else {
                     LoadingBatteryPlaceholder()
-                    .frame(maxWidth: 200) // Fixed width for single battery
+                    .frame(maxWidth: 170) // Reduced width from 200 to give more space to metrics
                 }
                 
                 Spacer()

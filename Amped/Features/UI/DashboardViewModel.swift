@@ -202,8 +202,67 @@ class DashboardViewModel: ObservableObject {
         }
     }
     
-    func refreshData() {
+    func refreshData() async {
         logger.info("🔄 Manual data refresh requested")
-        loadData()
+        
+        await MainActor.run {
+            isLoading = true
+            errorMessage = nil
+        }
+        
+        // Check and request HealthKit permissions if needed
+        if !healthKitManager.hasAllPermissions && !healthKitManager.hasCriticalPermissions {
+            logger.info("📝 No HealthKit permissions found, requesting authorization...")
+            
+            let permissionsGranted = await healthKitManager.requestAuthorization()
+            logger.info("✅ Permission request completed. Granted: \(permissionsGranted)")
+            
+            if !permissionsGranted {
+                await MainActor.run {
+                    self.errorMessage = "HealthKit permissions are required for health data analysis"
+                    self.isLoading = false
+                    logger.warning("⚠️ HealthKit permissions were denied")
+                }
+                return
+            }
+        }
+        
+        // Fetch fresh data
+        do {
+            logger.info("📊 Fetching period-specific health metrics for \(self.selectedTimePeriod.displayName)")
+            let periodMetrics = try await healthDataService.fetchHealthMetricsForPeriod(timePeriod: self.selectedTimePeriod)
+            
+            await MainActor.run {
+                logger.info("✅ Retrieved \(periodMetrics.count) metrics for \(self.selectedTimePeriod.displayName)")
+                
+                // Update the displayed health metrics
+                self.healthMetrics = periodMetrics
+                
+                // Calculate life impact
+                lifeImpactData = lifeImpactService.calculateLifeImpact(
+                    from: periodMetrics,
+                    for: self.selectedTimePeriod,
+                    userProfile: self.userProfile
+                )
+                
+                // Calculate life projection
+                lifeProjection = lifeProjectionService.calculateLifeProjection(
+                    from: periodMetrics,
+                    userProfile: self.userProfile
+                )
+                
+                self.isLoading = false
+                
+                if let impactData = lifeImpactData {
+                    logger.info("⚡ Refresh complete - Life impact: \(impactData.totalImpact.displayString)")
+                }
+            }
+        } catch {
+            await MainActor.run {
+                logger.error("❌ Failed to refresh data: \(error.localizedDescription)")
+                self.errorMessage = "Failed to refresh data: \(error.localizedDescription)"
+                self.isLoading = false
+            }
+        }
     }
 } 

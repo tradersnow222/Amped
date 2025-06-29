@@ -21,10 +21,6 @@ struct HealthMetricsListView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            // Header section with battery connection
-            headerSection
-                .accessibilityAddTraits(.isHeader)
-            
             // Simple metrics list
             if metrics.isEmpty {
                 emptyStateView
@@ -43,33 +39,6 @@ struct HealthMetricsListView: View {
     }
     
     // MARK: - UI Components
-    
-    /// Header section with visual connection to the battery
-    private var headerSection: some View {
-        HStack(alignment: .center, spacing: 8) {
-            // Battery icon with animation
-            ZStack {
-                Image(systemName: "battery.100")
-                    .font(.title2)
-                    .foregroundColor(.fullPower)
-                    .scaleEffect(isAnimating ? 1.1 : 1.0)
-                    .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isAnimating)
-            }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Your Health Factors")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                
-                Text("Powering your life energy")
-                    .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.8))
-            }
-            
-            Spacer()
-        }
-    }
     
     /// Simple list of health metrics
     private var metricsListView: some View {
