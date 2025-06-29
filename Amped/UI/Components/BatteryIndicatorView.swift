@@ -34,9 +34,9 @@ struct BatteryIndicatorView: View {
     private let terminalHeight: CGFloat = 10
     private let terminalWidthRatio: CGFloat = 0.2
     // Fixed battery height for consistency - reduced to show more health factors
-    private let fixedBatteryHeight: CGFloat = 220  // Reduced from 260
+    private let fixedBatteryHeight: CGFloat = 176  // 20% shorter than 220
     // Fixed overall card height for consistency between cards - reduced proportionally
-    private let fixedCardHeight: CGFloat = 350  // Reduced from 390
+    private let fixedCardHeight: CGFloat = 320  // Adjusted for shorter battery height
     // Info button size
     private let infoButtonSize: CGFloat = 18
     // Title text font size - increased slightly for better visibility

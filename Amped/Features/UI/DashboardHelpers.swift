@@ -179,10 +179,10 @@ struct BatterySystemView: View {
                         lifeProjection: lifeProjection,
                         currentUserAge: currentUserAge
                     )
-                    .frame(maxWidth: 170) // Reduced width from 200 to give more space to metrics
+                    .frame(maxWidth: 220) // Increased width for wider battery
                 } else {
                     LoadingBatteryPlaceholder()
-                    .frame(maxWidth: 170) // Reduced width from 200 to give more space to metrics
+                    .frame(maxWidth: 220) // Increased width for wider battery
                 }
                 
                 Spacer()

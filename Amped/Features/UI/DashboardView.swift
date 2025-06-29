@@ -31,6 +31,18 @@ struct DashboardView: View {
     
     // MARK: - Computed Properties
     
+    /// Convert period type to proper adjective form for display
+    private var periodAdjective: String {
+        switch selectedPeriod {
+        case .day:
+            return "daily"
+        case .month:
+            return "monthly"
+        case .year:
+            return "yearly"
+        }
+    }
+    
     /// Filtered metrics based on user settings
     private var filteredMetrics: [HealthMetric] {
         var metrics = viewModel.healthMetrics
@@ -300,40 +312,52 @@ struct DashboardView: View {
                             .padding(.vertical, 16)
                             .accessibilityAddTraits(.isHeader)
                             
-                            // Total Impact Summary
+                            // Spacing after header
+                            Spacer()
+                                .frame(height: 8)
+                            
+                            // Total Impact Summary - Better visual integration
                             if totalTimeImpact != 0 {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("\(selectedPeriod.rawValue) Total")
-                                            .font(.subheadline)
-                                            .foregroundColor(.white.opacity(0.7))
-                                        
-                                        HStack(spacing: 6) {
-                                            Image(systemName: totalTimeImpact >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                                                .font(.title3)
-                                                .foregroundColor(totalTimeImpact >= 0 ? .ampedGreen : .ampedRed)
-                                            
-                                            Text(formattedTotalImpact)
-                                                .font(.title3)
-                                                .fontWeight(.semibold)
-                                                .foregroundColor(totalTimeImpact >= 0 ? .ampedGreen : .ampedRed)
-                                        }
-                                    }
+                                VStack(spacing: 4) {
+                                    // Period label with more natural wording
+                                    Text("Total \(periodAdjective) impact")
+                                        .font(.caption2)
+                                        .fontWeight(.medium)
+                                        .foregroundColor(.white.opacity(0.5))
+                                        .textCase(.uppercase)
+                                        .tracking(0.3)
                                     
-                                    Spacer()
+                                    // Main impact display
+                                    HStack(spacing: 6) {
+                                        Image(systemName: totalTimeImpact >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                                            .font(.callout)
+                                            .foregroundColor(totalTimeImpact >= 0 ? .ampedGreen : .ampedRed)
+                                            .symbolRenderingMode(.hierarchical)
+                                        
+                                        Text(formattedTotalImpact)
+                                            .font(.headline)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.white)
+                                    }
                                 }
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 14)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
                                         .fill(Color.cardBackground)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .stroke(totalTimeImpact >= 0 ? Color.ampedGreen.opacity(0.3) : Color.ampedRed.opacity(0.3), lineWidth: 1)
+                                        .opacity(0.6)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(
+                                            (totalTimeImpact >= 0 ? Color.ampedGreen : Color.ampedRed).opacity(0.2),
+                                            lineWidth: 1
                                         )
                                 )
-                                .padding(.horizontal)
-                                .padding(.bottom, 12)
+                                .padding(.horizontal, 16)
+                                .padding(.top, 8)
+                                .padding(.bottom, 16)
                             }
                             
                             // Power Sources Metrics section
