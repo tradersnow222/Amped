@@ -10,15 +10,22 @@ struct HealthMetricRow: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            // Icon with background
+            // Icon with background - Rules: Subtle visual differentiation
             ZStack {
                 Circle()
-                    .fill(Color.lightCardBackground)
+                    .fill(iconBackgroundColor)
                     .frame(width: 40, height: 40)
                 
-                Image(systemName: metric.type.symbolName)
+                // Add subtle ring for manual metrics
+                if metric.source == .userInput {
+                    Circle()
+                        .strokeBorder(Color.white.opacity(0.15), lineWidth: 1.5)
+                        .frame(width: 40, height: 40)
+                }
+                
+                Image(systemName: iconName)
                     .font(.system(size: 16))
-                    .foregroundColor(impactColor)
+                    .foregroundColor(iconForegroundColor)
             }
             .accessibilityHidden(true)
             
@@ -32,12 +39,12 @@ struct HealthMetricRow: View {
                 HStack(alignment: .center, spacing: 6) {
                     Text(metric.formattedValue)
                         .font(.system(size: 14))
-                        .foregroundColor(.gray)
+                        .foregroundColor(valueTextColor)
                     
                     if !metric.unitString.isEmpty {
                         Text(metric.unitString)
                             .font(.system(size: 12))
-                            .foregroundColor(.gray.opacity(0.7))
+                            .foregroundColor(valueTextColor.opacity(0.7))
                     }
                 }
             }
@@ -81,6 +88,65 @@ struct HealthMetricRow: View {
         .accessibilityValue(accessibilityImpactValue)
         .accessibilityHint("Tap for details")
         .accessibilityAddTraits(.isButton)
+    }
+    
+    // MARK: - Visual Differentiation
+    
+    /// Icon background color based on source
+    private var iconBackgroundColor: Color {
+        if metric.source == .userInput {
+            // Slightly darker/muted background for manual metrics
+            return Color.lightCardBackground.opacity(0.6)
+        } else {
+            // Brighter background for HealthKit metrics
+            return Color.lightCardBackground
+        }
+    }
+    
+    /// Icon name - use outlined icons for manual metrics
+    private var iconName: String {
+        if metric.source == .userInput {
+            // Use alternative icon styles for manual metrics where available
+            switch metric.type {
+            case .nutritionQuality:
+                return "leaf" // Instead of leaf.fill
+            case .smokingStatus:
+                return "smoke" // Instead of smoke.fill
+            case .alcoholConsumption:
+                return "wineglass" // Already outline style
+            case .socialConnectionsQuality:
+                return "person.2" // Instead of person.2.fill
+            case .stressLevel:
+                return "brain" // Instead of brain.head.profile
+            default:
+                return metric.type.symbolName
+            }
+        } else {
+            // Use default (often filled) icons for HealthKit
+            return metric.type.symbolName
+        }
+    }
+    
+    /// Icon foreground color based on source and impact
+    private var iconForegroundColor: Color {
+        if metric.source == .userInput {
+            // More muted color for manual metrics
+            return impactColor.opacity(0.8)
+        } else {
+            // Full color for HealthKit metrics
+            return impactColor
+        }
+    }
+    
+    /// Value text color based on source
+    private var valueTextColor: Color {
+        if metric.source == .userInput {
+            // Slightly muted for manual metrics
+            return Color.gray.opacity(0.9)
+        } else {
+            // Standard gray for HealthKit
+            return Color.gray
+        }
     }
     
     // MARK: - Helper Methods

@@ -86,6 +86,26 @@ class DashboardViewModel: ObservableObject {
                 self?.loadDataForPeriod(timePeriod)
             }
             .store(in: &cancellables)
+        
+        // Rules: Listen for questionnaire updates to refresh data
+        NotificationCenter.default.publisher(for: NSNotification.Name("QuestionnaireDataUpdated"))
+            .sink { [weak self] _ in
+                self?.logger.info("📝 Questionnaire data updated, refreshing dashboard")
+                Task {
+                    await self?.refreshData()
+                }
+            }
+            .store(in: &cancellables)
+        
+        // Rules: Listen for app data reset
+        NotificationCenter.default.publisher(for: NSNotification.Name("AppDataReset"))
+            .sink { [weak self] _ in
+                self?.logger.info("🗑️ App data reset, clearing and reloading")
+                Task {
+                    await self?.handleDataReset()
+                }
+            }
+            .store(in: &cancellables)
     }
     
     /// Load data for a specific time period (both metrics and impact calculations)
@@ -264,5 +284,19 @@ class DashboardViewModel: ObservableObject {
                 self.isLoading = false
             }
         }
+    }
+    
+    /// Handle app data reset
+    private func handleDataReset() async {
+        await MainActor.run {
+            // Clear all data
+            healthMetrics = []
+            lifeImpactData = nil
+            lifeProjection = nil
+            errorMessage = nil
+        }
+        
+        // Reload fresh data
+        loadData()
     }
 } 

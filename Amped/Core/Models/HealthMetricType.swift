@@ -147,6 +147,40 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         }
     }
     
+    /// Detailed description for the About section
+    var detailedDescription: String {
+        switch self {
+        case .steps: 
+            return "Daily steps directly correlate with cardiovascular health and longevity. Research shows that 10,000 steps per day can add years to your life."
+        case .exerciseMinutes:
+            return "Regular exercise strengthens your heart, improves mood, and significantly reduces mortality risk. Aim for at least 150 minutes weekly."
+        case .sleepHours:
+            return "Quality sleep is essential for cellular repair, brain health, and immune function. Most adults need 7-9 hours nightly."
+        case .restingHeartRate:
+            return "A lower resting heart rate indicates better cardiovascular fitness. Elite athletes often have rates below 60 bpm."
+        case .heartRateVariability:
+            return "HRV reflects your body's ability to adapt to stress. Higher variability generally indicates better health and recovery."
+        case .bodyMass:
+            return "Maintaining a healthy weight reduces strain on your cardiovascular system and joints, supporting long-term health."
+        case .nutritionQuality:
+            return "A balanced diet rich in nutrients supports overall health, energy levels, and disease prevention."
+        case .smokingStatus:
+            return "Smoking significantly reduces life expectancy. Quitting at any age provides immediate and long-term health benefits."
+        case .alcoholConsumption:
+            return "Moderate alcohol consumption may have some benefits, but excessive drinking significantly harms health and longevity."
+        case .socialConnectionsQuality:
+            return "Strong social connections are as important as physical health factors, reducing stress and improving mental wellbeing."
+        case .activeEnergyBurned:
+            return "Active calories burned through movement and exercise contribute to maintaining a healthy metabolism and weight."
+        case .vo2Max:
+            return "VO2 Max measures your body's ability to use oxygen during exercise, a strong predictor of cardiovascular health."
+        case .oxygenSaturation:
+            return "Blood oxygen levels indicate how well your lungs and circulation deliver oxygen to your tissues."
+        case .stressLevel:
+            return "Chronic stress accelerates aging and increases disease risk. Managing stress is crucial for long-term health."
+        }
+    }
+    
     /// Returns the corresponding HealthKit quantity type if available
     var healthKitType: HKQuantityType? {
         switch self {
@@ -264,14 +298,14 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .heartRateVariability: return 35
         case .sleepHours: return 7
         case .bodyMass: return 70 // kg for average adult
-        case .nutritionQuality: return 5
-        case .smokingStatus: return 0 // 0 = non-smoker
-        case .alcoholConsumption: return 1 // 1 drink per day
-        case .socialConnectionsQuality: return 5
+        case .nutritionQuality: return 5 // 1-10 scale, 5 = average
+        case .smokingStatus: return 10 // 1-10 scale, 10 = never smoked
+        case .alcoholConsumption: return 8 // 1-10 scale, 8 = occasional drinking
+        case .socialConnectionsQuality: return 5 // 1-10 scale, 5 = moderate connections
         case .activeEnergyBurned: return 400 // calories
         case .vo2Max: return 40 // ml/kg/min
         case .oxygenSaturation: return 98 // percent
-        case .stressLevel: return 5 // 0-10 scale
+        case .stressLevel: return 5 // 1-10 scale, 5 = moderate stress
         }
     }
     
@@ -294,14 +328,14 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .heartRateVariability: return 50
         case .sleepHours: return 8
         case .bodyMass: return nil // Depends on height, gender, etc.
-        case .nutritionQuality: return 8
-        case .smokingStatus: return 0
-        case .alcoholConsumption: return 0
-        case .socialConnectionsQuality: return 8
+        case .nutritionQuality: return 8 // 1-10 scale, 8 = above average nutrition
+        case .smokingStatus: return 10 // 1-10 scale, 10 = never smoked (ideal)
+        case .alcoholConsumption: return 10 // 1-10 scale, 10 = never drinks (ideal)
+        case .socialConnectionsQuality: return 8 // 1-10 scale, 8 = good connections
         case .activeEnergyBurned: return 500
         case .vo2Max: return 45
         case .oxygenSaturation: return 100
-        case .stressLevel: return 2
+        case .stressLevel: return 2 // 1-10 scale, 2 = low stress (ideal)
         }
     }
     

@@ -15,6 +15,7 @@ final class SettingsManager: ObservableObject {
         case reminderTime
         case showUnavailableMetrics
         case showRealtimeCountdown
+        case showLifeProjectionAsPercentage
     }
     
     // MARK: - Enums
@@ -94,6 +95,13 @@ final class SettingsManager: ObservableObject {
         }
     }
     
+    /// Whether to show life projection as percentage instead of years
+    @Published var showLifeProjectionAsPercentage: Bool {
+        didSet {
+            UserDefaults.standard.set(showLifeProjectionAsPercentage, forKey: SettingKey.showLifeProjectionAsPercentage.rawValue)
+        }
+    }
+    
     // MARK: - Initialization
     
     init() {
@@ -121,6 +129,7 @@ final class SettingsManager: ObservableObject {
         
         self.showUnavailableMetrics = defaults.bool(forKey: SettingKey.showUnavailableMetrics.rawValue, defaultValue: false)
         self.showRealtimeCountdown = defaults.bool(forKey: SettingKey.showRealtimeCountdown.rawValue, defaultValue: true)
+        self.showLifeProjectionAsPercentage = defaults.bool(forKey: SettingKey.showLifeProjectionAsPercentage.rawValue, defaultValue: false)
     }
     
     // MARK: - Methods
@@ -140,6 +149,7 @@ final class SettingsManager: ObservableObject {
         
         showUnavailableMetrics = false
         showRealtimeCountdown = true
+        showLifeProjectionAsPercentage = false
     }
 }
 

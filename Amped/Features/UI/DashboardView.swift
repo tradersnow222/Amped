@@ -12,6 +12,9 @@ struct DashboardView: View {
     @State private var showingProjectionHelp = false
     @EnvironmentObject var appState: AppState
     
+    // Rules: Add state for showing update health profile
+    @State private var showingUpdateHealthProfile = false
+    
     // Rules: Add state for sign-in popup
     @State private var showSignInPopup = false
     @State private var hasShownSignInPopup = false
@@ -362,7 +365,14 @@ struct DashboardView: View {
                             
                             // Power Sources Metrics section
                             HealthMetricsListView(metrics: filteredMetrics) { metric in
-                                selectedMetric = metric
+                                // Rules: Different handling for manual vs HealthKit metrics
+                                if metric.source == .userInput {
+                                    // For manual metrics, show update health profile
+                                    showingUpdateHealthProfile = true
+                                } else {
+                                    // For HealthKit metrics, show detail view
+                                    selectedMetric = metric
+                                }
                                 HapticManager.shared.playSelection()
                                 
                                 // Rules: Track metric tap as user interaction
@@ -540,12 +550,10 @@ struct DashboardView: View {
             }
         }
         .sheet(item: $selectedMetric) { metric in
-            MetricDetailsView(
-                metric: metric,
-                onClose: {
-                    selectedMetric = nil
-                }
-            )
+            MetricDetailView(metric: metric)
+        }
+        .sheet(isPresented: $showingUpdateHealthProfile) {
+            UpdateHealthProfileView()
         }
         .onAppear {
             // Configure navigation bar appearance to match dark theme

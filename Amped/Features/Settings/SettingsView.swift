@@ -6,297 +6,212 @@ import OSLog
 struct SettingsView: View {
     @EnvironmentObject private var settingsManager: SettingsManager
     @State private var showResetConfirmation = false
-    @State private var isRestoringPurchases = false
-    @State private var showRestoreResult = false
-    @State private var restoreResultMessage = ""
-    @State private var restoreWasSuccessful = false
+    @State private var showingUpdateHealthProfile = false
+    @Environment(\.dismiss) private var dismiss
     
     private let logger = Logger(subsystem: "ai.ampedlife.amped", category: "SettingsView")
     
     var body: some View {
-        Form {
-            preferencesSection
-            notificationsSection
-            subscriptionSection
-            privacySecuritySection
-            supportSection
-            aboutSection
-        }
-        .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            print("🔧 SettingsView body appeared")
-        }
-        .alert("Reset Settings", isPresented: $showResetConfirmation) {
-            Button("Cancel", role: .cancel) { }
-            Button("Reset", role: .destructive) {
-                settingsManager.resetToDefaults()
+        NavigationView {
+            List {
+                ProfileSection(showingUpdateHealthProfile: $showingUpdateHealthProfile)
+                DisplaySection()
+                    .environmentObject(settingsManager)
+                PrivacySection(showResetConfirmation: $showResetConfirmation)
+                AboutSection()
             }
-        } message: {
-            Text("This will reset all settings to their default values. This action cannot be undone.")
-        }
-        .alert(restoreWasSuccessful ? "Purchases Restored" : "Restore Failed", isPresented: $showRestoreResult) {
-            Button("OK") { }
-        } message: {
-            Text(restoreResultMessage)
-        }
-    }
-    
-    // MARK: - Preferences Section
-    
-    private var preferencesSection: some View {
-        Section {
-            // Appearance Setting
-            Picker("Appearance", selection: $settingsManager.preferredDisplayMode) {
-                ForEach(SettingsManager.DisplayMode.allCases) { mode in
-                    Text(mode.displayName).tag(mode)
-                }
-            }
-            .pickerStyle(.menu)
-            
-            // Units Setting
-            Toggle("Use Metric System", isOn: $settingsManager.useMetricSystem)
-                .toggleStyle(.switch)
-            
-            // Metrics Visibility Setting
-            Toggle("Show metrics with no data", isOn: $settingsManager.showUnavailableMetrics)
-                .toggleStyle(.switch)
-            
-            // Realtime Countdown Setting
-            Toggle("Realtime Countdown", isOn: $settingsManager.showRealtimeCountdown)
-                .toggleStyle(.switch)
-        } header: {
-            Text("PREFERENCES")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-    }
-    
-    // MARK: - Notifications Section
-    
-    private var notificationsSection: some View {
-        Section {
-            Toggle("Enable Notifications", isOn: $settingsManager.notificationsEnabled)
-                .toggleStyle(.switch)
-        } header: {
-            Text("NOTIFICATIONS")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-    }
-    
-    // MARK: - Subscription Section
-    
-    private var subscriptionSection: some View {
-        Section {
-            // Manage Subscription
-            Button {
-                openManageSubscriptions()
-            } label: {
-                HStack {
-                    Text("Manage Subscription")
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            
-            // Restore Purchases (for edge cases only)
-            Button {
-                restorePurchases()
-            } label: {
-                HStack {
-                    if isRestoringPurchases {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle())
-                            .scaleEffect(0.8)
-                    } else {
-                        Text("Restore Purchases")
-                            .foregroundColor(.primary)
+            .listStyle(InsetGroupedListStyle())
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
                     }
-                    
-                    Spacer()
                 }
             }
-            .disabled(isRestoringPurchases)
-        } header: {
-            Text("SUBSCRIPTION")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        } footer: {
-            Text("Use 'Restore Purchases' if you've switched devices or Apple IDs and need to restore your subscription access.")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            .alert("Reset All Data?", isPresented: $showResetConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Reset", role: .destructive) {
+                    resetAllData()
+                }
+            } message: {
+                Text("This action cannot be undone. All your health data, settings, and preferences will be permanently deleted.")
+            }
         }
-    }
-    
-    // MARK: - Privacy & Security Section
-    
-    private var privacySecuritySection: some View {
-        Section {
-            NavigationLink(destination: PrivacyPolicyView()) {
-                HStack {
-                    Text("Privacy Policy")
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-        } header: {
-            Text("PRIVACY & SECURITY")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-    }
-    
-    // MARK: - Support Section
-    
-    private var supportSection: some View {
-        Section {
-            NavigationLink(destination: TermsOfServiceView()) {
-                HStack {
-                    Text("Terms of Service")
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            
-            Button(role: .destructive) {
-                showResetConfirmation = true
-            } label: {
-                HStack {
-                    Text("Reset All Settings")
-                        .foregroundColor(.red)
-                    
-                    Spacer()
-                }
-            }
-        } header: {
-            Text("SUPPORT")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-    }
-    
-    // MARK: - About Section
-    
-    private var aboutSection: some View {
-        Section {
-            HStack {
-                Text("Version")
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                Text("1.0.0")
-                    .foregroundColor(.secondary)
-            }
-        } header: {
-            Text("ABOUT")
-                .font(.caption)
-                .foregroundColor(.secondary)
+        .sheet(isPresented: $showingUpdateHealthProfile) {
+            UpdateHealthProfileView()
         }
     }
     
     // MARK: - Helper Methods
     
-    private func openManageSubscriptions() {
-        Task {
-            do {
-                // Safely get the window scene
-                guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
-                    // Fallback to App Store URL if we can't get window scene
-                    logger.warning("Could not get window scene, falling back to App Store URL")
-                    if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
-                        await UIApplication.shared.open(url)
-                    }
-                    return
-                }
-                
-                try await AppStore.showManageSubscriptions(in: windowScene)
-            } catch {
-                logger.error("Failed to open manage subscriptions: \(error.localizedDescription)")
-                // Fallback to App Store settings
-                if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
-                    await UIApplication.shared.open(url)
-                }
-            }
-        }
-    }
-    
-    private func restorePurchases() {
-        isRestoringPurchases = true
+    private func resetAllData() {
+        // Reset settings
+        settingsManager.resetToDefaults()
         
-        Task {
-            do {
-                logger.info("Restoring purchases from Settings")
+        // Clear questionnaire data
+        QuestionnaireManager().clearAllData()
+        
+        // Post notification to refresh app
+        NotificationCenter.default.post(
+            name: NSNotification.Name("AppDataReset"),
+            object: nil
+        )
+        
+        dismiss()
+    }
+}
+
+// MARK: - Profile Section
+
+struct ProfileSection: View {
+    @Binding var showingUpdateHealthProfile: Bool
+    
+    var body: some View {
+        Section {
+            HStack {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.ampedGreen)
+                    .frame(width: 40)
                 
-                // Sync with App Store
-                try await AppStore.sync()
-                
-                // Check if any subscriptions were restored
-                // This is a basic check - you might want to use your StoreKitManager here
-                let hasActiveSubscription = await checkForActiveSubscriptions()
-                
-                await MainActor.run {
-                    isRestoringPurchases = false
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Your Profile")
+                        .font(.headline)
+                        .foregroundColor(.primary)
                     
-                    if hasActiveSubscription {
-                        restoreWasSuccessful = true
-                        restoreResultMessage = "Your subscription has been restored successfully!"
-                    } else {
-                        restoreWasSuccessful = false
-                        restoreResultMessage = "No active subscriptions found to restore. If you believe this is an error, please contact support."
-                    }
-                    
-                    showRestoreResult = true
+                    Text("Manage your health factors")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
                 
-            } catch {
-                await MainActor.run {
-                    isRestoringPurchases = false
-                    restoreWasSuccessful = false
-                    restoreResultMessage = "Failed to restore purchases. Please try again or contact support if the issue persists."
-                    showRestoreResult = true
-                }
-                
-                logger.error("Failed to restore purchases: \(error.localizedDescription)")
+                Spacer()
             }
+            .padding(.vertical, 8)
+            
+            Button {
+                showingUpdateHealthProfile = true
+            } label: {
+                HStack {
+                    Image(systemName: "square.and.pencil")
+                        .font(.body)
+                        .foregroundColor(.ampedGreen)
+                        .frame(width: 30)
+                    
+                    Text("Update Health Profile")
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+            }
+        } header: {
+            Text("Profile")
         }
     }
+}
+
+// MARK: - Display Section
+
+struct DisplaySection: View {
+    @EnvironmentObject var settingsManager: SettingsManager
     
-    private func checkForActiveSubscriptions() async -> Bool {
-        // Check for active subscription transactions
-        for await result in Transaction.currentEntitlements {
-            switch result {
-            case .verified(let transaction):
-                // Check if this is a subscription and it's active
-                if let expirationDate = transaction.expirationDate {
-                    if expirationDate > Date() {
-                        return true // Found active subscription
+    var body: some View {
+        Section {
+            Toggle(isOn: $settingsManager.showLifeProjectionAsPercentage) {
+                HStack {
+                    Image(systemName: "percent")
+                        .font(.body)
+                        .foregroundColor(.ampedGreen)
+                        .frame(width: 30)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Show Life as Percentage")
+                            .font(.body)
+                        Text("Display remaining life as %")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
-                } else {
-                    // No expiration date means it's active (shouldn't happen for subscriptions though)
-                    return true
                 }
-            case .unverified:
-                continue
             }
+            .tint(.ampedGreen)
+            
+            Toggle(isOn: $settingsManager.showUnavailableMetrics) {
+                HStack {
+                    Image(systemName: "eye.slash")
+                        .font(.body)
+                        .foregroundColor(.ampedGreen)
+                        .frame(width: 30)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Show Unavailable Metrics")
+                            .font(.body)
+                        Text("Display metrics with no data")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .tint(.ampedGreen)
+        } header: {
+            Text("Display")
         }
-        return false
+    }
+}
+
+// MARK: - Privacy Section
+
+struct PrivacySection: View {
+    @Binding var showResetConfirmation: Bool
+    
+    var body: some View {
+        Section {
+            Button(role: .destructive) {
+                showResetConfirmation = true
+            } label: {
+                HStack {
+                    Image(systemName: "trash")
+                        .font(.body)
+                        .foregroundColor(.red)
+                        .frame(width: 30)
+                    
+                    Text("Reset All Data")
+                        .foregroundColor(.red)
+                }
+            }
+        } header: {
+            Text("Data & Privacy")
+        } footer: {
+            Text("This will delete all your health data and reset the app to its initial state.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+}
+
+// MARK: - About Section
+
+struct AboutSection: View {
+    var body: some View {
+        Section {
+            HStack {
+                Image(systemName: "info.circle")
+                    .font(.body)
+                    .foregroundColor(.ampedGreen)
+                    .frame(width: 30)
+                
+                Text("Version")
+                Spacer()
+                Text("1.0.0")
+                    .foregroundColor(.secondary)
+            }
+        } header: {
+            Text("About")
+        }
     }
 }
 

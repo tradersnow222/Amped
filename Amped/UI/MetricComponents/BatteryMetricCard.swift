@@ -61,7 +61,7 @@ struct BatteryMetricCard: View {
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Image(systemName: metric.type.iconName)
+                Image(systemName: metric.type.symbolName)
                     .font(.title3)
                     .foregroundColor(powerColor)
                 
@@ -100,7 +100,8 @@ struct BatteryMetricCard: View {
         let baseText = metric.formattedValue
         switch metric.type {
         case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
-            return Text("\(baseText) - \(qualitativePowerLabel)")
+            // For manual metrics, just show the qualitative label
+            return Text(qualitativePowerLabel)
         default:
             return Text(baseText)
         }

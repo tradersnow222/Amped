@@ -15,10 +15,11 @@ final class QuestionnaireViewModel: ObservableObject {
     }
     
     enum NutritionQuality: CaseIterable {
-        case veryHealthy        // 9.0 - Most positive
-        case mostlyHealthy      // 7.0
+        case veryHealthy        // 10.0 - Most positive
+        case mostlyHealthy      // 8.0
         case mixed              // 5.0
-        case mostlyUnhealthy    // 3.0 - Most negative
+        case mostlyUnhealthy    // 2.0
+        case veryUnhealthy      // 1.0 - Most negative
         
         var displayName: String {
             switch self {
@@ -26,22 +27,24 @@ final class QuestionnaireViewModel: ObservableObject {
             case .mostlyHealthy: return "Mostly Healthy\n(balanced diet)"
             case .mixed: return "Mixed\n(some healthy, some processed)"
             case .mostlyUnhealthy: return "Mostly Processed\n(convenience foods)"
+            case .veryUnhealthy: return "Very Unhealthy\n(fast food, highly processed)"
             }
         }
         
         var nutritionValue: Double {
             switch self {
-            case .veryHealthy: return 9.0
-            case .mostlyHealthy: return 7.0
+            case .veryHealthy: return 10.0
+            case .mostlyHealthy: return 8.0
             case .mixed: return 5.0
-            case .mostlyUnhealthy: return 3.0
+            case .mostlyUnhealthy: return 2.0
+            case .veryUnhealthy: return 1.0
             }
         }
     }
     
     enum SmokingStatus: CaseIterable {
-        case never              // 9.0 - Most positive
-        case former             // 6.0
+        case never              // 10.0 - Most positive
+        case former             // 7.0
         case occasionally       // 3.0
         case daily              // 1.0 - Most negative
         
@@ -56,8 +59,8 @@ final class QuestionnaireViewModel: ObservableObject {
         
         var smokingValue: Double {
             switch self {
-            case .never: return 9.0
-            case .former: return 6.0
+            case .never: return 10.0
+            case .former: return 7.0
             case .occasionally: return 3.0
             case .daily: return 1.0
             }
@@ -65,10 +68,11 @@ final class QuestionnaireViewModel: ObservableObject {
     }
     
     enum AlcoholFrequency: CaseIterable {
-        case never              // 9.0 - Most positive
-        case occasionally       // 7.0
+        case never              // 10.0 - Most positive
+        case occasionally       // 8.0
         case severalTimesWeek   // 4.0
-        case daily              // 3.0 - Most negative
+        case daily              // 2.0
+        case heavy              // 1.0 - Most negative
         
         var displayName: String {
             switch self {
@@ -76,24 +80,27 @@ final class QuestionnaireViewModel: ObservableObject {
             case .occasionally: return "Occasionally\n(weekly or less)"
             case .severalTimesWeek: return "Several Times\n(per week)"
             case .daily: return "Daily"
+            case .heavy: return "Heavy Daily\n(multiple drinks daily)"
             }
         }
         
         var alcoholValue: Double {
             switch self {
-            case .never: return 9.0
-            case .occasionally: return 7.0
+            case .never: return 10.0
+            case .occasionally: return 8.0
             case .severalTimesWeek: return 4.0
-            case .daily: return 3.0
+            case .daily: return 2.0
+            case .heavy: return 1.0
             }
         }
     }
     
     enum SocialConnectionsQuality: CaseIterable {
-        case veryStrong         // 9.0 - Most positive
-        case good               // 7.0
+        case veryStrong         // 10.0 - Most positive
+        case good               // 8.0
         case moderate           // 5.0
-        case limited            // 2.0 - Most negative
+        case limited            // 2.0
+        case isolated           // 1.0 - Most negative
         
         var displayName: String {
             switch self {
@@ -101,15 +108,17 @@ final class QuestionnaireViewModel: ObservableObject {
             case .good: return "Good\n(regular engagement)"
             case .moderate: return "Moderate\n(occasional connections)"
             case .limited: return "Limited\n(rare interactions)"
+            case .isolated: return "Isolated\n(minimal social contact)"
             }
         }
         
         var socialValue: Double {
             switch self {
-            case .veryStrong: return 9.0
-            case .good: return 7.0
+            case .veryStrong: return 10.0
+            case .good: return 8.0
             case .moderate: return 5.0
             case .limited: return 2.0
+            case .isolated: return 1.0
             }
         }
     }

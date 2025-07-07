@@ -5,6 +5,11 @@ import OSLog
 struct QuestionnaireData: Codable {
     let deviceTrackingStatus: QuestionnaireViewModel.DeviceTrackingStatus?
     let lifeMotivation: QuestionnaireViewModel.LifeMotivation?
+    let nutritionQuality: Double?
+    let smokingStatus: Double?
+    let alcoholConsumption: Double?
+    let socialConnectionsQuality: Double?
+    let stressLevel: Double?
     let savedDate: Date
 }
 
@@ -60,6 +65,11 @@ final class QuestionnaireManager: ObservableObject {
         let questionnaireData = QuestionnaireData(
             deviceTrackingStatus: viewModel.selectedDeviceTrackingStatus,
             lifeMotivation: viewModel.selectedLifeMotivation,
+            nutritionQuality: viewModel.selectedNutritionQuality?.nutritionValue,
+            smokingStatus: viewModel.selectedSmokingStatus?.smokingValue,
+            alcoholConsumption: viewModel.selectedAlcoholFrequency?.alcoholValue,
+            socialConnectionsQuality: viewModel.selectedSocialConnectionsQuality?.socialValue,
+            stressLevel: 5.0, // Default moderate stress level
             savedDate: Date()
         )
         saveQuestionnaireData(questionnaireData)
@@ -148,7 +158,7 @@ final class QuestionnaireManager: ObservableObject {
         // (This could be expanded to include a stress question in the questionnaire)
         let stressMetric = ManualMetricInput(
             type: .stressLevel,
-            value: 5.0, // Default moderate stress
+            value: 5.0, // Default moderate stress (middle of 1-10 scale)
             date: currentDate,
             notes: "Default value - moderate stress level"
         )
@@ -254,5 +264,12 @@ final class QuestionnaireManager: ObservableObject {
         questionnaireData = nil
         hasCompletedQuestionnaire = false
         logger.info("🗑️ All questionnaire data cleared")
+    }
+    
+    /// Mark questionnaire as completed
+    func markQuestionnaireCompleted() {
+        hasCompletedQuestionnaire = true
+        UserDefaults.standard.set(true, forKey: "hasCompletedQuestionnaire")
+        logger.info("✅ Questionnaire marked as completed")
     }
 } 

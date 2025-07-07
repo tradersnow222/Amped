@@ -85,80 +85,84 @@ struct MetricChartSection: View {
             }
             .frame(maxWidth: .infinity)
         } else {
-            // Chart visualization
-            GeometryReader { geometry in
-                ZStack(alignment: .bottom) {
-                    // Chart grid lines
-                    VStack(spacing: 0) {
-                        ForEach(0..<4) { i in
-                            Divider()
-                                .opacity(i == 0 ? 0 : 1) // Hide top line
-                                .padding(.bottom, i == 0 ? 0 : geometry.size.height / 4 - 1)
-                        }
-                    }
+            // Line chart visualization
+            Chart {
+                ForEach(dataPoints) { point in
+                    LineMark(
+                        x: .value("Time", point.date),
+                        y: .value(metricType.displayName, point.value)
+                    )
+                    .foregroundStyle(lineGradient)
+                    .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
                     
-                    // Bar chart
-                    HStack(alignment: .bottom, spacing: 2) {
-                        ForEach(dataPoints) { point in
-                            VStack(spacing: 4) {
-                                // Bar
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(barColor(for: point))
-                                    .frame(height: calculateBarHeight(point: point, in: geometry.size))
-                                
-                                // Date label
-                                if period == .day {
-                                    Text(formatTime(date: point.date))
-                                        .font(.system(size: 8))
-                                        .foregroundColor(.secondary)
-                                } else {
-                                    Text(formatDate(date: point.date))
-                                        .font(.system(size: 8))
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .padding(.bottom, 16) // Space for date labels
+                    // Area gradient below line
+                    AreaMark(
+                        x: .value("Time", point.date),
+                        y: .value(metricType.displayName, point.value)
+                    )
+                    .foregroundStyle(areaGradient)
+                    
+                    // Data points
+                    PointMark(
+                        x: .value("Time", point.date),
+                        y: .value(metricType.displayName, point.value)
+                    )
+                    .foregroundStyle(.white)
+                    .symbolSize(30)
                 }
             }
+            .chartXAxis {
+                AxisMarks(values: .automatic(desiredCount: 5)) { value in
+                    AxisGridLine()
+                        .foregroundStyle(Color.secondary.opacity(0.2))
+                    AxisTick()
+                        .foregroundStyle(Color.secondary.opacity(0.2))
+                    AxisValueLabel()
+                        .foregroundStyle(Color.secondary)
+                        .font(.caption)
+                }
+            }
+            .chartYAxis {
+                AxisMarks(values: .automatic(desiredCount: 4)) { value in
+                    AxisGridLine()
+                        .foregroundStyle(Color.secondary.opacity(0.2))
+                    AxisTick()
+                        .foregroundStyle(Color.secondary.opacity(0.2))
+                    AxisValueLabel()
+                        .foregroundStyle(Color.secondary)
+                        .font(.caption)
+                }
+            }
+            .chartBackground { chartProxy in
+                Color.clear
+            }
+            .padding(.top, 8)
         }
+    }
+    
+    // MARK: - Chart Styling
+    
+    private var lineGradient: LinearGradient {
+        LinearGradient(
+            colors: [metricType.color, metricType.color.opacity(0.8)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+    
+    private var areaGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                metricType.color.opacity(0.3),
+                metricType.color.opacity(0.1),
+                Color.clear
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
     
     // MARK: - Helper Methods
-    
-    /// Calculate height for a bar based on its value
-    private func calculateBarHeight(point: MetricDataPoint, in size: CGSize) -> CGFloat {
-        guard let minValue = dataPoints.min(by: { $0.value < $1.value })?.value,
-              let maxValue = dataPoints.max(by: { $0.value < $1.value })?.value,
-              minValue != maxValue else {
-            return size.height / 2
-        }
-        
-        let availableHeight = size.height - 25 // Subtract space for labels
-        let valueRange = maxValue - minValue
-        let normalized = (point.value - minValue) / valueRange
-        return max(15, availableHeight * CGFloat(normalized))
-    }
-    
-    /// Get color for a bar based on metric type and value
-    private func barColor(for point: MetricDataPoint) -> Color {
-        let baseColor = metricType.color
-        
-        // Optional: Adjust color based on trend
-        if let comparison = normalizedComparisonToBaseline(for: point.value) {
-            if comparison > 0.2 {
-                return baseColor
-            } else if comparison < -0.2 {
-                return .red.opacity(0.7)
-            } else {
-                return baseColor.opacity(0.7)
-            }
-        }
-        
-        return baseColor.opacity(0.7)
-    }
     
     /// Format time for display (hour)
     private func formatTime(date: Date) -> String {
@@ -217,16 +221,15 @@ struct MetricChartSection: View {
         }
         
         let percentChange = ((last - first) / first) * 100
-        let absoluteChange = last - first
         
         if abs(percentChange) < 5 {
-            return "Your \(metricType.name.lowercased()) has been stable."
+            return "Your \(metricType.name.lowercased()) has remained stable."
         }
         
         let direction = percentChange > 0 ? "increased" : "decreased"
-        let qualifier = (percentChange > 0) == metricType.isHigherBetter ? "improved" : "declined"
+        let qualifier = (percentChange > 0) == metricType.isHigherBetter ? "improved" : "worsened"
         
-        return "Your \(metricType.name.lowercased()) has \(direction) by \(String(format: "%.1f", abs(absoluteChange))) units (\(String(format: "%.1f", abs(percentChange)))%), which has \(qualifier) your battery."
+        return "Your \(metricType.name.lowercased()) has \(direction) by \(String(format: "%.0f", abs(percentChange)))% which has \(qualifier) your energy level."
     }
     
     /// Get insight icon based on data trend

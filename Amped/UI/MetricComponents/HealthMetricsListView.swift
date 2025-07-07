@@ -9,6 +9,7 @@ struct HealthMetricsListView: View {
     
     @State private var isAnimating = false
     @Environment(\.glassTheme) private var glassTheme
+    @EnvironmentObject private var settingsManager: SettingsManager
     
     // MARK: - Initialization
     
@@ -25,7 +26,7 @@ struct HealthMetricsListView: View {
             if metrics.isEmpty {
                 emptyStateView
             } else {
-                metricsListView
+                groupedMetricsView
             }
         }
         .onAppear {
@@ -40,7 +41,77 @@ struct HealthMetricsListView: View {
     
     // MARK: - UI Components
     
-    /// Simple list of health metrics
+    /// Grouped view showing manual and HealthKit metrics separately
+    private var groupedMetricsView: some View {
+        VStack(spacing: 24) {
+            // HealthKit metrics section
+            if !healthKitMetrics.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    // Section header
+                    HStack {
+                        Image(systemName: "waveform.path.ecg")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.6))
+                        
+                        Text("Live Health Data")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white.opacity(0.6))
+                            .textCase(.uppercase)
+                            .tracking(0.5)
+                    }
+                    .padding(.horizontal, 8)
+                    
+                    // Metrics
+                    VStack(spacing: 8) {
+                        ForEach(sortedHealthKitMetrics) { metric in
+                            HealthMetricRow(metric: metric)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    onMetricTap(metric)
+                                }
+                                .transition(.opacity)
+                        }
+                    }
+                }
+            }
+            
+            // Manual metrics section
+            if !manualMetrics.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    // Section header
+                    HStack {
+                        Image(systemName: "person.fill.checkmark")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.6))
+                        
+                        Text("Your Health Profile")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white.opacity(0.6))
+                            .textCase(.uppercase)
+                            .tracking(0.5)
+                    }
+                    .padding(.horizontal, 8)
+                    
+                    // Metrics
+                    VStack(spacing: 8) {
+                        ForEach(sortedManualMetrics) { metric in
+                            HealthMetricRow(metric: metric)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    onMetricTap(metric)
+                                }
+                                .transition(.opacity)
+                        }
+                    }
+                }
+            }
+        }
+        .accessibilitySortPriority(1)
+    }
+    
+    /// Simple list of health metrics (ungrouped)
     private var metricsListView: some View {
         VStack(spacing: 8) {
             ForEach(sortedMetrics) { metric in
@@ -78,18 +149,40 @@ struct HealthMetricsListView: View {
     
     // MARK: - Helper Methods
     
-    /// Sort metrics by impact magnitude (highest impact first)
+    /// Filter metrics by source
+    private var healthKitMetrics: [HealthMetric] {
+        metrics.filter { $0.source == .healthKit }
+    }
+    
+    private var manualMetrics: [HealthMetric] {
+        metrics.filter { $0.source == .userInput }
+    }
+    
+    /// Sort HealthKit metrics by impact magnitude
+    private var sortedHealthKitMetrics: [HealthMetric] {
+        return healthKitMetrics.sorted(by: sortByImpact)
+    }
+    
+    /// Sort manual metrics by impact magnitude
+    private var sortedManualMetrics: [HealthMetric] {
+        return manualMetrics.sorted(by: sortByImpact)
+    }
+    
+    /// Sort all metrics by impact magnitude (highest impact first)
     private var sortedMetrics: [HealthMetric] {
-        return metrics.sorted(by: { metric1, metric2 in
-            // Sort by absolute impact value if available
-            if let impact1 = metric1.impactDetails?.lifespanImpactMinutes,
-               let impact2 = metric2.impactDetails?.lifespanImpactMinutes {
-                return abs(impact1) > abs(impact2)
-            }
-            
-            // Fallback to power level comparison
-            return metric1.powerLevel.sortOrder > metric2.powerLevel.sortOrder
-        })
+        return metrics.sorted(by: sortByImpact)
+    }
+    
+    /// Sorting function by impact
+    private func sortByImpact(_ metric1: HealthMetric, _ metric2: HealthMetric) -> Bool {
+        // Sort by absolute impact value if available
+        if let impact1 = metric1.impactDetails?.lifespanImpactMinutes,
+           let impact2 = metric2.impactDetails?.lifespanImpactMinutes {
+            return abs(impact1) > abs(impact2)
+        }
+        
+        // Fallback to power level comparison
+        return metric1.powerLevel.sortOrder > metric2.powerLevel.sortOrder
     }
 }
 

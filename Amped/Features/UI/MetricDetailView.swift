@@ -27,35 +27,62 @@ struct MetricDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // Header if needed
-                // MetricDetailSections.HeaderSection(
-                //    metric: metric, 
-                //    powerLevel: viewModel.powerLevel,
-                //    powerColor: viewModel.powerColor
-                // )
-                
-                // Metric card
+                // Metric card with battery visualization
                 BatteryMetricCard(metric: metric, showDetails: true)
                     .padding(.horizontal)
                 
-                // Impact section
-                MetricDetailSections.ImpactSection(metric: metric)
+                // Chart section with time period selector
+                VStack(spacing: 16) {
+                    // Time period selector
+                    PeriodSelector(selectedPeriod: $viewModel.selectedPeriod)
+                        .padding(.horizontal)
+                    
+                    // Chart
+                    MetricChartSection(
+                        metricType: metric.type,
+                        dataPoints: viewModel.chartDataPoints,
+                        period: viewModel.selectedPeriod
+                    )
+                    .padding(.horizontal)
+                }
                 
-                // Chart section
-                MetricDetailSections.ChartSection(
-                    metric: metric,
-                    historyData: viewModel.historyData,
-                    getChartYRange: viewModel.getChartYRange
-                )
-                
-                // Research section
-                MetricDetailSections.ResearchSection(metric: metric)
-                
-                // Recommendations section
-                MetricDetailSections.RecommendationsSection(
-                    recommendations: viewModel.recommendations,
-                    logAction: viewModel.logRecommendationAction
-                )
+                // About section - combines research and recommendations
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Image(systemName: "info.circle")
+                            .foregroundColor(themeManager.accentColor)
+                        
+                        Text("About \(metric.type.displayName)")
+                            .style(.headline)
+                    }
+                    .padding(.horizontal)
+                    
+                    VStack(alignment: .leading, spacing: 12) {
+                        // Description
+                        Text(metric.type.detailedDescription)
+                            .style(.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        // Key recommendation
+                        if let primaryRecommendation = viewModel.recommendations.first {
+                            HStack(alignment: .top, spacing: 12) {
+                                Image(systemName: "lightbulb.fill")
+                                    .foregroundColor(.ampedYellow)
+                                    .font(.caption)
+                                
+                                Text(primaryRecommendation.description)
+                                    .style(.bodySecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.ampedYellow.opacity(0.1))
+                            )
+                        }
+                    }
+                    .padding(.horizontal)
+                }
                 
                 Spacer(minLength: 40)
             }
@@ -102,6 +129,14 @@ final class MetricDetailViewModel: ObservableObject {
     @Published var historyData: [HistoryDataPoint] = []
     @Published var recommendations: [MetricRecommendation] = []
     @Published var metric: HealthMetric
+    @Published var selectedPeriod: ImpactDataPoint.PeriodType = .day
+    
+    // Convert history data to chart data points
+    var chartDataPoints: [MetricDataPoint] {
+        historyData.map { 
+            MetricDataPoint(date: $0.date, value: $0.value)
+        }
+    }
     
     // Computed properties for the power level indicator
     var powerLevel: Int {

@@ -87,8 +87,10 @@ struct HealthMetric: Identifiable, Equatable {
         case .oxygenSaturation:
             return "\(Int(value))"
         case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
-            // Manual metrics use a 1-10 scale
-            return "\(Int(value))/10"
+            // Manual metrics use a 1-10 scale with context labels
+            let rating = Int(value)
+            let contextLabel = getContextLabel(for: rating)
+            return "\(rating)/10 (\(contextLabel))"
         }
     }
     
@@ -179,6 +181,24 @@ struct HealthMetric: Identifiable, Equatable {
             date: Date(),
             source: .healthKit
         )
+    }
+    
+    /// Get context label for questionnaire metric ratings (1-10 scale)
+    private func getContextLabel(for rating: Int) -> String {
+        switch rating {
+        case 9...10:
+            return "Excellent"
+        case 7...8:
+            return "Above average"
+        case 4...6:
+            return "Average"
+        case 2...3:
+            return "Below Average"
+        case 1:
+            return "Very poor [ATTENTION NEEDED!]"
+        default:
+            return "Average" // Fallback for any edge cases
+        }
     }
 }
 
