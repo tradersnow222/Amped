@@ -108,7 +108,12 @@ final class SettingsManager: ObservableObject {
         // Load settings from UserDefaults or use defaults
         let defaults = UserDefaults.standard
         
-        self.useMetricSystem = defaults.bool(forKey: SettingKey.useMetricSystem.rawValue, defaultValue: true)
+        // Default to imperial for US/UK locales, metric for others
+        let locale = Locale.current
+        let regionIdentifier = locale.region?.identifier ?? ""
+        let defaultToMetric = !["US", "GB", "MM", "LR"].contains(regionIdentifier)
+        
+        self.useMetricSystem = defaults.bool(forKey: SettingKey.useMetricSystem.rawValue, defaultValue: defaultToMetric)
         self.notificationsEnabled = defaults.bool(forKey: SettingKey.notificationsEnabled.rawValue, defaultValue: true)
         self.showBatteryAnimation = defaults.bool(forKey: SettingKey.showBatteryAnimation.rawValue, defaultValue: true)
         self.privacyAnalyticsEnabled = defaults.bool(forKey: SettingKey.privacyAnalyticsEnabled.rawValue, defaultValue: false)

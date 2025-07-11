@@ -17,11 +17,6 @@ struct DashboardView: View {
     
     // Rules: Add state for sign-in popup
     @State private var showSignInPopup = false
-    @State private var hasShownSignInPopup = false
-    
-    // Rules: Track user interactions - following "make it so sign-in only shows after interaction" requirement
-    @State private var hasInteractedWithDashboard = false
-    @State private var scrollOffset: CGFloat = 0
     
     // Pull-to-refresh state
     @State private var pullDistance: CGFloat = 0
@@ -31,6 +26,14 @@ struct DashboardView: View {
     
     // Battery animation state
     @State private var isBatteryAnimating = false
+    
+    // Page control state for swipeable views
+    @State private var currentPage = 0
+    
+    // Loading states for calculations
+    @State private var isCalculatingImpact = true
+    @State private var isCalculatingLifespan = true
+    @State private var hasInitiallyCalculated = false
     
     // MARK: - Computed Properties
     
@@ -45,16 +48,11 @@ struct DashboardView: View {
             return "yearly"
         }
     }
-    
     /// Filtered metrics based on user settings
     private var filteredMetrics: [HealthMetric] {
         var metrics = viewModel.healthMetrics
         
-        // Debug: Log the metrics state
-        print("🔍 DashboardView: Total metrics before filtering: \(metrics.count)")
-        for metric in metrics {
-            print("  - \(metric.type.displayName): value=\(metric.value), hasImpact=\(metric.impactDetails != nil)")
-        }
+
         
         // If "Show metrics with no data" is enabled, include all HealthKit types
         if settingsManager.showUnavailableMetrics {
@@ -74,7 +72,6 @@ struct DashboardView: View {
                         impactDetails: nil // No impact data for unavailable metrics
                     )
                     metrics.append(placeholderMetric)
-                    print("  + Added placeholder for: \(metricType.displayName)")
                 }
             }
         } else {
@@ -84,12 +81,8 @@ struct DashboardView: View {
                 // 1. A non-zero value, OR
                 // 2. Valid impact details (even if value is 0)
                 let isAvailable = metric.value != 0 || metric.impactDetails != nil
-                if !isAvailable {
-                    print("  ❌ Filtering out unavailable: \(metric.type.displayName)")
-                }
                 return isAvailable
             }
-            print("🔍 DashboardView: After filtering (showUnavailable=false): \(filtered.count) metrics")
             metrics = filtered
         }
         
@@ -116,20 +109,22 @@ struct DashboardView: View {
             return lhsImpact > rhsImpact
         }
     }
-    
     /// Calculate total time impact from all filtered metrics
     private var totalTimeImpact: Double {
-        filteredMetrics
+        let totalImpact = filteredMetrics
             .compactMap { $0.impactDetails?.lifespanImpactMinutes }
             .reduce(0, +)
+        
+        // For month/year views, this is already a daily average
+        // The metrics are averaged, so the impacts are also averaged
+        return totalImpact
     }
     
     /// Format the total time impact for display
     private var formattedTotalImpact: String {
         let absMinutes = abs(totalTimeImpact)
-        let direction = totalTimeImpact >= 0 ? "gained" : "lost"
         
-        // Use similar formatting as HealthMetricRow but for larger values
+        // Use similar formatting as HealthMetricRow but without the "gained/lost" suffix
         let minutesInHour = 60.0
         let minutesInDay = 1440.0
         let minutesInWeek = 10080.0
@@ -140,9 +135,9 @@ struct DashboardView: View {
         if absMinutes >= minutesInYear {
             let years = absMinutes / minutesInYear
             if years >= 2 {
-                return String(format: "%.0f years %@", years, direction)
+                return String(format: "%.0f years", years)
             } else {
-                return String(format: "%.1f year %@", years, direction)
+                return String(format: "%.1f year", years)
             }
         }
         
@@ -150,9 +145,9 @@ struct DashboardView: View {
         if absMinutes >= minutesInMonth {
             let months = absMinutes / minutesInMonth
             if months >= 2 {
-                return String(format: "%.0f months %@", months, direction)
+                return String(format: "%.0f months", months)
             } else {
-                return String(format: "%.1f month %@", months, direction)
+                return String(format: "%.1f month", months)
             }
         }
         
@@ -160,9 +155,9 @@ struct DashboardView: View {
         if absMinutes >= minutesInWeek {
             let weeks = absMinutes / minutesInWeek
             if weeks >= 2 {
-                return String(format: "%.0f weeks %@", weeks, direction)
+                return String(format: "%.0f weeks", weeks)
             } else {
-                return String(format: "%.1f week %@", weeks, direction)
+                return String(format: "%.1f week", weeks)
             }
         }
         
@@ -170,9 +165,9 @@ struct DashboardView: View {
         if absMinutes >= minutesInDay {
             let days = absMinutes / minutesInDay
             if days >= 2 {
-                return String(format: "%.0f days %@", days, direction)
+                return String(format: "%.0f days", days)
             } else {
-                return String(format: "%.1f day %@", days, direction)
+                return String(format: "%.1f day", days)
             }
         }
         
@@ -180,36 +175,85 @@ struct DashboardView: View {
         if absMinutes >= minutesInHour {
             let hours = absMinutes / minutesInHour
             if hours >= 2 {
-                return String(format: "%.0f hours %@", hours, direction)
+                return String(format: "%.0f hours", hours)
             } else {
-                return String(format: "%.1f hour %@", hours, direction)
+                return String(format: "%.1f hour", hours)
             }
         }
         
         // Minutes
         if absMinutes >= 1.0 {
-            return "\(Int(absMinutes)) min \(direction)"
+            return "\(Int(absMinutes)) min"
         }
         
         // For very small values, show seconds
         let absSeconds = absMinutes * 60.0
         if absSeconds < 0.1 {
-            return String(format: "%.3f sec %@", absSeconds, direction)
+            return String(format: "%.3f sec", absSeconds)
         } else if absSeconds < 1.0 {
-            return String(format: "%.2f sec %@", absSeconds, direction)
+            return String(format: "%.2f sec", absSeconds)
         } else if absSeconds < 10.0 {
-            return String(format: "%.1f sec %@", absSeconds, direction)
+            return String(format: "%.1f sec", absSeconds)
         } else {
-            return String(format: "%.0f sec %@", absSeconds, direction)
+            return String(format: "%.0f sec", absSeconds)
+        }
+    }
+    
+    /// Get explanation text for the impact
+    private var impactExplanationText: String {
+        let timeFrame: String
+        switch selectedPeriod {
+        case .day:
+            timeFrame = "the last day"
+        case .month:
+            timeFrame = "the last month"
+        case .year:
+            timeFrame = "the last year"
+        }
+        
+        if totalTimeImpact >= 0 {
+            return "You added \(formattedTotalImpact) to your lifespan within \(timeFrame) due to your habits"
+        } else {
+            return "You lost \(formattedTotalImpact) from your lifespan within \(timeFrame) due to your habits"
         }
     }
     
     // MARK: - Body
     
     var body: some View {
-        GeometryReader { geometry in
+        ZStack {
+            // Dashboard content layer - can be blurred
             ZStack {
-                // Pull-to-refresh indicator
+                // Main content
+                VStack(spacing: 0) {
+                    // Fixed header section with period selector only
+                    PeriodSelectorView(
+                        selectedPeriod: $selectedPeriod,
+                        onPeriodChanged: { period in
+                            // Update the view model's selected time period
+                            let timePeriod = TimePeriod(from: period)
+                            viewModel.selectedTimePeriod = timePeriod
+                        }
+                    )
+                    .padding(.top, 8)
+                    .padding(.bottom, 16)
+                    
+                    // Swipeable content pages using custom container
+                    // Rules: Using SwipeablePageContainer to ensure page dots never overlap content
+                    SwipeablePageContainer(currentPage: $currentPage, pageCount: 2) {
+                        // Page 1: Health Factors with Total Impact
+                        healthFactorsPage
+                            .swipeablePage(0)
+                        
+                        // Page 2: Lifespan Remaining Battery
+                        lifespanBatteryPage
+                            .swipeablePage(1)
+                    }
+                }
+                .offset(y: pullDistance)
+                .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.85), value: pullDistance)
+                
+                // Pull-to-refresh indicator overlay
                 if pullDistance > 0 || isRefreshing {
                     VStack {
                         ZStack {
@@ -236,244 +280,83 @@ struct DashboardView: View {
                         Spacer()
                     }
                     .zIndex(1)
+                    .allowsHitTesting(false) // Don't interfere with TabView gestures
                 }
                 
-                // Main content area
-                VStack(spacing: 0) {
-                    // Fixed header section with period selector only
-                    PeriodSelectorView(
-                        selectedPeriod: $selectedPeriod,
-                        onPeriodChanged: { period in
-                            // Update the view model's selected time period
-                            let timePeriod = TimePeriod(from: period)
-                            viewModel.selectedTimePeriod = timePeriod
-                            
-                            // Rules: Track period selection as user interaction
-                            if !hasInteractedWithDashboard {
-                                hasInteractedWithDashboard = true
-                                checkAndShowSignInIfNeeded()
-                            }
-                        }
-                    )
-                    .padding(.top, 8)
-                    .padding(.bottom, 16)
-                    
-                    // Scrollable content including battery and metrics
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            // Balanced spacing above battery
-                            Spacer()
-                                .frame(height: 8)
-                            
-                            // The dashboard battery system
-                            BatterySystemView(
-                                lifeProjection: viewModel.lifeProjection,
-                                currentUserAge: viewModel.currentUserAge,
-                                onProjectionHelpTapped: { 
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        showingProjectionHelp = true
-                                    }
-                                    
-                                    // Rules: Track battery help tap as user interaction
-                                    if !hasInteractedWithDashboard {
-                                        hasInteractedWithDashboard = true
-                                        checkAndShowSignInIfNeeded()
-                                    }
-                                }
-                            )
-                            .padding(.horizontal)
-                            
-                            // Balanced spacing below battery
-                            Spacer()
-                                .frame(height: 24)
-                            
-                            // Health factors header
-                            HStack(alignment: .center, spacing: 8) {
-                                // Battery icon with animation
-                                ZStack {
-                                    Image(systemName: "battery.100")
-                                        .font(.title2)
-                                        .foregroundColor(.fullPower)
-                                        .scaleEffect(isBatteryAnimating ? 1.1 : 1.0)
-                                        .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isBatteryAnimating)
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Your Health Factors")
-                                        .font(.title2)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.white)
-                                    
-                                    Text("Powering your lifespan")
-                                        .font(.subheadline)
-                                        .foregroundColor(.white.opacity(0.8))
-                                }
-                                
-                                Spacer()
-                            }
-                            .padding(.horizontal)
-                            .padding(.vertical, 16)
-                            .accessibilityAddTraits(.isHeader)
-                            
-                            // Spacing after header
-                            Spacer()
-                                .frame(height: 8)
-                            
-                            // Total Impact Summary - Better visual integration
-                            if totalTimeImpact != 0 {
-                                VStack(spacing: 4) {
-                                    // Period label with more natural wording
-                                    Text("Total \(periodAdjective) impact")
-                                        .font(.caption2)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.white.opacity(0.5))
-                                        .textCase(.uppercase)
-                                        .tracking(0.3)
-                                    
-                                    // Main impact display
-                                    HStack(spacing: 6) {
-                                        Image(systemName: totalTimeImpact >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                                            .font(.callout)
-                                            .foregroundColor(totalTimeImpact >= 0 ? .ampedGreen : .ampedRed)
-                                            .symbolRenderingMode(.hierarchical)
-                                        
-                                        Text(formattedTotalImpact)
-                                            .font(.headline)
-                                            .fontWeight(.semibold)
-                                            .foregroundColor(.white)
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 14)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color.cardBackground)
-                                        .opacity(0.6)
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(
-                                            (totalTimeImpact >= 0 ? Color.ampedGreen : Color.ampedRed).opacity(0.2),
-                                            lineWidth: 1
-                                        )
-                                )
-                                .padding(.horizontal, 16)
-                                .padding(.top, 8)
-                                .padding(.bottom, 16)
-                            }
-                            
-                            // Power Sources Metrics section
-                            HealthMetricsListView(metrics: filteredMetrics) { metric in
-                                // Rules: Different handling for manual vs HealthKit metrics
-                                if metric.source == .userInput {
-                                    // For manual metrics, show update health profile
-                                    showingUpdateHealthProfile = true
-                                } else {
-                                    // For HealthKit metrics, show detail view
-                                    selectedMetric = metric
-                                }
-                                HapticManager.shared.playSelection()
-                                
-                                // Rules: Track metric tap as user interaction
-                                checkAndShowSignInIfNeeded()
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.bottom, 32)
-                        }
+                // Error overlay if needed
+                if let errorMessage = viewModel.errorMessage {
+                    VStack {
+                        Text("Unable to load data")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.bottom, 4)
                         
-                        // Rules: Track scroll position to detect user interaction
-                        GeometryReader { geometry in
-                            Color.clear.preference(
-                                key: ScrollOffsetPreferenceKey.self,
-                                value: -geometry.frame(in: .named("scroll")).origin.y
-                            )
+                        Text(errorMessage)
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                        
+                        Button("Retry") {
+                            viewModel.loadData()
                         }
-                        .frame(height: 0)
+                        .padding()
+                        .background(Color.ampedGreen)
+                        .foregroundColor(.black)
+                        .cornerRadius(8)
+                        .padding(.top, 8)
                     }
-                    .coordinateSpace(name: "scroll")
-                    .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
-                        // Rules: Track significant scrolling as user interaction
-                        scrollOffset = value
-                        if abs(value) > 20 && !hasInteractedWithDashboard {
-                            hasInteractedWithDashboard = true
-                            checkAndShowSignInIfNeeded()
-                        }
-                    }
+                    .padding(24)
+                    .background(Color.black.opacity(0.8))
+                    .cornerRadius(16)
+                    .shadow(radius: 10)
                 }
-                .offset(y: pullDistance)
-                .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.85), value: pullDistance)
-            .withDeepBackground()
-            .blur(radius: showingProjectionHelp || showSignInPopup ? 6 : 0) // Rules: Blur when sign-in popup is shown
-            .brightness(showingProjectionHelp || showSignInPopup ? 0.1 : 0) // Rules: Darken when sign-in popup is shown
-            
-            // Error overlay if needed
-            if let errorMessage = viewModel.errorMessage {
-                VStack {
-                    Text("Unable to load data")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .padding(.bottom, 4)
-                    
-                    Text(errorMessage)
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                    
-                    Button("Retry") {
-                        viewModel.loadData()
-                    }
-                    .padding()
-                    .background(Color.ampedGreen)
-                    .foregroundColor(.black)
-                    .cornerRadius(8)
-                    .padding(.top, 8)
-                }
-                .padding(24)
-                .background(Color.black.opacity(0.8))
-                .cornerRadius(16)
-                .shadow(radius: 10)
-            }
-            
-            // Custom info card overlay
-            if showingProjectionHelp {
-                // Blurred background
-                Color.black.opacity(0.3) // Reduced opacity for brighter background
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showingProjectionHelp = false
-                        }
-                    }
                 
-                // Info card overlay
-                VStack {
-                    Spacer()
-                        .frame(height: geometry.size.height * 0.2) // Position card in upper portion of screen
+                // Custom info card overlay
+                if showingProjectionHelp {
+                    // Blurred background
+                    Color.black.opacity(0.3) // Reduced opacity for brighter background
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showingProjectionHelp = false
+                            }
+                        }
                     
-                    projectionHelpPopover
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.95).combined(with: .opacity),
-                            removal: .scale(scale: 0.95).combined(with: .opacity)
-                        ))
-                        .zIndex(1)
-                    
-                    Spacer()
+                    // Info card overlay
+                    VStack {
+                        Spacer()
+                            .frame(height: 0) // Position card in upper portion of screen
+                        
+                        projectionHelpPopover
+                            .transition(.asymmetric(
+                                insertion: .scale(scale: 0.95).combined(with: .opacity),
+                                removal: .scale(scale: 0.95).combined(with: .opacity)
+                            ))
+                            .zIndex(1)
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .transition(.opacity)
                 }
-                .padding(.horizontal, 20)
-                .transition(.opacity)
             }
+            // Apply blur to the entire dashboard content layer
+            .blur(radius: showingProjectionHelp ? 6 : (showSignInPopup ? 3 : 0)) // Rules: Different blur levels for different popups
+            .brightness(showingProjectionHelp ? 0.1 : 0) // Rules: Darken only for projection help
+            .animation(.easeInOut(duration: 0.3), value: showSignInPopup)
+            .animation(.easeInOut(duration: 0.2), value: showingProjectionHelp)
             
-            // Rules: Sign-in popup overlay
+            // Rules: Sign-in popup overlay - completely outside of blurred content
             if showSignInPopup {
                 SignInPopupView(isPresented: $showSignInPopup)
                     .environmentObject(appState)
                     .environmentObject(BatteryThemeManager())
                     .transition(.opacity)
-                    .zIndex(2)
+                    .zIndex(10) // Ensure it's on top
             }
         }
+        .withDeepBackground()
         .gesture(
             DragGesture()
                 .onChanged { value in
@@ -515,15 +398,11 @@ struct DashboardView: View {
                     }
                 }
         )
-        }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 NavigationLink(destination: 
                     SettingsView()
                         .environmentObject(settingsManager)
-                        .onAppear {
-                            print("🐛 SETTINGS: SettingsView successfully appeared!")
-                        }
                 ) {
                     // Modern profile circle icon instead of gear - following user requirement for modern, sleek, unobtrusive design
                     Image(systemName: "person.crop.circle")
@@ -541,9 +420,6 @@ struct DashboardView: View {
                                 .stroke(.tertiary, lineWidth: 0.5)
                         )
                         .contentShape(Circle())
-                }
-                .onAppear {
-                    print("🐛 SETTINGS: NavigationLink appeared in toolbar")
                 }
                 .accessibilityLabel("Account & Settings")
                 .accessibilityHint("Double tap to open your account and settings")
@@ -572,7 +448,6 @@ struct DashboardView: View {
             UINavigationBar.appearance().scrollEdgeAppearance = transparentAppearance
             UINavigationBar.appearance().compactAppearance = scrolledAppearance
             
-            print("🔧 DashboardView appeared")
             viewModel.loadData()
             HapticManager.shared.prepareHaptics()
             
@@ -581,11 +456,241 @@ struct DashboardView: View {
                 isBatteryAnimating = true
             }
             
-            // Debug navigation context
-            print("🔧 DashboardView navigation context check")
+            // Simulate initial calculations
+            if !hasInitiallyCalculated {
+                Task {
+                    try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
+                    await MainActor.run {
+                        isCalculatingImpact = false
+                        isCalculatingLifespan = false
+                        hasInitiallyCalculated = true
+                    }
+                }
+            }
+            
+            // Rules: Check if we should show sign-in popup on second app launch
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                checkAndShowSignInIfNeeded()
+            }
         }
         .animation(.easeInOut(duration: 0.2), value: showingProjectionHelp)
         .animation(.easeInOut(duration: 0.2), value: showSignInPopup) // Rules: Animate sign-in popup
+    }
+    
+    // MARK: - Swipeable Page Views
+    
+    /// Page 1: Health factors with prominent total impact
+    private var healthFactorsPage: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Prominent Total Impact Display
+                    if isCalculatingImpact && !hasInitiallyCalculated {
+                        // Calculating state
+                        VStack(spacing: 16) {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .ampedGreen))
+                                .scaleEffect(1.2)
+                            
+                            Text("Calculating your health impact...")
+                                .font(.headline)
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
+                        .padding(.horizontal, 20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.cardBackground.opacity(0.3))
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.top, 20)
+                        .padding(.bottom, 24)
+                    } else if totalTimeImpact != 0 {
+                        VStack(spacing: 8) {
+                            // "You've added/lost" text above the number
+                            Text(totalTimeImpact >= 0 ? "You've added" : "You've lost")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.7))
+                            
+                            // Main impact display - PROMINENT NUMBER
+                            HStack(spacing: 8) {
+                                Image(systemName: totalTimeImpact >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                                    .font(.system(size: 32))
+                                    .foregroundColor(totalTimeImpact >= 0 ? .ampedGreen : .ampedRed)
+                                    .symbolRenderingMode(.hierarchical)
+                                
+                                Text(formattedTotalImpact)
+                                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            // "to your life" text below (removed time period reference)
+                            Text("to your life")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.7))
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 24)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [
+                                            (totalTimeImpact >= 0 ? Color.ampedGreen : Color.ampedRed).opacity(0.15),
+                                            (totalTimeImpact >= 0 ? Color.ampedGreen : Color.ampedRed).opacity(0.05)
+                                        ],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    )
+                                )
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(
+                                    (totalTimeImpact >= 0 ? Color.ampedGreen : Color.ampedRed).opacity(0.3),
+                                    lineWidth: 1.5
+                                )
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.top, 20)
+                        .padding(.bottom, 24)
+                    } else {
+                        // No impact yet
+                        VStack(spacing: 12) {
+                            Text("NO HEALTH DATA YET")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white.opacity(0.6))
+                                .tracking(0.5)
+                            
+                            Text("Complete your health profile to see your impact")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.5))
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
+                        .padding(.top, 20)
+                    }
+                    
+                    // Health factors header
+                    HStack(alignment: .center, spacing: 8) {
+                        // Battery icon with animation
+                        ZStack {
+                            Image(systemName: "battery.100")
+                                .font(.title2)
+                                .foregroundColor(.fullPower)
+                                .scaleEffect(isBatteryAnimating ? 1.1 : 1.0)
+                                .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isBatteryAnimating)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Your Health Factors")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                            
+                            Text("Powering your lifespan within the last \(selectedPeriod.rawValue)")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 16)
+                    .accessibilityAddTraits(.isHeader)
+                    
+                    // Power Sources Metrics section
+                    HealthMetricsListView(
+                        metrics: filteredMetrics,
+                        selectedPeriod: selectedPeriod,
+                        onMetricTap: { metric in
+                            // Rules: Different handling for manual vs HealthKit metrics
+                            if metric.source == .userInput {
+                                // For manual metrics, show update health profile
+                                showingUpdateHealthProfile = true
+                            } else {
+                                // For HealthKit metrics, show detail view
+                                selectedMetric = metric
+                            }
+                            HapticManager.shared.playSelection()
+                        }
+                    )
+                    .padding(.horizontal, 8)
+                    // Add padding based on safe area to ensure content doesn't go under page indicators
+                    .padding(.bottom, max(60, geometry.safeAreaInsets.bottom + 40))
+                }
+            }
+            .refreshable {
+                await refreshHealthData()
+            }
+        }
+    }
+    
+    /// Page 2: Lifespan remaining battery
+    private var lifespanBatteryPage: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Center the battery in available space
+                    Spacer()
+                        .frame(height: max(40, (geometry.size.height - 500) / 3))
+                    
+                    if isCalculatingLifespan && !hasInitiallyCalculated {
+                        // Calculating state
+                        VStack(spacing: 24) {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .ampedYellow))
+                                .scaleEffect(1.5)
+                            
+                            Text("Calculating your projected lifespan...")
+                                .font(.headline)
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 60)
+                    } else {
+                        // The life projection battery - BIGGER
+                        BatterySystemView(
+                            lifeProjection: viewModel.lifeProjection,
+                            currentUserAge: viewModel.currentUserAge,
+                            onProjectionHelpTapped: { 
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    showingProjectionHelp = true
+                                }
+                            }
+                        )
+                        .scaleEffect(1.3) // Make battery 30% bigger
+                        .padding(.horizontal, -20) // Compensate for scale
+                        
+                        // Optional description or context
+                        VStack(spacing: 12) {
+                            Text("Your estimated lifespan")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                            
+                            Text("Based on your current health metrics and lifestyle factors")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.7))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                        }
+                        .padding(.top, 60) // More space after bigger battery
+                                            }
+                        
+                        Spacer()
+                            .frame(height: max(60, geometry.safeAreaInsets.bottom + 40))
+                    }
+                }
+                .refreshable {
+                    await refreshLifespanData()
+                }
+        }
     }
     
     // MARK: - UI Components
@@ -734,13 +839,20 @@ struct DashboardView: View {
         return min(dampenedDistance, maxPullDistance)
     }
     
-    /// Check if sign-in popup should be shown after user interaction - Rules: Following user requirement
+    /// Check if we should show the sign-in popup
     private func checkAndShowSignInIfNeeded() {
-        // Only show popup if user is not authenticated and hasn't seen it before
-        if !appState.isAuthenticated && !hasShownSignInPopup && hasInteractedWithDashboard {
-            hasShownSignInPopup = true
+        // Rules: Show popup on every app launch from second session onwards until user signs in
+        let appLaunchCount = UserDefaults.standard.integer(forKey: "appLaunchCount")
+        
+        // Show popup if:
+        // 1. User is not authenticated
+        // 2. This is at least the second app launch
+        // 3. Haven't shown the popup in this session yet
+        if !appState.isAuthenticated && appLaunchCount >= 2 && !appState.hasShownSignInPopupThisSession {
+            // Mark that we've shown the popup this session
+            appState.hasShownSignInPopupThisSession = true
             
-            // Small delay so the interaction feels natural before showing popup
+            // Small delay for better UX
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     showSignInPopup = true
@@ -748,16 +860,35 @@ struct DashboardView: View {
             }
         }
     }
-}
-
-// MARK: - ScrollOffset Preference Key
-
-/// Preference key to track scroll offset - Rules: Track user scrolling interaction
-struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
     
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+    /// Refresh health data and total impact
+    private func refreshHealthData() async {
+        isCalculatingImpact = true
+        
+        // Simulate calculation time
+        try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
+        
+        await viewModel.refreshData()
+        
+        await MainActor.run {
+            isCalculatingImpact = false
+            hasInitiallyCalculated = true
+        }
+    }
+    
+    /// Refresh lifespan projection data
+    private func refreshLifespanData() async {
+        isCalculatingLifespan = true
+        
+        // Simulate calculation time
+        try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+        
+        await viewModel.refreshData()
+        
+        await MainActor.run {
+            isCalculatingLifespan = false
+            hasInitiallyCalculated = true
+        }
     }
 }
 

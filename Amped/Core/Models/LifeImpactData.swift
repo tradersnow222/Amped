@@ -142,7 +142,15 @@ struct ImpactValue: Codable, Equatable {
             formattedValue = String(format: "%.0f", value)
         }
         
-        return "\(prefix)\(formattedValue) \(unit.abbreviation)"
+        // Fix pluralization: use plural for values >= 1.0
+        let unitString: String
+        if value >= 1.0 {
+            unitString = unit.abbreviationPlural
+        } else {
+            unitString = unit.abbreviation
+        }
+        
+        return "\(prefix)\(formattedValue) \(unitString)"
     }
 }
 
@@ -156,6 +164,15 @@ enum ImpactUnit: String, Codable, CaseIterable {
     var abbreviation: String {
         switch self {
         case .minutes: return "min"
+        case .hours: return "hr"
+        case .days: return "day"
+        case .years: return "yr"
+        }
+    }
+    
+    var abbreviationPlural: String {
+        switch self {
+        case .minutes: return "mins"
         case .hours: return "hrs"
         case .days: return "days"
         case .years: return "yrs"

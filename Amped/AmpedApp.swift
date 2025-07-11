@@ -114,6 +114,10 @@ struct AmpedApp: App {
                 // Log app launch in analytics (if enabled)
                 analyticsService.trackEvent(.appLaunch)
                 
+                // Rules: Track app launch count for sign-in popup timing
+                let currentLaunchCount = UserDefaults.standard.integer(forKey: "appLaunchCount")
+                UserDefaults.standard.set(currentLaunchCount + 1, forKey: "appLaunchCount")
+                
                 // Refresh feature flags
                 featureFlagManager.refreshFlags()
             }
@@ -187,6 +191,9 @@ class AppState: ObservableObject {
     
     /// User's unique identifier - Rules: Store user ID after authentication
     @Published var userID: String?
+    
+    /// Whether the sign-in popup has been shown in the current session - Rules: Track per-session popup state
+    @Published var hasShownSignInPopupThisSession: Bool = false
     
     init() {
         // Check UserDefaults to determine if the user has completed onboarding

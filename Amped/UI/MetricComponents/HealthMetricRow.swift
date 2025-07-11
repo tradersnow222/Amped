@@ -5,6 +5,15 @@ struct HealthMetricRow: View {
     // MARK: - Properties
     
     let metric: HealthMetric
+    /// Optional parameter to indicate if this metric is showing averaged data
+    let showingAverage: Bool
+    
+    // MARK: - Initialization
+    
+    init(metric: HealthMetric, showingAverage: Bool = false) {
+        self.metric = metric
+        self.showingAverage = showingAverage
+    }
     
     // MARK: - Body
     
@@ -31,19 +40,29 @@ struct HealthMetricRow: View {
             
             // Metric info
             VStack(alignment: .leading, spacing: 4) {
-                Text(metric.type.displayName)
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white)
+                // Metric name with (avg) indicator
+                HStack(spacing: 4) {
+                    Text(metric.type.displayName)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                    
+                    if showingAverage {
+                        Text("(avg)")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                }
                 
-                // Value row
-                HStack(alignment: .center, spacing: 6) {
+                // Value row - simplified without redundant units
+                HStack(alignment: .center, spacing: 4) {
                     Text(metric.formattedValue)
                         .font(.system(size: 14))
                         .foregroundColor(valueTextColor)
                     
-                    if !metric.unitString.isEmpty {
+                    // Only show unit if it's not redundant with the metric name
+                    if !metric.unitString.isEmpty && !isRedundantUnit {
                         Text(metric.unitString)
-                            .font(.system(size: 12))
+                            .font(.system(size: 14)) // Same size as value
                             .foregroundColor(valueTextColor.opacity(0.7))
                     }
                 }
@@ -52,29 +71,29 @@ struct HealthMetricRow: View {
             Spacer()
             
             // Impact value
-            if let impact = metric.impactDetails {
-                // Always show exact impact with arrow - following rule: ACCURATE DATA DISPLAYED TO THE USER IS KING
-                HStack(spacing: 4) {
-                    Image(systemName: impact.lifespanImpactMinutes >= 0 ? "arrow.up" : "arrow.down")
-                        .font(.system(size: 12))
-                        .foregroundColor(impactColor)
-                        .accessibilityHidden(true)
+            HStack(spacing: 4) {
+                if let impact = metric.impactDetails {
+                    // Calculate daily average impact if showing averages
+                    let displayImpact: Double = showingAverage ? impact.lifespanImpactMinutes : impact.lifespanImpactMinutes
                     
-                    Text(formattedImpact(minutes: impact.lifespanImpactMinutes))
-                        .font(.system(size: 16, weight: .medium))
+                    Text(formattedImpact(minutes: displayImpact))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundColor(impactColor)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .accessibilityLabel(accessibilityImpactValue)
+                } else {
+                    Text("No impact data")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
                 }
-            } else {
-                Text("No impact data")
-                    .font(.system(size: 14))
+                
+                // Navigation chevron
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.gray)
+                    .accessibilityHidden(true)
             }
-            
-            // Navigation chevron
-            Image(systemName: "chevron.right")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.gray)
-                .accessibilityHidden(true)
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 16)
@@ -150,6 +169,18 @@ struct HealthMetricRow: View {
     }
     
     // MARK: - Helper Methods
+    
+    /// Check if the unit would be redundant with the metric name
+    private var isRedundantUnit: Bool {
+        switch metric.type {
+        case .steps:
+            return true // "steps" is already in the name
+        case .sleepHours:
+            return true // Already formatted as "6h 41m"
+        default:
+            return false
+        }
+    }
     
     /// Get impact color based on whether impact is positive or negative
     private var impactColor: Color {

@@ -11,6 +11,10 @@ struct MetricDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var themeManager: BatteryThemeManager
     
+    // State for chart interaction
+    @State private var selectedDataPoint: MetricDataPoint?
+    @State private var isDragging = false
+    
     // Convenience property for accessing current metric
     private var metric: HealthMetric {
         viewModel.metric
@@ -26,62 +30,57 @@ struct MetricDetailView: View {
     
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                // Metric card with battery visualization
-                BatteryMetricCard(metric: metric, showDetails: true)
+            VStack(spacing: 0) {
+                // Time period selector
+                PeriodSelector(selectedPeriod: $viewModel.selectedPeriod)
                     .padding(.horizontal)
+                    .padding(.top, 8)
+                    .padding(.bottom, 32) // More space between selector and chart
                 
-                // Chart section with time period selector
-                VStack(spacing: 16) {
-                    // Time period selector
-                    PeriodSelector(selectedPeriod: $viewModel.selectedPeriod)
-                        .padding(.horizontal)
-                    
-                    // Chart
-                    MetricChartSection(
-                        metricType: metric.type,
-                        dataPoints: viewModel.chartDataPoints,
-                        period: viewModel.selectedPeriod
-                    )
+                // Chart section with integrated metric info
+                chartSection
                     .padding(.horizontal)
-                }
+                    .padding(.bottom, 32)
                 
-                // About section - combines research and recommendations
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack {
-                        Image(systemName: "info.circle")
-                            .foregroundColor(themeManager.accentColor)
+                // Quick insight section - subtle card style
+                if let insight = getQuickInsight() {
+                    HStack(spacing: 12) {
+                        Image(systemName: "lightbulb.min.fill")
+                            .foregroundColor(.ampedYellow.opacity(0.8))
+                            .font(.body)
                         
-                        Text("About \(metric.type.displayName)")
-                            .style(.headline)
-                    }
-                    .padding(.horizontal)
-                    
-                    VStack(alignment: .leading, spacing: 12) {
-                        // Description
-                        Text(metric.type.detailedDescription)
+                        Text(insight)
                             .style(.body)
+                            .foregroundColor(.white.opacity(0.8))
                             .fixedSize(horizontal: false, vertical: true)
                         
-                        // Key recommendation
-                        if let primaryRecommendation = viewModel.recommendations.first {
-                            HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: "lightbulb.fill")
-                                    .foregroundColor(.ampedYellow)
-                                    .font(.caption)
-                                
-                                Text(primaryRecommendation.description)
-                                    .style(.bodySecondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            .padding(12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.ampedYellow.opacity(0.1))
-                            )
-                        }
+                        Spacer()
                     }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.white.opacity(0.05))
+                    )
                     .padding(.horizontal)
+                    .padding(.bottom, 16)
+                }
+                
+                // Recommendations section - subtle card style
+                if !viewModel.recommendations.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Recommendations")
+                            .style(.caption)
+                            .foregroundColor(.white.opacity(0.5))
+                            .padding(.horizontal)
+                        
+                        VStack(spacing: 12) {
+                            ForEach(viewModel.recommendations.prefix(3)) { recommendation in
+                                recommendationRow(for: recommendation)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    .padding(.bottom, 20)
                 }
                 
                 Spacer(minLength: 40)
@@ -92,371 +91,299 @@ struct MetricDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .withDeepBackground()
         .onAppear {
-            // Configure navigation bar appearance to match dark theme
-            let scrolledAppearance = UINavigationBarAppearance()
-            scrolledAppearance.configureWithDefaultBackground()
-            scrolledAppearance.backgroundColor = UIColor.black.withAlphaComponent(0.8)
-            scrolledAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
-            
-            let transparentAppearance = UINavigationBarAppearance()
-            transparentAppearance.configureWithTransparentBackground()
-            transparentAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
-            
-            UINavigationBar.appearance().standardAppearance = scrolledAppearance
-            UINavigationBar.appearance().scrollEdgeAppearance = transparentAppearance
-            UINavigationBar.appearance().compactAppearance = scrolledAppearance
-            
+            setupNavigationBar()
             viewModel.loadData(for: metric)
             AnalyticsService.shared.trackMetricSelected(metric.type.rawValue)
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Details for \(metric.type.displayName)")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Done") {
                     dismiss()
                 }
+                .foregroundColor(.white.opacity(0.8))
             }
         }
     }
-}
-
-// MARK: - View Model
-
-final class MetricDetailViewModel: ObservableObject {
-    // MARK: - Properties
     
-    @Published var historyData: [HistoryDataPoint] = []
-    @Published var recommendations: [MetricRecommendation] = []
-    @Published var metric: HealthMetric
-    @Published var selectedPeriod: ImpactDataPoint.PeriodType = .day
+    // MARK: - Chart Section
     
-    // Convert history data to chart data points
-    var chartDataPoints: [MetricDataPoint] {
-        historyData.map { 
-            MetricDataPoint(date: $0.date, value: $0.value)
+    private var chartSection: some View {
+        VStack(spacing: 0) {
+            // Metric value and impact integrated at top of chart
+            HStack(alignment: .top) {
+                // Current metric value
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(formatMetricValue(metric.value))
+                        .font(.system(size: 32, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                    
+                    Text(getMetricContext())
+                        .style(.caption)
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                
+                Spacer()
+                
+                // Impact display
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(formatImpactDisplay(viewModel.totalImpactForPeriod))
+                        .font(.system(size: 18, weight: .medium, design: .rounded))
+                        .foregroundColor(viewModel.totalImpactForPeriod >= 0 ? .ampedGreen : .ampedRed)
+                    
+                    Text(percentageText)
+                        .style(.caption)
+                        .foregroundColor(viewModel.totalImpactForPeriod >= 0 ? .ampedGreen.opacity(0.8) : .ampedRed.opacity(0.8))
+                }
+            }
+            .padding(.horizontal, 4)
+            .padding(.bottom, 20)
+            
+            // Chart
+            StyledMetricChart(
+                metricType: metric.type,
+                dataPoints: viewModel.chartDataPoints,
+                period: viewModel.selectedPeriod,
+                totalImpact: viewModel.totalImpactForPeriod,
+                selectedDataPoint: $selectedDataPoint,
+                isDragging: $isDragging
+            )
+            .frame(height: 200)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white.opacity(0.03))
+        )
+    }
+    
+    // MARK: - Helper Views
+    
+    private func recommendationRow(for recommendation: MetricRecommendation) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: recommendation.iconName)
+                .foregroundColor(.white.opacity(0.5))
+                .font(.body)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(recommendation.title)
+                    .style(.bodyMedium)
+                    .foregroundColor(.white.opacity(0.9))
+                
+                Text(recommendation.description)
+                    .style(.caption)
+                    .foregroundColor(.white.opacity(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            
+            Spacer()
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.05))
+        )
+        .onTapGesture {
+            viewModel.logRecommendationAction(recommendation)
+            HapticManager.shared.playSelection()
         }
     }
     
-    // Computed properties for the power level indicator
-    var powerLevel: Int {
-        // Simulate power level based on metric's impact
-        if let impact = metric.impactDetails?.lifespanImpactMinutes {
-            if impact > 120 { return 5 }
-            else if impact > 60 { return 4 }
-            else if impact > 0 { return 3 }
-            else if impact > -60 { return 2 }
-            else { return 1 }
+    // MARK: - Helper Methods
+    
+    private var percentageText: String {
+        // Calculate percentage relative to the period duration
+        let periodMinutes: Double = {
+            switch viewModel.selectedPeriod {
+            case .day: return 24 * 60 // 1,440 minutes in a day
+            case .month: return 30 * 24 * 60 // ~43,200 minutes in a month
+            case .year: return 365 * 24 * 60 // ~525,600 minutes in a year
+            }
+        }()
+        
+        let percentage = (abs(viewModel.totalImpactForPeriod) / periodMinutes) * 100
+        let sign = viewModel.totalImpactForPeriod >= 0 ? "+" : ""
+        
+        if percentage < 0.01 {
+            return "\(sign)<0.01%"
+        } else {
+            return String(format: "%@%.2f%%", sign, percentage)
         }
-        return 3 // Default middle level
     }
     
-    var powerColor: Color {
-        if let impact = metric.impactDetails?.lifespanImpactMinutes, impact >= 0 {
-            return .ampedGreen
-        }
-        return .ampedRed
-    }
-    
-    // MARK: - Initialization
-    
-    init(metric: HealthMetric) {
-        self.metric = metric
-    }
-    
-    // MARK: - Methods
-    
-    func loadData(for metric: HealthMetric) {
-        // In a real app, this would load actual historical data
-        // For the MVP, we'll generate mock data
-        generateMockHistoryData(for: metric)
-        generateRecommendations(for: metric)
-    }
-    
-    func getChartYRange(for metric: HealthMetric) -> ClosedRange<Double> {
-        guard !historyData.isEmpty else { return 0...100 }
-        
-        let values = historyData.map { $0.value }
-        let minValue = values.min() ?? 0
-        let maxValue = values.max() ?? 100
-        let padding = (maxValue - minValue) * 0.2
-        
-        return (minValue - padding)...(maxValue + padding)
-    }
-    
-    func logRecommendationAction(_ recommendation: MetricRecommendation) {
-        // In a real app, this would track the user's interaction
-        AnalyticsService.shared.trackEvent(.featureUsed, parameters: [
-            "feature": "recommendation_action",
-            "recommendation_id": recommendation.id
-        ])
-    }
-    
-    // MARK: - Private Methods
-    
-    private func generateMockHistoryData(for metric: HealthMetric) {
-        // Generate mock data for the last 30 days
-        let calendar = Calendar.current
-        let now = Date()
-        
-        // Clear existing data
-        historyData.removeAll()
-        
-        // Generate basic trend with some randomness
-        var baseValue: Double
-        var trendDirection: Double
-        
+    private func formatMetricValue(_ value: Double) -> String {
         switch metric.type {
         case .steps:
-            baseValue = 8000
-            trendDirection = 100
-        case .exerciseMinutes:
-            baseValue = 30
-            trendDirection = 0.5
+            return "\(Int(value))"
         case .sleepHours:
-            baseValue = 7
-            trendDirection = 0.05
+            return String(format: "%.1f", value)
+        case .exerciseMinutes:
+            return "\(Int(value))"
         case .heartRateVariability:
-            baseValue = 50
-            trendDirection = 0.2
+            return "\(Int(value))"
         case .restingHeartRate:
-            baseValue = 65
-            trendDirection = -0.1
+            return "\(Int(value))"
+        default:
+            return String(format: "%.1f", value)
+        }
+    }
+    
+    private func formatImpactTime(_ minutes: Double) -> String {
+        let absMinutes = abs(minutes)
+        let sign = minutes >= 0 ? "+" : "-"
+        
+        if absMinutes >= 1440 { // Days
+            let days = absMinutes / 1440
+            let singularOrPlural = days < 2 ? "day added" : "days added"
+            if minutes < 0 {
+                let singularOrPlural = days < 2 ? "day lost" : "days lost"
+                return String(format: "%.1f %@", days, singularOrPlural)
+            }
+            return String(format: "%@%.1f %@", sign, days, singularOrPlural)
+        } else if absMinutes >= 60 { // Hours
+            let hours = absMinutes / 60
+            let singularOrPlural = hours < 2 ? "hour added" : "hours added"
+            if minutes < 0 {
+                let singularOrPlural = hours < 2 ? "hour lost" : "hours lost"
+                return String(format: "%.1f %@", hours, singularOrPlural)
+            }
+            return String(format: "%@%.1f %@", sign, hours, singularOrPlural)
+        } else {
+            let singularOrPlural = absMinutes < 2 ? "min added" : "mins added"
+            if minutes < 0 {
+                let singularOrPlural = absMinutes < 2 ? "min lost" : "mins lost"
+                return String(format: "%.0f %@", absMinutes, singularOrPlural)
+            }
+            return String(format: "%@%.0f %@", sign, absMinutes, singularOrPlural)
+        }
+    }
+    
+    private func formatImpactDisplay(_ minutes: Double) -> String {
+        return formatImpactTime(minutes)
+    }
+    
+    private func getMetricContext() -> String {
+        switch metric.type {
+        case .steps:
+            switch viewModel.selectedPeriod {
+            case .day: return "steps today"
+            case .month: return "daily avg"
+            case .year: return "daily avg per month"
+            }
+        case .sleepHours:
+            switch viewModel.selectedPeriod {
+            case .day: return "last night"
+            case .month: return "nightly avg"
+            case .year: return "nightly avg per month"
+            }
+        case .exerciseMinutes:
+            switch viewModel.selectedPeriod {
+            case .day: return "active today"
+            case .month: return "daily avg"
+            case .year: return "daily avg per month"
+            }
+        case .heartRateVariability:
+            switch viewModel.selectedPeriod {
+            case .day: return "current HRV"
+            case .month: return "avg HRV"
+            case .year: return "avg HRV per month"
+            }
+        case .restingHeartRate:
+            switch viewModel.selectedPeriod {
+            case .day: return "current rate"
+            case .month: return "avg rate"
+            case .year: return "avg rate per month"
+            }
         case .bodyMass:
-            baseValue = 75
-            trendDirection = -0.05
-        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality:
-            // Manual metrics - use constant value with minor fluctuations
-            baseValue = metric.value
-            trendDirection = 0
+            return "current weight"
         case .activeEnergyBurned:
-            baseValue = 400
-            trendDirection = 10
+            switch viewModel.selectedPeriod {
+            case .day: return "calories today"
+            case .month: return "daily avg"
+            case .year: return "daily avg per month"
+            }
         case .vo2Max:
-            baseValue = 40
-            trendDirection = 0.2
+            return "fitness level"
         case .oxygenSaturation:
-            baseValue = 98
-            trendDirection = 0.05
-        case .stressLevel:
-            baseValue = 5
-            trendDirection = -0.1
-        }
-        
-        // Generate data points
-        for i in (0..<30).reversed() {
-            let day = calendar.date(byAdding: .day, value: -i, to: now)!
-            
-            // Calculate value with trend and some random noise
-            let trendFactor = Double(i) * trendDirection
-            let randomFactor = Double.random(in: -0.1...0.1) * baseValue
-            let value = max(0, baseValue + trendFactor + randomFactor)
-            
-            historyData.append(HistoryDataPoint(date: day, value: value))
-        }
-    }
-    
-    private func generateRecommendations(for metric: HealthMetric) {
-        // Clear existing recommendations
-        recommendations.removeAll()
-        
-        // Generate recommendations based on metric type
-        switch metric.type {
-        case .steps:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Daily Walking",
-                description: "Try to walk for at least 30 minutes each day, ideally reaching 10,000 steps for optimal cardiovascular benefits.",
-                iconName: "figure.walk",
-                actionText: "Set Walking Reminder"
-            ))
-            
-            if metric.value < 7500 {
-                recommendations.append(MetricRecommendation(
-                    id: UUID(),
-                    title: "Increase Movement",
-                    description: "Finding it hard to get enough steps? Try parking farther away, taking the stairs, or walking during phone calls.",
-                    iconName: "arrow.up.forward",
-                    actionText: "See Movement Tips"
-                ))
-            }
-            
-        case .exerciseMinutes:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Activity Variety",
-                description: "Mix cardio, strength training, and flexibility exercises for best results. Aim for at least 150 minutes per week.",
-                iconName: "person.fill.turn.right",
-                actionText: "Explore Exercise Types"
-            ))
-            
-        case .sleepHours:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Sleep Consistency",
-                description: "Maintain a consistent sleep schedule, even on weekends, to optimize your sleep quality and overall health.",
-                iconName: "moon.fill",
-                actionText: "Set Sleep Schedule"
-            ))
-            
-            if metric.value < 7 {
-                recommendations.append(MetricRecommendation(
-                    id: UUID(),
-                    title: "Sleep Environment",
-                    description: "Create a dark, quiet, and cool sleep environment. Avoid screens at least one hour before bedtime.",
-                    iconName: "bed.double.fill",
-                    actionText: "Sleep Tips"
-                ))
-            }
-            
-        case .heartRateVariability:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Stress Management",
-                description: "Regular meditation, deep breathing exercises, and adequate recovery time can improve your HRV.",
-                iconName: "heart.fill",
-                actionText: "Try Breathing Exercise"
-            ))
-            
-        case .restingHeartRate:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Cardiovascular Health",
-                description: "Regular aerobic exercise, adequate hydration, and good sleep hygiene can help optimize your resting heart rate.",
-                iconName: "heart.circle.fill",
-                actionText: "Learn More"
-            ))
-            
-        case .bodyMass:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Balanced Nutrition",
-                description: "Focus on whole foods, fruits, vegetables, lean proteins, and proper hydration for maintaining healthy weight.",
-                iconName: "fork.knife",
-                actionText: "Nutrition Guide"
-            ))
-            
+            return "oxygen level"
         case .nutritionQuality:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Dietary Diversity",
-                description: "Include a variety of colors in your diet to ensure you're getting a wide range of nutrients.",
-                iconName: "leaf.fill",
-                actionText: "Recipe Ideas"
-            ))
-            
+            return "nutrition score"
         case .smokingStatus:
-            if metric.value < 9 { // Not 'never' smoker
-                recommendations.append(MetricRecommendation(
-                    id: UUID(),
-                    title: "Smoking Cessation",
-                    description: "Quitting smoking has immediate and long-term health benefits. Support programs significantly increase success rates.",
-                    iconName: "lungs.fill",
-                    actionText: "Find Support Resources"
-                ))
-            }
-            
+            return "smoking score"
         case .alcoholConsumption:
-            if metric.value < 9 { // Not 'never' drinker
-                recommendations.append(MetricRecommendation(
-                    id: UUID(),
-                    title: "Moderate Consumption",
-                    description: "If you drink alcohol, do so in moderation. Guidelines suggest no more than 1 drink per day for women and 2 for men.",
-                    iconName: "drop.fill",
-                    actionText: "Moderation Tips"
-                ))
-            }
-            
+            return "alcohol score"
         case .socialConnectionsQuality:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Social Engagement",
-                description: "Regular meaningful social interactions boost mental health and can add years to your life. Schedule regular connection time.",
-                iconName: "person.2.fill",
-                actionText: "Social Activities Ideas"
-            ))
-            
-        case .activeEnergyBurned:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Active Energy",
-                description: "Increasing your daily active energy expenditure through regular exercise and movement contributes to overall cardiovascular health.",
-                iconName: "flame.fill",
-                actionText: "Activity Tips"
-            ))
-            
-        case .vo2Max:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Cardiorespiratory Fitness",
-                description: "Improve your VO2 Max through consistent cardio exercise like running, cycling, or swimming to enhance oxygen utilization.",
-                iconName: "lungs.fill",
-                actionText: "Fitness Program"
-            ))
-            
-        case .oxygenSaturation:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Oxygen Levels",
-                description: "Maintain healthy oxygen saturation through good respiratory practices and consider consulting a doctor for persistently low levels.",
-                iconName: "drop.fill",
-                actionText: "Learn More"
-            ))
-            
+            return "social score"
         case .stressLevel:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Stress Management",
-                description: "Incorporate relaxation techniques, mindfulness practices, and regular breaks to manage stress levels effectively.",
-                iconName: "brain.head.profile",
-                actionText: "Stress Relief Techniques"
-            ))
+            return "stress level"
         }
-        
-        // Add a general recommendation for all metrics
-        recommendations.append(MetricRecommendation(
-            id: UUID(),
-            title: "Consistency is Key",
-            description: "Small, consistent improvements have a greater impact on longevity than occasional major changes.",
-            iconName: "calendar.badge.clock",
-            actionText: ""
-        ))
     }
-}
-
-// MARK: - Models
-
-struct HistoryDataPoint: Identifiable {
-    let id = UUID()
-    let date: Date
-    let value: Double
-}
-
-struct MetricRecommendation: Identifiable {
-    let id: UUID
-    let title: String
-    let description: String
-    let iconName: String
-    let actionText: String
-}
-
-// Sample chart view - in a real app, this would use Swift Charts
-struct ChartView: View {
-    let metric: HealthMetric
-    let period: ImpactDataPoint.PeriodType
     
-    @EnvironmentObject var themeManager: BatteryThemeManager
-    
-    var body: some View {
-        // Placeholder for chart
-        ZStack {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.cardBackground)
-            
-            Text("Chart for \(metric.type.displayName) over \(period.rawValue)")
-                .font(.caption)
-                .foregroundColor(.white)
+    private func getUnitString() -> String {
+        switch metric.type {
+        case .steps:
+            return "steps"
+        case .sleepHours:
+            return "hours"
+        case .exerciseMinutes:
+            return "minutes"
+        case .heartRateVariability:
+            return "ms"
+        case .restingHeartRate:
+            return "bpm"
+        case .bodyMass:
+            return "lbs"
+        case .activeEnergyBurned:
+            return "cal"
+        case .vo2Max:
+            return "mL/kg/min"
+        case .oxygenSaturation:
+            return "%"
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+            return "score"
         }
+    }
+    
+    private func getQuickInsight() -> String? {
+        // Provide a simple, understandable insight based on the metric
+        switch metric.type {
+        case .restingHeartRate:
+            if metric.value < 60 {
+                return "Great! Your heart is very efficient, like an athlete's."
+            } else if metric.value > 80 {
+                return "Your heart is working harder than optimal. Regular cardio can help."
+            }
+        case .steps:
+            if metric.value < 5000 {
+                return "You're below the recommended daily steps. Even small walks help!"
+            } else if metric.value > 10000 {
+                return "Excellent! You're exceeding the daily recommendation."
+            }
+        case .sleepHours:
+            if metric.value < 6 {
+                return "You're not getting enough sleep. Aim for 7-9 hours."
+            } else if metric.value > 9 {
+                return "You might be oversleeping. 7-9 hours is optimal for most adults."
+            }
+        default:
+            return nil
+        }
+        return nil
+    }
+    
+    private func setupNavigationBar() {
+        let scrolledAppearance = UINavigationBarAppearance()
+        scrolledAppearance.configureWithDefaultBackground()
+        scrolledAppearance.backgroundColor = UIColor.black.withAlphaComponent(0.8)
+        scrolledAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+        
+        let transparentAppearance = UINavigationBarAppearance()
+        transparentAppearance.configureWithTransparentBackground()
+        transparentAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+        
+        UINavigationBar.appearance().standardAppearance = scrolledAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance = transparentAppearance
+        UINavigationBar.appearance().compactAppearance = scrolledAppearance
     }
 }
 

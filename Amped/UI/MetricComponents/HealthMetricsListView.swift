@@ -6,6 +6,8 @@ struct HealthMetricsListView: View {
     
     let metrics: [HealthMetric]
     let onMetricTap: (HealthMetric) -> Void
+    /// Optional period to indicate if metrics are showing averaged data
+    let selectedPeriod: ImpactDataPoint.PeriodType?
     
     @State private var isAnimating = false
     @Environment(\.glassTheme) private var glassTheme
@@ -13,9 +15,18 @@ struct HealthMetricsListView: View {
     
     // MARK: - Initialization
     
-    init(metrics: [HealthMetric], onMetricTap: @escaping (HealthMetric) -> Void) {
+    init(metrics: [HealthMetric], selectedPeriod: ImpactDataPoint.PeriodType? = nil, onMetricTap: @escaping (HealthMetric) -> Void) {
         self.metrics = metrics
+        self.selectedPeriod = selectedPeriod
         self.onMetricTap = onMetricTap
+    }
+    
+    // MARK: - Computed Properties
+    
+    /// Whether to show the average indicator based on selected period
+    private var showAverageIndicator: Bool {
+        guard let period = selectedPeriod else { return false }
+        return period == .month || period == .year
     }
     
     // MARK: - Body
@@ -65,7 +76,7 @@ struct HealthMetricsListView: View {
                     // Metrics
                     VStack(spacing: 8) {
                         ForEach(sortedHealthKitMetrics) { metric in
-                            HealthMetricRow(metric: metric)
+                            HealthMetricRow(metric: metric, showingAverage: showAverageIndicator)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     onMetricTap(metric)
@@ -97,7 +108,7 @@ struct HealthMetricsListView: View {
                     // Metrics
                     VStack(spacing: 8) {
                         ForEach(sortedManualMetrics) { metric in
-                            HealthMetricRow(metric: metric)
+                            HealthMetricRow(metric: metric, showingAverage: false) // Manual metrics are not averaged
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     onMetricTap(metric)
@@ -115,7 +126,7 @@ struct HealthMetricsListView: View {
     private var metricsListView: some View {
         VStack(spacing: 8) {
             ForEach(sortedMetrics) { metric in
-                HealthMetricRow(metric: metric)
+                HealthMetricRow(metric: metric, showingAverage: showAverageIndicator)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         onMetricTap(metric)

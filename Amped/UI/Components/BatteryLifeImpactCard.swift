@@ -126,11 +126,21 @@ struct BatteryLifeImpactCard: View {
             
             // Impact value and details
             VStack(alignment: .leading, spacing: 8) {
+                // Text above the big number (made bigger)
+                Text("You've added")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.white.opacity(0.9))
+                
                 // Large impact value
                 Text(impactText)
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(batteryColor)
                     .shadow(color: batteryColor.opacity(0.3), radius: 4, x: 0, y: 2)
+                
+                // Text below the big number (made bigger, removed time period text)
+                Text("to your life")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.white.opacity(0.9))
                 
                 // Charge level indicator
                 Text("\(Int(chargeLevel * 100))% Charged")

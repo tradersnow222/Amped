@@ -59,7 +59,11 @@ struct HealthMetric: Identifiable, Equatable {
         numberFormatter.maximumFractionDigits = 1
         
         // Access the settings manager to check metric system preference
-        let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem", defaultValue: true)
+        // Default to imperial for US/UK locales
+        let locale = Locale.current
+        let regionIdentifier = locale.region?.identifier ?? ""
+        let defaultToMetric = !["US", "GB", "MM", "LR"].contains(regionIdentifier)
+        let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem", defaultValue: defaultToMetric)
         
         switch type {
         case .steps:
@@ -97,7 +101,11 @@ struct HealthMetric: Identifiable, Equatable {
     /// Get the unit string for the metric
     var unitString: String {
         // Access the settings manager to check metric system preference
-        let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem", defaultValue: true)
+        // Default to imperial for US/UK locales
+        let locale = Locale.current
+        let regionIdentifier = locale.region?.identifier ?? ""
+        let defaultToMetric = !["US", "GB", "MM", "LR"].contains(regionIdentifier)
+        let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem", defaultValue: defaultToMetric)
         
         switch type {
         case .steps:
@@ -105,7 +113,7 @@ struct HealthMetric: Identifiable, Equatable {
         case .exerciseMinutes:
             return "min"
         case .sleepHours:
-            return "hours"
+            return "" // Unit already included in formattedValue (e.g., "6h 41m")
         case .restingHeartRate:
             return "bpm"
         case .heartRateVariability:

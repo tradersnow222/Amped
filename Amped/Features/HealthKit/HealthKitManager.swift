@@ -706,14 +706,12 @@ import OSLog
                 guard let quantitySample = sample as? HKQuantitySample else { return nil }
                 let value = quantitySample.quantity.doubleValue(for: unit)
                 
-                // Convert body mass from pounds to kilograms for internal storage
-                let convertedValue: Double
+                // HealthKit already stores body mass in kg, no conversion needed
+                let convertedValue: Double = value
+                
                 if metricType == .bodyMass {
-                    // HealthKit returns pounds, but we store in kg internally
-                    convertedValue = value / 2.20462
-                    logger.info("✅ Most recent \(metricType.displayName): \(value) lbs (\(convertedValue) kg) from \(quantitySample.endDate)")
+                    logger.info("✅ Most recent \(metricType.displayName): \(value) kg from \(quantitySample.endDate)")
                 } else {
-                    convertedValue = value
                     logger.info("✅ Most recent \(metricType.displayName): \(value) \(unit.unitString) from \(quantitySample.endDate)")
                 }
                 
@@ -905,14 +903,12 @@ import OSLog
             
             let value = sumQuantity.doubleValue(for: unit)
             
-            // Convert body mass from pounds to kilograms for internal storage
-            let convertedValue: Double
+            // HealthKit already stores body mass in kg, no conversion needed
+            let convertedValue: Double = value
+            
             if metricType == .bodyMass {
-                // HealthKit returns pounds, but we store in kg internally
-                convertedValue = value / 2.20462
-                logger.info("✅ Today's \(metricType.displayName): \(value) lbs (\(convertedValue) kg)")
+                logger.info("✅ Today's \(metricType.displayName): \(value) kg")
             } else {
-                convertedValue = value
                 logger.info("✅ Today's \(metricType.displayName): \(value) \(unit.unitString)")
             }
             
@@ -966,14 +962,12 @@ import OSLog
             
             let value = sample.quantity.doubleValue(for: unit)
             
-            // Convert body mass from pounds to kilograms for internal storage
-            let convertedValue: Double
+            // HealthKit already stores body mass in kg, no conversion needed
+            let convertedValue: Double = value
+            
             if metricType == .bodyMass {
-                // HealthKit returns pounds, but we store in kg internally
-                convertedValue = value / 2.20462
-                logger.info("✅ Latest daily \(metricType.displayName): \(value) lbs (\(convertedValue) kg) from \(sample.endDate)")
+                logger.info("✅ Latest daily \(metricType.displayName): \(value) kg from \(sample.endDate)")
             } else {
-                convertedValue = value
                 logger.info("✅ Latest daily \(metricType.displayName): \(value) \(unit.unitString) from \(sample.endDate)")
             }
             
@@ -1027,14 +1021,12 @@ import OSLog
             
             let value = sample.quantity.doubleValue(for: unit)
             
-            // Convert body mass from pounds to kilograms for internal storage
-            let convertedValue: Double
+            // HealthKit already stores body mass in kg, no conversion needed
+            let convertedValue: Double = value
+            
             if metricType == .bodyMass {
-                // HealthKit returns pounds, but we store in kg internally
-                convertedValue = value / 2.20462
-                logger.info("✅ Most recent \(metricType.displayName): \(value) lbs (\(convertedValue) kg) from \(sample.endDate)")
+                logger.info("✅ Most recent \(metricType.displayName): \(value) kg from \(sample.endDate)")
             } else {
-                convertedValue = value
                 logger.info("✅ Most recent \(metricType.displayName): \(value) \(unit.unitString) from \(sample.endDate)")
             }
             

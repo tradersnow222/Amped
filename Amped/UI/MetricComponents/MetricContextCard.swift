@@ -75,7 +75,7 @@ struct MetricContextCard: View {
                 Text("Recommended")
                     .font(.caption)
                 
-                Text("\(formatValue(metric.type.baselineValue)) units")
+                Text("\(formatValueWithUnit(metric.type.baselineValue, for: metric.type))")
                     .font(.body)
                     .fontWeight(.medium)
             }
@@ -88,7 +88,7 @@ struct MetricContextCard: View {
                 Text("Your Value")
                     .font(.caption)
                 
-                Text("\(formatValue(metric.value)) units")
+                Text("\(formatValueWithUnit(metric.value, for: metric.type))")
                     .font(.body)
                     .fontWeight(.medium)
                     .foregroundColor(comparisonColor)
@@ -195,6 +195,32 @@ struct MetricContextCard: View {
             return "\(Int(value))"
         } else {
             return String(format: "%.1f", value)
+        }
+    }
+    
+    /// Format value with appropriate unit
+    private func formatValueWithUnit(_ value: Double, for metricType: HealthMetricType) -> String {
+        switch metricType {
+        case .steps:
+            return "\(Int(value)) steps"
+        case .exerciseMinutes:
+            return "\(Int(value)) min"
+        case .sleepHours:
+            return String(format: "%.1f hrs", value)
+        case .heartRateVariability:
+            return "\(Int(value)) ms"
+        case .restingHeartRate:
+            return "\(Int(value)) bpm"
+        case .bodyMass:
+            return String(format: "%.1f lbs", value)
+        case .activeEnergyBurned:
+            return "\(Int(value)) cal"
+        case .vo2Max:
+            return String(format: "%.1f mL/kg/min", value)
+        case .oxygenSaturation:
+            return String(format: "%.0f%%", value)
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+            return String(format: "%.1f score", value)
         }
     }
 }

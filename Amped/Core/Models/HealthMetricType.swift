@@ -29,7 +29,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
     var displayName: String {
         switch self {
         case .steps: return "Steps"
-        case .exerciseMinutes: return "Exercise Minutes"
+        case .exerciseMinutes: return "Exercise"
         case .sleepHours: return "Sleep"
         case .restingHeartRate: return "Resting Heart Rate"
         case .heartRateVariability: return "Heart Rate Variability"
