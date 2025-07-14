@@ -37,6 +37,8 @@ struct DashboardView: View {
     
     // State for lifestyle tabs
     @State private var selectedLifestyleTab = 0 // 0 = Current lifestyle, 1 = Better habits
+    @State private var shouldPulseTabsForNewUsers = true // Pulse animation for better discoverability
+
     
     // MARK: - Computed Properties
     
@@ -137,8 +139,10 @@ struct DashboardView: View {
         // Years
         if absMinutes >= minutesInYear {
             let years = absMinutes / minutesInYear
-            if years > 1 {
-                return String(format: "%.0f years", years)
+            if years >= 1.0 {
+                let unit = years == 1.0 ? "year" : "years"
+                let valueString = years.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", years) : String(format: "%.1f", years)
+                return "\(valueString) \(unit)"
             } else {
                 return String(format: "%.1f year", years)
             }
@@ -147,8 +151,10 @@ struct DashboardView: View {
         // Months
         if absMinutes >= minutesInMonth {
             let months = absMinutes / minutesInMonth
-            if months > 1 {
-                return String(format: "%.0f months", months)
+            if months >= 1.0 {
+                let unit = months == 1.0 ? "month" : "months"
+                let valueString = months.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", months) : String(format: "%.1f", months)
+                return "\(valueString) \(unit)"
             } else {
                 return String(format: "%.1f month", months)
             }
@@ -157,8 +163,10 @@ struct DashboardView: View {
         // Weeks
         if absMinutes >= minutesInWeek {
             let weeks = absMinutes / minutesInWeek
-            if weeks > 1 {
-                return String(format: "%.0f weeks", weeks)
+            if weeks >= 1.0 {
+                let unit = weeks == 1.0 ? "week" : "weeks"
+                let valueString = weeks.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", weeks) : String(format: "%.1f", weeks)
+                return "\(valueString) \(unit)"
             } else {
                 return String(format: "%.1f week", weeks)
             }
@@ -167,8 +175,10 @@ struct DashboardView: View {
         // Days
         if absMinutes >= minutesInDay {
             let days = absMinutes / minutesInDay
-            if days > 1 {
-                return String(format: "%.0f days", days)
+            if days >= 1.0 {
+                let unit = days == 1.0 ? "day" : "days"
+                let valueString = days.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", days) : String(format: "%.1f", days)
+                return "\(valueString) \(unit)"
             } else {
                 return String(format: "%.1f day", days)
             }
@@ -177,8 +187,10 @@ struct DashboardView: View {
         // Hours
         if absMinutes >= minutesInHour {
             let hours = absMinutes / minutesInHour
-            if hours > 1 {
-                return String(format: "%.0f hours", hours)
+            if hours >= 1.0 {
+                let unit = hours == 1.0 ? "hour" : "hours"
+                let valueString = hours.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", hours) : String(format: "%.1f", hours)
+                return "\(valueString) \(unit)"
             } else {
                 return String(format: "%.1f hour", hours)
             }
@@ -186,7 +198,9 @@ struct DashboardView: View {
         
         // Minutes
         if absMinutes >= 1.0 {
-            return "\(Int(absMinutes)) min"
+            let roundedMinutes = Int(round(absMinutes))
+            let unit = roundedMinutes == 1 ? "minute" : "minutes"
+            return "\(roundedMinutes) \(unit)"
         }
         
         // For very small values, show seconds
@@ -606,14 +620,15 @@ struct DashboardView: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Your Health Factors")
+                            Text(titleForPeriod(selectedPeriod))
                                 .font(.title2)
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)
                             
-                            Text("Powering your lifespan within the last \(selectedPeriod.rawValue)")
+                            Text(subtitleForPeriod(selectedPeriod))
                                 .font(.subheadline)
                                 .foregroundColor(.white.opacity(0.8))
+                                .lineLimit(1)
                         }
                         
                         Spacer()
@@ -691,50 +706,96 @@ struct DashboardView: View {
         }
     }
     
-    /// Lifestyle tabs view - Jobs-inspired minimalism
+    /// Intuitive lifestyle tabs - designed to match time selector styling
     private var lifestyleTabs: some View {
-        HStack(spacing: 24) {
-            // Current lifestyle tab - simple text button
+        HStack(spacing: 0) {
+            // Current lifespan tab
             Button {
-                withAnimation(.easeInOut(duration: 0.3)) {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     selectedLifestyleTab = 0
                 }
                 HapticManager.shared.playSelection()
             } label: {
-                VStack(spacing: 6) {
-                    Text("Current")
-                        .font(.system(size: 15, weight: selectedLifestyleTab == 0 ? .medium : .regular, design: .rounded))
-                        .foregroundColor(selectedLifestyleTab == 0 ? .ampedYellow : .white.opacity(0.5))
-                    
-                    // Simple underline indicator
-                    Capsule()
-                        .fill(Color.ampedYellow)
-                        .frame(height: 2)
-                        .opacity(selectedLifestyleTab == 0 ? 1 : 0)
-                }
+                Text("Current Lifespan")
+                    .fontWeight(selectedLifestyleTab == 0 ? .bold : .medium)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        ZStack {
+                            if selectedLifestyleTab == 0 {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.ampedGreen.opacity(0.2))
+                                
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.ampedGreen, lineWidth: 1.5)
+                                    .shadow(color: Color.ampedGreen.opacity(0.6), radius: 4)
+                            } else {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            }
+                        }
+                    )
+                    .foregroundColor(selectedLifestyleTab == 0 ? Color.ampedGreen : .gray)
             }
-            .buttonStyle(PlainButtonStyle())
             
-            // Better habits tab - simple text button
+            // Potential lifespan tab
             Button {
-                withAnimation(.easeInOut(duration: 0.3)) {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     selectedLifestyleTab = 1
                 }
                 HapticManager.shared.playSelection()
             } label: {
-                VStack(spacing: 6) {
-                    Text("Better")
-                        .font(.system(size: 15, weight: selectedLifestyleTab == 1 ? .medium : .regular, design: .rounded))
-                        .foregroundColor(selectedLifestyleTab == 1 ? .ampedGreen : .white.opacity(0.5))
+                Text("Potential Lifespan")
+                    .fontWeight(selectedLifestyleTab == 1 ? .bold : .medium)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        ZStack {
+                            if selectedLifestyleTab == 1 {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.ampedGreen.opacity(0.2))
+                                
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.ampedGreen, lineWidth: 1.5)
+                                    .shadow(color: Color.ampedGreen.opacity(0.6), radius: 4)
+                            } else {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            }
+                        }
+                    )
+                    .foregroundColor(selectedLifestyleTab == 1 ? Color.ampedGreen : .gray)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.black.opacity(0.3))
+        )
+        .padding(.horizontal, 16)
+        // Keep the pulsing animation for new user discoverability
+        .scaleEffect(shouldPulseTabsForNewUsers ? 1.02 : 1.0)
+        .animation(
+            shouldPulseTabsForNewUsers ? 
+                .easeInOut(duration: 1.5).repeatCount(3, autoreverses: true) : 
+                .none,
+            value: shouldPulseTabsForNewUsers
+        )
+        .onAppear {
+            // Start pulsing animation for new users
+            if shouldPulseTabsForNewUsers {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    withAnimation(.easeInOut(duration: 1.5).repeatCount(3, autoreverses: true)) {
+                        shouldPulseTabsForNewUsers = false
+                    }
                     
-                    // Simple underline indicator
-                    Capsule()
-                        .fill(Color.ampedGreen)
-                        .frame(height: 2)
-                        .opacity(selectedLifestyleTab == 1 ? 1 : 0)
+                    // Stop the pulsing after 5 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) {
+                        shouldPulseTabsForNewUsers = false
+                    }
                 }
             }
-            .buttonStyle(PlainButtonStyle())
         }
     }
     
@@ -933,6 +994,30 @@ struct DashboardView: View {
         await MainActor.run {
             isCalculatingLifespan = false
             hasInitiallyCalculated = true
+        }
+    }
+    
+    // MARK: - Helper Functions
+    
+    private func titleForPeriod(_ period: ImpactDataPoint.PeriodType) -> String {
+        switch period {
+        case .day:
+            return "Today's Lifespan Factors"
+        case .month:
+            return "This Month's Lifespan Factors"
+        case .year:
+            return "This Year's Lifespan Factors"
+        }
+    }
+    
+    private func subtitleForPeriod(_ period: ImpactDataPoint.PeriodType) -> String {
+        switch period {
+        case .day:
+            return "Daily habits. Real impact."
+        case .month:
+            return "Monthly habits. Real impact."
+        case .year:
+            return "Yearly habits. Real impact."
         }
     }
 }

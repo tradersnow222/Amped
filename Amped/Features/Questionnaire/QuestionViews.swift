@@ -216,11 +216,16 @@ struct QuestionViews {
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
             .onAppear {
-                print("🔍 KEYBOARD DEBUG: NameQuestionView onAppear - will auto-focus in 0.1 seconds")
-                // Auto-focus the text field when view appears with reduced delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    print("🔍 KEYBOARD DEBUG: Auto-focusing text field now")
-                    isTextFieldFocused = true
+                print("🔍 KEYBOARD DEBUG: NameQuestionView onAppear - current question: \(viewModel.currentQuestion)")
+                // Only auto-focus if this is actually the current question
+                if viewModel.currentQuestion == .name {
+                    print("🔍 KEYBOARD DEBUG: This is the current question, will auto-focus in 0.1 seconds")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        print("🔍 KEYBOARD DEBUG: Auto-focusing text field now")
+                        isTextFieldFocused = true
+                    }
+                } else {
+                    print("🔍 KEYBOARD DEBUG: Not the current question, skipping auto-focus")
                 }
             }
             .onDisappear {
@@ -236,8 +241,18 @@ struct QuestionViews {
                 print("🔍 KEYBOARD DEBUG: TextField focus state changed to: \(focused)")
             }
             .onChange(of: viewModel.currentQuestion) { newQuestion in
-                print("🔍 KEYBOARD DEBUG: Current question changed to: \(newQuestion) - dismissing keyboard")
-                isTextFieldFocused = false
+                print("🔍 KEYBOARD DEBUG: Current question changed to: \(newQuestion)")
+                if newQuestion == .name {
+                    // Auto-focus when this question becomes current
+                    print("🔍 KEYBOARD DEBUG: Name question became current, auto-focusing")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        isTextFieldFocused = true
+                    }
+                } else {
+                    // Dismiss keyboard when moving away from this question
+                    print("🔍 KEYBOARD DEBUG: Moving away from name question, dismissing keyboard")
+                    isTextFieldFocused = false
+                }
             }
         }
     }

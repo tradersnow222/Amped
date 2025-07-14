@@ -40,18 +40,10 @@ struct HealthMetricRow: View {
             
             // Metric info
             VStack(alignment: .leading, spacing: 4) {
-                // Metric name with (avg) indicator
-                HStack(spacing: 4) {
-                    Text(metric.type.displayName)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
-                    
-                    if showingAverage {
-                        Text("(avg)")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-                }
+                // Metric name
+                Text(metric.type.displayName)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
                 
                 // Value row - simplified without redundant units
                 HStack(alignment: .center, spacing: 4) {
@@ -63,6 +55,13 @@ struct HealthMetricRow: View {
                     if !metric.unitString.isEmpty && !isRedundantUnit {
                         Text(metric.unitString)
                             .font(.system(size: 14)) // Same size as value
+                            .foregroundColor(valueTextColor.opacity(0.7))
+                    }
+                    
+                    // Show (avg) indicator after value and unit
+                    if showingAverage {
+                        Text("(avg)")
+                            .font(.system(size: 14))
                             .foregroundColor(valueTextColor.opacity(0.7))
                     }
                 }
@@ -205,8 +204,10 @@ struct HealthMetricRow: View {
         // Years
         if absMinutes >= minutesInYear {
             let years = absMinutes / minutesInYear
-            if years >= 2 {
-                return String(format: "%.0f years %@", years, direction)
+            if years >= 1.0 {
+                let unit = years == 1.0 ? "year" : "years"
+                let valueString = years.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", years) : String(format: "%.1f", years)
+                return "\(valueString) \(unit) \(direction)"
             } else {
                 return String(format: "%.1f year %@", years, direction)
             }
@@ -215,8 +216,10 @@ struct HealthMetricRow: View {
         // Months
         if absMinutes >= minutesInMonth {
             let months = absMinutes / minutesInMonth
-            if months >= 2 {
-                return String(format: "%.0f months %@", months, direction)
+            if months >= 1.0 {
+                let unit = months == 1.0 ? "month" : "months"
+                let valueString = months.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", months) : String(format: "%.1f", months)
+                return "\(valueString) \(unit) \(direction)"
             } else {
                 return String(format: "%.1f month %@", months, direction)
             }
@@ -225,8 +228,10 @@ struct HealthMetricRow: View {
         // Weeks
         if absMinutes >= minutesInWeek {
             let weeks = absMinutes / minutesInWeek
-            if weeks >= 2 {
-                return String(format: "%.0f weeks %@", weeks, direction)
+            if weeks >= 1.0 {
+                let unit = weeks == 1.0 ? "week" : "weeks"
+                let valueString = weeks.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", weeks) : String(format: "%.1f", weeks)
+                return "\(valueString) \(unit) \(direction)"
             } else {
                 return String(format: "%.1f week %@", weeks, direction)
             }
@@ -235,8 +240,10 @@ struct HealthMetricRow: View {
         // Days
         if absMinutes >= minutesInDay {
             let days = absMinutes / minutesInDay
-            if days >= 2 {
-                return String(format: "%.0f days %@", days, direction)
+            if days >= 1.0 {
+                let unit = days == 1.0 ? "day" : "days"
+                let valueString = days.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", days) : String(format: "%.1f", days)
+                return "\(valueString) \(unit) \(direction)"
             } else {
                 return String(format: "%.1f day %@", days, direction)
             }
@@ -245,8 +252,10 @@ struct HealthMetricRow: View {
         // Hours
         if absMinutes >= minutesInHour {
             let hours = absMinutes / minutesInHour
-            if hours >= 2 {
-                return String(format: "%.0f hours %@", hours, direction)
+            if hours >= 1.0 {
+                let unit = hours == 1.0 ? "hour" : "hours"
+                let valueString = hours.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", hours) : String(format: "%.1f", hours)
+                return "\(valueString) \(unit) \(direction)"
             } else {
                 return String(format: "%.1f hour %@", hours, direction)
             }
@@ -254,7 +263,9 @@ struct HealthMetricRow: View {
         
         // Minutes - show exact value even if less than 1
         if absMinutes >= 1.0 {
-            return "\(Int(absMinutes)) min \(direction)"
+            let roundedMinutes = Int(round(absMinutes))
+            let unit = roundedMinutes == 1 ? "minute" : "minutes"
+            return "\(roundedMinutes) \(unit) \(direction)"
         }
         
         // Seconds - convert minutes to seconds

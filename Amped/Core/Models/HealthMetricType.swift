@@ -217,7 +217,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .heartRateVariability:
             return HKUnit.secondUnit(with: .milli)
         case .bodyMass:
-            return HKUnit.pound()
+            return HKUnit.gramUnit(with: .kilo) // CRITICAL FIX: Use kg internally, convert to user preference in UI
         case .activeEnergyBurned:
             return HKUnit.kilocalorie()
         case .vo2Max:

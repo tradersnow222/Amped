@@ -62,8 +62,10 @@ struct MetricImpactDetail: Identifiable, Codable, Equatable {
         // Years
         if absImpact >= minutesInYear {
             let years = absImpact / minutesInYear
-            if years >= 2 {
-                return String(format: "%.0f years %@", years, direction)
+            if years >= 1.0 {
+                let unit = years == 1.0 ? "year" : "years"
+                let valueString = years.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", years) : String(format: "%.1f", years)
+                return "\(valueString) \(unit) \(direction)"
             } else {
                 return String(format: "%.1f year %@", years, direction)
             }
@@ -72,8 +74,10 @@ struct MetricImpactDetail: Identifiable, Codable, Equatable {
         // Months
         if absImpact >= minutesInMonth {
             let months = absImpact / minutesInMonth
-            if months >= 2 {
-                return String(format: "%.0f months %@", months, direction)
+            if months >= 1.0 {
+                let unit = months == 1.0 ? "month" : "months"
+                let valueString = months.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", months) : String(format: "%.1f", months)
+                return "\(valueString) \(unit) \(direction)"
             } else {
                 return String(format: "%.1f month %@", months, direction)
             }
@@ -82,8 +86,10 @@ struct MetricImpactDetail: Identifiable, Codable, Equatable {
         // Weeks
         if absImpact >= minutesInWeek {
             let weeks = absImpact / minutesInWeek
-            if weeks >= 2 {
-                return String(format: "%.0f weeks %@", weeks, direction)
+            if weeks >= 1.0 {
+                let unit = weeks == 1.0 ? "week" : "weeks"
+                let valueString = weeks.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", weeks) : String(format: "%.1f", weeks)
+                return "\(valueString) \(unit) \(direction)"
             } else {
                 return String(format: "%.1f week %@", weeks, direction)
             }
@@ -92,8 +98,10 @@ struct MetricImpactDetail: Identifiable, Codable, Equatable {
         // Days
         if absImpact >= minutesInDay {
             let days = absImpact / minutesInDay
-            if days >= 2 {
-                return String(format: "%.0f days %@", days, direction)
+            if days >= 1.0 {
+                let unit = days == 1.0 ? "day" : "days"
+                let valueString = days.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", days) : String(format: "%.1f", days)
+                return "\(valueString) \(unit) \(direction)"
             } else {
                 return String(format: "%.1f day %@", days, direction)
             }
@@ -102,8 +110,10 @@ struct MetricImpactDetail: Identifiable, Codable, Equatable {
         // Hours
         if absImpact >= minutesInHour {
             let hours = absImpact / minutesInHour
-            if hours >= 2 {
-                return String(format: "%.0f hours %@", hours, direction)
+            if hours >= 1.0 {
+                let unit = hours == 1.0 ? "hour" : "hours"
+                let valueString = hours.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", hours) : String(format: "%.1f", hours)
+                return "\(valueString) \(unit) \(direction)"
             } else {
                 return String(format: "%.1f hour %@", hours, direction)
             }

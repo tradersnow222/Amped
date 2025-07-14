@@ -234,24 +234,26 @@ struct MetricDetailView: View {
         
         if absMinutes >= 1440 { // Days
             let days = absMinutes / 1440
-            let singularOrPlural = days < 2 ? "day added" : "days added"
+            let singularOrPlural = days == 1.0 ? "day added" : "days added"
+            let valueString = days.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", days) : String(format: "%.1f", days)
             if minutes < 0 {
-                let singularOrPlural = days < 2 ? "day lost" : "days lost"
-                return String(format: "%.1f %@", days, singularOrPlural)
+                let singularOrPlural = days == 1.0 ? "day lost" : "days lost"
+                return "\(valueString) \(singularOrPlural)"
             }
-            return String(format: "%@%.1f %@", sign, days, singularOrPlural)
+            return "\(sign)\(valueString) \(singularOrPlural)"
         } else if absMinutes >= 60 { // Hours
             let hours = absMinutes / 60
-            let singularOrPlural = hours < 2 ? "hour added" : "hours added"
+            let singularOrPlural = hours == 1.0 ? "hour added" : "hours added"
+            let valueString = hours.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", hours) : String(format: "%.1f", hours)
             if minutes < 0 {
-                let singularOrPlural = hours < 2 ? "hour lost" : "hours lost"
-                return String(format: "%.1f %@", hours, singularOrPlural)
+                let singularOrPlural = hours == 1.0 ? "hour lost" : "hours lost"
+                return "\(valueString) \(singularOrPlural)"
             }
-            return String(format: "%@%.1f %@", sign, hours, singularOrPlural)
+            return "\(sign)\(valueString) \(singularOrPlural)"
         } else {
-            let singularOrPlural = absMinutes < 2 ? "min added" : "mins added"
+            let singularOrPlural = absMinutes == 1.0 ? "minute added" : "minutes added"
             if minutes < 0 {
-                let singularOrPlural = absMinutes < 2 ? "min lost" : "mins lost"
+                let singularOrPlural = absMinutes == 1.0 ? "minute lost" : "minutes lost"
                 return String(format: "%.0f %@", absMinutes, singularOrPlural)
             }
             return String(format: "%@%.0f %@", sign, absMinutes, singularOrPlural)
