@@ -243,31 +243,29 @@ struct DashboardView: View {
                         PeriodSelectorView(
                             selectedPeriod: $selectedPeriod,
                             onPeriodChanged: { period in
-                                // Update the view model's selected time period
-                                let timePeriod = TimePeriod(from: period)
-                                viewModel.selectedTimePeriod = timePeriod
+                                // Update the view model's selected time period with smooth animation
+                                withAnimation(.interpolatingSpring(
+                                    mass: 1.8,
+                                    stiffness: 80,
+                                    damping: 25,
+                                    initialVelocity: 0
+                                )) {
+                                    let timePeriod = TimePeriod(from: period)
+                                    viewModel.selectedTimePeriod = timePeriod
+                                }
                             }
                         )
                         .padding(.top, 8)
                         .padding(.bottom, 16)
                     }
                     
-                    // Swipeable content pages using custom container
-                    // Rules: Using SwipeablePageContainer to ensure page dots never overlap content
-                    SwipeablePageContainer(currentPage: $currentPage, pageCount: 2) {
-                        // Page 1: Health Factors with Total Impact
-                        healthFactorsPage
-                            .swipeablePage(0)
-                        
-                        // Page 2: Lifespan Remaining Battery
-                        lifespanBatteryPage
-                            .swipeablePage(1)
-                    }
-                    .onChange(of: currentPage) { newPage in
-                        // Add haptic feedback on page change for better user experience
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                        impactFeedback.impactOccurred()
-                    }
+                    // Swipeable content pages using custom infinite scrolling container
+                    // Rules: Using InfiniteDashboardContainer for true infinite scrolling
+                    InfiniteDashboardContainer(
+                        currentPage: $currentPage,
+                        healthFactorsPage: AnyView(healthFactorsPage),
+                        lifespanBatteryPage: AnyView(lifespanBatteryPage)
+                    )
                 }
                 .offset(y: pullDistance)
                 .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.85), value: pullDistance)
@@ -651,49 +649,41 @@ struct DashboardView: View {
         }
     }
     
-    /// Page 2: Lifespan remaining battery
+    /// Page 2: Lifespan remaining battery - Jobs-inspired focus
     private var lifespanBatteryPage: some View {
-        GeometryReader { geometry in
-            VStack(spacing: 0) {
-                // Lifestyle tabs at the top - more compact
-                lifestyleTabs
-                    .padding(.top, 16)
-                    .padding(.bottom, 8)
-                
-                // No ScrollView - everything fits perfectly
+        VStack(spacing: 0) {
+            // Minimalist lifestyle tabs - centered and compact
+            lifestyleTabs
+                .padding(.top, 8)
+                .padding(.bottom, 24)
+            
+            if isCalculatingLifespan && !hasInitiallyCalculated {
+                // Calculating state - centered
+                Spacer()
                 VStack(spacing: 16) {
-                    if isCalculatingLifespan && !hasInitiallyCalculated {
-                        // Calculating state - centered
-                        Spacer()
-                        VStack(spacing: 16) {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .ampedYellow))
-                                .scaleEffect(1.2)
-                            
-                            Text("Calculating your projected lifespan...")
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.7))
-                        }
-                        Spacer()
-                    } else {
-                        // Compact, elegant battery and countdown display
-                        VStack(spacing: 12) {
-                            // Enhanced battery system - more compact
-                            EnhancedBatterySystemView(
-                                lifeProjection: viewModel.lifeProjection,
-                                currentUserAge: viewModel.currentUserAge,
-                                selectedTab: selectedLifestyleTab,
-                                onProjectionHelpTapped: { 
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        showingProjectionHelp = true
-                                    }
-                                }
-                            )
-                        }
-                        .padding(.horizontal, 16)
-                    }
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .scaleEffect(1.2)
+                    
+                    Text("Calculating your lifespan...")
+                        .font(.system(size: 16, weight: .regular, design: .rounded))
+                        .foregroundColor(.white.opacity(0.6))
                 }
-                .frame(maxHeight: .infinity)
+                Spacer()
+            } else {
+                // Main content - focused on the key message
+                EnhancedBatterySystemView(
+                    lifeProjection: viewModel.lifeProjection,
+                    currentUserAge: viewModel.currentUserAge,
+                    selectedTab: selectedLifestyleTab,
+                    onProjectionHelpTapped: { 
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showingProjectionHelp = true
+                        }
+                    }
+                )
+                
+                Spacer()
             }
         }
         .refreshable {
@@ -701,72 +691,51 @@ struct DashboardView: View {
         }
     }
     
-    /// Lifestyle tabs view
+    /// Lifestyle tabs view - Jobs-inspired minimalism
     private var lifestyleTabs: some View {
-        HStack(spacing: 0) {
-            // Current lifestyle tab
+        HStack(spacing: 24) {
+            // Current lifestyle tab - simple text button
             Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(.easeInOut(duration: 0.3)) {
                     selectedLifestyleTab = 0
                 }
                 HapticManager.shared.playSelection()
             } label: {
-                Text("Current Habits")
-                    .fontWeight(selectedLifestyleTab == 0 ? .bold : .medium)
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 16)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        ZStack {
-                            if selectedLifestyleTab == 0 {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.ampedYellow.opacity(0.2))
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.ampedYellow, lineWidth: 1.5)
-                                    .shadow(color: Color.ampedYellow.opacity(0.6), radius: 4)
-                            } else {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                            }
-                        }
-                    )
-                    .foregroundColor(selectedLifestyleTab == 0 ? .ampedYellow : .gray)
+                VStack(spacing: 6) {
+                    Text("Current")
+                        .font(.system(size: 15, weight: selectedLifestyleTab == 0 ? .medium : .regular, design: .rounded))
+                        .foregroundColor(selectedLifestyleTab == 0 ? .ampedYellow : .white.opacity(0.5))
+                    
+                    // Simple underline indicator
+                    Capsule()
+                        .fill(Color.ampedYellow)
+                        .frame(height: 2)
+                        .opacity(selectedLifestyleTab == 0 ? 1 : 0)
+                }
             }
+            .buttonStyle(PlainButtonStyle())
             
-            // Better habits tab
+            // Better habits tab - simple text button
             Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                withAnimation(.easeInOut(duration: 0.3)) {
                     selectedLifestyleTab = 1
                 }
                 HapticManager.shared.playSelection()
             } label: {
-                Text("Better Habits")
-                    .fontWeight(selectedLifestyleTab == 1 ? .bold : .medium)
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 16)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        ZStack {
-                            if selectedLifestyleTab == 1 {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.ampedGreen.opacity(0.2))
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.ampedGreen, lineWidth: 1.5)
-                                    .shadow(color: Color.ampedGreen.opacity(0.6), radius: 4)
-                            } else {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                            }
-                        }
-                    )
-                    .foregroundColor(selectedLifestyleTab == 1 ? .ampedGreen : .gray)
+                VStack(spacing: 6) {
+                    Text("Better")
+                        .font(.system(size: 15, weight: selectedLifestyleTab == 1 ? .medium : .regular, design: .rounded))
+                        .foregroundColor(selectedLifestyleTab == 1 ? .ampedGreen : .white.opacity(0.5))
+                    
+                    // Simple underline indicator
+                    Capsule()
+                        .fill(Color.ampedGreen)
+                        .frame(height: 2)
+                        .opacity(selectedLifestyleTab == 1 ? 1 : 0)
+                }
             }
+            .buttonStyle(PlainButtonStyle())
         }
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.black.opacity(0.3))
-        )
-        .padding(.horizontal, 16)
     }
     
     // MARK: - UI Components

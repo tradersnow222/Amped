@@ -194,7 +194,7 @@ struct BatterySystemView: View {
     }
 } 
 
-/// Enhanced view for the life projection battery indicator with countdown display
+/// Enhanced view for the life projection battery indicator with countdown display - Jobs-inspired simplicity
 struct EnhancedBatterySystemView: View {
     let lifeProjection: LifeProjection?
     let currentUserAge: Double
@@ -208,59 +208,24 @@ struct EnhancedBatterySystemView: View {
     
     // Timer for realtime updates
     private let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
+    @State private var secondsPulse = false
     
     var body: some View {
         VStack(spacing: 24) {
-            // Bigger battery visualization - the star of the show
             if let lifeProjection = lifeProjection {
-                ZStack {
-                    BatteryIndicatorView(
-                        title: "", // No title for cleaner look
-                        value: lifeProjection.formattedProjectionValue(currentUserAge: currentUserAge) + " years",
-                        chargeLevel: calculateChargeLevel(lifeProjection: lifeProjection),
-                        numberOfSegments: 5,
-                        useYellowGradient: selectedTab == 0, // Yellow for current habits
-                        internalText: nil,
-                        helpAction: onProjectionHelpTapped,
-                        lifeProjection: lifeProjection,
-                        currentUserAge: currentUserAge,
-                        showValueBelow: false // Hide value below battery
-                    )
-                    .frame(maxWidth: 240) // Bigger width
-                    .frame(height: 340) // Reduced battery height
-                    .scaleEffect(1.05) // Reduced scale for more room
-                    
-                    // Charging effect overlay
-                    if isCharging {
-                        ChargingEffectView()
-                            .frame(maxWidth: 240)
-                            .frame(height: 340)
-                            .scaleEffect(1.05)
-                            .allowsHitTesting(false)
-                    }
-                }
-                .onChange(of: selectedTab) { newValue in
-                    if newValue == 1 && previousTab == 0 {
-                        // Switching to better habits - show charging effect
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            isCharging = true
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                            withAnimation(.easeOut(duration: 0.5)) {
-                                isCharging = false
-                            }
-                        }
-                    }
-                    previousTab = newValue
-                }
+                // Cool vertical battery visualization - balanced size
+                simplifiedBattery(lifeProjection: lifeProjection)
+                    .frame(width: 120, height: 240) // Slightly bigger battery
+                    .padding(.top, 20) // More space above
+                    .padding(.bottom, 12)
                 
-                // Elegant countdown display
+                // Clean, aligned countdown display
                 countdownDisplay(lifeProjection: lifeProjection)
                 
             } else {
-                LoadingBatteryPlaceholder()
-                    .frame(height: 340)
-                    .scaleEffect(1.05)
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .scaleEffect(1.2)
             }
         }
         .frame(maxWidth: .infinity)
@@ -279,79 +244,223 @@ struct EnhancedBatterySystemView: View {
         }
     }
     
-    /// Countdown display showing years, days, hours, minutes, seconds
+    /// Simplified battery - Vertical with cool aesthetic
+    private func simplifiedBattery(lifeProjection: LifeProjection) -> some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let cornerRadius: CGFloat = 14
+            let terminalHeight: CGFloat = 8
+            let terminalWidth: CGFloat = width * 0.3
+            let casingLineWidth: CGFloat = 3
+            
+            ZStack(alignment: .top) {
+                // Battery Terminal - Metallic look
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.9),
+                                Color.gray.opacity(0.7),
+                                Color.white.opacity(0.6)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: terminalWidth, height: terminalHeight)
+                    .shadow(color: Color.white.opacity(0.3), radius: 2, y: 1)
+                
+                // Battery body
+                VStack(spacing: 0) {
+                    ZStack(alignment: .bottom) {
+                        // Glass casing with gradient
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.6),
+                                        Color.white.opacity(0.3),
+                                        Color.white.opacity(0.2)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: casingLineWidth
+                            )
+                            .shadow(color: selectedTab == 1 ? Color.ampedGreen.opacity(0.6) : Color.ampedYellow.opacity(0.6), radius: 15, x: 0, y: 0)
+                            .blur(radius: 0.5)
+                        
+                        // Battery fill with segments effect
+                        VStack(spacing: 2) {
+                            ForEach(0..<10, id: \.self) { index in
+                                let segmentThreshold = CGFloat(10 - index) / 10.0
+                                let isFilled = calculateChargeLevel(lifeProjection: lifeProjection) >= segmentThreshold
+                                let isTopSegment = index == 0 && isFilled
+                                
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(
+                                        isFilled ?
+                                        LinearGradient(
+                                            colors: selectedTab == 1 ? 
+                                                [Color.ampedGreen.opacity(isTopSegment ? 1.0 : 0.9), 
+                                                 Color.ampedGreen.opacity(isTopSegment ? 0.9 : 0.7)] :
+                                                [Color.ampedYellow.opacity(isTopSegment ? 1.0 : 0.9), 
+                                                 Color.ampedYellow.opacity(isTopSegment ? 0.9 : 0.7)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.gray.opacity(0.15), Color.gray.opacity(0.1)],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        // Shine effect for filled segments
+                                        isFilled ?
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(isTopSegment ? 0.4 : 0.2),
+                                                Color.clear
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .center
+                                        )
+                                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                                        : nil
+                                    )
+                                    .scaleEffect(isTopSegment ? 1.05 : 1.0)
+                                    .shadow(color: isTopSegment ? (selectedTab == 1 ? Color.ampedGreen : Color.ampedYellow).opacity(0.6) : Color.clear, radius: 4)
+                            }
+                        }
+                        .padding(5)
+                        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: selectedTab)
+                        .animation(.spring(response: 0.5), value: calculateChargeLevel(lifeProjection: lifeProjection))
+                        
+                        // Remove percentage - battery speaks for itself
+                    }
+                }
+                .offset(y: terminalHeight - 2)
+            }
+        }
+    }
+    
+    /// Countdown display showing years, days, hours, minutes, seconds - Jobs-inspired design
     private func countdownDisplay(lifeProjection: LifeProjection) -> some View {
         let remainingTime = calculateRemainingTime(lifeProjection: lifeProjection)
         
-        return VStack(spacing: 20) {
-            // Add indicator for better habits mode
-            if selectedTab == 1 {
-                HStack(spacing: 8) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 16))
-                        .foregroundColor(.ampedGreen)
-                    Text("With Better Habits")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.ampedGreen)
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 16))
-                        .foregroundColor(.ampedGreen)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 6)
-                .glassBackground(.ultraThin, cornerRadius: 20)
-                .transition(.scale.combined(with: .opacity))
-            }
-            
-            // Main years display with user's name
-            VStack(spacing: 4) {
-                // Get user's name from UserDefaults
-                let userName = UserDefaults.standard.string(forKey: "userName") ?? "You"
+        return VStack(spacing: 32) {
+            // Main countdown message
+            VStack(spacing: 10) {
+                // Context line
+                Text(selectedTab == 0 ? "With your current habits" : "With better habits")
+                    .font(.system(size: 20, weight: .medium, design: .rounded))
+                    .foregroundColor(.white.opacity(0.8))
                 
-                Text("\(userName) has")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.white.opacity(0.9))
+                // "you have" line
+                Text("you have")
+                    .font(.system(size: 18, weight: .regular, design: .rounded))
+                    .foregroundColor(.white.opacity(0.6))
                 
-                // Years with unit on same line
-                HStack(spacing: 8) {
-                    Text("\(remainingTime.years)")
-                        .font(.system(size: 56, weight: .heavy, design: .rounded))
-                        .foregroundColor(selectedTab == 1 ? .ampedGreen : .ampedYellow)
-                        .monospacedDigit()
+                // Complete countdown - all in one line
+                VStack(spacing: 6) {
+                    // Years
+                    HStack(spacing: 8) {
+                        Text("\(remainingTime.years)")
+                            .font(.system(size: 72, weight: .heavy, design: .rounded))
+                            .foregroundColor(selectedTab == 1 ? .ampedGreen : .ampedYellow)
+                            .monospacedDigit()
+                        
+                        Text("years")
+                            .font(.system(size: 28, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.9))
+                            .alignmentGuide(.firstTextBaseline) { d in d[.bottom] - 8 }
+                    }
+                    .scaleEffect(selectedTab == 1 ? 1.05 : 1.0)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.7), value: selectedTab)
                     
-                    Text("years")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
-                        .alignmentGuide(.bottom) { d in d[.bottom] - 8 } // Align to bottom of number
+                    // Days, hours, minutes, seconds - more compact
+                    HStack(spacing: 8) {
+                        // Days
+                        HStack(spacing: 1) {
+                            Text("\(remainingTime.days)")
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .monospacedDigit()
+                            Text("d")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                        }
+                        
+                        Text("·").opacity(0.3)
+                        
+                        // Hours
+                        HStack(spacing: 1) {
+                            Text("\(remainingTime.hours)")
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .monospacedDigit()
+                            Text("h")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                        }
+                        
+                        Text("·").opacity(0.3)
+                        
+                        // Minutes
+                        HStack(spacing: 1) {
+                            Text("\(remainingTime.minutes)")
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .monospacedDigit()
+                            Text("m")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                        }
+                        
+                        Text("·").opacity(0.3)
+                        
+                        // Seconds - dramatically emphasized
+                        HStack(spacing: 1) {
+                            Text("\(remainingTime.seconds)")
+                                .font(.system(size: 26, weight: .heavy, design: .rounded))
+                                .foregroundColor(selectedTab == 1 ? .ampedGreen : .ampedYellow)
+                                .monospacedDigit()
+                                .shadow(color: selectedTab == 1 ? Color.ampedGreen.opacity(0.6) : Color.ampedYellow.opacity(0.6), radius: 6)
+                                .scaleEffect(secondsPulse ? 1.15 : 1.05)
+                                .animation(.easeInOut(duration: 0.5), value: secondsPulse)
+                            Text("s")
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundColor(selectedTab == 1 ? .ampedGreen : .ampedYellow)
+                        }
+                    }
+                    .foregroundColor(.white.opacity(0.9))
                 }
+                
+                // "left to live" line
+                Text("left to live")
+                    .font(.system(size: 24, weight: .medium, design: .rounded))
+                    .foregroundColor(.white.opacity(0.8))
+                    .padding(.top, 4)
             }
-            .scaleEffect(selectedTab == 1 ? 1.05 : 1.0)
-            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: selectedTab)
             
-            // All other time components on one line - no background
-            HStack(spacing: 16) {
-                timeComponentInline(value: remainingTime.days, unit: "d")
-                Text("·").foregroundColor(.white.opacity(0.3))
-                timeComponentInline(value: remainingTime.hours, unit: "h")
-                Text("·").foregroundColor(.white.opacity(0.3))
-                timeComponentInline(value: remainingTime.minutes, unit: "m")
-                Text("·").foregroundColor(.white.opacity(0.3))
-                timeComponentInline(value: remainingTime.seconds, unit: "s", isAnimated: true)
+            // Bottom dramatic message
+            Spacer()
+                .frame(height: 20)
+            
+            if selectedTab == 0 {
+                // Current tab - refined message
+                Text("Every second counts")
+                    .font(.system(size: 24, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.95))
+                    .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
+            } else {
+                // Better tab - gain message
+                let extraYears = Int(lifeProjection.adjustedLifeExpectancyYears * 0.20)
+                Text("That's \(extraYears) more years!")
+                    .font(.system(size: 24, weight: .semibold, design: .rounded))
+                    .foregroundColor(.ampedGreen)
+                    .shadow(color: Color.ampedGreen.opacity(0.3), radius: 2, x: 0, y: 1)
             }
-            .font(.system(size: 34, weight: .medium, design: .rounded))
-            .monospacedDigit()
-            .padding(.horizontal, 20)
-            .padding(.vertical, 6)
-            
-            // "left to live" below the time components
-            Text("left to live")
-                .font(.system(size: 28, weight: .light, design: .rounded))
-                .foregroundColor(.white.opacity(0.7))
-                .padding(.top, 2)
         }
         .frame(maxWidth: .infinity)
         .onReceive(timer) { _ in
             currentTime = Date()
+            secondsPulse.toggle()
         }
     }
     
@@ -365,6 +474,15 @@ struct EnhancedBatterySystemView: View {
             Text(unit)
                 .foregroundColor(.white.opacity(0.6))
                 .font(.system(size: 16, weight: .regular))
+        }
+    }
+    
+    /// Minimal time component for Jobs-inspired design
+    private func timeComponentMinimal(value: Int, unit: String) -> some View {
+        HStack(spacing: 2) {
+            Text("\(value)")
+                .monospacedDigit()
+            Text(unit)
         }
     }
     
