@@ -146,6 +146,102 @@ struct QuestionViews {
         }
     }
     
+    // MARK: - Name Question
+    
+    struct NameQuestionView: View {
+        @ObservedObject var viewModel: QuestionnaireViewModel
+        @FocusState private var isTextFieldFocused: Bool
+        
+        var body: some View {
+            VStack(alignment: .center, spacing: 0) {
+                // Question placed higher
+                Text("What's your first name?")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, 10)
+                    .frame(maxWidth: .infinity)
+                
+                Spacer()
+                
+                // Options at bottom for thumb access - matching other questions structure
+                VStack(spacing: 12) {
+                    TextField("Enter your name", text: $viewModel.userName)
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.white.opacity(0.1))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                        .focused($isTextFieldFocused)
+                        .onSubmit {
+                            print("🔍 KEYBOARD DEBUG: TextField onSubmit triggered")
+                            if viewModel.canProceed {
+                                print("🔍 KEYBOARD DEBUG: Proceeding to next question from onSubmit")
+                                isTextFieldFocused = false // Dismiss keyboard before proceeding
+                                viewModel.proceedToNextQuestion()
+                            }
+                        }
+                        .textInputAutocapitalization(.words)
+                        .disableAutocorrection(true)
+                    
+                    Button(action: {
+                        print("🔍 KEYBOARD DEBUG: Continue button tapped")
+                        if viewModel.canProceed {
+                            print("🔍 KEYBOARD DEBUG: Dismissing keyboard before proceeding")
+                            isTextFieldFocused = false // Dismiss keyboard before proceeding
+                            
+                            // Give a small delay to ensure keyboard dismissal completes
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                print("🔍 KEYBOARD DEBUG: Proceeding to next question from Continue button")
+                                viewModel.proceedToNextQuestion()
+                            }
+                        }
+                    }) {
+                        Text("Continue")
+                    }
+                    .questionnaireButtonStyle(isSelected: false)
+                    .opacity(viewModel.canProceed ? 1.0 : 0.6)
+                    .disabled(!viewModel.canProceed)
+                    .hapticFeedback(.heavy)
+                }
+                .padding(.bottom, 30)
+            }
+            .padding(.horizontal, 24)
+            .frame(maxHeight: .infinity)
+            .onAppear {
+                print("🔍 KEYBOARD DEBUG: NameQuestionView onAppear - will auto-focus in 0.1 seconds")
+                // Auto-focus the text field when view appears with reduced delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    print("🔍 KEYBOARD DEBUG: Auto-focusing text field now")
+                    isTextFieldFocused = true
+                }
+            }
+            .onDisappear {
+                print("🔍 KEYBOARD DEBUG: NameQuestionView onDisappear - dismissing keyboard")
+                isTextFieldFocused = false
+            }
+            .onTapGesture {
+                print("🔍 KEYBOARD DEBUG: Tap outside detected - dismissing keyboard")
+                // Dismiss keyboard when tapping outside
+                isTextFieldFocused = false
+            }
+            .onChange(of: isTextFieldFocused) { focused in
+                print("🔍 KEYBOARD DEBUG: TextField focus state changed to: \(focused)")
+            }
+            .onChange(of: viewModel.currentQuestion) { newQuestion in
+                print("🔍 KEYBOARD DEBUG: Current question changed to: \(newQuestion) - dismissing keyboard")
+                isTextFieldFocused = false
+            }
+        }
+    }
+    
     // MARK: - Gender Question
     
     struct GenderQuestionView: View {

@@ -35,6 +35,9 @@ struct DashboardView: View {
     @State private var isCalculatingLifespan = true
     @State private var hasInitiallyCalculated = false
     
+    // State for lifestyle tabs
+    @State private var selectedLifestyleTab = 0 // 0 = Current lifestyle, 1 = Better habits
+    
     // MARK: - Computed Properties
     
     /// Convert period type to proper adjective form for display
@@ -134,7 +137,7 @@ struct DashboardView: View {
         // Years
         if absMinutes >= minutesInYear {
             let years = absMinutes / minutesInYear
-            if years >= 2 {
+            if years > 1 {
                 return String(format: "%.0f years", years)
             } else {
                 return String(format: "%.1f year", years)
@@ -144,7 +147,7 @@ struct DashboardView: View {
         // Months
         if absMinutes >= minutesInMonth {
             let months = absMinutes / minutesInMonth
-            if months >= 2 {
+            if months > 1 {
                 return String(format: "%.0f months", months)
             } else {
                 return String(format: "%.1f month", months)
@@ -154,7 +157,7 @@ struct DashboardView: View {
         // Weeks
         if absMinutes >= minutesInWeek {
             let weeks = absMinutes / minutesInWeek
-            if weeks >= 2 {
+            if weeks > 1 {
                 return String(format: "%.0f weeks", weeks)
             } else {
                 return String(format: "%.1f week", weeks)
@@ -164,7 +167,7 @@ struct DashboardView: View {
         // Days
         if absMinutes >= minutesInDay {
             let days = absMinutes / minutesInDay
-            if days >= 2 {
+            if days > 1 {
                 return String(format: "%.0f days", days)
             } else {
                 return String(format: "%.1f day", days)
@@ -174,7 +177,7 @@ struct DashboardView: View {
         // Hours
         if absMinutes >= minutesInHour {
             let hours = absMinutes / minutesInHour
-            if hours >= 2 {
+            if hours > 1 {
                 return String(format: "%.0f hours", hours)
             } else {
                 return String(format: "%.1f hour", hours)
@@ -196,6 +199,15 @@ struct DashboardView: View {
             return String(format: "%.1f sec", absSeconds)
         } else {
             return String(format: "%.0f sec", absSeconds)
+        }
+    }
+    
+    /// Time period context text for display
+    private var timePeriodContext: String {
+        switch viewModel.selectedTimePeriod {
+        case .day: return "Today you've"
+        case .month: return "This month you've"
+        case .year: return "This year you've"
         }
     }
     
@@ -226,17 +238,19 @@ struct DashboardView: View {
             ZStack {
                 // Main content
                 VStack(spacing: 0) {
-                    // Fixed header section with period selector only
-                    PeriodSelectorView(
-                        selectedPeriod: $selectedPeriod,
-                        onPeriodChanged: { period in
-                            // Update the view model's selected time period
-                            let timePeriod = TimePeriod(from: period)
-                            viewModel.selectedTimePeriod = timePeriod
-                        }
-                    )
-                    .padding(.top, 8)
-                    .padding(.bottom, 16)
+                    // Fixed header section with period selector only on page 1
+                    if currentPage == 0 {
+                        PeriodSelectorView(
+                            selectedPeriod: $selectedPeriod,
+                            onPeriodChanged: { period in
+                                // Update the view model's selected time period
+                                let timePeriod = TimePeriod(from: period)
+                                viewModel.selectedTimePeriod = timePeriod
+                            }
+                        )
+                        .padding(.top, 8)
+                        .padding(.bottom, 16)
+                    }
                     
                     // Swipeable content pages using custom container
                     // Rules: Using SwipeablePageContainer to ensure page dots never overlap content
@@ -248,6 +262,11 @@ struct DashboardView: View {
                         // Page 2: Lifespan Remaining Battery
                         lifespanBatteryPage
                             .swipeablePage(1)
+                    }
+                    .onChange(of: currentPage) { newPage in
+                        // Add haptic feedback on page change for better user experience
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                        impactFeedback.impactOccurred()
                     }
                 }
                 .offset(y: pullDistance)
@@ -509,7 +528,7 @@ struct DashboardView: View {
                     } else if totalTimeImpact != 0 {
                         VStack(spacing: 8) {
                             // "You've added/lost" text above the number
-                            Text(totalTimeImpact >= 0 ? "You've added" : "You've lost")
+                            Text(totalTimeImpact >= 0 ? "\(timePeriodContext) added" : "\(timePeriodContext) lost")
                                 .font(.subheadline)
                                 .foregroundColor(.white.opacity(0.7))
                             
@@ -635,62 +654,119 @@ struct DashboardView: View {
     /// Page 2: Lifespan remaining battery
     private var lifespanBatteryPage: some View {
         GeometryReader { geometry in
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Center the battery in available space
-                    Spacer()
-                        .frame(height: max(40, (geometry.size.height - 500) / 3))
-                    
+            VStack(spacing: 0) {
+                // Lifestyle tabs at the top - more compact
+                lifestyleTabs
+                    .padding(.top, 16)
+                    .padding(.bottom, 8)
+                
+                // No ScrollView - everything fits perfectly
+                VStack(spacing: 16) {
                     if isCalculatingLifespan && !hasInitiallyCalculated {
-                        // Calculating state
-                        VStack(spacing: 24) {
+                        // Calculating state - centered
+                        Spacer()
+                        VStack(spacing: 16) {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .ampedYellow))
-                                .scaleEffect(1.5)
+                                .scaleEffect(1.2)
                             
                             Text("Calculating your projected lifespan...")
-                                .font(.headline)
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 60)
-                    } else {
-                        // The life projection battery - BIGGER
-                        BatterySystemView(
-                            lifeProjection: viewModel.lifeProjection,
-                            currentUserAge: viewModel.currentUserAge,
-                            onProjectionHelpTapped: { 
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    showingProjectionHelp = true
-                                }
-                            }
-                        )
-                        .scaleEffect(1.3) // Make battery 30% bigger
-                        .padding(.horizontal, -20) // Compensate for scale
-                        
-                        // Optional description or context
-                        VStack(spacing: 12) {
-                            Text("Your estimated lifespan")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                            
-                            Text("Based on your current health metrics and lifestyle factors")
                                 .font(.subheadline)
                                 .foregroundColor(.white.opacity(0.7))
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 32)
                         }
-                        .padding(.top, 60) // More space after bigger battery
-                                            }
-                        
                         Spacer()
-                            .frame(height: max(60, geometry.safeAreaInsets.bottom + 40))
+                    } else {
+                        // Compact, elegant battery and countdown display
+                        VStack(spacing: 12) {
+                            // Enhanced battery system - more compact
+                            EnhancedBatterySystemView(
+                                lifeProjection: viewModel.lifeProjection,
+                                currentUserAge: viewModel.currentUserAge,
+                                selectedTab: selectedLifestyleTab,
+                                onProjectionHelpTapped: { 
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        showingProjectionHelp = true
+                                    }
+                                }
+                            )
+                        }
+                        .padding(.horizontal, 16)
                     }
                 }
-                .refreshable {
-                    await refreshLifespanData()
-                }
+                .frame(maxHeight: .infinity)
+            }
         }
+        .refreshable {
+            await refreshLifespanData()
+        }
+    }
+    
+    /// Lifestyle tabs view
+    private var lifestyleTabs: some View {
+        HStack(spacing: 0) {
+            // Current lifestyle tab
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    selectedLifestyleTab = 0
+                }
+                HapticManager.shared.playSelection()
+            } label: {
+                Text("Current Habits")
+                    .fontWeight(selectedLifestyleTab == 0 ? .bold : .medium)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        ZStack {
+                            if selectedLifestyleTab == 0 {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.ampedYellow.opacity(0.2))
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.ampedYellow, lineWidth: 1.5)
+                                    .shadow(color: Color.ampedYellow.opacity(0.6), radius: 4)
+                            } else {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            }
+                        }
+                    )
+                    .foregroundColor(selectedLifestyleTab == 0 ? .ampedYellow : .gray)
+            }
+            
+            // Better habits tab
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    selectedLifestyleTab = 1
+                }
+                HapticManager.shared.playSelection()
+            } label: {
+                Text("Better Habits")
+                    .fontWeight(selectedLifestyleTab == 1 ? .bold : .medium)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        ZStack {
+                            if selectedLifestyleTab == 1 {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.ampedGreen.opacity(0.2))
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.ampedGreen, lineWidth: 1.5)
+                                    .shadow(color: Color.ampedGreen.opacity(0.6), radius: 4)
+                            } else {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            }
+                        }
+                    )
+                    .foregroundColor(selectedLifestyleTab == 1 ? .ampedGreen : .gray)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.black.opacity(0.3))
+        )
+        .padding(.horizontal, 16)
     }
     
     // MARK: - UI Components

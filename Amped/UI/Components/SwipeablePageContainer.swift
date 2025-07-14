@@ -14,11 +14,14 @@ public struct SwipeablePageContainer<Content: View>: View {
     /// The content pages to display
     let content: Content
     
-    /// Spacing between page indicators
-    private let indicatorSpacing: CGFloat = 8
+    /// Spacing between page indicators - iOS standard
+    private let indicatorSpacing: CGFloat = 12
     
-    /// Size of page indicators
-    private let indicatorSize: CGFloat = 7
+    /// Size of page indicators - iOS standard (larger, more prominent)
+    private let indicatorSize: CGFloat = 10
+    
+    /// Active indicator size - slightly larger for better visibility
+    private let activeIndicatorSize: CGFloat = 12
     
     // MARK: - Initialization
     
@@ -37,24 +40,72 @@ public struct SwipeablePageContainer<Content: View>: View {
                 content
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never)) // Hide default indicators
+            .animation(.interpolatingSpring(stiffness: 300, damping: 30), value: currentPage) // Smoother page transitions
             
-            // Custom page indicators with proper positioning
+            // Custom page indicators with iOS-standard styling
             HStack(spacing: indicatorSpacing) {
                 ForEach(0..<pageCount, id: \.self) { index in
+                    let isActive = index == currentPage
+                    
                     Circle()
-                        .fill(index == currentPage ? Color.ampedGreen : Color.white.opacity(0.3))
-                        .frame(width: indicatorSize, height: indicatorSize)
-                        .animation(.easeInOut(duration: 0.2), value: currentPage)
+                        .fill(
+                            isActive ? 
+                                Color.ampedGreen :
+                                Color.white.opacity(0.4)
+                        )
+                        .frame(
+                            width: isActive ? activeIndicatorSize : indicatorSize,
+                            height: isActive ? activeIndicatorSize : indicatorSize
+                        )
+                        // iOS-style glow effect for active indicator
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    isActive ? Color.ampedGreen.opacity(0.6) : Color.clear,
+                                    lineWidth: isActive ? 1.5 : 0
+                                )
+                                .blur(radius: isActive ? 0.5 : 0)
+                        )
+                        // Subtle shadow for depth
+                        .shadow(
+                            color: isActive ? Color.ampedGreen.opacity(0.3) : Color.black.opacity(0.1),
+                            radius: isActive ? 3 : 1,
+                            x: 0,
+                            y: 1
+                        )
+                        // Smooth animations with spring physics
+                        .animation(.interpolatingSpring(stiffness: 400, damping: 25), value: currentPage)
+                        .scaleEffect(isActive ? 1.0 : 0.9) // Subtle scale difference
+                        .animation(.easeInOut(duration: 0.15), value: currentPage)
                         .onTapGesture {
-                            withAnimation {
+                            // Smooth page transition with haptic feedback
+                            withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
                                 currentPage = index
                             }
+                            
+                            // Haptic feedback for better user experience
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                            impactFeedback.impactOccurred()
                         }
+                        .contentShape(Circle().inset(by: -8)) // Larger tap area for better UX
                 }
             }
-            .padding(.vertical, 16)
-            .padding(.bottom, 8) // Extra bottom padding for safety
-            .background(Color.black.opacity(0.01)) // Invisible background to ensure tap area
+            .padding(.vertical, 20) // More generous padding
+            .padding(.horizontal, 16) // Ensure dots don't touch edges
+            .background(
+                // Subtle background with glass effect
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(.ultraThinMaterial)
+                    .opacity(0.6)
+                    .frame(height: 44) // iOS standard touch target height
+            )
+            .overlay(
+                // Subtle border for definition
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                    .frame(height: 44)
+            )
+            .padding(.bottom, 12) // Extra bottom padding for safety
         }
     }
 }

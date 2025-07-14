@@ -144,6 +144,10 @@ struct QuestionnaireView: View {
                 viewModel: viewModel, 
                 handleContinue: handleContinue
             )
+        case .name:
+            QuestionViews.NameQuestionView(
+                viewModel: viewModel
+            )
         case .gender:
             QuestionViews.GenderQuestionView(
                 viewModel: viewModel
@@ -232,6 +236,8 @@ struct QuestionnaireView: View {
     
     private func handleContinue() {
         guard viewModel.canProceed else { return }
+        
+        print("🔍 KEYBOARD DEBUG: handleContinue called from question: \(viewModel.currentQuestion)")
         
         // If this is the last question, proceed to the next onboarding step
         if viewModel.isLastQuestion {

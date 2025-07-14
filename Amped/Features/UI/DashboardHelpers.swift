@@ -141,7 +141,7 @@ struct PeriodSelectorView: View {
 struct LoadingBatteryPlaceholder: View {
     var body: some View {
         BatteryIndicatorView(
-            title: "Calculating your lifespan...", 
+            title: "", // No title for cleaner look
             value: "--", 
             chargeLevel: 0.0, 
             numberOfSegments: 5, 
@@ -149,7 +149,8 @@ struct LoadingBatteryPlaceholder: View {
             internalText: nil,
             helpAction: nil,
             lifeProjection: nil,
-            currentUserAge: nil
+            currentUserAge: nil,
+            showValueBelow: false // Hide value for loading placeholder
         )
         .opacity(0.5)
     }
@@ -177,7 +178,8 @@ struct BatterySystemView: View {
                         internalText: nil,
                         helpAction: onProjectionHelpTapped,
                         lifeProjection: lifeProjection,
-                        currentUserAge: currentUserAge
+                        currentUserAge: currentUserAge,
+                        showValueBelow: false // Hide value below battery
                     )
                     .frame(maxWidth: 200) // Slightly narrower while preserving decimal display
                 } else {
@@ -191,3 +193,233 @@ struct BatterySystemView: View {
         }
     }
 } 
+
+/// Enhanced view for the life projection battery indicator with countdown display
+struct EnhancedBatterySystemView: View {
+    let lifeProjection: LifeProjection?
+    let currentUserAge: Double
+    let selectedTab: Int // 0 = Current lifestyle, 1 = Better habits
+    let onProjectionHelpTapped: () -> Void
+    
+    @State private var currentTime = Date()
+    @Environment(\.glassTheme) private var glassTheme
+    @State private var isCharging = false
+    @State private var previousTab: Int = 0
+    
+    // Timer for realtime updates
+    private let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            // Bigger battery visualization - the star of the show
+            if let lifeProjection = lifeProjection {
+                ZStack {
+                    BatteryIndicatorView(
+                        title: "", // No title for cleaner look
+                        value: lifeProjection.formattedProjectionValue(currentUserAge: currentUserAge) + " years",
+                        chargeLevel: calculateChargeLevel(lifeProjection: lifeProjection),
+                        numberOfSegments: 5,
+                        useYellowGradient: selectedTab == 0, // Yellow for current habits
+                        internalText: nil,
+                        helpAction: onProjectionHelpTapped,
+                        lifeProjection: lifeProjection,
+                        currentUserAge: currentUserAge,
+                        showValueBelow: false // Hide value below battery
+                    )
+                    .frame(maxWidth: 240) // Bigger width
+                    .frame(height: 340) // Reduced battery height
+                    .scaleEffect(1.05) // Reduced scale for more room
+                    
+                    // Charging effect overlay
+                    if isCharging {
+                        ChargingEffectView()
+                            .frame(maxWidth: 240)
+                            .frame(height: 340)
+                            .scaleEffect(1.05)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .onChange(of: selectedTab) { newValue in
+                    if newValue == 1 && previousTab == 0 {
+                        // Switching to better habits - show charging effect
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            isCharging = true
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            withAnimation(.easeOut(duration: 0.5)) {
+                                isCharging = false
+                            }
+                        }
+                    }
+                    previousTab = newValue
+                }
+                
+                // Elegant countdown display
+                countdownDisplay(lifeProjection: lifeProjection)
+                
+            } else {
+                LoadingBatteryPlaceholder()
+                    .frame(height: 340)
+                    .scaleEffect(1.05)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 16)
+    }
+    
+    /// Calculate charge level based on selected tab
+    private func calculateChargeLevel(lifeProjection: LifeProjection) -> CGFloat {
+        if selectedTab == 0 {
+            // Current lifestyle - use actual projection
+            return lifeProjection.projectionPercentage(currentUserAge: currentUserAge)
+        } else {
+            // Better habits - simulate 10-20% improvement
+            let currentCharge = lifeProjection.projectionPercentage(currentUserAge: currentUserAge)
+            return min(1.0, currentCharge * 1.25) // 25% improvement for more visual impact
+        }
+    }
+    
+    /// Countdown display showing years, days, hours, minutes, seconds
+    private func countdownDisplay(lifeProjection: LifeProjection) -> some View {
+        let remainingTime = calculateRemainingTime(lifeProjection: lifeProjection)
+        
+        return VStack(spacing: 20) {
+            // Add indicator for better habits mode
+            if selectedTab == 1 {
+                HStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 16))
+                        .foregroundColor(.ampedGreen)
+                    Text("With Better Habits")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.ampedGreen)
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 16))
+                        .foregroundColor(.ampedGreen)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .glassBackground(.ultraThin, cornerRadius: 20)
+                .transition(.scale.combined(with: .opacity))
+            }
+            
+            // Main years display with user's name
+            VStack(spacing: 4) {
+                // Get user's name from UserDefaults
+                let userName = UserDefaults.standard.string(forKey: "userName") ?? "You"
+                
+                Text("\(userName) has")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(.white.opacity(0.9))
+                
+                // Years with unit on same line
+                HStack(spacing: 8) {
+                    Text("\(remainingTime.years)")
+                        .font(.system(size: 56, weight: .heavy, design: .rounded))
+                        .foregroundColor(selectedTab == 1 ? .ampedGreen : .ampedYellow)
+                        .monospacedDigit()
+                    
+                    Text("years")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
+                        .alignmentGuide(.bottom) { d in d[.bottom] - 8 } // Align to bottom of number
+                }
+            }
+            .scaleEffect(selectedTab == 1 ? 1.05 : 1.0)
+            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: selectedTab)
+            
+            // All other time components on one line - no background
+            HStack(spacing: 16) {
+                timeComponentInline(value: remainingTime.days, unit: "d")
+                Text("·").foregroundColor(.white.opacity(0.3))
+                timeComponentInline(value: remainingTime.hours, unit: "h")
+                Text("·").foregroundColor(.white.opacity(0.3))
+                timeComponentInline(value: remainingTime.minutes, unit: "m")
+                Text("·").foregroundColor(.white.opacity(0.3))
+                timeComponentInline(value: remainingTime.seconds, unit: "s", isAnimated: true)
+            }
+            .font(.system(size: 34, weight: .medium, design: .rounded))
+            .monospacedDigit()
+            .padding(.horizontal, 20)
+            .padding(.vertical, 6)
+            
+            // "left to live" below the time components
+            Text("left to live")
+                .font(.system(size: 28, weight: .light, design: .rounded))
+                .foregroundColor(.white.opacity(0.7))
+                .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity)
+        .onReceive(timer) { _ in
+            currentTime = Date()
+        }
+    }
+    
+    /// Inline time component for single-line display
+    private func timeComponentInline(value: Int, unit: String, isAnimated: Bool = false) -> some View {
+        HStack(spacing: 4) {
+            Text("\(value)")
+                .foregroundColor(.white)
+                .scaleEffect(isAnimated ? 1.02 : 1.0)
+                .animation(isAnimated ? .easeInOut(duration: 0.5) : nil, value: value)
+            Text(unit)
+                .foregroundColor(.white.opacity(0.6))
+                .font(.system(size: 16, weight: .regular))
+        }
+    }
+    
+    /// Calculate remaining time components
+    private func calculateRemainingTime(lifeProjection: LifeProjection) -> (years: Int, days: Int, hours: Int, minutes: Int, seconds: Int) {
+        var adjustedYears = lifeProjection.adjustedLifeExpectancyYears
+        
+        // Apply improvement for better habits tab
+        if selectedTab == 1 {
+            // Add 20% more years for better habits - more significant improvement
+            adjustedYears = adjustedYears * 1.20
+        }
+        
+        let remainingYears = adjustedYears - currentUserAge
+        
+        // Calculate time elapsed in current year for countdown effect
+        let calendar = Calendar.current
+        let now = currentTime
+        
+        // Convert remaining time to components
+        let years = Int(remainingYears)
+        let fractionalYear = remainingYears - Double(years)
+        let daysFromFraction = Int(fractionalYear * 365.25)
+        
+        // Calculate current time components
+        let currentHour = calendar.component(.hour, from: now)
+        let currentMinute = calendar.component(.minute, from: now)
+        let currentSecond = calendar.component(.second, from: now)
+        
+        // Calculate remaining time in current day
+        let hoursLeft = 23 - currentHour
+        let minutesLeft = 59 - currentMinute
+        let secondsLeft = 59 - currentSecond
+        
+        return (
+            years: years,
+            days: daysFromFraction,
+            hours: hoursLeft,
+            minutes: minutesLeft,
+            seconds: secondsLeft
+        )
+    }
+}
+
+// Charging effect overlay view - removed lightning bolt animations
+struct ChargingEffectView: View {
+    @State private var animationProgress: CGFloat = 0
+    
+    var body: some View {
+        // Empty view - no more charging animations
+        EmptyView()
+    }
+}
+
+// Data structures removed - LightningParticle no longer needed
+
+// MARK: - Data Structures
+// ... existing code ... 

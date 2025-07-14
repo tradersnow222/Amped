@@ -45,6 +45,15 @@ struct BatteryLifeImpactCard: View {
         return impactValue.displayString
     }
     
+    /// Time period context text for display
+    private var timePeriodContext: String {
+        switch selectedPeriod {
+        case .day: return "Today you've"
+        case .month: return "This month you've"
+        case .year: return "This year you've"
+        }
+    }
+    
     /// Impact description
     private var impactDescription: String {
         let impactValue = lifeImpact.totalImpactForPeriod(selectedPeriod)
@@ -127,7 +136,7 @@ struct BatteryLifeImpactCard: View {
             // Impact value and details
             VStack(alignment: .leading, spacing: 8) {
                 // Text above the big number (made bigger)
-                Text("You've added")
+                Text(lifeImpact.totalImpactForPeriod(selectedPeriod).direction == .positive ? "\(timePeriodContext) added" : "\(timePeriodContext) lost")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundColor(.white.opacity(0.9))
                 

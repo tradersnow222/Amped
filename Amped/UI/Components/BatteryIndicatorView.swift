@@ -13,6 +13,7 @@ struct BatteryIndicatorView: View {
     let useYellowGradient: Bool // To handle the different color scheme for the projection battery
     let internalText: String? // Optional text to display inside the battery
     let helpAction: (() -> Void)? // Optional action for tapping the info icon
+    let showValueBelow: Bool // Whether to show the value below the battery
     
     // Realtime countdown properties  
     let lifeProjection: LifeProjection? // Optional life projection for realtime countdown
@@ -21,6 +22,7 @@ struct BatteryIndicatorView: View {
     @EnvironmentObject private var settingsManager: SettingsManager
     @Environment(\.glassTheme) private var glassTheme
     @State private var currentTime = Date()
+    @State private var pulseAnimation = false
     
     // Timer for realtime updates - update every 1 second for proper countdown rate
     private let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
@@ -34,9 +36,9 @@ struct BatteryIndicatorView: View {
     private let terminalHeight: CGFloat = 10
     private let terminalWidthRatio: CGFloat = 0.2
     // Fixed battery height for consistency - reduced to show more health factors
-    private let fixedBatteryHeight: CGFloat = 176  // 20% shorter than 220
+    private let fixedBatteryHeight: CGFloat = 200  // Increased from 120 for bigger battery
     // Fixed overall card height for consistency between cards - reduced proportionally
-    private let fixedCardHeight: CGFloat = 320  // Adjusted for shorter battery height
+    private let fixedCardHeight: CGFloat = 280  // Increased from 200 for bigger battery
     // Info button size
     private let infoButtonSize: CGFloat = 18
     // Title text font size - increased slightly for better visibility
@@ -120,144 +122,199 @@ struct BatteryIndicatorView: View {
     var body: some View {
         VStack(spacing: 10) { // Reduced spacing for better layout
             // Title section with words stacked vertically - centered with overlaid info button
-            ZStack {
-                // Centered title text taking full width
-                VStack(spacing: 0) {
-                    ForEach(titleWords, id: \.self) { word in
-                        Text(word)
-                            .font(.system(size: titleFontSize, weight: .semibold))
-                            .foregroundColor(.white)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .accessibility(addTraits: .isHeader)
-                
-                // Info button overlaid in top-right corner
-                if helpAction != nil {
-                    HStack {
-                        Spacer()
-                        Button { 
-                            HapticManager.shared.playSelection()
-                            helpAction?() 
-                        } label: {
-                            Image(systemName: "info.circle.fill")
-                                .font(.system(size: infoButtonSize))
-                                .foregroundStyle(.quaternary)
-                                .symbolRenderingMode(.hierarchical)
-                                .accessibilityLabel("Information about \(title)")
-                                .accessibilityHint("Tap to learn more")
+            if !title.isEmpty {
+                ZStack {
+                    // Centered title text taking full width
+                    VStack(spacing: 0) {
+                        ForEach(titleWords, id: \.self) { word in
+                            Text(word)
+                                .font(.system(size: titleFontSize, weight: .semibold))
+                                .foregroundColor(.white)
                         }
-                        .buttonStyle(.plain)
-                        .frame(width: 28, height: 28)
-                        .contentShape(Circle())
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .accessibility(addTraits: .isHeader)
+                    
+                    // Info button overlaid in top-right corner
+                    if helpAction != nil {
+                        HStack {
+                            Spacer()
+                            Button { 
+                                HapticManager.shared.playSelection()
+                                helpAction?() 
+                            } label: {
+                                Image(systemName: "info.circle.fill")
+                                    .font(.system(size: infoButtonSize))
+                                    .foregroundStyle(.quaternary)
+                                    .symbolRenderingMode(.hierarchical)
+                                    .accessibilityLabel("Information about \(title)")
+                                    .accessibilityHint("Tap to learn more")
+                            }
+                            .buttonStyle(.plain)
+                            .frame(width: 28, height: 28)
+                            .contentShape(Circle())
+                        }
                     }
                 }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 8)
             }
-            .padding(.horizontal, 4)
-            .padding(.vertical, 8)
 
             // Battery Body
             batteryBody()
                 .frame(height: fixedBatteryHeight) // Fixed height for all batteries
 
             // Value display - separated number and unit for better readability
-            VStack(spacing: 2) {
-                // Numeric value
-                Text(displayNumericValue)
-                    .font(.system(size: 25, weight: .bold).monospacedDigit())
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                
-                // Unit (if exists)
-                if !displayUnit.isEmpty {
-                    Text(displayUnit)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
+            if showValueBelow {
+                VStack(spacing: 2) {
+                    // Numeric value
+                    Text(displayNumericValue)
+                        .font(.system(size: 25, weight: .bold).monospacedDigit())
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    
+                    // Unit (if exists)
+                    if !displayUnit.isEmpty {
+                        Text(displayUnit)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.horizontal, 8)
+                .padding(.top, 4)
+                .padding(.bottom, 4)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.horizontal, 8)
-            .padding(.top, 4)
-            .padding(.bottom, 4)
         }
         .padding(EdgeInsets(top: 12, leading: 12, bottom: 16, trailing: 12)) // Reduced padding to give more space
         .frame(height: fixedCardHeight) // Fixed height for entire card
         .glassBackground(.regular, cornerRadius: cornerRadius * 1.5)
         .onAppear {
-            // Component appeared
+            // Trigger animations on appear
+            // withAnimation(.easeInOut(duration: 0.5)) {
+            //     animateSegments = true
+            // }
+            // Start pulse animation after a short delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                withAnimation {
+                    pulseAnimation = true
+                }
+            }
+        }
+        .onChange(of: chargeLevel) { _ in
+            // Re-trigger animations when charge level changes
+            // animateSegments = false
+            pulseAnimation = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation {
+                    pulseAnimation = true
+                }
+            }
         }
         .onReceive(timer) { _ in
             if settingsManager.showRealtimeCountdown && lifeProjection != nil && currentUserAge != nil {
                 currentTime = Date()
             }
+            // Toggle pulse animation every second for top segment
+            pulseAnimation.toggle()
         }
     }
+
+    // MARK: - Private Methods
 
     // Builds the main battery structure
     private func batteryBody() -> some View {
          GeometryReader { geometry in
              let totalHeight = geometry.size.height
              let totalWidth = geometry.size.width
-             let casingWidth = totalWidth - (casingPadding * 2)
-             let casingHeight = totalHeight - terminalHeight - (casingPadding * 2)
-             let segmentHeight = (casingHeight - (segmentSpacing * CGFloat(numberOfSegments - 1))) / CGFloat(numberOfSegments)
-             let terminalWidth = casingWidth * terminalWidthRatio
+             let batteryBodyHeight = totalHeight - terminalHeight
+             
+             // Calculate the actual interior space available for segments
+             // We need extra padding inside the battery to ensure segments don't touch the casing
+             let visualPadding: CGFloat = 8 // Extra visual padding inside the battery
+             let totalInset = casingLineWidth + visualPadding
+             let segmentContainerWidth = totalWidth - (totalInset * 2) - (casingPadding * 2)
+             
+             // Adjust segment container height to account for terminal and proper spacing
+             let availableHeightForSegments = batteryBodyHeight - (totalInset * 2) - (casingPadding * 2)
+             let totalSegmentSpacing = segmentSpacing * CGFloat(numberOfSegments - 1)
+             let segmentHeight = (availableHeightForSegments - totalSegmentSpacing) / CGFloat(numberOfSegments)
 
-             ZStack(alignment: .top) { // Ensure alignment for terminal
-                 // Battery Casing with Gradient Stroke and Inner Shadow
-                 batteryCasingShape(casingWidth: casingWidth, casingHeight: casingHeight, terminalWidth: terminalWidth, terminalHeight: terminalHeight)
-                     .stroke(casingGradient, lineWidth: casingLineWidth) // Use gradient stroke
-                     // Inner shadow for depth
-                     .background(batteryCasingShape(casingWidth: casingWidth, casingHeight: casingHeight, terminalWidth: terminalWidth, terminalHeight: terminalHeight).fill(.black.opacity(0.2)))
-                     .shadow(color: glowColor.opacity(0.8), radius: glowRadius, x: 0, y: 3) // Adjusted glow
-                     .blur(radius: 0.5)
+             ZStack(alignment: .top) {
+                 // Battery Terminal - Shiny Silver
+                 RoundedRectangle(cornerRadius: cornerRadius / 3)
+                     .fill(
+                         LinearGradient(
+                             gradient: Gradient(colors: [
+                                 Color.white.opacity(0.9),
+                                 Color.gray.opacity(0.8),
+                                 Color.white.opacity(0.6),
+                                 Color.gray.opacity(0.5)
+                             ]),
+                             startPoint: .top,
+                             endPoint: .bottom
+                         )
+                     )
+                     .frame(width: totalWidth * terminalWidthRatio, height: terminalHeight)
+                     .shadow(color: Color.white.opacity(0.3), radius: 2, y: 1)
 
-                 // Battery Segments Container
-                 VStack(spacing: segmentSpacing) {
-                     ForEach(0..<numberOfSegments, id: \.self) { index in
-                         let segmentIndexFromTop = numberOfSegments - 1 - index
-                         let segmentFillThreshold = CGFloat(segmentIndexFromTop + 1) / CGFloat(numberOfSegments)
-                         let isFilled = chargeLevel >= segmentFillThreshold
-                         
-                         ZStack { // Segment background
+                 // Battery Casing with segments
+                 ZStack {
+                     // Background casing
+                     RoundedRectangle(cornerRadius: cornerRadius)
+                         .stroke(casingGradient, lineWidth: casingLineWidth)
+                         // Removed grey background fill
+                         .shadow(color: glowColor.opacity(0.8), radius: glowRadius, x: 0, y: 3)
+                         .blur(radius: 0.5)
+                         .frame(height: batteryBodyHeight)
+
+                     // Battery Segments Container
+                     VStack(spacing: segmentSpacing) {
+                         ForEach(0..<numberOfSegments, id: \.self) { index in
+                             let segmentIndexFromTop = numberOfSegments - 1 - index
+                             let segmentFillThreshold = CGFloat(segmentIndexFromTop + 1) / CGFloat(numberOfSegments)
+                             let isFilled = chargeLevel >= segmentFillThreshold
+                             
+                             // Check if this is the top filled segment
+                             let isTopFilledSegment: Bool = {
+                                 if !isFilled { return false }
+                                 // Check if the segment above this one is NOT filled
+                                 if segmentIndexFromTop == numberOfSegments - 1 {
+                                     // This is the top segment, and it's filled
+                                     return true
+                                 } else {
+                                     let aboveThreshold = CGFloat(segmentIndexFromTop + 2) / CGFloat(numberOfSegments)
+                                     return chargeLevel < aboveThreshold
+                                 }
+                             }()
+                             
                              RoundedRectangle(cornerRadius: cornerRadius / 2)
                                  .fill(segmentShapeStyle(isFilled: isFilled, threshold: segmentFillThreshold))
-                                 .overlay {
-                                     // Subtle overlay for definition
-                                     RoundedRectangle(cornerRadius: cornerRadius / 2)
-                                         .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
-                                     // Add inner shadow for filled segments
-                                     if isFilled {
-                                         RoundedRectangle(cornerRadius: cornerRadius / 2)
-                                             .stroke(Color.black.opacity(0.3), lineWidth: 2)
-                                             .blur(radius: 2)
-                                             .offset(x: 0, y: 1)
-                                             .mask(RoundedRectangle(cornerRadius: cornerRadius / 2))
-                                     }
-                                 }
+                                 .opacity(isTopFilledSegment && pulseAnimation ? 0.6 : 1.0)
+                                 .animation(
+                                     isTopFilledSegment ? .easeInOut(duration: 0.5) : nil,
+                                     value: pulseAnimation
+                                 )
+                                 .frame(height: segmentHeight)
                          }
-                         .frame(height: segmentHeight)
                      }
-                 }
-                 .padding(.horizontal, casingPadding + casingLineWidth)
-                 .padding(.bottom, casingPadding + casingLineWidth)
-                 .padding(.top, casingPadding + casingLineWidth + terminalHeight) // Account for terminal space
-                 .frame(width: totalWidth, height: totalHeight)
-                 // Overlay for Internal Text or Default Labels
-                 .overlay(alignment: .center) {
+                     .frame(width: segmentContainerWidth)
+                     .padding(.top, totalInset + casingPadding)
+                     .padding(.bottom, totalInset + casingPadding)
+                     .frame(height: batteryBodyHeight)
+                     
+                     // Overlay for Internal Text
                      if let text = internalText {
-                         // Display internalText centered over all segments
                          Text(text)
-                             .font(.system(size: 14, weight: .bold)) // Adjusted size
+                             .font(.system(size: 14, weight: .bold))
                              .foregroundColor(Color.white)
                              .multilineTextAlignment(.center)
-                             .padding(.horizontal, 4) // Add padding
+                             .padding(.horizontal, 4)
                              .shadow(color: .black.opacity(0.6), radius: 2, x: 0, y: 1)
-                             .padding(.top, terminalHeight) // Adjust vertical position to be below terminal
                      }
-                     // Removed the VStack with segment labels as requested
                  }
+                 .offset(y: terminalHeight)
              }
              .frame(width: totalWidth, height: totalHeight)
          }
@@ -305,8 +362,8 @@ struct BatteryIndicatorView: View {
 
     // MARK: - Initializers
     
-    /// Full initializer with realtime countdown support
-    init(title: String, value: String, chargeLevel: CGFloat, numberOfSegments: Int, useYellowGradient: Bool, internalText: String?, helpAction: (() -> Void)?, lifeProjection: LifeProjection?, currentUserAge: Double?) {
+    /// Full initializer with all parameters including showValueBelow
+    init(title: String, value: String, chargeLevel: CGFloat, numberOfSegments: Int, useYellowGradient: Bool, internalText: String?, helpAction: (() -> Void)?, lifeProjection: LifeProjection?, currentUserAge: Double?, showValueBelow: Bool = true) {
         self.title = title
         self.value = value
         self.chargeLevel = chargeLevel
@@ -316,6 +373,7 @@ struct BatteryIndicatorView: View {
         self.helpAction = helpAction
         self.lifeProjection = lifeProjection
         self.currentUserAge = currentUserAge
+        self.showValueBelow = showValueBelow
     }
     
     /// Convenience initializer for backwards compatibility (no realtime countdown)
@@ -329,6 +387,7 @@ struct BatteryIndicatorView: View {
         self.helpAction = helpAction
         self.lifeProjection = nil
         self.currentUserAge = nil
+        self.showValueBelow = true // Default to showing value for backwards compatibility
     }
 }
 

@@ -5,6 +5,7 @@ import SwiftUI
 final class QuestionnaireViewModel: ObservableObject {
     enum Question: Int, CaseIterable, Hashable {
         case birthdate
+        case name
         case gender
         case nutritionQuality
         case smokingStatus
@@ -176,6 +177,7 @@ final class QuestionnaireViewModel: ObservableObject {
     // Form data
     @Published var currentQuestion: Question {
         didSet {
+            print("🔍 KEYBOARD DEBUG: currentQuestion didSet - OLD: \(oldValue), NEW: \(currentQuestion)")
             // Persist current question to UserDefaults to survive app background/foreground transitions
             UserDefaults.standard.set(currentQuestion.rawValue, forKey: "questionnaire_current_question")
         }
@@ -262,6 +264,9 @@ final class QuestionnaireViewModel: ObservableObject {
     // Gender
     @Published var selectedGender: UserProfile.Gender?
     
+    // Name
+    @Published var userName: String = ""
+    
     // Nutrition
     @Published var selectedNutritionQuality: NutritionQuality?
     
@@ -286,7 +291,7 @@ final class QuestionnaireViewModel: ObservableObject {
         currentQuestion.rawValue + 2 
     }
     var totalSteps: Int {
-        10 // Total steps in the onboarding flow (excluding welcome and dashboard)
+        11 // Total steps in the onboarding flow (excluding welcome and dashboard)
     }
     
     var isComplete: Bool {
@@ -298,6 +303,8 @@ final class QuestionnaireViewModel: ObservableObject {
         switch currentQuestion {
         case .birthdate:
             return age >= 18 && age <= 120 // Validate age from birthdate
+        case .name:
+            return !userName.isEmpty // Validate name
         case .gender:
             return selectedGender != nil // Require user to make a selection
         case .nutritionQuality:
@@ -341,9 +348,13 @@ final class QuestionnaireViewModel: ObservableObject {
     func proceedToNextQuestion() {
         guard canProceed else { return }
         
+        let currentQuestionName = currentQuestion
+        print("🔍 KEYBOARD DEBUG: proceedToNextQuestion called from: \(currentQuestionName)")
+        
         if let nextQuestion = getNextQuestion() {
             // Remove animation here to consolidate animation control in the View
             currentQuestion = nextQuestion
+            print("🔍 KEYBOARD DEBUG: Successfully moved to next question: \(nextQuestion)")
         }
     }
     
@@ -399,6 +410,11 @@ final class QuestionnaireViewModel: ObservableObject {
             self.currentQuestion = .birthdate
         }
         
+        // Load saved userName if available
+        if let savedName = UserDefaults.standard.string(forKey: "userName") {
+            self.userName = savedName
+        }
+        
         // Sync the separate month/year properties with the default birthdate
         let calendar = Calendar.current
         selectedBirthMonth = calendar.component(.month, from: birthdate)
@@ -412,6 +428,11 @@ final class QuestionnaireViewModel: ObservableObject {
         
         // Save to UserDefaults immediately
         UserDefaults.standard.set(question.rawValue, forKey: "questionnaire_current_question")
+        
+        // Load saved userName if available
+        if let savedName = UserDefaults.standard.string(forKey: "userName") {
+            self.userName = savedName
+        }
         
         // Sync the separate month/year properties with the default birthdate
         let calendar = Calendar.current

@@ -39,6 +39,9 @@ final class QuestionnaireManager: ObservableObject {
     func saveQuestionnaireData(from viewModel: QuestionnaireViewModel) {
         logger.info("💾 Saving questionnaire data to user profile")
         
+        // Save user's name to UserDefaults
+        UserDefaults.standard.set(viewModel.userName, forKey: "userName")
+        
         // Calculate birth year from birthdate
         let calendar = Calendar.current
         let birthYear = calendar.component(.year, from: viewModel.birthdate)
@@ -259,6 +262,7 @@ final class QuestionnaireManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "manual_metrics")
         UserDefaults.standard.removeObject(forKey: "questionnaire_data")
         UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
+        UserDefaults.standard.removeObject(forKey: "userName")
         currentUserProfile = nil
         manualMetrics = []
         questionnaireData = nil
