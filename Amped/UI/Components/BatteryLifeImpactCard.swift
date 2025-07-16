@@ -48,9 +48,9 @@ struct BatteryLifeImpactCard: View {
     /// Time period context text for display
     private var timePeriodContext: String {
         switch selectedPeriod {
-        case .day: return "Today you've"
-        case .month: return "This month you've"
-        case .year: return "This year you've"
+        case .day: return "Today, your habits collectively"
+        case .month: return "This month, your habits collectively"
+        case .year: return "This year, your habits collectively"
         }
     }
     
@@ -136,7 +136,7 @@ struct BatteryLifeImpactCard: View {
             // Impact value and details
             VStack(alignment: .leading, spacing: 8) {
                 // Text above the big number (made bigger)
-                Text(lifeImpact.totalImpactForPeriod(selectedPeriod).direction == .positive ? "\(timePeriodContext) added" : "\(timePeriodContext) lost")
+                Text(lifeImpact.totalImpactForPeriod(selectedPeriod).direction == .positive ? "\(timePeriodContext) added" : "\(timePeriodContext) reduced")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundColor(.white.opacity(0.9))
                 
@@ -147,7 +147,7 @@ struct BatteryLifeImpactCard: View {
                     .shadow(color: batteryColor.opacity(0.3), radius: 4, x: 0, y: 2)
                 
                 // Text below the big number (made bigger, removed time period text)
-                Text("to your life")
+                Text(lifeImpact.totalImpactForPeriod(selectedPeriod).direction == .positive ? "to your lifespan" : "from your lifespan")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundColor(.white.opacity(0.9))
                 

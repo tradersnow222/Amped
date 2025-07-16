@@ -1,0 +1,24 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/UI/Components/BatteryIndicatorView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Information about %@",
+        "location": {
+          "startingColumn": 57,
+          "startingLine": 150
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tap to learn more",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 151
+        }
+      }
+    ]
+  },
+  "version": 1
+}

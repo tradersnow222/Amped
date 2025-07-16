@@ -1,0 +1,16 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/UI/MetricComponents/BatteryMetricCard.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Impact: %@",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 193
+        }
+      }
+    ]
+  },
+  "version": 1
+}

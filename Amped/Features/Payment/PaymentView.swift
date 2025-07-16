@@ -15,7 +15,7 @@ struct PaymentView: View {
     @State private var monthlyButtonPressed = false
     @State private var showBenefits = false  // New state for benefits animation
     @State private var showPricingSection = false  // New state for pricing section animation
-    @State private var showExitButton = false  // New state for exit button visibility
+    @State private var showExitButton = true  // New state for exit button visibility
     @State private var showTestimonial = false  // New state for testimonial visibility
     
     // Callback to proceed to next step
@@ -25,17 +25,6 @@ struct PaymentView: View {
     
     var body: some View {
         ZStack {
-            // Background tap area
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    // Show exit button when tapping on background
-                    if !showExitButton {
-                        withAnimation(.easeOut(duration: 0.5)) {
-                            showExitButton = true
-                        }
-                    }
-                }
             
             VStack(spacing: 0) {
                 // Clean header with X button
@@ -151,23 +140,20 @@ struct PaymentView: View {
     
     private var headerView: some View {
         HStack {
-            // Exit button (X) - only shown when showExitButton is true
-            if showExitButton {
-                Button(action: {
-                    withAnimation(.spring(response: 0.3)) {
-                        showExitOffer = true
-                    }
-                }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .padding(12)
-                        .background(Color.gray.opacity(0.1))
-                        .clipShape(Circle())
+            // Exit button (X) - always visible but subtle
+            Button(action: {
+                withAnimation(.spring(response: 0.3)) {
+                    showExitOffer = true
                 }
-                .hapticFeedback(.heavy)
-                .transition(.scale.combined(with: .opacity))
+            }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.secondary.opacity(0.4)) // Made more subtle
+                    .padding(12)
+                    .background(Color.gray.opacity(0.05)) // Made more subtle
+                    .clipShape(Circle())
             }
+            .hapticFeedback(.heavy)
             
             Spacer()
         }

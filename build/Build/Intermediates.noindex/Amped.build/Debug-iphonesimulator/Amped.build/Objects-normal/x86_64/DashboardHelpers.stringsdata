@@ -1,0 +1,112 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/Features/UI/DashboardHelpers.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Your current trajectory",
+        "location": {
+          "startingColumn": 45,
+          "startingLine": 262
+        }
+      },
+      {
+        "comment": "",
+        "key": "Your potential with better habits",
+        "location": {
+          "startingColumn": 73,
+          "startingLine": 262
+        }
+      },
+      {
+        "comment": "",
+        "key": "Based on your current lifestyle patterns",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 267
+        }
+      },
+      {
+        "comment": "",
+        "key": "20% more life with improved habits",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 268
+        }
+      },
+      {
+        "comment": "",
+        "key": "With Better Habits",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 309
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ has",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 327
+        }
+      },
+      {
+        "comment": "",
+        "key": "left to live",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 343
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 333
+        }
+      },
+      {
+        "comment": "",
+        "key": "years",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 337
+        }
+      },
+      {
+        "comment": "",
+        "key": "·",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 353
+        }
+      },
+      {
+        "comment": "",
+        "key": "·",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 355
+        }
+      },
+      {
+        "comment": "",
+        "key": "·",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 357
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 375
+        }
+      }
+    ]
+  },
+  "version": 1
+}

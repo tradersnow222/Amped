@@ -9,8 +9,7 @@ struct WelcomeView: View {
     @State private var glowOpacity = 0.7
     @State private var scale = 1.0
     @State private var isAppeared = false
-    @State private var buttonPulsing = false // Track button pulse animation state
-    @State private var buttonVisible = false // Track button visibility for delayed fade-in
+    @State private var autoAdvanceTask: Task<Void, Never>? = nil
     
     // Animation constants
     private let pulseAnimationDuration: Double = 1.0
@@ -110,61 +109,47 @@ struct WelcomeView: View {
                     
                     Spacer()
                     
-                    // Get started button
-                    Button(action: {
-                        // Use the callback instead of showing fullScreenCover
-                        onContinue?()
-                    }) {
-                        Text("Get Started")
-                            .fontWeight(.bold)
-                            .font(.system(.title3, design: .monospaced))
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.ampedGreen)
-                            .foregroundColor(.white)
-                            .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
-                            .cornerRadius(14)
-                    }
-                    .hapticFeedback(.heavy)
-                    .padding(.horizontal, 40)
-                    .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
-                    .scaleEffect(buttonPulsing ? 1.05 : 1.0) // Subtle scale effect when pulsing
-                    .opacity(buttonVisible ? 1 : 0) // Control button visibility
-                    .animation(.easeInOut(duration: 1.5), value: buttonVisible) // Button fade-in animation
-                    .animation(.easeInOut(duration: pulseAnimationDuration).repeatForever(autoreverses: true), value: buttonPulsing) // Pulse animation
-                    .withButtonInitiatedTransition() // Apply slightly slower transition for button navigation
-                    
-                    // Add spacer with specific height to move button up from bottom
-                    Spacer().frame(height: 120) // Increased from 100 to 120 to move button slightly higher
+                    // Invisible spacer to maintain text positioning where button used to be
+                    // This accounts for the button height + padding + bottom spacer that was removed
+                    Spacer().frame(height: 180) // Button area + bottom spacing that was removed
                 }
             }
         }
         .edgesIgnoringSafeArea(.all)
         .navigationBarHidden(true)
         .withWelcomeTransition(isPresented: isAppeared)
+        .onTapGesture {
+            // Cancel auto-advance and navigate immediately when user taps
+            autoAdvanceTask?.cancel()
+            onContinue?()
+        }
         .onAppear {
             // Trigger the fade-in animation after a short delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isAppeared = true
                 
-                // Fade in button - reduced delay to 1.75 seconds
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.75) {
-                    buttonVisible = true
-                    
-                    // Start BOTH lightning bolt and button pulse animations at the same time
-                    // 1 second after button appears
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        // Reset the lightning bolt animation to sync with button
-                        withAnimation(.easeInOut(duration: pulseAnimationDuration).repeatForever(autoreverses: true)) {
-                            glowOpacity = 0.95
-                            scale = 1.15
+                // Start lightning bolt pulse animation after elements appear
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    withAnimation(.easeInOut(duration: pulseAnimationDuration).repeatForever(autoreverses: true)) {
+                        glowOpacity = 0.95
+                        scale = 1.15
+                    }
+                }
+                
+                // Auto-advance to next screen after 4 seconds
+                autoAdvanceTask = Task {
+                    try? await Task.sleep(for: .seconds(4.0))
+                    if !Task.isCancelled {
+                        await MainActor.run {
+                            onContinue?()
                         }
-                        
-                        // Start button pulsing
-                        buttonPulsing = true
                     }
                 }
             }
+        }
+        .onDisappear {
+            // Clean up the auto-advance task when view disappears
+            autoAdvanceTask?.cancel()
         }
     }
 }

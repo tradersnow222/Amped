@@ -20,12 +20,12 @@ struct ExitOfferModal: View {
             VStack(spacing: 24) {
                 // Header
                 VStack(spacing: 12) {
-                    Text("Wait — enjoy 50% off your first year!")
+                    Text("Wait — special offer just for you!")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundColor(themeManager.textColor)
                         .multilineTextAlignment(.center)
                     
-                    Text("Stick with it and save. Get full access now for just $19.99/year.")
+                    Text("Get full access now for just $4.99/week after your free trial.")
                         .font(.system(size: 16, weight: .regular))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -39,7 +39,7 @@ struct ExitOfferModal: View {
                 VStack(spacing: 12) {
                     // Primary CTA
                     Button(action: onClaim) {
-                        Text("Claim 50% Off – Start Free Trial")
+                        Text("Claim Special Offer – Start Free Trial")
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -58,7 +58,7 @@ struct ExitOfferModal: View {
                     
                     // Secondary link
                     Button(action: onDecline) {
-                        Text("No thanks, I'll pay full price later")
+                        Text("No thanks, I'll stick with $6.99/week")
                             .font(.system(size: 15, weight: .regular))
                             .foregroundColor(.secondary)
                             .frame(height: 44)

@@ -69,29 +69,19 @@ struct QuestionnaireView: View {
                     // Add spacer to push question down approximately 1/3 from top
                     Spacer().frame(height: geometry.size.height * 0.15)
                     
-                    // Current question view with proper bidirectional transitions
+                    // Current question view - render only the current question to prevent interference
                     ZStack {
-                        ForEach(QuestionnaireViewModel.Question.allCases, id: \.self) { question in
-                            // Show current question and adjacent questions for smooth transitions
-                            let questionIndex = viewModel.questionIndex(for: question)
-                            let currentIndex = viewModel.currentQuestionIndex
-                            let isVisible = abs(questionIndex - currentIndex) <= 1
-                            
-                            if isVisible {
-                                questionView(for: question)
-                                    .padding()
-                                    .offset(x: gestureHandler.calculateOffset(for: question, geometry: geometry))
-                                    .transition(gestureHandler.getTransition())
-                                    .id("question_\(question.rawValue)") // Add stable ID to help SwiftUI track view identity
-                                    .zIndex(viewModel.currentQuestion == question ? 1 : 0)
-                                    .opacity(viewModel.currentQuestion == question ? 1 : 0)
-                            }
-                        }
+                        questionView(for: viewModel.currentQuestion)
+                            .padding()
+                            .id("question_\(viewModel.currentQuestion.rawValue)")
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .trailing).combined(with: .opacity),
+                                removal: .move(edge: .leading).combined(with: .opacity)
+                            ))
                     }
-                    .clipped() // Ensure off-screen views don't show
-                    // Use a clear, direct animation for transitions with a slightly higher stiffness for snappier movement
+                    .clipped() // Ensure off-screen content doesn't show
                     .animation(
-                        .interpolatingSpring(stiffness: 180, damping: 20, initialVelocity: 0.5),
+                        .spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0),
                         value: viewModel.currentQuestion
                     )
                     
@@ -192,7 +182,7 @@ struct QuestionnaireView: View {
         questionnaireManager.saveQuestionnaireData(from: viewModel)
         
         // Move directly to life motivation question after successful HealthKit authorization
-        withAnimation(.interpolatingSpring(stiffness: 180, damping: 20, initialVelocity: 0.5)) {
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
             viewModel.currentQuestion = .lifeMotivation
         }
         
@@ -202,7 +192,7 @@ struct QuestionnaireView: View {
     
     private func skipToLifeMotivation() {
         // User doesn't track health, move directly to life motivation question
-        withAnimation(.interpolatingSpring(stiffness: 180, damping: 20, initialVelocity: 0.5)) {
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
             viewModel.currentQuestion = .lifeMotivation
         }
         
@@ -237,22 +227,17 @@ struct QuestionnaireView: View {
     private func handleContinue() {
         guard viewModel.canProceed else { return }
         
-        print("🔍 KEYBOARD DEBUG: handleContinue called from question: \(viewModel.currentQuestion)")
-        
         // If this is the last question, proceed to the next onboarding step
         if viewModel.isLastQuestion {
-            print("🔍 QUESTIONNAIRE: Continue from last question - completing questionnaire")
-            
-            // Call the binding to move to the next onboarding step
             completeQuestionnaire()
             return
         }
         
         // For all other questions, proceed to next question within questionnaire
-        withAnimation(.interpolatingSpring(stiffness: 180, damping: 20, initialVelocity: 0.5)) {
+        // Use consistent animation parameters that match the main view animation
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
             viewModel.proceedToNextQuestion()
         }
-        print("🔍 QUESTIONNAIRE: Continue to next question")
     }
 }
 

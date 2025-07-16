@@ -1,0 +1,30 @@
+"/Users/mattsnow/programming/Amped/Amped/UI/Components/OnboardingTransitionModifier.swift":
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/OnboardingTransitionModifier.swiftconstvalues"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/OnboardingTransitionModifier.o"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/OnboardingTransitionModifier.d"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/OnboardingTransitionModifier.dia"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/OnboardingTransitionModifier.swiftdeps"
+"/Users/mattsnow/programming/Amped/Amped/UI/Components/StyledMetricChart.swift":
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/StyledMetricChart.d"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/StyledMetricChart.swiftdeps"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/StyledMetricChart.o"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/StyledMetricChart.swiftconstvalues"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/StyledMetricChart.dia"
+"/Users/mattsnow/programming/Amped/Amped/UI/Components/SwipeablePageContainer.swift":
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SwipeablePageContainer.o"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SwipeablePageContainer.swiftdeps"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SwipeablePageContainer.swiftconstvalues"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SwipeablePageContainer.dia"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/SwipeablePageContainer.d"
+"/Users/mattsnow/programming/Amped/Amped/UI/Components/PrimaryButtonStyle.swift":
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PrimaryButtonStyle.dia"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PrimaryButtonStyle.swiftconstvalues"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PrimaryButtonStyle.swiftdeps"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PrimaryButtonStyle.o"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PrimaryButtonStyle.d"
+"/Users/mattsnow/programming/Amped/Amped/UI/Components/PeriodSelector.swift":
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PeriodSelector.swiftconstvalues"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PeriodSelector.swiftdeps"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PeriodSelector.d"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PeriodSelector.o"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PeriodSelector.dia"

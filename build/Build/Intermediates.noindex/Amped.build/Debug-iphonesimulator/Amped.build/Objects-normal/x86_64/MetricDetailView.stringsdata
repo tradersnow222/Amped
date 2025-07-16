@@ -1,0 +1,24 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/Features/UI/MetricDetailView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Recommendations",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 71
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 100
+        }
+      }
+    ]
+  },
+  "version": 1
+}

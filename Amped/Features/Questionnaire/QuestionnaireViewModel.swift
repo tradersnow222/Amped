@@ -177,7 +177,6 @@ final class QuestionnaireViewModel: ObservableObject {
     // Form data
     @Published var currentQuestion: Question {
         didSet {
-            print("🔍 KEYBOARD DEBUG: currentQuestion didSet - OLD: \(oldValue), NEW: \(currentQuestion)")
             // Persist current question to UserDefaults to survive app background/foreground transitions
             UserDefaults.standard.set(currentQuestion.rawValue, forKey: "questionnaire_current_question")
         }
@@ -348,13 +347,9 @@ final class QuestionnaireViewModel: ObservableObject {
     func proceedToNextQuestion() {
         guard canProceed else { return }
         
-        let currentQuestionName = currentQuestion
-        print("🔍 KEYBOARD DEBUG: proceedToNextQuestion called from: \(currentQuestionName)")
-        
         if let nextQuestion = getNextQuestion() {
             // Remove animation here to consolidate animation control in the View
             currentQuestion = nextQuestion
-            print("🔍 KEYBOARD DEBUG: Successfully moved to next question: \(nextQuestion)")
         }
     }
     

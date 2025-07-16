@@ -33,6 +33,9 @@ struct AmpedApp: App {
     /// Feature flag manager for controlled feature rollout
     private let featureFlagManager = FeatureFlagManager.shared
     
+    // MARK: - Scene Phase Tracking for Intro Animations
+    @Environment(\.scenePhase) private var scenePhase
+    
     init() {
         // OPTIMIZATION: Pre-warm HealthKit to make authorization instant
         if HKHealthStore.isHealthDataAvailable() {
@@ -161,17 +164,15 @@ struct AmpedApp: App {
     
     // MARK: - Scene Phase Handling
     
-    /// Environment value for the current scene phase
-    @Environment(\.scenePhase) private var scenePhase
-    
     /// Handle app lifecycle phase changes
     /// - Parameters:
     ///   - newPhase: New scene phase
     private func handleScenePhaseChange(to newPhase: ScenePhase) {
         switch newPhase {
         case .active:
-            // App became active - no specific glass theme updates needed
-            break
+            analyticsService.trackEvent(.appLaunch)
+            // Rules: Trigger intro animations when returning from background
+            appState.handleAppReturnFromBackground()
         case .background:
             // App went to background
             analyticsService.trackEvent(.appBackground)
@@ -195,6 +196,12 @@ class AppState: ObservableObject {
     /// Whether the sign-in popup has been shown in the current session - Rules: Track per-session popup state
     @Published var hasShownSignInPopupThisSession: Bool = false
     
+    /// Whether to trigger intro animations on dashboard - Rules: Smart animation triggering
+    @Published var shouldTriggerIntroAnimations: Bool = false
+    
+    /// Track if this is the first dashboard view after onboarding completion - Rules: First-time animation
+    @Published var isFirstDashboardViewAfterOnboarding: Bool = false
+    
     init() {
         // Check UserDefaults to determine if the user has completed onboarding
         if let value = UserDefaults.standard.object(forKey: "hasCompletedOnboarding") as? Bool {
@@ -206,12 +213,22 @@ class AppState: ObservableObject {
         // Check authentication status - Rules: Load authentication state from UserDefaults
         self.isAuthenticated = UserDefaults.standard.bool(forKey: "isAuthenticated")
         self.userID = UserDefaults.standard.string(forKey: "userID")
+        
+        // Check if this is the first dashboard view after onboarding completion - Rules: First-time animation
+        self.isFirstDashboardViewAfterOnboarding = UserDefaults.standard.bool(forKey: "isFirstDashboardViewAfterOnboarding")
+        
+        // Don't trigger animations on app launch - only after background/foreground cycle
+        self.shouldTriggerIntroAnimations = false
     }
     
     /// Mark onboarding as completed
     func completeOnboarding() {
         hasCompletedOnboarding = true
         UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+        
+        // Mark that this will be the first dashboard view after onboarding - Rules: First-time animation
+        isFirstDashboardViewAfterOnboarding = true
+        UserDefaults.standard.set(true, forKey: "isFirstDashboardViewAfterOnboarding")
     }
     
     /// Update authentication status - Rules: Track when user signs in
@@ -228,6 +245,25 @@ class AppState: ObservableObject {
         self.userID = nil
         UserDefaults.standard.set(false, forKey: "isAuthenticated")
         UserDefaults.standard.removeObject(forKey: "userID")
+    }
+    
+    /// Handle app returning from background - Rules: Trigger intro animations
+    func handleAppReturnFromBackground() {
+        // Only trigger animations if user has completed onboarding and is on dashboard
+        if hasCompletedOnboarding {
+            shouldTriggerIntroAnimations = true
+        }
+    }
+    
+    /// Mark that dashboard animations have been shown - Rules: Reset animation flags
+    func markDashboardAnimationsShown() {
+        shouldTriggerIntroAnimations = false
+        
+        // If this was the first dashboard view after onboarding, clear that flag
+        if isFirstDashboardViewAfterOnboarding {
+            isFirstDashboardViewAfterOnboarding = false
+            UserDefaults.standard.set(false, forKey: "isFirstDashboardViewAfterOnboarding")
+        }
     }
 }
 

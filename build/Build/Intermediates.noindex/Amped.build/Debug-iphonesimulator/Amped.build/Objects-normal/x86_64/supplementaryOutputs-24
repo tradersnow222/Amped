@@ -1,0 +1,36 @@
+"/Users/mattsnow/programming/Amped/Amped/Features/LifeProjection/LifeProjectionService.swift":
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/LifeProjectionService.swiftdeps"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/LifeProjectionService.swiftconstvalues"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/LifeProjectionService.d"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/LifeProjectionService.o"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/LifeProjectionService.dia"
+"/Users/mattsnow/programming/Amped/Amped/Features/Onboarding/PersonalizationIntroView.swift":
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/PersonalizationIntroView.swiftconstvalues"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/PersonalizationIntroView.d"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/PersonalizationIntroView.swiftdeps"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/PersonalizationIntroView.dia"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/PersonalizationIntroView.o"
+"/Users/mattsnow/programming/Amped/Amped/Features/Onboarding/SignInWithAppleView.swift":
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SignInWithAppleView.d"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SignInWithAppleView.o"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SignInWithAppleView.dia"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SignInWithAppleView.swiftconstvalues"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SignInWithAppleView.swiftdeps"
+"/Users/mattsnow/programming/Amped/Amped/Features/Onboarding/WelcomeView.swift":
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/WelcomeView.swiftconstvalues"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/WelcomeView.dia"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/WelcomeView.o"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/WelcomeView.d"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/WelcomeView.swiftdeps"
+"/Users/mattsnow/programming/Amped/Amped/Features/Onboarding/OnboardingFlow.swift":
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/OnboardingFlow.o"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/OnboardingFlow.swiftdeps"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/OnboardingFlow.dia"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/OnboardingFlow.d"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/OnboardingFlow.swiftconstvalues"
+"/Users/mattsnow/programming/Amped/Amped/Features/Onboarding/SignInPopupView.swift":
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SignInPopupView.swiftdeps"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SignInPopupView.swiftconstvalues"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SignInPopupView.o"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SignInPopupView.d"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SignInPopupView.dia"

@@ -1,0 +1,36 @@
+"/Users/mattsnow/programming/Amped/Amped/Features/HealthKit/HealthKitPermissionsViewModel.swift":
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsViewModel.dia"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsViewModel.d"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsViewModel.o"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsViewModel.swiftconstvalues"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsViewModel.swiftdeps"
+"/Users/mattsnow/programming/Amped/Amped/Core/Models/ManualMetricInput.swift":
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/ManualMetricInput.swiftdeps"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/ManualMetricInput.o"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/ManualMetricInput.swiftconstvalues"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/ManualMetricInput.dia"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/ManualMetricInput.d"
+"/Users/mattsnow/programming/Amped/Amped/Core/Models/MetricImpactDetail.swift":
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/MetricImpactDetail.swiftconstvalues"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/MetricImpactDetail.dia"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/MetricImpactDetail.o"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/MetricImpactDetail.swiftdeps"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/MetricImpactDetail.d"
+"/Users/mattsnow/programming/Amped/Amped/Features/HealthKit/HealthKitPermissionsManager.swift":
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsManager.swiftconstvalues"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsManager.swiftdeps"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsManager.dia"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsManager.o"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsManager.d"
+"/Users/mattsnow/programming/Amped/Amped/Features/HealthKit/HealthKitPermissionsView.swift":
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsView.d"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsView.dia"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsView.swiftdeps"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsView.swiftconstvalues"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitPermissionsView.o"
+"/Users/mattsnow/programming/Amped/Amped/Features/HealthKit/HealthKitSleepManager.swift":
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitSleepManager.dia"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitSleepManager.swiftconstvalues"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitSleepManager.d"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitSleepManager.swiftdeps"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthKitSleepManager.o"

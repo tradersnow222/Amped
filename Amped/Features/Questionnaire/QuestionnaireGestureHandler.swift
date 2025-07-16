@@ -58,13 +58,13 @@ class QuestionnaireGestureHandler {
             if viewModel?.isFirstQuestion == true {
                 // If at first question, signal parent to navigate back to personalization intro
                 print("🔍 QUESTIONNAIRE: Backward swipe at first question - signaling parent")
-                withAnimation(.interpolatingSpring(stiffness: 180, damping: 20, initialVelocity: 0.5)) {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
                     exitToPersonalizationIntro.wrappedValue = true
                 }
             } else {
                 // For any other question, navigate internally
                 print("🔍 QUESTIONNAIRE: Backward swipe to previous question, currentQuestion=\(viewModel?.currentQuestion.rawValue ?? -1)")
-                withAnimation(.interpolatingSpring(stiffness: 180, damping: 20, initialVelocity: 0.5)) {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
                     viewModel?.moveBackToPreviousQuestion()
                 }
             }
@@ -73,7 +73,7 @@ class QuestionnaireGestureHandler {
         }
         
         // Reset drag state with animation - use consistent animation parameters
-        withAnimation(.interpolatingSpring(stiffness: 180, damping: 20, initialVelocity: 0.5)) {
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
             dragOffset = 0
             // Keep dragDirection set until animation completes
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
@@ -91,7 +91,7 @@ class QuestionnaireGestureHandler {
             print("🔍 QUESTIONNAIRE: Back to previous onboarding screen (personalization intro) - SCREEN SHOULD EXIT RIGHT")
             
             // Signal to parent to navigate back
-            withAnimation(.interpolatingSpring(stiffness: 180, damping: 20, initialVelocity: 0.5)) {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
                 exitToPersonalizationIntro.wrappedValue = true
             }
             
@@ -106,7 +106,7 @@ class QuestionnaireGestureHandler {
             print("🔍 QUESTIONNAIRE: Back to previous question - CURRENT QUESTION SHOULD EXIT RIGHT")
             
             // Use view model with animation
-            withAnimation(.interpolatingSpring(stiffness: 180, damping: 20, initialVelocity: 0.5)) {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
                 viewModel?.moveBackToPreviousQuestion()
             }
             
@@ -120,61 +120,16 @@ class QuestionnaireGestureHandler {
     
     /// Get the appropriate transition based on navigation context
     func getTransition() -> AnyTransition {
-        // For back button navigation
-        if isBackButtonTapped {
-            print("🔍 QUESTIONNAIRE: Back button transition (current view exits right, previous view enters from left)")
-            // For back button taps, the current view should move right while the previous view comes from left
-            return .asymmetric(
-                insertion: .move(edge: .leading),
-                removal: .move(edge: .trailing)
-            )
-        }
-        
-        // For gesture-based navigation
-        if let direction = dragDirection {
-            switch direction {
-            case .leading:
-                // Forward navigation (left swipe)
-                print("🔍 QUESTIONNAIRE: Forward swipe transition")
-                // When swiping left (forward), current view moves left while new view comes from right
-                return .asymmetric(
-                    insertion: .move(edge: .trailing),
-                    removal: .move(edge: .leading)
-                )
-            case .trailing:
-                // Backward navigation (right swipe)
-                print("🔍 QUESTIONNAIRE: Backward swipe transition")
-                // When swiping right (backward), current view moves right while previous view comes from left
-                return .asymmetric(
-                    insertion: .move(edge: .leading),
-                    removal: .move(edge: .trailing)
-                )
-            default:
-                // Fallback
-                print("🔍 QUESTIONNAIRE: Default transition (unknown direction)")
-                return .asymmetric(
-                    insertion: .move(edge: .trailing),
-                    removal: .move(edge: .leading)
-                )
-            }
-        }
-        
-        // Default transition for other programmatic navigation (Continue button)
-        print("🔍 QUESTIONNAIRE: Default continue button transition")
+        // With single-question rendering, we use a simple slide transition
         return .asymmetric(
-            insertion: .move(edge: .trailing),
-            removal: .move(edge: .leading)
+            insertion: .move(edge: .trailing).combined(with: .opacity),
+            removal: .move(edge: .leading).combined(with: .opacity)
         )
     }
     
     /// Calculate the offset for the current question based on drag
     func calculateOffset(for question: QuestionnaireViewModel.Question, geometry: GeometryProxy) -> CGFloat {
-        guard question == viewModel?.currentQuestion else { return 0 }
-        
-        if dragDirection == .leading || dragDirection == .trailing {
-            return dragOffset
-        }
-        
+        // With single-question rendering, we don't need offset calculations
         return 0
     }
 } 

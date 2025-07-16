@@ -200,19 +200,21 @@ public struct InfiniteDashboardContainer: View {
                 initialVelocity: 0
             ), value: selection)
             .onChange(of: selection) { newSelection in
+                // CRITICAL FIX: Always update currentPage for user swipes to prevent period selector persistence bug
+                let newPage = newSelection % 2
+                if currentPage != newPage {
+                    currentPage = newPage
+                }
+                
+                // Only use isAnimating to prevent rapid programmatic changes, not user swipes
                 if !isAnimating {
                     isAnimating = true
                     
-                    let newPage = newSelection % 2
-                    if currentPage != newPage {
-                        currentPage = newPage
-                        
-                        // Add haptic feedback with longer delay for more natural feel
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                            impactFeedback.prepare()
-                            impactFeedback.impactOccurred(intensity: 0.5) // Even gentler feedback
-                        }
+                    // Add haptic feedback with longer delay for more natural feel
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                        impactFeedback.prepare()
+                        impactFeedback.impactOccurred(intensity: 0.5) // Even gentler feedback
                     }
                     
                     // Reset animation flag after animation completes (longer duration)

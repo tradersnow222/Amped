@@ -1,0 +1,16 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/Features/Payment/ProcessingOverlay.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Processing your subscription...",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 15
+        }
+      }
+    ]
+  },
+  "version": 1
+}

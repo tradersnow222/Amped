@@ -1,0 +1,30 @@
+"/Users/mattsnow/programming/Amped/Amped/UI/MetricComponents/EnhancedMetricCard.swift":
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/EnhancedMetricCard.swiftconstvalues"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/EnhancedMetricCard.swiftdeps"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/EnhancedMetricCard.o"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/EnhancedMetricCard.dia"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/EnhancedMetricCard.d"
+"/Users/mattsnow/programming/Amped/Amped/UI/MetricComponents/HealthMetricRow.swift":
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthMetricRow.o"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthMetricRow.d"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthMetricRow.swiftconstvalues"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthMetricRow.swiftdeps"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/HealthMetricRow.dia"
+"/Users/mattsnow/programming/Amped/Amped/UI/Components/SwipeablePageContainer.swift":
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SwipeablePageContainer.dia"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SwipeablePageContainer.swiftconstvalues"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SwipeablePageContainer.o"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SwipeablePageContainer.swiftdeps"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/SwipeablePageContainer.d"
+"/Users/mattsnow/programming/Amped/Amped/UI/MetricComponents/BatteryMetricCard.swift":
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryMetricCard.dia"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryMetricCard.swiftconstvalues"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryMetricCard.d"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryMetricCard.o"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/BatteryMetricCard.swiftdeps"
+"/Users/mattsnow/programming/Amped/Amped/UI/Components/StyledMetricChart.swift":
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/StyledMetricChart.dia"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/StyledMetricChart.swiftdeps"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/StyledMetricChart.swiftconstvalues"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/StyledMetricChart.d"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/x86_64/StyledMetricChart.o"

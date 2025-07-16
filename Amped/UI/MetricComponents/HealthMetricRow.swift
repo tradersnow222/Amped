@@ -97,8 +97,26 @@ struct HealthMetricRow: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 16)
         .background(
+            // Clean glass background matching the recommendation section
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.cardBackground)
+                .fill(.black.opacity(0.4))
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    .white.opacity(0.1),
+                                    .clear
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(.white.opacity(0.2), lineWidth: 0.5)
+                )
         )
         .contentShape(Rectangle()) // Make entire row tappable
         .accessibilityElement(children: .combine)

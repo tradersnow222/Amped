@@ -1,0 +1,48 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/Features/Payment/PaymentView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Better habits. Longer life.",
+        "location": {
+          "startingColumn": 14,
+          "startingLine": 180
+        }
+      },
+      {
+        "comment": "",
+        "key": "Oops!",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 113
+        }
+      },
+      {
+        "comment": "",
+        "key": "Got it",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 115
+        }
+      },
+      {
+        "comment": "",
+        "key": "\"The Health App That\nWill Change Your Life\"",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 225
+        }
+      },
+      {
+        "comment": "",
+        "key": "— FEATURED IN APP STORE",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 233
+        }
+      }
+    ]
+  },
+  "version": 1
+}

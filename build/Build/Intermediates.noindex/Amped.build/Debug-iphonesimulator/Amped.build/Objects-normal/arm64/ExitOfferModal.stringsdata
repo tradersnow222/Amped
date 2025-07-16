@@ -1,0 +1,40 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/Features/Payment/ExitOfferModal.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Wait — enjoy 50% off your first year!",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 23
+        }
+      },
+      {
+        "comment": "",
+        "key": "Stick with it and save. Get full access now for just $19.99/year.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 28
+        }
+      },
+      {
+        "comment": "",
+        "key": "Claim 50% Off – Start Free Trial",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "No thanks, I'll pay full price later",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 61
+        }
+      }
+    ]
+  },
+  "version": 1
+}

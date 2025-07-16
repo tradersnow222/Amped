@@ -181,27 +181,16 @@ struct QuestionViews {
                         )
                         .focused($isTextFieldFocused)
                         .onSubmit {
-                            print("🔍 KEYBOARD DEBUG: TextField onSubmit triggered")
                             if viewModel.canProceed {
-                                print("🔍 KEYBOARD DEBUG: Proceeding to next question from onSubmit")
-                                isTextFieldFocused = false // Dismiss keyboard before proceeding
-                                viewModel.proceedToNextQuestion()
+                                proceedToNext()
                             }
                         }
                         .textInputAutocapitalization(.words)
                         .disableAutocorrection(true)
                     
                     Button(action: {
-                        print("🔍 KEYBOARD DEBUG: Continue button tapped")
                         if viewModel.canProceed {
-                            print("🔍 KEYBOARD DEBUG: Dismissing keyboard before proceeding")
-                            isTextFieldFocused = false // Dismiss keyboard before proceeding
-                            
-                            // Give a small delay to ensure keyboard dismissal completes
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                print("🔍 KEYBOARD DEBUG: Proceeding to next question from Continue button")
-                                viewModel.proceedToNextQuestion()
-                            }
+                            proceedToNext()
                         }
                     }) {
                         Text("Continue")
@@ -216,43 +205,39 @@ struct QuestionViews {
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
             .onAppear {
-                print("🔍 KEYBOARD DEBUG: NameQuestionView onAppear - current question: \(viewModel.currentQuestion)")
-                // Only auto-focus if this is actually the current question
+                // Auto-focus only when this question becomes current
                 if viewModel.currentQuestion == .name {
-                    print("🔍 KEYBOARD DEBUG: This is the current question, will auto-focus in 0.1 seconds")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        print("🔍 KEYBOARD DEBUG: Auto-focusing text field now")
+                    // Use a slightly longer delay to ensure view is fully rendered
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                         isTextFieldFocused = true
                     }
-                } else {
-                    print("🔍 KEYBOARD DEBUG: Not the current question, skipping auto-focus")
                 }
             }
             .onDisappear {
-                print("🔍 KEYBOARD DEBUG: NameQuestionView onDisappear - dismissing keyboard")
+                // Ensure keyboard is dismissed when leaving this view
                 isTextFieldFocused = false
-            }
-            .onTapGesture {
-                print("🔍 KEYBOARD DEBUG: Tap outside detected - dismissing keyboard")
-                // Dismiss keyboard when tapping outside
-                isTextFieldFocused = false
-            }
-            .onChange(of: isTextFieldFocused) { focused in
-                print("🔍 KEYBOARD DEBUG: TextField focus state changed to: \(focused)")
             }
             .onChange(of: viewModel.currentQuestion) { newQuestion in
-                print("🔍 KEYBOARD DEBUG: Current question changed to: \(newQuestion)")
                 if newQuestion == .name {
-                    // Auto-focus when this question becomes current
-                    print("🔍 KEYBOARD DEBUG: Name question became current, auto-focusing")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    // Focus when becoming current with proper delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                         isTextFieldFocused = true
                     }
                 } else {
-                    // Dismiss keyboard when moving away from this question
-                    print("🔍 KEYBOARD DEBUG: Moving away from name question, dismissing keyboard")
+                    // Dismiss immediately when moving away
                     isTextFieldFocused = false
                 }
+            }
+        }
+        
+        // Consolidated navigation function
+        private func proceedToNext() {
+            // Dismiss keyboard first
+            isTextFieldFocused = false
+            
+            // Small delay to ensure keyboard dismissal completes before navigation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                viewModel.proceedToNextQuestion()
             }
         }
     }

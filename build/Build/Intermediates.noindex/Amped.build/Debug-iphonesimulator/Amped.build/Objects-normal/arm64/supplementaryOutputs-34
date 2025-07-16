@@ -1,0 +1,30 @@
+"/Users/mattsnow/programming/Amped/Amped/Features/Payment/ExitOfferModal.swift":
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/ExitOfferModal.o"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/ExitOfferModal.swiftconstvalues"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/ExitOfferModal.d"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/ExitOfferModal.swiftdeps"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/ExitOfferModal.dia"
+"/Users/mattsnow/programming/Amped/Amped/Features/Payment/PaymentComponents.swift":
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentComponents.swiftdeps"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentComponents.swiftconstvalues"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentComponents.dia"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentComponents.d"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentComponents.o"
+"/Users/mattsnow/programming/Amped/Amped/Features/Payment/PaymentView.swift":
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentView.dia"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentView.swiftdeps"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentView.swiftconstvalues"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentView.o"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentView.d"
+"/Users/mattsnow/programming/Amped/Amped/Features/Payment/PricingSection.swift":
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PricingSection.dia"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PricingSection.swiftconstvalues"
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PricingSection.o"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PricingSection.d"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PricingSection.swiftdeps"
+"/Users/mattsnow/programming/Amped/Amped/Features/Payment/PaymentViewModel.swift":
+  object: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentViewModel.o"
+  diagnostics: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentViewModel.dia"
+  const-values: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentViewModel.swiftconstvalues"
+  dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentViewModel.d"
+  swift-dependencies: "/Users/mattsnow/programming/Amped/build/Build/Intermediates.noindex/Amped.build/Debug-iphonesimulator/Amped.build/Objects-normal/arm64/PaymentViewModel.swiftdeps"

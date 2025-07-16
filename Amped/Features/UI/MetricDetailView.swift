@@ -29,13 +29,23 @@ struct MetricDetailView: View {
     // MARK: - Body
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                // Time period selector
-                PeriodSelector(selectedPeriod: $viewModel.selectedPeriod)
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                    .padding(.bottom, 32) // More space between selector and chart
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 0) {
+                // Time period selector - matching dashboard style
+                PeriodSelectorView(
+                    selectedPeriod: $viewModel.selectedPeriod,
+                    onPeriodChanged: { period in
+                        // Update period with animation to match dashboard behavior
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            viewModel.selectedPeriod = period
+                        }
+                        HapticManager.shared.playSelection()
+                    }
+                )
+                .padding(.horizontal)
+                .padding(.top, 8)
+                .padding(.bottom, 32) // More space between selector and chart
                 
                 // Chart section with integrated metric info
                 chartSection
@@ -96,12 +106,19 @@ struct MetricDetailView: View {
             AnalyticsService.shared.trackMetricSelected(metric.type.rawValue)
         }
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                BackButton(action: {
+                    dismiss()
+                }, showText: false)
+            }
+            
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Done") {
                     dismiss()
                 }
                 .foregroundColor(.white.opacity(0.8))
             }
+        }
         }
     }
     

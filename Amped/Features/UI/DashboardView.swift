@@ -24,10 +24,11 @@ struct DashboardView: View {
     private let refreshThreshold: CGFloat = 80
     private let maxPullDistance: CGFloat = 150 // iOS standard maximum pull distance
     
-    // Battery animation state
+    // Battery animation state - Rules: Smart intro animations
     @State private var isBatteryAnimating = false
+    @State private var showLifeEnergyBattery = false
     
-    // Page control state for swipeable views
+    // Page control state for swipeable views (now 3 pages)
     @State private var currentPage = 0
     
     // Loading states for calculations
@@ -42,6 +43,23 @@ struct DashboardView: View {
     
     // MARK: - Computed Properties
     
+    /// Get user initials from stored name for profile display
+    private var userInitials: String? {
+        guard let userName = UserDefaults.standard.string(forKey: "userName"),
+              !userName.isEmpty else { return nil }
+        
+        let components = userName.components(separatedBy: " ")
+        let initials = components.compactMap { $0.first }.map(String.init)
+        
+        if initials.count >= 2 {
+            return "\(initials[0])\(initials[1])"
+        } else if let firstInitial = initials.first {
+            return firstInitial
+        }
+        
+        return nil
+    }
+
     /// Convert period type to proper adjective form for display
     private var periodAdjective: String {
         switch selectedPeriod {
@@ -219,9 +237,9 @@ struct DashboardView: View {
     /// Time period context text for display
     private var timePeriodContext: String {
         switch viewModel.selectedTimePeriod {
-        case .day: return "Today you've"
-        case .month: return "This month you've"
-        case .year: return "This year you've"
+        case .day: return "Today, your habits collectively"
+        case .month: return "This month, your habits collectively"
+        case .year: return "This year, your habits collectively"
         }
     }
     
@@ -273,12 +291,12 @@ struct DashboardView: View {
                         .padding(.bottom, 16)
                     }
                     
-                    // Swipeable content pages using custom infinite scrolling container
-                    // Rules: Using InfiniteDashboardContainer for true infinite scrolling
-                    InfiniteDashboardContainer(
+                    // Swipeable content pages using custom 3-page container
+                    ThreePageDashboardContainer(
                         currentPage: $currentPage,
-                        healthFactorsPage: AnyView(healthFactorsPage),
-                        lifespanBatteryPage: AnyView(lifespanBatteryPage)
+                        impactPage: AnyView(impactPage),
+                        lifespanFactorsPage: AnyView(lifespanFactorsPage), 
+                        batteryPage: AnyView(batteryPage)
                     )
                 }
                 .offset(y: pullDistance)
@@ -435,22 +453,31 @@ struct DashboardView: View {
                     SettingsView()
                         .environmentObject(settingsManager)
                 ) {
-                    // Modern profile circle icon instead of gear - following user requirement for modern, sleek, unobtrusive design
-                    Image(systemName: "person.crop.circle")
-                        .font(.title3)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 44, height: 44)
-                        .background(
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .opacity(0.8)
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(.tertiary, lineWidth: 0.5)
-                        )
-                        .contentShape(Circle())
+                    // Profile icon - show initials if available, otherwise default icon
+                    ZStack {
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .opacity(0.8)
+                            .frame(width: 44, height: 44)
+                        
+                        Circle()
+                            .stroke(.tertiary, lineWidth: 0.5)
+                            .frame(width: 44, height: 44)
+                        
+                        if let initials = userInitials {
+                            // Show user initials
+                            Text(initials)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.primary)
+                        } else {
+                            // Show default profile icon
+                            Image(systemName: "person.crop.circle")
+                                .font(.title3)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .contentShape(Circle())
                 }
                 .accessibilityLabel("Account & Settings")
                 .accessibilityHint("Double tap to open your account and settings")
@@ -482,10 +509,8 @@ struct DashboardView: View {
             viewModel.loadData()
             HapticManager.shared.prepareHaptics()
             
-            // Start battery animation
-            withAnimation(.easeInOut(duration: 0.6).delay(0.2)) {
-                isBatteryAnimating = true
-            }
+            // Rules: Smart intro animations - only when appropriate
+            handleIntroAnimations()
             
             // Simulate initial calculations
             if !hasInitiallyCalculated {
@@ -510,8 +535,8 @@ struct DashboardView: View {
     
     // MARK: - Swipeable Page Views
     
-    /// Page 1: Health factors with prominent total impact
-    private var healthFactorsPage: some View {
+    /// Page 1: Impact number and Today's Focus
+    private var impactPage: some View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 0) {
@@ -538,60 +563,53 @@ struct DashboardView: View {
                         .padding(.top, 20)
                         .padding(.bottom, 24)
                     } else if totalTimeImpact != 0 {
-                        VStack(spacing: 8) {
-                            // "You've added/lost" text above the number
-                            Text(totalTimeImpact >= 0 ? "\(timePeriodContext) added" : "\(timePeriodContext) lost")
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.7))
-                            
-                            // Main impact display - PROMINENT NUMBER
-                            HStack(spacing: 8) {
-                                Image(systemName: totalTimeImpact >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                                    .font(.system(size: 32))
-                                    .foregroundColor(totalTimeImpact >= 0 ? .ampedGreen : .ampedRed)
-                                    .symbolRenderingMode(.hierarchical)
+                        VStack(spacing: 40) {
+                            // Main impact display section - Rules: Better spacing
+                            VStack(spacing: 12) {
+                                // "Your habits collectively added/reduced" text above the number
+                                Text(totalTimeImpact >= 0 ? "\(timePeriodContext) added" : "\(timePeriodContext) reduced")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.7))
                                 
-                                Text(formattedTotalImpact)
-                                    .font(.system(size: 40, weight: .bold, design: .rounded))
-                                    .foregroundColor(.white)
+                                // Main impact display - PROMINENT NUMBER
+                                HStack(spacing: 8) {
+                                    Image(systemName: totalTimeImpact >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                                        .font(.system(size: 32))
+                                        .foregroundColor(totalTimeImpact >= 0 ? .ampedGreen : .ampedRed)
+                                        .symbolRenderingMode(.hierarchical)
+                                    
+                                    Text(formattedTotalImpact)
+                                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                }
+                                
+                                // "to/from your lifespan" text below
+                                Text(totalTimeImpact >= 0 ? "to your lifespan 🔥" : "from your lifespan")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .multilineTextAlignment(.center)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                             
-                            // "to your life" text below (removed time period reference)
-                            Text("to your life")
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.7))
-                                .multilineTextAlignment(.center)
-                                .fixedSize(horizontal: false, vertical: true)
+                            // Jobs-inspired animated battery element - Rules: Cool battery animation
+                            if showLifeEnergyBattery {
+                                LifeEnergyFlowBattery(
+                                    isAnimating: isBatteryAnimating,
+                                    timeImpactMinutes: totalTimeImpact
+                                )
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.8).combined(with: .opacity),
+                                    removal: .scale(scale: 0.8).combined(with: .opacity)
+                                ))
+                            }
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 24)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            (totalTimeImpact >= 0 ? Color.ampedGreen : Color.ampedRed).opacity(0.15),
-                                            (totalTimeImpact >= 0 ? Color.ampedGreen : Color.ampedRed).opacity(0.05)
-                                        ],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    )
-                                )
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(
-                                    (totalTimeImpact >= 0 ? Color.ampedGreen : Color.ampedRed).opacity(0.3),
-                                    lineWidth: 1.5
-                                )
-                        )
                         .padding(.horizontal, 16)
-                        .padding(.top, 20)
-                        .padding(.bottom, 24)
+                        .padding(.top, 40)
+                        .padding(.bottom, 40) // Rules: Increased spacing around battery
                     } else {
                         // No impact yet
-                        VStack(spacing: 12) {
+                        VStack(spacing: 16) { // Rules: Better spacing
                             Text("NO HEALTH DATA YET")
                                 .font(.caption)
                                 .fontWeight(.semibold)
@@ -602,12 +620,37 @@ struct DashboardView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.white.opacity(0.5))
                                 .multilineTextAlignment(.center)
+                                .padding(.horizontal, 20) // Rules: Better text width control
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 40)
+                        .padding(.vertical, 32) // Rules: Reduced vertical padding
                         .padding(.top, 20)
                     }
                     
+                    // New Actionable Recommendations Section - Rules: Better spacing
+                    if !filteredMetrics.isEmpty && !isCalculatingImpact {
+                        ActionableRecommendationsView(metrics: filteredMetrics, selectedPeriod: selectedPeriod)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8) // Rules: Reduced top padding for better flow
+                            .padding(.bottom, 20) // Rules: Consistent bottom spacing
+                    }
+                    
+                    // Add consistent padding for page indicators - Rules: Better spacing
+                    Spacer()
+                        .frame(height: max(40, geometry.safeAreaInsets.bottom + 20))
+                }
+            }
+            .refreshable {
+                await refreshHealthData()
+            }
+        }
+    }
+    
+    /// Page 2: Today's Lifespan Factors
+    private var lifespanFactorsPage: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 0) {
                     // Health factors header
                     HStack(alignment: .center, spacing: 8) {
                         // Battery icon with animation
@@ -624,17 +667,13 @@ struct DashboardView: View {
                                 .font(.title2)
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)
-                            
-                            Text(subtitleForPeriod(selectedPeriod))
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.8))
-                                .lineLimit(1)
                         }
                         
                         Spacer()
                     }
                     .padding(.horizontal)
-                    .padding(.vertical, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 12) // Rules: Better spacing consistency
                     .accessibilityAddTraits(.isHeader)
                     
                     // Power Sources Metrics section
@@ -654,8 +693,8 @@ struct DashboardView: View {
                         }
                     )
                     .padding(.horizontal, 8)
-                    // Add padding based on safe area to ensure content doesn't go under page indicators
-                    .padding(.bottom, max(60, geometry.safeAreaInsets.bottom + 40))
+                    // Add consistent padding for page indicators - Rules: Better spacing
+                    .padding(.bottom, max(40, geometry.safeAreaInsets.bottom + 20))
                 }
             }
             .refreshable {
@@ -663,9 +702,9 @@ struct DashboardView: View {
             }
         }
     }
-    
-    /// Page 2: Lifespan remaining battery - Jobs-inspired focus
-    private var lifespanBatteryPage: some View {
+
+    /// Page 3: Lifespan remaining battery - Jobs-inspired focus
+    private var batteryPage: some View {
         VStack(spacing: 0) {
             // Minimalist lifestyle tabs - centered and compact
             lifestyleTabs
@@ -914,6 +953,32 @@ struct DashboardView: View {
     
     // MARK: - Helper Methods
     
+    /// Handle intro animations based on app state - Rules: Smart animation triggering
+    private func handleIntroAnimations() {
+        // Check if we should trigger intro animations
+        let shouldAnimate = appState.shouldTriggerIntroAnimations || appState.isFirstDashboardViewAfterOnboarding
+        
+        if shouldAnimate {
+            // Start intro animations with staggered timing for elegant effect
+            withAnimation(.easeInOut(duration: 0.8).delay(0.3)) {
+                isBatteryAnimating = true
+            }
+            
+            withAnimation(.easeInOut(duration: 1.0).delay(0.8)) {
+                showLifeEnergyBattery = true
+            }
+            
+            // Mark animations as shown
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                appState.markDashboardAnimationsShown()
+            }
+        } else {
+            // No intro animations, just show content immediately
+            isBatteryAnimating = true
+            showLifeEnergyBattery = true
+        }
+    }
+    
     /// Apply iOS-standard rubber band effect to pull distance
     /// Following iOS Human Interface Guidelines for pull-to-refresh
     private func applyRubberBandEffect(to dragDistance: CGFloat) -> CGFloat {
@@ -1009,15 +1074,449 @@ struct DashboardView: View {
             return "This Year's Lifespan Factors"
         }
     }
+}
+
+// MARK: - Three Page Dashboard Container
+
+/// Special container for the dashboard's 3-page infinite scrolling
+public struct ThreePageDashboardContainer: View {
+    @Binding var currentPage: Int
+    let impactPage: AnyView
+    let lifespanFactorsPage: AnyView 
+    let batteryPage: AnyView
     
-    private func subtitleForPeriod(_ period: ImpactDataPoint.PeriodType) -> String {
-        switch period {
+    /// Internal selection for virtual pages
+    @State private var selection: Int = 1500 // Start higher for 3 pages
+    
+    /// Track if we're currently animating to prevent rapid changes
+    @State private var isAnimating = false
+    
+    public var body: some View {
+        VStack(spacing: 0) {
+            // TabView with many virtual pages
+            TabView(selection: $selection) {
+                ForEach(0..<3000, id: \.self) { index in
+                    Group {
+                        let pageIndex = index % 3
+                        if pageIndex == 0 {
+                            impactPage
+                        } else if pageIndex == 1 {
+                            lifespanFactorsPage
+                        } else {
+                            batteryPage
+                        }
+                    }
+                    .tag(index)
+                }
+            }
+            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+            // Add custom transition animation for much smoother, slower feel
+            .animation(.interpolatingSpring(
+                mass: 2.5,        // Much heavier mass for slower, more deliberate movement
+                stiffness: 50,    // Much lower stiffness for very gentle acceleration
+                damping: 25,      // Higher damping for smooth deceleration
+                initialVelocity: 0
+            ), value: selection)
+            .onChange(of: selection) { newSelection in
+                // CRITICAL FIX: Always update currentPage for user swipes to prevent period selector persistence bug
+                let newPage = newSelection % 3
+                if currentPage != newPage {
+                    currentPage = newPage
+                }
+                
+                // Only use isAnimating to prevent rapid programmatic changes, not user swipes
+                if !isAnimating {
+                    isAnimating = true
+                    
+                    // Add haptic feedback with longer delay for more natural feel
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                        impactFeedback.prepare()
+                        impactFeedback.impactOccurred(intensity: 0.5) // Even gentler feedback
+                    }
+                    
+                    // Reset animation flag after animation completes (longer duration)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        isAnimating = false
+                    }
+                }
+            }
+            .onChange(of: currentPage) { newPage in
+                if selection % 3 != newPage && !isAnimating {
+                    // Use even smoother animation when programmatically changing pages
+                    withAnimation(.interpolatingSpring(
+                        mass: 2.0,
+                        stiffness: 60,
+                        damping: 22,
+                        initialVelocity: 0
+                    )) {
+                        selection = 1500 + newPage
+                    }
+                }
+            }
+            .onAppear {
+                selection = 1500 + currentPage
+            }
+            
+            // Custom page indicators for 3 pages
+            HStack(spacing: 12) {
+                ForEach(0..<3, id: \.self) { index in
+                    let isActive = index == currentPage
+                    
+                    Circle()
+                        .fill(
+                            isActive ? 
+                                Color.ampedGreen :
+                                Color.white.opacity(0.4)
+                        )
+                        .frame(
+                            width: isActive ? 12 : 10,
+                            height: isActive ? 12 : 10
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    isActive ? Color.ampedGreen.opacity(0.6) : Color.clear,
+                                    lineWidth: isActive ? 1.5 : 0
+                                )
+                                .blur(radius: isActive ? 0.5 : 0)
+                        )
+                        .shadow(
+                            color: isActive ? Color.ampedGreen.opacity(0.3) : Color.black.opacity(0.1),
+                            radius: isActive ? 3 : 1,
+                            x: 0,
+                            y: 1
+                        )
+                        // Even smoother animation for dots
+                        .animation(.interpolatingSpring(
+                            mass: 1.5,
+                            stiffness: 200,
+                            damping: 30,
+                            initialVelocity: 0
+                        ), value: currentPage)
+                        .scaleEffect(isActive ? 1.0 : 0.9)
+                        .animation(.easeInOut(duration: 0.35), value: currentPage) // Longer duration
+                        .onTapGesture {
+                            if !isAnimating {
+                                withAnimation(.interpolatingSpring(
+                                    mass: 2.0,
+                                    stiffness: 60,
+                                    damping: 22,
+                                    initialVelocity: 0
+                                )) {
+                                    currentPage = index
+                                }
+                                
+                                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                                impactFeedback.prepare()
+                                impactFeedback.impactOccurred(intensity: 0.6)
+                            }
+                        }
+                        .contentShape(Circle().inset(by: -8))
+                }
+            }
+            .padding(.vertical, 16) // Rules: Reduced padding for better spacing
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8) // Rules: Minimal bottom padding
+        }
+    }
+}
+
+/// Actionable Recommendations View - Redesigned for Apple-level sophistication
+struct ActionableRecommendationsView: View {
+    let metrics: [HealthMetric]
+    let selectedPeriod: ImpactDataPoint.PeriodType
+    @State private var showContent = false
+    
+    // Get the most impactful metric to recommend improvement for
+    private var primaryRecommendationMetric: HealthMetric? {
+        // First, prioritize HealthKit metrics with significant negative impact (> 30 minutes lost)
+        let significantNegativeHealthKitMetrics = metrics
+            .filter { $0.source != .userInput && ($0.impactDetails?.lifespanImpactMinutes ?? 0) < -30 }
+            .sorted { abs($0.impactDetails?.lifespanImpactMinutes ?? 0) > abs($1.impactDetails?.lifespanImpactMinutes ?? 0) }
+        
+        if let worstHealthKitMetric = significantNegativeHealthKitMetrics.first {
+            return worstHealthKitMetric
+        }
+        
+        // If no significant negative HealthKit metrics, look for any negative HealthKit metrics
+        let negativeHealthKitMetrics = metrics
+            .filter { $0.source != .userInput && ($0.impactDetails?.lifespanImpactMinutes ?? 0) < 0 }
+            .sorted { abs($0.impactDetails?.lifespanImpactMinutes ?? 0) > abs($1.impactDetails?.lifespanImpactMinutes ?? 0) }
+        
+        if let negativeHealthKitMetric = negativeHealthKitMetrics.first {
+            return negativeHealthKitMetric
+        }
+        
+        // Fall back to questionnaire metrics that could be improved (rating < 8)
+        let improvableQuestionnaireMetrics = metrics
+            .filter { $0.source == .userInput && $0.value < 8 }
+            .sorted { $0.value < $1.value } // Lowest rating first
+        
+        return improvableQuestionnaireMetrics.first
+    }
+    
+    // Get dynamic recommendation title based on selected period
+    private var recommendationTitle: String {
+        switch selectedPeriod {
         case .day:
-            return "Daily habits. Real impact."
+            return "Today's Focus"
         case .month:
-            return "Monthly habits. Real impact."
+            return "This Month's Focus"
         case .year:
-            return "Yearly habits. Real impact."
+            return "This Year's Focus"
+        }
+    }
+    
+    var body: some View {
+        if let metric = primaryRecommendationMetric {
+            VStack(spacing: 0) {
+                // Prominent header
+                HStack {
+                    Text(recommendationTitle)
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .tracking(0.2)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 12)
+                
+                // Main content - clean and focused
+                VStack(spacing: 16) {
+                    // Metric focus with clean icon treatment
+                    HStack(spacing: 16) {
+                        // Clean, minimal icon design
+                        Image(systemName: metric.type.symbolName)
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(.ampedGreen)
+                            .frame(width: 36, height: 36)
+                            .background(
+                                Circle()
+                                    .fill(.ampedGreen.opacity(0.15))
+                            )
+                        
+                        HStack(spacing: 8) {
+                            Text(metric.type.displayName)
+                                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                .foregroundColor(.white)
+                            
+                            Text(getImpactSummary(for: metric))
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(getImpactColor(for: metric))
+                            
+                            Spacer()
+                        }
+                        
+                        Spacer()
+                    }
+                    
+                    // Clean divider
+                    Divider()
+                        .background(.white.opacity(0.1))
+                        .padding(.horizontal, -4)
+                    
+                    // Action recommendation - clean and compelling
+                    HStack(spacing: 8) {
+                        Text(getActionTitle(for: metric))
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
+                            .foregroundColor(.white)
+                        
+                        Text(getTimeGain(for: metric))
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.ampedGreen)
+                        
+                        Spacer()
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+                .opacity(showContent ? 1 : 0)
+                .offset(y: showContent ? 0 : 10)
+            }
+            .background(
+                // Clean glass background matching the app's design
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(.black.opacity(0.4))
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        .white.opacity(0.1),
+                                        .clear
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(.white.opacity(0.2), lineWidth: 0.5)
+                    )
+            )
+            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.6).delay(0.2)) {
+                    showContent = true
+                }
+            }
+        }
+    }
+    
+    // Get color for impact summary based on positive/negative impact
+    private func getImpactColor(for metric: HealthMetric) -> Color {
+        if let impact = metric.impactDetails?.lifespanImpactMinutes {
+            return impact < 0 ? .ampedRed : .ampedGreen
+        } else {
+            // For questionnaire metrics, show red if rating is poor (≤5)
+            let rating = Int(metric.value)
+            return rating <= 5 ? .ampedRed.opacity(0.8) : .white.opacity(0.6)
+        }
+    }
+    
+    // Clean, concise impact summary
+    private func getImpactSummary(for metric: HealthMetric) -> String {
+        if let impact = metric.impactDetails?.lifespanImpactMinutes {
+            let absMinutes = abs(impact)
+            let isNegative = impact < 0
+            
+            if absMinutes >= 1440 { // >= 1 day
+                let days = Int(absMinutes / 1440)
+                return isNegative ? "−\(days) day\(days == 1 ? "" : "s")" : "+\(days) day\(days == 1 ? "" : "s")"
+            } else if absMinutes >= 60 { // >= 1 hour
+                let hours = Int(absMinutes / 60)
+                return isNegative ? "−\(hours) hour\(hours == 1 ? "" : "s")" : "+\(hours) hour\(hours == 1 ? "" : "s")"
+            } else {
+                let minutes = Int(absMinutes)
+                return isNegative ? "−\(minutes) min" : "+\(minutes) min"
+            }
+        } else {
+            // For questionnaire metrics without impact data
+            let rating = Int(metric.value)
+            if rating <= 5 {
+                return "Room for improvement"
+            } else {
+                return "Could be optimized"
+            }
+        }
+    }
+    
+    // Get time period text for focus statement
+    private func getTimePeriodText() -> String {
+        switch selectedPeriod {
+        case .day:
+            return "today"
+        case .month:
+            return "this month"
+        case .year:
+            return "this year"
+        }
+    }
+    
+    // Clean, actionable titles
+    private func getActionTitle(for metric: HealthMetric) -> String {
+        switch metric.type {
+        case .steps:
+            return "Take a 20-minute walk"
+        case .exerciseMinutes:
+            return "Add 30 minutes of movement"
+        case .sleepHours:
+            let hours = metric.value
+            return hours < 6 ? "Sleep 2 hours more tonight" : "Get 1 more hour of sleep"
+        case .restingHeartRate:
+            return "Practice deep breathing"
+        case .heartRateVariability:
+            return "Try 20 minutes of meditation"
+        case .bodyMass:
+            return "Track your meals today"
+        case .nutritionQuality:
+            return "Add 3 servings of vegetables"
+        case .smokingStatus:
+            return "Take the first step to quit"
+        case .alcoholConsumption:
+            return "Skip alcohol tonight"
+        case .socialConnectionsQuality:
+            return "Connect with 2 friends"
+        case .stressLevel:
+            return "Take 10 deep breaths"
+        case .activeEnergyBurned:
+            return "Move for 30 more minutes"
+        case .vo2Max:
+            return "Try 2 sprint intervals"
+        case .oxygenSaturation:
+            return "Breathe deeply for 10 minutes"
+        }
+    }
+    
+    // Calculate and format potential time gain
+    private func getTimeGain(for metric: HealthMetric) -> String {
+        // For metrics with impact data, calculate gain needed to reach zero impact
+        if let currentImpact = metric.impactDetails?.lifespanImpactMinutes, currentImpact < 0 {
+            let potentialGain = abs(currentImpact) // Full neutralization of negative impact
+            return formatTimeGain(potentialGain)
+        }
+        
+        // For questionnaire metrics, use typical improvement estimates to reach good levels
+        if metric.source == .userInput {
+            let currentRating = Int(metric.value)
+            switch metric.type {
+            case .nutritionQuality:
+                return currentRating < 5 ? "+2 hours" : "+45 min"
+            case .smokingStatus:
+                return currentRating < 8 ? "+3 days" : "+8 hours"
+            case .alcoholConsumption:
+                return currentRating < 7 ? "+90 min" : "+30 min"
+            case .socialConnectionsQuality:
+                return currentRating < 6 ? "+1 hour" : "+20 min"
+            case .stressLevel:
+                return currentRating > 6 ? "+45 min" : "+15 min"
+            default:
+                return "+30 min"
+            }
+        }
+        
+        // Default estimates for HealthKit metrics without clear impact data
+        switch metric.type {
+        case .steps:
+            return "+25 min"
+        case .exerciseMinutes:
+            return "+35 min"
+        case .sleepHours:
+            return "+1 hour"
+        case .restingHeartRate:
+            return "+15 min"
+        case .heartRateVariability:
+            return "+20 min"
+        case .bodyMass:
+            return "+45 min"
+        case .activeEnergyBurned:
+            return "+20 min"
+        case .vo2Max:
+            return "+90 min"
+        case .oxygenSaturation:
+            return "+10 min"
+        default:
+            return "+30 min"
+        }
+    }
+    
+    // Helper to format time gain values
+    private func formatTimeGain(_ minutes: Double) -> String {
+        let absMinutes = abs(minutes)
+        
+        if absMinutes >= 1440 { // >= 1 day
+            let days = Int(absMinutes / 1440)
+            return "+\(days) day\(days == 1 ? "" : "s")"
+        } else if absMinutes >= 60 { // >= 1 hour
+            let hours = Int(absMinutes / 60)
+            return "+\(hours) hour\(hours == 1 ? "" : "s")"
+        } else {
+            let mins = Int(absMinutes)
+            return "+\(mins) min"
         }
     }
 }

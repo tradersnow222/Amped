@@ -1,0 +1,192 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/Features/UI/DashboardView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Unable to load data",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 294
+        }
+      },
+      {
+        "comment": "",
+        "key": "Retry",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 305
+        }
+      },
+      {
+        "comment": "",
+        "key": "Account & Settings",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 429
+        }
+      },
+      {
+        "comment": "",
+        "key": "Double tap to open your account and settings",
+        "location": {
+          "startingColumn": 36,
+          "startingLine": 430
+        }
+      },
+      {
+        "comment": "",
+        "key": "Calculating your health impact...",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 500
+        }
+      },
+      {
+        "comment": "",
+        "key": "to your life",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 534
+        }
+      },
+      {
+        "comment": "",
+        "key": "You've added",
+        "location": {
+          "startingColumn": 57,
+          "startingLine": 517
+        }
+      },
+      {
+        "comment": "",
+        "key": "You've lost",
+        "location": {
+          "startingColumn": 74,
+          "startingLine": 517
+        }
+      },
+      {
+        "comment": "",
+        "key": "NO HEALTH DATA YET",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 569
+        }
+      },
+      {
+        "comment": "",
+        "key": "Complete your health profile to see your impact",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 575
+        }
+      },
+      {
+        "comment": "",
+        "key": "Your Health Factors",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 597
+        }
+      },
+      {
+        "comment": "",
+        "key": "Powering your lifespan within the last %@",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 602
+        }
+      },
+      {
+        "comment": "",
+        "key": "Calculating your projected lifespan...",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 659
+        }
+      },
+      {
+        "comment": "",
+        "key": "Current Habits",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 700
+        }
+      },
+      {
+        "comment": "",
+        "key": "Better Habits",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 725
+        }
+      },
+      {
+        "comment": "",
+        "key": "Life Projection",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 764
+        }
+      },
+      {
+        "comment": "",
+        "key": "Years Left",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 782
+        }
+      },
+      {
+        "comment": "",
+        "key": "Your estimated remaining lifespan",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 787
+        }
+      },
+      {
+        "comment": "",
+        "key": "Updates Gradually",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 801
+        }
+      },
+      {
+        "comment": "",
+        "key": "Changes slowly as habits improve",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 806
+        }
+      },
+      {
+        "comment": "",
+        "key": "Health-Based",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 820
+        }
+      },
+      {
+        "comment": "",
+        "key": "Calculated from your real data",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 825
+        }
+      },
+      {
+        "comment": "",
+        "key": "Backed by research",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 848
+        }
+      }
+    ]
+  },
+  "version": 1
+}

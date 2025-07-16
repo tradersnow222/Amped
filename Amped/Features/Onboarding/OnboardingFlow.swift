@@ -3,6 +3,7 @@ import SwiftUI
 /// Main enum to track the onboarding state - Rules: Removed signInWithApple from flow
 enum OnboardingStep: Equatable {
     case welcome
+    case valueProposition
     case personalizationIntro
     case questionnaire
     case payment
@@ -32,10 +33,21 @@ struct OnboardingFlow: View {
                     WelcomeView(onContinue: { 
                         isButtonNavigating = true
                         dragDirection = nil
-                        navigateTo(.personalizationIntro) 
+                        navigateTo(.valueProposition) 
                     })
                     .transition(.opacity)
                     .zIndex(currentStep == .welcome ? 1 : 0)
+                }
+                
+                if currentStep == .valueProposition {
+                    ValuePropositionView(onContinue: { 
+                        isButtonNavigating = true
+                        dragDirection = nil
+                        navigateTo(.personalizationIntro) 
+                    })
+                    .offset(x: dragDirection == .leading ? dragOffset : (dragDirection == .trailing ? dragOffset : 0))
+                    .transition(getTransition(forNavigatingTo: .valueProposition))
+                    .zIndex(currentStep == .valueProposition ? 1 : 0)
                 }
                 
                 if currentStep == .personalizationIntro {
@@ -69,7 +81,7 @@ struct OnboardingFlow: View {
                                 navigateTo(.personalizationIntro)
                                 
                                 // Reset drag direction after animation
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
                                     dragDirection = nil
                                 }
                             }
@@ -89,7 +101,7 @@ struct OnboardingFlow: View {
                                 navigateTo(.payment)
                                 
                                 // Reset drag direction after animation
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
                                     dragDirection = nil
                                 }
                             }
@@ -122,7 +134,7 @@ struct OnboardingFlow: View {
                     }
                 }
             }
-            .animation((isProgrammaticNavigation || dragDirection == nil ? .easeInOut(duration: 0.4) : nil), value: currentStep)
+            .animation((isProgrammaticNavigation || dragDirection == nil ? .easeInOut(duration: 0.7) : nil), value: currentStep)
             .gesture(
                 DragGesture()
                     .onChanged { gesture in
@@ -158,9 +170,9 @@ struct OnboardingFlow: View {
                             } else if gesture.translation.width > 0 {
                                 // Dragging to the right (backward)
                                 // Don't allow swiping back to welcome view
-                                if currentStep == .personalizationIntro {
+                                if currentStep == .valueProposition {
                                     // Do nothing - prevent going back to welcome
-                                    print("🔍 DRAG: Backward drag prevented - at personalizationIntro")
+                                    print("🔍 DRAG: Backward drag prevented - at valueProposition")
                                     return
                                 }
                                 
@@ -203,7 +215,7 @@ struct OnboardingFlow: View {
                                 // Important: Keep dragDirection set during navigation
                                 navigateTo(nextStep)
                                 // Reset dragDirection after navigation animation completes
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
                                     dragDirection = nil
                                 }
                             }
@@ -217,14 +229,14 @@ struct OnboardingFlow: View {
                                 // Important: Keep dragDirection set during navigation
                                 navigateTo(previousStep)
                                 // Reset dragDirection after navigation animation completes
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
                                     dragDirection = nil
                                 }
                             }
                         } else {
                             // Reset drag state with animation if threshold not met
                             print("🔍 DRAG ENDED: Threshold not met, canceling drag")
-                            withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
+                            withAnimation(.interpolatingSpring(stiffness: 250, damping: 35)) {
                                 dragOffset = 0
                             }
                             dragDirection = nil
@@ -237,6 +249,15 @@ struct OnboardingFlow: View {
     // Helper method to determine the correct transition based on navigation direction
     private func getTransition(forNavigatingTo step: OnboardingStep) -> AnyTransition {
         print("🔍 DEBUG: Getting transition for navigating to \(step), isButtonNavigating=\(isButtonNavigating), dragDirection=\(String(describing: dragDirection))")
+        
+        // Special case: When transitioning FROM welcome screen, use fade transition
+        if step == .valueProposition {
+            print("🔍 DEBUG: Using fade transition from welcome to value proposition")
+            return .asymmetric(
+                insertion: .opacity,
+                removal: .opacity
+            )
+        }
         
         // For button-initiated navigation
         if isButtonNavigating {
@@ -299,7 +320,7 @@ struct OnboardingFlow: View {
             print("🔍 DEBUG: Using DEFAULT transition - current screen should exit LEFT")
         }
         
-        withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
+        withAnimation(.interpolatingSpring(stiffness: 250, damping: 35)) {
             currentStep = step
         }
     }
@@ -307,7 +328,8 @@ struct OnboardingFlow: View {
     /// Get the next step in the onboarding flow - Rules: Updated to skip sign-in
     private func getNextStep(after step: OnboardingStep) -> OnboardingStep? {
         switch step {
-        case .welcome: return .personalizationIntro
+        case .welcome: return .valueProposition
+        case .valueProposition: return .personalizationIntro
         case .personalizationIntro: return .questionnaire
         case .questionnaire: return .payment // Skip sign-in, go directly to payment
         case .payment: return .dashboard
@@ -319,7 +341,8 @@ struct OnboardingFlow: View {
     private func getPreviousStep(before step: OnboardingStep) -> OnboardingStep? {
         switch step {
         case .welcome: return nil
-        case .personalizationIntro: return .welcome
+        case .valueProposition: return .welcome
+        case .personalizationIntro: return .valueProposition
         case .questionnaire: return .personalizationIntro
         case .payment: return .questionnaire // Skip sign-in when going back
         case .dashboard: return .payment

@@ -1,0 +1,24 @@
+{
+  "source": "/Users/mattsnow/programming/Amped/Amped/UI/Components/BackButton.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Go back to %@",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 42
+        }
+      },
+      {
+        "comment": "",
+        "key": "Go back",
+        "location": {
+          "startingColumn": 77,
+          "startingLine": 42
+        }
+      }
+    ]
+  },
+  "version": 1
+}
