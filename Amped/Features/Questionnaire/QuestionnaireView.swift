@@ -81,7 +81,7 @@ struct QuestionnaireView: View {
                     }
                     .clipped() // Ensure off-screen content doesn't show
                     .animation(
-                        .spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0),
+                        .easeInOut(duration: 0.4).delay(0.1),
                         value: viewModel.currentQuestion
                     )
                     
@@ -97,7 +97,8 @@ struct QuestionnaireView: View {
             // Move the gesture to the ZStack level for better gesture recognition
             .contentShape(Rectangle()) // Ensure the entire area responds to gestures
             .gesture(
-                DragGesture()
+                // iOS-STANDARD: Consistent gesture handling with proper minimum distance
+                DragGesture(minimumDistance: 8, coordinateSpace: .local) // iOS-standard minimum distance
                     .onChanged { gesture in
                         let _ = gestureHandler.handleDragChanged(gesture, geometry: geometry)
                     }
@@ -182,7 +183,7 @@ struct QuestionnaireView: View {
         questionnaireManager.saveQuestionnaireData(from: viewModel)
         
         // Move directly to life motivation question after successful HealthKit authorization
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
+        withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
             viewModel.currentQuestion = .lifeMotivation
         }
         
@@ -192,7 +193,7 @@ struct QuestionnaireView: View {
     
     private func skipToLifeMotivation() {
         // User doesn't track health, move directly to life motivation question
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
+        withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
             viewModel.currentQuestion = .lifeMotivation
         }
         
@@ -235,7 +236,7 @@ struct QuestionnaireView: View {
         
         // For all other questions, proceed to next question within questionnaire
         // Use consistent animation parameters that match the main view animation
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
+        withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
             viewModel.proceedToNextQuestion()
         }
     }

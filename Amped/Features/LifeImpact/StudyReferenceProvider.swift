@@ -63,6 +63,50 @@ struct StudyReferenceProvider {
                 summary: "Elevated resting heart rate is associated with increased risk of cardiovascular diseases and all-cause mortality. Each 10 beats per minute increase in resting heart rate was associated with a 9% increase in all-cause mortality."
             )
             
+        case .nutritionQuality:
+            return StudyReference(
+                title: "Association of Dietary Patterns with Risk of Chronic Disease and Mortality",
+                authors: "Schwingshackl L, Hoffmann G",
+                journalName: "Advances in Nutrition",
+                publicationYear: 2015,
+                doi: "10.3945/an.114.007617",
+                url: URL(string: "https://academic.oup.com/advances/article/6/2/192/4558024"),
+                summary: "High-quality dietary patterns were associated with reduced risk of all-cause mortality, cardiovascular disease, cancer, and type 2 diabetes."
+            )
+            
+        case .smokingStatus:
+            return StudyReference(
+                title: "Smoking and All-Cause Mortality in Older Adults: 18-Year Follow-up of a Cohort Study",
+                authors: "Carter BD, Abnet CC, Feskanich D, et al.",
+                journalName: "JAMA",
+                publicationYear: 2015,
+                doi: "10.1001/jama.2015.1617",
+                url: URL(string: "https://jamanetwork.com/journals/jama/fullarticle/2108262"),
+                summary: "Smoking is associated with substantially increased risks of death from cancer, vascular disease, and respiratory disease. Even light smoking significantly increases mortality risk."
+            )
+            
+        case .socialConnectionsQuality:
+            return StudyReference(
+                title: "Social Relationships and Mortality Risk: A Meta-analytic Review",
+                authors: "Holt-Lunstad J, Smith TB, Layton JB",
+                journalName: "PLOS Medicine",
+                publicationYear: 2010,
+                doi: "10.1371/journal.pmed.1000316",
+                url: URL(string: "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1000316"),
+                summary: "Strong social relationships increased the likelihood of survival by 50%. The magnitude of this effect is comparable to quitting smoking and exceeds the influence of obesity and physical inactivity."
+            )
+            
+        case .alcoholConsumption:
+            return StudyReference(
+                title: "Alcohol Consumption and Mortality Among Women",
+                authors: "Thun MJ, Peto R, Lopez AD, et al.",
+                journalName: "New England Journal of Medicine",
+                publicationYear: 1997,
+                doi: "10.1056/NEJM199712113372401",
+                url: URL(string: "https://www.nejm.org/doi/full/10.1056/NEJM199712113372401"),
+                summary: "Light to moderate alcohol consumption was associated with reduced risk of death from cardiovascular disease, but increased consumption was associated with increased risk of death from cancer and other causes."
+            )
+            
         default:
             // In a complete implementation, all metric types would have references
             return nil

@@ -270,8 +270,8 @@ struct DashboardView: View {
             ZStack {
                 // Main content
                 VStack(spacing: 0) {
-                    // Fixed header section with period selector only on page 1
-                    if currentPage == 0 {
+                    // Fixed header section with period selector on impact and metrics pages (pages 0 and 1)
+                    if currentPage <= 1 {
                         PeriodSelectorView(
                             selectedPeriod: $selectedPeriod,
                             onPeriodChanged: { period in
@@ -407,16 +407,29 @@ struct DashboardView: View {
         }
         .withDeepBackground()
         .gesture(
+            // FIXED: More specific drag gesture that only responds to vertical pulls
             DragGesture()
                 .onChanged { value in
-                    // Only allow downward pull when not already refreshing
-                    if !isRefreshing {
-                        // Apply iOS-standard rubber band effect
-                        pullDistance = applyRubberBandEffect(to: value.translation.height)
+                    // FIXED: Only respond to primarily vertical drags to avoid conflicts with horizontal TabView swipes
+                    let verticalDistance = value.translation.height
+                    let horizontalDistance = abs(value.translation.width)
+                    
+                    // Only process if this is primarily a downward vertical drag
+                    // and not already refreshing
+                    if verticalDistance > 0 && 
+                       verticalDistance > horizontalDistance * 2 && // Must be 2x more vertical than horizontal
+                       !isRefreshing {
+                        pullDistance = applyRubberBandEffect(to: verticalDistance)
                     }
                 }
                 .onEnded { value in
-                    if pullDistance > refreshThreshold && !isRefreshing {
+                    let verticalDistance = value.translation.height
+                    let horizontalDistance = abs(value.translation.width)
+                    
+                    // FIXED: Only trigger refresh for primarily vertical gestures
+                    if verticalDistance > horizontalDistance * 2 && 
+                       pullDistance > refreshThreshold && 
+                       !isRefreshing {
                         // Trigger refresh
                         isRefreshing = true
                         HapticManager.shared.playSelection()
@@ -428,6 +441,7 @@ struct DashboardView: View {
                         
                         // Perform the refresh
                         Task {
+                            // FIXED: Use unified refresh instead of separate functions
                             await viewModel.refreshData()
                             
                             // Reset states after refresh completes
@@ -440,7 +454,7 @@ struct DashboardView: View {
                             }
                         }
                     } else {
-                        // Spring back if threshold not reached
+                        // FIXED: Always spring back if not triggering refresh
                         withAnimation(.interactiveSpring(response: 0.3)) {
                             pullDistance = 0
                         }
@@ -563,13 +577,13 @@ struct DashboardView: View {
                         .padding(.top, 20)
                         .padding(.bottom, 24)
                     } else if totalTimeImpact != 0 {
-                        VStack(spacing: 40) {
+                        VStack(spacing: 80) {
                             // Main impact display section - Rules: Better spacing
                             VStack(spacing: 12) {
                                 // "Your habits collectively added/reduced" text above the number
                                 Text(totalTimeImpact >= 0 ? "\(timePeriodContext) added" : "\(timePeriodContext) reduced")
-                                    .font(.subheadline)
-                                    .foregroundColor(.white.opacity(0.7))
+                                    .font(.headline)
+                                    .foregroundColor(.white.opacity(0.85))
                                 
                                 // Main impact display - PROMINENT NUMBER
                                 HStack(spacing: 8) {
@@ -585,8 +599,8 @@ struct DashboardView: View {
                                 
                                 // "to/from your lifespan" text below
                                 Text(totalTimeImpact >= 0 ? "to your lifespan 🔥" : "from your lifespan")
-                                    .font(.subheadline)
-                                    .foregroundColor(.white.opacity(0.7))
+                                    .font(.headline)
+                                    .foregroundColor(.white.opacity(0.85))
                                     .multilineTextAlignment(.center)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
@@ -640,9 +654,8 @@ struct DashboardView: View {
                         .frame(height: max(40, geometry.safeAreaInsets.bottom + 20))
                 }
             }
-            .refreshable {
-                await refreshHealthData()
-            }
+            // FIXED: Removed .refreshable to eliminate gesture conflicts with TabView swiping
+            // Main pull-to-refresh handles all refresh functionality
         }
     }
     
@@ -697,9 +710,8 @@ struct DashboardView: View {
                     .padding(.bottom, max(40, geometry.safeAreaInsets.bottom + 20))
                 }
             }
-            .refreshable {
-                await refreshHealthData()
-            }
+            // FIXED: Removed .refreshable to eliminate gesture conflicts with TabView swiping
+            // Main pull-to-refresh handles all refresh functionality
         }
     }
 
@@ -740,9 +752,8 @@ struct DashboardView: View {
                 Spacer()
             }
         }
-        .refreshable {
-            await refreshLifespanData()
-        }
+        // FIXED: Removed .refreshable to eliminate gesture conflicts with TabView swiping
+        // Main pull-to-refresh handles all refresh functionality
     }
     
     /// Intuitive lifestyle tabs - designed to match time selector styling
@@ -1032,36 +1043,6 @@ struct DashboardView: View {
         }
     }
     
-    /// Refresh health data and total impact
-    private func refreshHealthData() async {
-        isCalculatingImpact = true
-        
-        // Simulate calculation time
-        try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
-        
-        await viewModel.refreshData()
-        
-        await MainActor.run {
-            isCalculatingImpact = false
-            hasInitiallyCalculated = true
-        }
-    }
-    
-    /// Refresh lifespan projection data
-    private func refreshLifespanData() async {
-        isCalculatingLifespan = true
-        
-        // Simulate calculation time
-        try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-        
-        await viewModel.refreshData()
-        
-        await MainActor.run {
-            isCalculatingLifespan = false
-            hasInitiallyCalculated = true
-        }
-    }
-    
     // MARK: - Helper Functions
     
     private func titleForPeriod(_ period: ImpactDataPoint.PeriodType) -> String {
@@ -1076,149 +1057,216 @@ struct DashboardView: View {
     }
 }
 
-// MARK: - Three Page Dashboard Container
-
-/// Special container for the dashboard's 3-page infinite scrolling
+/// Special container for the dashboard's 3-page scrolling following Apple UX standards
+/// Uses iOS 17+ ScrollView with proper paging behavior, with iOS 16 fallback
 public struct ThreePageDashboardContainer: View {
     @Binding var currentPage: Int
     let impactPage: AnyView
     let lifespanFactorsPage: AnyView 
     let batteryPage: AnyView
     
-    /// Internal selection for virtual pages
-    @State private var selection: Int = 1500 // Start higher for 3 pages
-    
-    /// Track if we're currently animating to prevent rapid changes
-    @State private var isAnimating = false
+    /// Track scroll position for iOS-standard paging
+    @State private var scrollPosition: Int? = 0
     
     public var body: some View {
         VStack(spacing: 0) {
-            // TabView with many virtual pages
-            TabView(selection: $selection) {
-                ForEach(0..<3000, id: \.self) { index in
-                    Group {
-                        let pageIndex = index % 3
-                        if pageIndex == 0 {
-                            impactPage
-                        } else if pageIndex == 1 {
-                            lifespanFactorsPage
+            if #available(iOS 17.0, *) {
+                // iOS 17+ native paging with proper UX standards
+                modernScrollImplementation
+            } else {
+                // iOS 16 fallback with optimized TabView
+                fallbackTabViewImplementation
+            }
+            
+            // Custom page indicators with iOS-standard behavior
+            pageIndicators
+        }
+    }
+    
+    /// iOS 17+ implementation using proper ScrollView paging
+    @available(iOS 17.0, *)
+    private var modernScrollImplementation: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 0) {
+                // Page 0: Impact Page
+                impactPage
+                    .containerRelativeFrame(.horizontal, count: 1, spacing: 0)
+                    .id(0)
+                
+                // Page 1: Lifespan Factors Page  
+                lifespanFactorsPage
+                    .containerRelativeFrame(.horizontal, count: 1, spacing: 0)
+                    .id(1)
+                
+                // Page 2: Battery Page
+                batteryPage
+                    .containerRelativeFrame(.horizontal, count: 1, spacing: 0)
+                    .id(2)
+            }
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.paging)
+        .scrollPosition(id: $scrollPosition)
+        .scrollIndicators(.hidden)
+        .onChange(of: scrollPosition) { newPosition in
+            // Update currentPage when scroll position changes
+            if let newPage = newPosition, newPage != currentPage {
+                currentPage = newPage
+                
+                // iOS-standard haptic feedback
+                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                impactFeedback.prepare()
+                impactFeedback.impactOccurred(intensity: 0.6)
+            }
+        }
+        .onChange(of: currentPage) { newPage in
+            // Update scroll position when currentPage changes programmatically
+            if scrollPosition != newPage {
+                withAnimation(.interpolatingSpring(
+                    mass: 1.0,
+                    stiffness: 200,
+                    damping: 25,
+                    initialVelocity: 0
+                )) {
+                    scrollPosition = newPage
+                }
+            }
+        }
+        .onAppear {
+            scrollPosition = currentPage
+        }
+    }
+    
+    /// iOS 16 fallback implementation with optimized TabView
+    private var fallbackTabViewImplementation: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 0) {
+                    // Page 0: Impact Page
+                    impactPage
+                        .frame(maxWidth: .infinity)
+                        .id(0)
+                    
+                    // Page 1: Lifespan Factors Page  
+                    lifespanFactorsPage
+                        .frame(maxWidth: .infinity)
+                        .id(1)
+                    
+                    // Page 2: Battery Page
+                    batteryPage
+                        .frame(maxWidth: .infinity)
+                        .id(2)
+                }
+            }
+            .gesture(
+                DragGesture()
+                    .onEnded { value in
+                        let threshold: CGFloat = 80 // iOS-standard threshold
+                        let horizontalDrag = value.translation.width
+                        
+                        let newPage: Int
+                        if horizontalDrag > threshold && currentPage > 0 {
+                            // Swipe right - go to previous page
+                            newPage = currentPage - 1
+                        } else if horizontalDrag < -threshold && currentPage < 2 {
+                            // Swipe left - go to next page
+                            newPage = currentPage + 1
                         } else {
-                            batteryPage
+                            newPage = currentPage
+                        }
+                        
+                        if newPage != currentPage {
+                            withAnimation(.interpolatingSpring(
+                                mass: 1.0,
+                                stiffness: 200,
+                                damping: 25,
+                                initialVelocity: 0
+                            )) {
+                                currentPage = newPage
+                                proxy.scrollTo(newPage, anchor: .leading)
+                            }
+                            
+                            // iOS-standard haptic feedback
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                            impactFeedback.prepare()
+                            impactFeedback.impactOccurred(intensity: 0.6)
                         }
                     }
-                    .tag(index)
-                }
-            }
-            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-            // Add custom transition animation for much smoother, slower feel
-            .animation(.interpolatingSpring(
-                mass: 2.5,        // Much heavier mass for slower, more deliberate movement
-                stiffness: 50,    // Much lower stiffness for very gentle acceleration
-                damping: 25,      // Higher damping for smooth deceleration
-                initialVelocity: 0
-            ), value: selection)
-            .onChange(of: selection) { newSelection in
-                // CRITICAL FIX: Always update currentPage for user swipes to prevent period selector persistence bug
-                let newPage = newSelection % 3
-                if currentPage != newPage {
-                    currentPage = newPage
-                }
-                
-                // Only use isAnimating to prevent rapid programmatic changes, not user swipes
-                if !isAnimating {
-                    isAnimating = true
-                    
-                    // Add haptic feedback with longer delay for more natural feel
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                        impactFeedback.prepare()
-                        impactFeedback.impactOccurred(intensity: 0.5) // Even gentler feedback
-                    }
-                    
-                    // Reset animation flag after animation completes (longer duration)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                        isAnimating = false
-                    }
-                }
-            }
+            )
             .onChange(of: currentPage) { newPage in
-                if selection % 3 != newPage && !isAnimating {
-                    // Use even smoother animation when programmatically changing pages
-                    withAnimation(.interpolatingSpring(
-                        mass: 2.0,
-                        stiffness: 60,
-                        damping: 22,
-                        initialVelocity: 0
-                    )) {
-                        selection = 1500 + newPage
-                    }
+                withAnimation(.interpolatingSpring(
+                    mass: 1.0,
+                    stiffness: 200,
+                    damping: 25,
+                    initialVelocity: 0
+                )) {
+                    proxy.scrollTo(newPage, anchor: .leading)
                 }
             }
             .onAppear {
-                selection = 1500 + currentPage
+                proxy.scrollTo(currentPage, anchor: .leading)
             }
-            
-            // Custom page indicators for 3 pages
-            HStack(spacing: 12) {
-                ForEach(0..<3, id: \.self) { index in
-                    let isActive = index == currentPage
-                    
-                    Circle()
-                        .fill(
-                            isActive ? 
-                                Color.ampedGreen :
-                                Color.white.opacity(0.4)
-                        )
-                        .frame(
-                            width: isActive ? 12 : 10,
-                            height: isActive ? 12 : 10
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(
-                                    isActive ? Color.ampedGreen.opacity(0.6) : Color.clear,
-                                    lineWidth: isActive ? 1.5 : 0
-                                )
-                                .blur(radius: isActive ? 0.5 : 0)
-                        )
-                        .shadow(
-                            color: isActive ? Color.ampedGreen.opacity(0.3) : Color.black.opacity(0.1),
-                            radius: isActive ? 3 : 1,
-                            x: 0,
-                            y: 1
-                        )
-                        // Even smoother animation for dots
-                        .animation(.interpolatingSpring(
-                            mass: 1.5,
-                            stiffness: 200,
-                            damping: 30,
-                            initialVelocity: 0
-                        ), value: currentPage)
-                        .scaleEffect(isActive ? 1.0 : 0.9)
-                        .animation(.easeInOut(duration: 0.35), value: currentPage) // Longer duration
-                        .onTapGesture {
-                            if !isAnimating {
-                                withAnimation(.interpolatingSpring(
-                                    mass: 2.0,
-                                    stiffness: 60,
-                                    damping: 22,
-                                    initialVelocity: 0
-                                )) {
-                                    currentPage = index
-                                }
-                                
-                                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                                impactFeedback.prepare()
-                                impactFeedback.impactOccurred(intensity: 0.6)
-                            }
-                        }
-                        .contentShape(Circle().inset(by: -8))
-                }
-            }
-            .padding(.vertical, 16) // Rules: Reduced padding for better spacing
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8) // Rules: Minimal bottom padding
         }
+    }
+    
+    /// Page indicators consistent across iOS versions
+    private var pageIndicators: some View {
+        HStack(spacing: 12) {
+            ForEach(0..<3, id: \.self) { index in
+                let isActive = index == currentPage
+                
+                Circle()
+                    .fill(
+                        isActive ? 
+                            Color.ampedGreen :
+                            Color.white.opacity(0.4)
+                    )
+                    .frame(
+                        width: isActive ? 12 : 10,
+                        height: isActive ? 12 : 10
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(
+                                isActive ? Color.ampedGreen.opacity(0.6) : Color.clear,
+                                lineWidth: isActive ? 1.5 : 0
+                            )
+                            .blur(radius: isActive ? 0.5 : 0)
+                    )
+                    .shadow(
+                        color: isActive ? Color.ampedGreen.opacity(0.3) : Color.black.opacity(0.1),
+                        radius: isActive ? 3 : 1,
+                        x: 0,
+                        y: 1
+                    )
+                    .animation(.interpolatingSpring(
+                        mass: 1.0,
+                        stiffness: 200,
+                        damping: 25,
+                        initialVelocity: 0
+                    ), value: currentPage)
+                    .scaleEffect(isActive ? 1.0 : 0.9)
+                    .animation(.easeInOut(duration: 0.25), value: currentPage)
+                    .onTapGesture {
+                        withAnimation(.interpolatingSpring(
+                            mass: 1.0,
+                            stiffness: 200,
+                            damping: 25,
+                            initialVelocity: 0
+                        )) {
+                            currentPage = index
+                        }
+                        
+                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                        impactFeedback.prepare()
+                        impactFeedback.impactOccurred(intensity: 0.6)
+                    }
+                    .contentShape(Circle().inset(by: -8))
+            }
+        }
+        .padding(.vertical, 16)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
     }
 }
 

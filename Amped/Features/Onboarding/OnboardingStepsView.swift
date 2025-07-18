@@ -72,15 +72,32 @@ struct OnboardingStepsView: View {
             }
         }
         .gesture(
-            DragGesture(minimumDistance: 20, coordinateSpace: .local)
+            // iOS-STANDARD: Improved gesture handling with proper thresholds and physics
+            DragGesture(minimumDistance: 8, coordinateSpace: .local) // iOS-standard minimum distance
                 .onEnded { value in
-                    if value.translation.width < 0 {
-                        // Left swipe - do nothing
-                    } else if value.translation.width > 0 {
-                        // Right swipe - navigate to next screen
-                        withAnimation {
-                            pageIndex = 1
+                    // iOS-STANDARD: Only respond to primarily horizontal gestures
+                    let horizontalDistance = abs(value.translation.width)
+                    let verticalDistance = abs(value.translation.height)
+                    
+                    // Must be more horizontal than vertical for page swiping
+                    if horizontalDistance > verticalDistance * 1.5 && horizontalDistance > 60 { // iOS-standard threshold
+                        if value.translation.width > 0 {
+                            // Right swipe - navigate to next screen
+                            withAnimation(.interpolatingSpring(
+                                mass: 1.0,
+                                stiffness: 200,
+                                damping: 25,
+                                initialVelocity: 0
+                            )) {
+                                pageIndex = 1
+                            }
+                            
+                            // iOS-STANDARD: Immediate haptic feedback
+                            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                            impactFeedback.prepare()
+                            impactFeedback.impactOccurred(intensity: 0.6)
                         }
+                        // Left swipe - do nothing (no backward navigation)
                     }
                 }
         )

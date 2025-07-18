@@ -18,23 +18,23 @@ class QuestionnaireGestureHandler {
     
     /// Handle when drag gesture changes
     func handleDragChanged(_ gesture: DragGesture.Value, geometry: GeometryProxy) -> CGFloat {
-        // Add debug log
-        print("🔍 QUESTIONNAIRE: Drag detected, translation=\(gesture.translation)")
-        
         // Reset back button flag when user starts dragging
         isBackButtonTapped = false
         
-        // Only consider horizontal drags that are significantly more horizontal than vertical
-        if abs(gesture.translation.width) > abs(gesture.translation.height) * 1.5 {
+        // iOS-STANDARD: Only consider horizontal drags that are significantly more horizontal than vertical
+        let horizontalDistance = abs(gesture.translation.width)
+        let verticalDistance = abs(gesture.translation.height)
+        
+        if horizontalDistance > verticalDistance * 1.5 { // iOS-standard ratio
             // Only allow backward (right) swipes, not forward (left) swipes
             if gesture.translation.width > 0 && viewModel?.canMoveBack == true {
                 // Dragging right (backward)
                 dragDirection = .trailing
                 
-                // Create smoother drag with spring-like resistance
-                let resistance = 1.0 - min(abs(gesture.translation.width) / geometry.size.width, 0.5) * 0.2
+                // iOS-STANDARD: Natural resistance curve
+                let progress = min(abs(gesture.translation.width) / geometry.size.width, 1.0)
+                let resistance = 1.0 - (progress * 0.3) // Less resistance for natural feel
                 dragOffset = min(gesture.translation.width, geometry.size.width) * resistance
-                print("🔍 QUESTIONNAIRE: Backward drag, offset=\(dragOffset), isFirstQuestion=\(viewModel?.isFirstQuestion ?? false), canMoveBack=\(viewModel?.canMoveBack ?? false)")
             }
         }
         
@@ -44,43 +44,40 @@ class QuestionnaireGestureHandler {
     /// Handle when drag gesture ends
     func handleDragEnded(_ gesture: DragGesture.Value, geometry: GeometryProxy, completion: @escaping () -> Void) {
         guard dragDirection != nil else { 
-            print("🔍 QUESTIONNAIRE: Drag ended but dragDirection is nil")
             return 
         }
         
-        // Calculate if the drag was significant enough to trigger navigation
-        let threshold: CGFloat = geometry.size.width * 0.2 // 20% threshold for easier swiping
-        print("🔍 QUESTIONNAIRE: Drag ended, dragOffset=\(dragOffset), threshold=\(threshold), dragDirection=\(String(describing: dragDirection))")
+        // iOS-STANDARD: Reduced threshold for more responsive swiping
+        let threshold: CGFloat = geometry.size.width * 0.15 // 15% threshold for easier swiping
         
         // Only handle backward (trailing) swipes - forward swipes are disabled
         if dragDirection == .trailing && abs(dragOffset) > threshold {
             // Backward swipe - go to previous question or back to intro if at first question
             if viewModel?.isFirstQuestion == true {
                 // If at first question, signal parent to navigate back to personalization intro
-                print("🔍 QUESTIONNAIRE: Backward swipe at first question - signaling parent")
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
+                withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
                     exitToPersonalizationIntro.wrappedValue = true
                 }
             } else {
                 // For any other question, navigate internally
-                print("🔍 QUESTIONNAIRE: Backward swipe to previous question, currentQuestion=\(viewModel?.currentQuestion.rawValue ?? -1)")
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
+                withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
                     viewModel?.moveBackToPreviousQuestion()
                 }
             }
-        } else {
-            print("🔍 QUESTIONNAIRE: Drag threshold not met, canceling navigation")
+            
+            // iOS-STANDARD: Immediate haptic feedback
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.prepare()
+            impactFeedback.impactOccurred(intensity: 0.6)
         }
         
-        // Reset drag state with animation - use consistent animation parameters
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
+        // iOS-STANDARD: Reset drag state with consistent animation
+        withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
             dragOffset = 0
-            // Keep dragDirection set until animation completes
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                self.dragDirection = nil
-                completion()
-            }
         }
+        
+        dragDirection = nil
+        completion()
     }
     
     /// Handle back button navigation
@@ -91,12 +88,12 @@ class QuestionnaireGestureHandler {
             print("🔍 QUESTIONNAIRE: Back to previous onboarding screen (personalization intro) - SCREEN SHOULD EXIT RIGHT")
             
             // Signal to parent to navigate back
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
+            withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
                 exitToPersonalizationIntro.wrappedValue = true
             }
             
             // Reset flag after transition completes
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 self.isBackButtonTapped = false
                 print("🔍 QUESTIONNAIRE: Back button flag reset")
             }
@@ -106,12 +103,12 @@ class QuestionnaireGestureHandler {
             print("🔍 QUESTIONNAIRE: Back to previous question - CURRENT QUESTION SHOULD EXIT RIGHT")
             
             // Use view model with animation
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0)) {
+            withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
                 viewModel?.moveBackToPreviousQuestion()
             }
             
             // Reset flag after transition completes
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 self.isBackButtonTapped = false
                 print("🔍 QUESTIONNAIRE: Back button flag reset")
             }

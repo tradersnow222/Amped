@@ -69,9 +69,9 @@ struct QuestionViews {
         
         var body: some View {
             VStack(spacing: 0) {
-                // Main content area with its own padding
+                // Main content area with consistent padding
                 VStack(alignment: .center, spacing: 0) {
-                    // Question text placed higher
+                    // Question text placed higher - consistent with other questions
                     Text("When were you born?")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
@@ -80,8 +80,9 @@ struct QuestionViews {
                         .frame(maxWidth: .infinity)
 
                     Spacer()
+                    Spacer() // Additional spacer to push picker lower
 
-                    // Custom Month/Year Picker positioned at bottom for thumb access
+                    // Custom Month/Year picker with native iOS wheel style
                     HStack(spacing: 0) {
                         // Month Picker
                         Picker("Month", selection: Binding(
@@ -90,12 +91,12 @@ struct QuestionViews {
                         )) {
                             ForEach(viewModel.availableMonths, id: \.self) { month in
                                 Text(viewModel.monthName(for: month))
-                                    .font(.system(size: 24))
+                                    .font(.system(size: 22, weight: .medium))
                                     .foregroundColor(.white)
                                     .tag(month)
                             }
                         }
-                        .pickerStyle(WheelPickerStyle())
+                        .pickerStyle(.wheel)
                         .frame(maxWidth: .infinity)
                         .colorScheme(.dark)
                         
@@ -106,43 +107,36 @@ struct QuestionViews {
                         )) {
                             ForEach(viewModel.availableYears, id: \.self) { year in
                                 Text(String(year))
-                                    .font(.system(size: 24))
+                                    .font(.system(size: 22, weight: .medium))
                                     .foregroundColor(.white)
                                     .tag(year)
                             }
                         }
-                        .pickerStyle(WheelPickerStyle())
+                        .pickerStyle(.wheel)
                         .frame(maxWidth: .infinity)
                         .colorScheme(.dark)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    
-                    Spacer() // Add spacer here to push button down
+                    .frame(height: 216) // Standard iOS picker height
+                    .padding(.horizontal, 24)
+
+                    Spacer()
+                    Spacer() // Extra spacer for more spacing above Continue button
+
+                    // Continue button with increased spacing
+                    VStack(spacing: 12) {
+                        Button(action: handleContinue) {
+                            Text("Continue")
+                        }
+                        .questionnaireButtonStyle(isSelected: false)
+                        .opacity(viewModel.canProceed ? 1.0 : 0.6)
+                        .disabled(!viewModel.canProceed)
+                        .hapticFeedback(.heavy)
+                    }
+                    .padding(.bottom, 30)
                 }
                 .padding(.horizontal, 24)
                 .frame(maxHeight: .infinity)
-                
-                // Bottom section with button - positioned near progress indicator
-                Button(action: handleContinue) {
-                    Text("Continue")
-                        .fontWeight(.bold)
-                        .font(.system(.title3, design: .monospaced))
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.ampedGreen)
-                        .foregroundColor(.white)
-                        .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
-                        .cornerRadius(14)
-                }
-                .hapticFeedback(.heavy)
-                .padding(.horizontal, 40)
-                .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
-                .padding(.bottom, 20) // Reduced padding to move button closer to progress indicator
-                .opacity(viewModel.canProceed ? 1 : 0.6)
-                .disabled(!viewModel.canProceed)
             }
-            .edgesIgnoringSafeArea(.bottom) // Allow content to extend into bottom safe area
         }
     }
     
@@ -205,28 +199,17 @@ struct QuestionViews {
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
             .onAppear {
-                // Auto-focus only when this question becomes current
+                // Simplified focus management - only focus when this specific question appears
+                // Add longer delay to ensure transition is completely finished
                 if viewModel.currentQuestion == .name {
-                    // Use a slightly longer delay to ensure view is fully rendered
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
                         isTextFieldFocused = true
                     }
                 }
             }
             .onDisappear {
-                // Ensure keyboard is dismissed when leaving this view
+                // Immediately dismiss keyboard when leaving
                 isTextFieldFocused = false
-            }
-            .onChange(of: viewModel.currentQuestion) { newQuestion in
-                if newQuestion == .name {
-                    // Focus when becoming current with proper delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        isTextFieldFocused = true
-                    }
-                } else {
-                    // Dismiss immediately when moving away
-                    isTextFieldFocused = false
-                }
             }
         }
         
@@ -235,8 +218,8 @@ struct QuestionViews {
             // Dismiss keyboard first
             isTextFieldFocused = false
             
-            // Small delay to ensure keyboard dismissal completes before navigation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            // Longer delay to ensure keyboard dismissal completes before navigation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 viewModel.proceedToNextQuestion()
             }
         }
@@ -297,6 +280,12 @@ struct QuestionViews {
                     .padding(.bottom, 10)
                     .frame(maxWidth: .infinity)
                 
+                // Scientific credibility for nutrition question
+                if let credibilityView = ScientificCredibilityView.forMetric(.nutritionQuality, style: .inline) {
+                    credibilityView
+                        .padding(.bottom, 8)
+                }
+                
                 Spacer()
                 
                 // Options at bottom for thumb access
@@ -336,6 +325,12 @@ struct QuestionViews {
                     .multilineTextAlignment(.center)
                     .padding(.bottom, 10)
                     .frame(maxWidth: .infinity)
+                
+                // Scientific credibility for smoking question
+                if let credibilityView = ScientificCredibilityView.forMetric(.smokingStatus, style: .inline) {
+                    credibilityView
+                        .padding(.bottom, 8)
+                }
                 
                 Spacer()
                 
@@ -410,6 +405,12 @@ struct QuestionViews {
                     .multilineTextAlignment(.center)
                     .padding(.bottom, 10)
                     .frame(maxWidth: .infinity)
+                
+                // Scientific credibility for social connections question
+                if let credibilityView = ScientificCredibilityView.forMetric(.socialConnectionsQuality, style: .inline) {
+                    credibilityView
+                        .padding(.bottom, 8)
+                }
                 
                 Spacer()
                 

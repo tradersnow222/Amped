@@ -134,9 +134,15 @@ struct OnboardingFlow: View {
                     }
                 }
             }
-            .animation((isProgrammaticNavigation || dragDirection == nil ? .easeInOut(duration: 0.7) : nil), value: currentStep)
+            .animation((isProgrammaticNavigation || dragDirection == nil ? .interpolatingSpring(
+                mass: 1.0,
+                stiffness: 200,
+                damping: 25,
+                initialVelocity: 0
+            ) : nil), value: currentStep)
             .gesture(
-                DragGesture()
+                // iOS-STANDARD: Improved gesture handling with proper thresholds and physics
+                DragGesture(minimumDistance: 8, coordinateSpace: .local) // iOS-standard minimum distance
                     .onChanged { gesture in
                         // Skip gesture handling entirely when in questionnaire
                         if currentStep == .questionnaire {
@@ -150,11 +156,14 @@ struct OnboardingFlow: View {
                         // Skip gesture handling for welcome screen and when transitioning to dashboard
                         guard currentStep != .welcome && currentStep != .dashboard else { return }
                         
-                        if abs(gesture.translation.width) > abs(gesture.translation.height) {
+                        // iOS-STANDARD: Only respond to primarily horizontal gestures
+                        let horizontalDistance = abs(gesture.translation.width)
+                        let verticalDistance = abs(gesture.translation.height)
+                        
+                        if horizontalDistance > verticalDistance * 1.5 { // Must be 1.5x more horizontal
                             // Determine drag direction
                             if gesture.translation.width < 0 {
                                 // Dragging to the left (forward)
-                                // Skip handling forward gestures in questionnaire (let child view handle it)
                                 if currentStep == .questionnaire {
                                     return
                                 }
@@ -162,23 +171,18 @@ struct OnboardingFlow: View {
                                 dragDirection = .leading
                                 let nextStep = getNextStep(after: currentStep)
                                 if nextStep != nil {
-                                    // Create smoother drag with spring-like resistance
-                                    let resistance = 1.0 - min(abs(gesture.translation.width) / geometry.size.width, 0.5) * 0.2
+                                    // iOS-STANDARD: Natural resistance curve
+                                    let progress = min(abs(gesture.translation.width) / geometry.size.width, 1.0)
+                                    let resistance = 1.0 - (progress * 0.3) // Less resistance for natural feel
                                     dragOffset = max(gesture.translation.width, -geometry.size.width) * resistance
-                                    print("🔍 DRAG: Forward drag, offset=\(dragOffset), nextStep=\(String(describing: nextStep))")
                                 }
                             } else if gesture.translation.width > 0 {
                                 // Dragging to the right (backward)
                                 // Don't allow swiping back to welcome view
                                 if currentStep == .valueProposition {
-                                    // Do nothing - prevent going back to welcome
-                                    print("🔍 DRAG: Backward drag prevented - at valueProposition")
                                     return
                                 }
                                 
-                                // For questionnaire, we want the child view to handle backward navigation
-                                // UNLESS we're at the first question and need to go back to personalization intro
-                                // But that's handled via notifications from the child
                                 if currentStep == .questionnaire {
                                     return
                                 }
@@ -186,10 +190,10 @@ struct OnboardingFlow: View {
                                 dragDirection = .trailing
                                 let previousStep = getPreviousStep(before: currentStep)
                                 if previousStep != nil && previousStep != .welcome {
-                                    // Create smoother drag with spring-like resistance
-                                    let resistance = 1.0 - min(abs(gesture.translation.width) / geometry.size.width, 0.5) * 0.2
+                                    // iOS-STANDARD: Natural resistance curve
+                                    let progress = min(abs(gesture.translation.width) / geometry.size.width, 1.0)
+                                    let resistance = 1.0 - (progress * 0.3) // Less resistance for natural feel
                                     dragOffset = min(gesture.translation.width, geometry.size.width) * resistance
-                                    print("🔍 DRAG: Backward drag, offset=\(dragOffset), previousStep=\(String(describing: previousStep))")
                                 }
                             }
                         }
@@ -202,41 +206,63 @@ struct OnboardingFlow: View {
                         
                         guard dragDirection != nil else { return }
                         
-                        // Calculate if the drag was significant enough to trigger navigation
-                        let threshold: CGFloat = geometry.size.width * 0.2 // Reduced threshold for easier swiping
+                        // iOS-STANDARD: Reduced threshold for more responsive swiping
+                        let threshold: CGFloat = geometry.size.width * 0.15 // 15% threshold instead of 20%
                         
                         if dragDirection == .leading && abs(dragOffset) > threshold {
                             // Dragged left past threshold - move forward
                             if let nextStep = getNextStep(after: currentStep) {
-                                print("🔍 DRAG ENDED: Completing forward navigation to \(nextStep)")
-                                withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
+                                withAnimation(.interpolatingSpring(
+                                    mass: 1.0,
+                                    stiffness: 200,
+                                    damping: 25,
+                                    initialVelocity: 0
+                                )) {
                                     dragOffset = 0
                                 }
-                                // Important: Keep dragDirection set during navigation
+                                
+                                // iOS-STANDARD: Immediate haptic feedback
+                                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                                impactFeedback.prepare()
+                                impactFeedback.impactOccurred(intensity: 0.6)
+                                
                                 navigateTo(nextStep)
-                                // Reset dragDirection after navigation animation completes
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                                // Reset dragDirection after animation completes
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                                     dragDirection = nil
                                 }
                             }
                         } else if dragDirection == .trailing && abs(dragOffset) > threshold {
                             // Dragged right past threshold - move backward
                             if let previousStep = getPreviousStep(before: currentStep), previousStep != .welcome {
-                                print("🔍 DRAG ENDED: Completing backward navigation to \(previousStep)")
-                                withAnimation(.interpolatingSpring(stiffness: 300, damping: 30)) {
+                                withAnimation(.interpolatingSpring(
+                                    mass: 1.0,
+                                    stiffness: 200,
+                                    damping: 25,
+                                    initialVelocity: 0
+                                )) {
                                     dragOffset = 0
                                 }
-                                // Important: Keep dragDirection set during navigation
+                                
+                                // iOS-STANDARD: Immediate haptic feedback
+                                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                                impactFeedback.prepare()
+                                impactFeedback.impactOccurred(intensity: 0.6)
+                                
                                 navigateTo(previousStep)
-                                // Reset dragDirection after navigation animation completes
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                                // Reset dragDirection after animation completes
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                                     dragDirection = nil
                                 }
                             }
                         } else {
-                            // Reset drag state with animation if threshold not met
-                            print("🔍 DRAG ENDED: Threshold not met, canceling drag")
-                            withAnimation(.interpolatingSpring(stiffness: 250, damping: 35)) {
+                            // iOS-STANDARD: Spring back if threshold not met
+                            withAnimation(.interpolatingSpring(
+                                mass: 1.0,
+                                stiffness: 200,
+                                damping: 25,
+                                initialVelocity: 0
+                            )) {
                                 dragOffset = 0
                             }
                             dragDirection = nil
