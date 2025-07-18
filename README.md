@@ -7,22 +7,26 @@ Amped is a comprehensive iOS health metrics app that integrates with Apple Healt
 ## 🔋 Key Features
 
 ### Dual Battery Visualization System
-- **Life Impact Battery**: Shows short-term health habit impacts (daily, monthly, yearly)
-- **Life Projection Battery**: Displays total projected lifespan based on current health data
-- **Battery-themed UI**: Familiar battery visualizations with charge levels and power indicators
+- **Life Impact Battery**: Shows short-term health habit impacts with dynamic charge levels
+- **Life Projection Battery**: Displays total projected lifespan with smooth energy flow animations
+- **Battery-themed UI**: Familiar battery visualizations with glassmorphism effects and power indicators
+- **Interactive Animations**: Smooth charging/discharging animations and energy flow between batteries
 
 ### Comprehensive Health Tracking
-- **HealthKit Integration**: Tracks 9 key health metrics automatically
+- **HealthKit Integration**: Tracks key health metrics automatically
   - Steps, Exercise Minutes, Sleep Hours
   - Resting Heart Rate, Heart Rate Variability
   - Body Mass, Active Energy Burned
   - VO2 Max, Oxygen Saturation
-- **Manual Health Questionnaire**: Collects 5 additional lifestyle metrics
+- **Enhanced Questionnaire System**: Interactive swipeable interface for lifestyle metrics
+  - Birthdate and Gender
   - Nutrition Quality, Smoking Status, Alcohol Consumption
   - Social Connections Quality, Stress Level
+  - Device tracking preferences, Life motivation
 
 ### Scientific Life Impact Calculations
 - **Research-Based Algorithms**: Calculates lifespan impact using peer-reviewed studies
+- **Scientific Credibility View**: Transparent display of research sources and methodology
 - **Real-time Analysis**: Processes health data into actionable insights
 - **Impact Visualization**: Shows how each metric affects your total life expectancy
 - **Time Period Analysis**: View impacts across different time scales (day/month/year)
@@ -33,10 +37,11 @@ Amped is a comprehensive iOS health metrics app that integrates with Apple Healt
 - **Sign in with Apple**: Secure, privacy-focused authentication
 - **Transparent Permissions**: Clear explanations for health data access
 
-### Subscription Model
-- **Free Trial**: 7-day trial for new users
-- **Flexible Plans**: Monthly ($9.99/month) and Annual ($39.99/year) options
-- **StoreKit Integration**: Native iOS payment processing
+### Premium Subscription Model
+- **Free Trial**: Experience full features before subscribing
+- **Flexible Plans**: Monthly and Annual subscription options
+- **StoreKit Integration**: Native iOS payment processing with exit offers
+- **Processing Overlays**: Smooth payment experience with loading states
 
 ## 📱 App Architecture
 
@@ -45,29 +50,110 @@ Amped is a comprehensive iOS health metrics app that integrates with Apple Healt
 - **Modular Design**: Feature-focused modules under 300 lines each
 - **Reactive Programming**: Combine framework for data flow
 - **Swift Concurrency**: async/await and Task for performance
+- **Dependency Injection**: Protocol-based service architecture
 
 ### Directory Structure
 ```
 Amped/
-├── Core/                    # Core business logic and models
-│   ├── Models/             # Health metrics, impact calculations, life projections
-│   ├── Extensions/         # UserDefaults and utility extensions
-│   └── FeatureFlagManager.swift
-├── Features/               # Feature modules organized by domain
-│   ├── HealthKit/         # HealthKit integration and data processing
-│   ├── LifeImpact/        # Life impact calculation algorithms
-│   ├── LifeProjection/    # Life expectancy projection calculations
-│   ├── Onboarding/        # User onboarding flow
-│   ├── Questionnaire/     # Health questionnaire system
-│   ├── Payment/           # Subscription and payment handling
-│   ├── Settings/          # App settings and preferences
-│   └── UI/                # Dashboard and main interface
-├── UI/                    # Shared UI components and design system
-│   ├── Components/        # Reusable battery-themed components
-│   ├── MetricComponents/  # Health metric visualization components
-│   ├── Theme/             # Battery theme and glass effects
-│   └── Accessibility/     # VoiceOver and accessibility support
-└── Analytics/             # Privacy-focused analytics
+├── Core/                           # Core business logic and models
+│   ├── Models/                    # Health metrics, impact calculations, life projections
+│   │   ├── HealthMetric.swift
+│   │   ├── HealthMetricType.swift
+│   │   ├── LifeProjection.swift
+│   │   ├── MetricImpactDetail.swift
+│   │   └── StudyReference.swift
+│   ├── Extensions/                # UserDefaults and utility extensions
+│   ├── CacheManager.swift
+│   ├── FeatureFlagManager.swift
+│   └── InfoPlistManager.swift
+├── Features/                      # Feature modules organized by domain
+│   ├── HealthKit/                # HealthKit integration and data processing
+│   │   ├── HealthKitManager.swift
+│   │   ├── HealthKitDataManager.swift
+│   │   ├── HealthDataService.swift
+│   │   ├── HealthKitPermissionsManager.swift
+│   │   └── HealthKitSleepManager.swift
+│   ├── LifeImpact/               # Life impact calculation algorithms
+│   │   ├── LifeImpactService.swift
+│   │   ├── ActivityImpactCalculator.swift
+│   │   ├── CardiovascularImpactCalculator.swift
+│   │   ├── LifestyleImpactCalculator.swift
+│   │   └── StudyReferenceProvider.swift
+│   ├── LifeProjection/           # Life expectancy projection calculations
+│   │   └── LifeProjectionService.swift
+│   ├── Onboarding/               # User onboarding flow
+│   │   ├── OnboardingFlow.swift
+│   │   ├── OnboardingStepsView.swift
+│   │   ├── PersonalizationIntroView.swift
+│   │   ├── WelcomeView.swift
+│   │   ├── ValuePropositionView.swift
+│   │   └── SignInWithAppleView.swift
+│   ├── Questionnaire/            # Enhanced questionnaire system
+│   │   ├── QuestionnaireView.swift
+│   │   ├── QuestionnaireViewModel.swift
+│   │   ├── QuestionnaireManager.swift
+│   │   ├── QuestionViews.swift
+│   │   ├── QuestionnaireGestureHandler.swift
+│   │   └── UpdateHealthProfileView.swift
+│   ├── Payment/                  # Subscription and payment handling
+│   │   ├── PaymentView.swift
+│   │   ├── PaymentViewModel.swift
+│   │   ├── PaymentComponents.swift
+│   │   ├── PricingSection.swift
+│   │   ├── ProcessingOverlay.swift
+│   │   ├── ExitOfferModal.swift
+│   │   ├── SimpleBatteryView.swift
+│   │   ├── StoreKitManager.swift
+│   │   └── SubscriptionService.swift
+│   ├── Settings/                 # App settings and preferences
+│   │   ├── SettingsView.swift
+│   │   └── SettingsManager.swift
+│   └── UI/                       # Dashboard and main interface
+│       ├── DashboardView.swift
+│       ├── DashboardViewModel.swift
+│       ├── DashboardHelpers.swift
+│       ├── MetricDetailView.swift
+│       ├── MetricDetailSections.swift
+│       └── ViewModels/
+│           └── MetricDetailViewModel.swift
+├── UI/                           # Shared UI components and design system
+│   ├── Components/               # Reusable battery-themed components
+│   │   ├── BatteryLifeImpactCard.swift
+│   │   ├── BatteryLifeProjectionCard.swift
+│   │   ├── LifeEnergyFlowBattery.swift
+│   │   ├── BatteryIndicatorView.swift
+│   │   ├── BatteryAnimations.swift
+│   │   ├── SwipeablePageContainer.swift
+│   │   ├── ScientificCredibilityView.swift
+│   │   ├── PeriodSelector.swift
+│   │   ├── PrimaryButtonStyle.swift
+│   │   ├── CollapsibleSection.swift
+│   │   ├── StyledMetricChart.swift
+│   │   ├── OnboardingTransitionModifier.swift
+│   │   ├── BackButton.swift
+│   │   └── TransparentBackground.swift
+│   ├── MetricComponents/         # Health metric visualization components
+│   │   ├── BatteryMetricCard.swift
+│   │   ├── EnhancedMetricCard.swift
+│   │   ├── HealthMetricRow.swift
+│   │   ├── HealthMetricsListView.swift
+│   │   ├── MetricChartSection.swift
+│   │   ├── MetricContextCard.swift
+│   │   ├── MetricDetailsView.swift
+│   │   └── MetricTipCard.swift
+│   ├── Theme/                    # Battery theme and glass effects
+│   │   ├── BatteryThemeManager.swift
+│   │   ├── GlassThemeManager.swift
+│   │   ├── ColorAssets.swift
+│   │   ├── TextStyles.swift
+│   │   ├── ThemeModifier.swift
+│   │   └── BackgroundImageModifier.swift
+│   └── Accessibility/            # VoiceOver and accessibility support
+│       ├── AccessibilitySupport.swift
+│       ├── HapticFeedback.swift
+│       └── ButtonHaptics.swift
+└── Analytics/                    # Privacy-focused analytics
+    └── AnalyticsService.swift
 ```
 
 ## 🚀 Getting Started
@@ -98,9 +184,9 @@ Amped/
    - Configure StoreKit for in-app purchases
 
 4. **Set up Info.plist**
-   - The app uses auto-generated Info.plist
-   - Follow instructions in `Amped/Scripts/SETUP.md` to add the build script
-   - Required usage descriptions are automatically added
+   - The app uses auto-generated Info.plist with build scripts
+   - Follow instructions in `Amped/Scripts/SETUP.md` to configure build scripts
+   - Required HealthKit usage descriptions are automatically added
 
 5. **Run on device**
    - HealthKit features require a physical iOS device
@@ -108,83 +194,98 @@ Amped/
 
 ## 🏥 Health Data Integration
 
-### HealthKit Metrics (9 total)
+### HealthKit Metrics
 The app automatically collects these metrics when permissions are granted:
 
 | Metric | Type | Impact Calculation |
 |--------|------|-------------------|
-| Steps | Activity | Baseline: 7,500 steps/day |
-| Exercise Minutes | Activity | Baseline: 30 min/day |
-| Sleep Hours | Recovery | Optimal: 7-8 hours/night |
+| Steps | Activity | Research-based baseline comparisons |
+| Exercise Minutes | Activity | WHO guidelines integration |
+| Sleep Hours | Recovery | Sleep quality impact algorithms |
 | Resting Heart Rate | Cardiovascular | Age-adjusted baselines |
-| Heart Rate Variability | Recovery | Age-adjusted baselines |
+| Heart Rate Variability | Recovery | HRV analysis algorithms |
 | Body Mass | Physical | BMI-based calculations |
-| Active Energy Burned | Activity | Baseline: 400 kcal/day |
-| VO2 Max | Performance | Age/gender-adjusted |
-| Oxygen Saturation | Respiratory | Target: 98-100% |
+| Active Energy Burned | Activity | Metabolic impact calculations |
+| VO2 Max | Performance | Fitness level assessments |
+| Oxygen Saturation | Respiratory | Respiratory health indicators |
 
-### Manual Questionnaire (5 metrics)
-Users provide additional lifestyle data through an 8-question onboarding flow:
+### Enhanced Questionnaire System
+Interactive swipeable interface collecting lifestyle data through an engaging flow:
 
-| Question | Scale | Impact Factor |
-|----------|-------|---------------|
-| Nutrition Quality | 1-10 scale | 20 min/point from baseline |
-| Smoking Status | 1-10 scale | 30 min/point from baseline |
-| Alcohol Consumption | 1-10 scale | 25 min/point from baseline |
-| Social Connections | 1-10 scale | 20 min/point from baseline |
-| Stress Level | 1-10 scale | 15 min/point from baseline |
+**Questionnaire Screens:**
+1. **Birthdate Collection**: Age-based calculation setup
+2. **Gender Selection**: Demographic baseline adjustment
+3. **Nutrition Quality**: 1-10 scale dietary assessment
+4. **Smoking Status**: Tobacco use impact evaluation
+5. **Alcohol Consumption**: Weekly intake assessment
+6. **Social Connections**: Social support evaluation
+7. **Stress Level**: Stress impact measurement
+8. **Life Motivation**: Personal goal setting
 
-## 🧮 Life Impact Calculations
+**Features:**
+- **Swipeable Navigation**: Smooth gesture-based progression
+- **Progress Indicators**: Visual feedback on completion
+- **Instant Validation**: Real-time input validation
+- **Adaptive UI**: Dynamic question presentation
 
-### Scientific Algorithm Approach
-The app uses research-based algorithms to calculate lifespan impact:
+## 🧮 Scientific Foundation & Calculations
 
+### Research Transparency
+- **Scientific Credibility View**: New component displaying research sources
+- **Study References**: Peer-reviewed research citations for each metric
+- **Methodology Transparency**: Clear explanation of calculation approaches
+- **Confidence Intervals**: Built-in uncertainty factors
+
+### Life Impact Calculation Algorithm
 ```swift
-// Example: Steps impact calculation
-let baseline = 7500.0 // steps
-let stepsImpactPerThousand = 5.0 // minutes per 1000 steps
-let difference = userSteps - baseline
-let impactMinutes = (difference / 1000.0) * stepsImpactPerThousand
+// Enhanced impact calculation with research validation
+func calculateLifeImpact(for metric: HealthMetric) -> MetricImpactDetail {
+    let baseline = studyReferenceProvider.getBaseline(for: metric.type)
+    let impactCoefficient = studyReferenceProvider.getImpactCoefficient(for: metric.type)
+    
+    let difference = metric.value - baseline
+    let impactMinutes = difference * impactCoefficient
+    
+    return MetricImpactDetail(
+        metric: metric,
+        impactMinutes: impactMinutes,
+        studyReference: studyReferenceProvider.getReference(for: metric.type)
+    )
+}
 ```
 
-### Impact Scaling by Time Period
-- **Daily**: Direct daily impact calculation
-- **Monthly**: Daily impact × 30 days
-- **Yearly**: Daily impact × 365 days
+### Impact Calculation Modules
+- **ActivityImpactCalculator**: Steps, exercise, active energy calculations
+- **CardiovascularImpactCalculator**: Heart rate, HRV, VO2 max analysis
+- **LifestyleImpactCalculator**: Questionnaire-based lifestyle impact
+- **StudyReferenceProvider**: Research data and baseline management
 
-### Life Projection Calculation
-```swift
-// Baseline life expectancy (demographic-based)
-let baselineYears = calculateBaseline(age: userAge, gender: userGender)
+## 📊 Enhanced User Experience
 
-// Cumulative impact from all health metrics
-let totalImpactMinutes = healthMetrics.reduce(0) { $0 + $1.impactMinutes }
-
-// Convert to years and apply to baseline
-let impactYears = totalImpactMinutes / (60 * 24 * 365.25)
-let adjustedLifeExpectancy = baselineYears + (impactYears * dampingFactor)
-```
-
-## 📊 User Flow
-
-### Onboarding Sequence
-1. **Welcome Screen**: App introduction with battery animation
-2. **Personalization Intro**: Scientific credibility and "little yesses" approach
-3. **Questionnaire**: 8 questions collecting manual health metrics
-   - Birthdate and Gender
-   - Nutrition, Smoking, Alcohol, Social Connections
-   - Device tracking preference
-   - Life motivation
-4. **Payment Screen**: Subscription options with free trial
-5. **Dashboard**: Main app experience with dual battery visualization
+### Onboarding Flow ("Little Yesses" Approach)
+1. **Welcome Screen**: Engaging introduction with battery animations
+2. **Personalization Intro**: Scientific credibility and value proposition
+3. **Interactive Questionnaire**: Swipeable 8-question flow with progress tracking
+4. **HealthKit Permissions**: Clear benefit explanation and permission requests
+5. **Sign in with Apple**: Privacy-focused authentication
+6. **Payment Screen**: Subscription options with exit offers and processing overlays
+7. **Dashboard**: Immediate value display with dual battery visualization
 
 ### Dashboard Experience
-- **Period Selector**: Switch between Day/Month/Year views
-- **Life Impact Battery**: Shows current period's health impact
-- **Life Projection Battery**: Displays total projected lifespan
-- **Health Metrics List**: Individual metric cards with power levels
-- **Pull-to-Refresh**: Updates health data from HealthKit
-- **Metric Details**: Tap any metric for detailed analysis
+- **Period Selector**: Dynamic switching between Day/Month/Year views
+- **Life Impact Battery**: Real-time health impact visualization
+- **Life Projection Battery**: Total lifespan projection with energy flow
+- **Enhanced Metric Cards**: Power level indicators and detailed insights
+- **Pull-to-Refresh**: Seamless HealthKit data updates
+- **Metric Detail Views**: Comprehensive analysis with charts and context
+- **Scientific Credibility**: Transparent research source display
+
+### Interactive Features
+- **Swipeable Navigation**: Smooth gesture-based interactions
+- **Battery Animations**: Dynamic charging/discharging effects
+- **Haptic Feedback**: Tactile responses for user actions
+- **Glass Effects**: Modern glassmorphism design elements
+- **Collapsible Sections**: Organized information display
 
 ## ⚙️ Settings & Customization
 
@@ -192,118 +293,148 @@ let adjustedLifeExpectancy = baselineYears + (impactYears * dampingFactor)
 - **Metric System**: Switch between metric (kg, cm) and imperial (lbs, ft)
 - **Show Unavailable Metrics**: Display metrics without current data
 - **Realtime Countdown**: Live countdown of remaining lifespan
-- **Sign-in Popup**: Optional authentication prompts
+- **Sign-in Popup Management**: Control authentication prompts
+- **Theme Preferences**: Time-based color schemes
+- **Accessibility Options**: VoiceOver and reduced motion support
 
-## 🔬 Scientific Research Foundation
+## 🔬 Scientific Research Integration
 
-### Study References
-The app includes citations to peer-reviewed research for major health impacts:
+### Study Reference System
+The app maintains a comprehensive database of peer-reviewed research:
 
-- **Steps**: "Association of Step Volume and Intensity With All-Cause Mortality" (JAMA Internal Medicine, 2019)
-- **Sleep**: "Sleep Duration and All-Cause Mortality" (Sleep, 2010)
-- **Exercise**: "Association of Leisure-Time Physical Activity With Risk of Cancer" (JAMA Internal Medicine, 2016)
-- **Heart Rate Variability**: Multiple cardiovascular health studies
-- **Resting Heart Rate**: "Resting Heart Rate and Risk of Cardiovascular Diseases" (Heart, 2016)
+**Research Categories:**
+- **Physical Activity**: Steps, exercise duration, and intensity studies
+- **Cardiovascular Health**: Heart rate, HRV, and blood pressure research
+- **Sleep Science**: Duration, quality, and recovery studies
+- **Lifestyle Factors**: Nutrition, smoking, alcohol, and social connections
+- **Mental Health**: Stress, social support, and psychological wellbeing
 
-### Impact Calculation Methodology
-- **Baseline Comparison**: Each metric compared against research-established baselines
-- **Dosage Response**: Linear and non-linear relationships based on study findings
-- **Confidence Intervals**: Built-in uncertainty factors for projection calculations
-- **Damping Factors**: Prevent unrealistic life extension/reduction projections
+### Research Institutions
+- Integration with leading health research organizations
+- Regular updates based on latest scientific findings
+- Transparent methodology documentation
 
-## 🔐 Privacy & Security
+## �� Privacy & Security
 
-### Data Protection
-- **Local Processing**: All health calculations performed on-device
-- **No Health Data Transmission**: Personal health information never sent to servers
-- **Anonymous Analytics**: Only opt-in, anonymized usage patterns collected
-- **Secure Storage**: All data stored using iOS secure frameworks
+### Data Protection Architecture
+- **Local-First Processing**: All health calculations performed on-device
+- **Zero Health Data Transmission**: Personal health information never sent to servers
+- **Secure Storage**: iOS Keychain and secure frameworks
+- **Anonymous Analytics**: Opt-in, anonymized usage patterns only
+- **Transparent Permissions**: Clear explanations for all data access requests
 
-### Permissions
-- **HealthKit**: Read-only access to selected health metrics
-- **Sign in with Apple**: Optional, privacy-focused authentication
-- **StoreKit**: For subscription management only
+### Authentication & Security
+- **Sign in with Apple**: Privacy-focused authentication
+- **Biometric Security**: TouchID/FaceID support where appropriate
+- **Secure Payment Processing**: StoreKit integration with no stored payment data
+- **Certificate Pinning**: Secure network communications
 
 ## 🛠 Development Workflow
 
-### Code Organization
-- **File Size Limit**: All Swift files kept under 300 lines
-- **Single Responsibility**: Each class/struct has one clear purpose
-- **Protocol-Based**: Dependency injection through protocols
+### Code Organization Principles
+- **300-Line File Limit**: Strict adherence to modular design
+- **Single Responsibility**: Each component has one clear purpose
+- **Protocol-Based Architecture**: Dependency injection through interfaces
 - **MARK Comments**: Clear code section organization
+- **Swift DocC**: Comprehensive API documentation
 
 ### Testing Strategy
-- **Unit Tests**: Core algorithms and business logic
-- **UI Tests**: Critical user flows and onboarding
-- **Mock Data**: Consistent testing with simulated HealthKit data
-- **Performance Tests**: Battery visualization and calculation performance
+- **Unit Tests**: Core algorithms and business logic validation
+- **UI Tests**: Critical user flows and interaction testing
+- **Mock Data Framework**: Consistent testing with simulated HealthKit data
+- **Performance Testing**: Battery visualization and calculation optimization
+- **Accessibility Testing**: VoiceOver and dynamic type validation
 
-### Documentation Standards
-- **Swift DocC**: All public APIs documented
-- **Architecture Decisions**: Documented in `/Documentation/Architecture/`
-- **Algorithm Explanations**: Health impact calculations documented
-- **User Flow Diagrams**: Visual documentation of app navigation
+### Quality Assurance
+- **Automated Testing**: Comprehensive test suite coverage
+- **Code Review Process**: Peer review for all changes
+- **Performance Monitoring**: Regular performance audits
+- **Accessibility Compliance**: WCAG guideline adherence
 
-## 🎨 Design System
+## 🎨 Enhanced Design System
 
-### Battery Theme
-- **Visual Metaphor**: Health as energy, metrics as power sources
-- **Familiar Icons**: Battery indicators following Apple's design patterns
-- **Glass Effects**: Modern glassmorphism with depth and transparency
-- **Power Levels**: 5-level system (Critical, Low, Medium, High, Full)
+### Battery Theme Evolution
+- **Visual Metaphor**: Health as energy with sophisticated power indicators
+- **Glassmorphism Effects**: Modern depth and transparency
+- **Energy Flow Animations**: Dynamic battery-to-battery energy transfer
+- **Power Level Hierarchy**: 5-tier system (Critical, Low, Medium, High, Full)
+- **Familiar Iconography**: Apple-inspired battery design patterns
 
 ### Color System
-- **Primary**: Amped Green (healthy/positive impacts)
-- **Secondary**: Amped Silver (neutral elements)
-- **Warning**: Amped Yellow (moderate concerns)  
-- **Critical**: Amped Red (negative impacts)
-- **Time-based**: Morning, Midday, Afternoon, Evening, Night themes
+- **Primary Palette**: Amped Green (positive), Silver (neutral), Yellow (caution), Red (critical)
+- **Time-Based Themes**: Morning, Midday, Afternoon, Evening, Night color schemes
+- **Dynamic Adaptation**: Color adjustments based on time and user preferences
+- **High Contrast Support**: Accessibility-compliant color combinations
 
-### Accessibility
-- **VoiceOver Support**: Full screen reader compatibility
-- **Dynamic Type**: Supports all iOS text size preferences
-- **Color Contrast**: WCAG compliant contrast ratios
-- **Reduced Motion**: Alternative animations when requested
+### Animation & Interaction
+- **Smooth Transitions**: 60fps battery visualizations
+- **Gesture Recognition**: Swipe, tap, and long-press interactions
+- **Haptic Integration**: Tactile feedback for user actions
+- **Reduced Motion Support**: Alternative animations for accessibility
 
 ## 📈 Performance Optimization
 
 ### Health Data Processing
-- **Efficient Queries**: Optimized HealthKit data requests
-- **Background Tasks**: Health data updates don't block UI
-- **Caching Strategy**: Smart caching for offline operation
-- **Memory Management**: Value types and ARC optimization
+- **Efficient HealthKit Queries**: Optimized data retrieval with appropriate limits
+- **Background Processing**: Health data updates without UI blocking
+- **Smart Caching**: Intelligent offline operation support
+- **Memory Management**: Value types and automatic reference counting
 
 ### UI Performance
-- **Lazy Loading**: Health metrics loaded as needed
-- **Animation Optimization**: 60fps battery visualizations
+- **Lazy Loading**: On-demand health metric loading
+- **Animation Optimization**: Hardware-accelerated battery visualizations
 - **State Management**: Efficient SwiftUI state handling
-- **Image Assets**: Optimized battery and background images
+- **Asset Optimization**: Compressed images and vector graphics
+
+### Scalability Considerations
+- **CloudKit Preparation**: Architecture ready for cloud synchronization
+- **Modular Services**: Clean boundaries for future feature expansion
+- **Analytics Framework**: Privacy-preserving usage insights
+- **A/B Testing Ready**: Framework for feature experimentation
 
 ## 🚀 Future Roadmap
 
-### Planned Features
-- **Cloud Sync**: Optional iCloud synchronization
-- **Apple Watch**: Companion watchOS app
-- **Health Trends**: Long-term health pattern analysis
-- **Goal Setting**: Personalized health improvement targets
-- **Social Features**: Optional health challenge sharing
+### Planned Enhancements
+- **Apple Watch Integration**: Companion watchOS app with battery indicators
+- **Advanced Analytics**: Long-term health trend analysis
+- **Goal Setting System**: Personalized health improvement targets
+- **Social Features**: Optional health challenge sharing (privacy-preserving)
+- **Health Coaching**: AI-powered personalized recommendations
 
-### Scalability Preparation
-- **CloudKit Ready**: Architecture prepared for cloud sync
-- **Microservices**: Clear service boundaries for future expansion
-- **A/B Testing**: Framework in place for feature experimentation
-- **Analytics Pipeline**: Privacy-preserving usage insights
+### Technical Evolution
+- **Cloud Synchronization**: Optional iCloud backup and sync
+- **Machine Learning**: Personalized health pattern recognition
+- **Widget Extensions**: iOS home screen battery widgets
+- **Shortcuts Integration**: Siri voice command support
+- **HealthKit Expansion**: Additional health metric integrations
+
+## 📊 App Analytics & Insights
+
+### Privacy-Preserving Analytics
+- **Opt-in Only**: User consent required for any data collection
+- **Anonymous Aggregation**: No personally identifiable information
+- **Local Processing**: Analytics computed on-device when possible
+- **Transparent Reporting**: Clear disclosure of collected data types
+
+### Performance Monitoring
+- **Crash Reporting**: Anonymous crash and error reporting
+- **Performance Metrics**: App responsiveness and battery usage
+- **Feature Usage**: Understanding which features provide value
+- **Conversion Optimization**: Improving onboarding and subscription flows
 
 ## 📄 License
 
-*License information coming soon*
+This project is proprietary software. All rights reserved.
 
-## 📞 Contact
+## 📞 Support & Contact
 
-For questions, support, or feedback, please reach out through the app's settings screen or visit our support documentation.
+For questions, support, or feedback:
+- **In-App Support**: Available through the settings screen
+- **Repository Issues**: GitHub issue tracking for development-related questions
+- **Documentation**: Comprehensive guides in `/Documentation/` directory
 
 ---
 
 **Amped - Power Up Your Life!** 🔋⚡
 
-*Transform your health data into actionable insights with the power of science and the simplicity of a battery indicator.*
+*Transform your health data into actionable insights with the power of science, the transparency of research, and the simplicity of a battery indicator.*
