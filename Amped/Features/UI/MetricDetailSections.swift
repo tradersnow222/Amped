@@ -17,10 +17,11 @@ struct MetricDetailSections {
                 
                 if let impact = metric.impactDetails {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Your \(metric.type.displayName.lowercased()) is \(impact.comparisonToBaseline.description).")
+                        let comparisonDescription = impact.lifespanImpactMinutes > 0 ? "better than the baseline" : (impact.lifespanImpactMinutes < 0 ? "worse than the baseline" : "at the baseline")
+                        Text("Your \(metric.type.displayName.lowercased()) is \(comparisonDescription).")
                             .style(.body)
                         
-                        Text("This impacts your lifespan by approximately \(impact.formattedImpact).")
+                        Text("This impacts your lifespan by approximately \(impact.formattedImpact(for: .day)).")
                             .style(.body)
                         
                         if impact.lifespanImpactMinutes > 0 {
@@ -138,10 +139,13 @@ struct MetricDetailSections {
                     .style(.headline)
                     .padding(.horizontal)
                 
-                if let scientificRef = metric.impactDetails?.scientificReference {
+                if let firstStudy = metric.impactDetails?.studyReferences.first {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(scientificRef)
+                        Text("Research Reference")
                             .style(.subheadlineBold)
+                        
+                        Text(firstStudy.citation)
+                            .style(.caption)
                             .padding(.top, 4)
                     }
                     .padding()

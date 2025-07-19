@@ -320,7 +320,7 @@ struct BatteryLifeImpactCard: View {
             Spacer(minLength: 0)
             
             // Impact indicator with better visual
-            let impactValue = impact.impactForPeriod(selectedPeriod)
+            let impactValue = getScaledImpact(for: impact, period: selectedPeriod)
             let isPositive = impactValue > 0
             
             Circle()
@@ -338,7 +338,7 @@ struct BatteryLifeImpactCard: View {
     
     /// Get contextual description for impact
     private func impactContext(for impact: MetricImpactDetail) -> String {
-        let impactValue = impact.impactForPeriod(selectedPeriod)
+        let impactValue = getScaledImpact(for: impact, period: selectedPeriod)
         let isPositive = impactValue > 0
         
         switch impact.metricType {
@@ -358,6 +358,20 @@ struct BatteryLifeImpactCard: View {
             return isPositive ? "staying calm" : "high stress"
         default:
             return isPositive ? "helping" : "draining"
+        }
+    }
+    
+    /// Helper to get scaled impact value for a given metric impact and period
+    private func getScaledImpact(for impact: MetricImpactDetail, period: TimePeriod) -> Double {
+        let dailyImpact = impact.lifespanImpactMinutes
+        
+        switch period {
+        case .day:
+            return dailyImpact
+        case .month:
+            return dailyImpact * 30.0
+        case .year:
+            return dailyImpact * 365.0
         }
     }
 }

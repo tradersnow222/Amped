@@ -225,9 +225,12 @@ struct HealthMetricsListView_Previews: PreviewProvider {
                 source: .healthKit,
                 impactDetails: MetricImpactDetail(
                     metricType: .steps,
+                    currentValue: 8500,
+                    baselineValue: 8000,
+                    studyReferences: [],
                     lifespanImpactMinutes: 15,
-                    comparisonToBaseline: .better,
-                    scientificReference: "Daily Steps and Mortality Study"
+                    calculationMethod: .metaAnalysisSynthesis,
+                    recommendation: "Great daily step count! This contributes positively to your health."
                 )
             ),
             HealthMetric(

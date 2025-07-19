@@ -42,7 +42,7 @@ struct EnhancedMetricCard: View {
                         .foregroundColor(impact.lifespanImpactMinutes >= 0 ? .ampedGreen : .ampedRed)
                         .font(.caption)
                     
-                    Text(impact.formattedImpact)
+                    Text(impact.formattedImpact(for: .day))
                         .futuristicText(size: 14, weight: .medium)
                         .foregroundColor(impact.lifespanImpactMinutes >= 0 ? .ampedGreen : .ampedRed)
                 }
@@ -104,8 +104,12 @@ struct EnhancedMetricCard: View {
             source: .healthKit,
             impactDetails: MetricImpactDetail(
                 metricType: .sleepHours,
+                currentValue: 7.5,
+                baselineValue: 7.0,
+                studyReferences: [],
                 lifespanImpactMinutes: 45,
-                comparisonToBaseline: .better
+                calculationMethod: .expertConsensus,
+                recommendation: "Maintain consistent sleep schedule for optimal health."
             )
         )
     )

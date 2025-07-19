@@ -1,191 +1,266 @@
 import Foundation
 
-/// Represents the calculated impact details of a health metric
-struct MetricImpactDetail: Identifiable, Codable, Equatable {
-    // MARK: - Properties
-    
-    /// Unique identifier
+/// Detailed impact analysis for a health metric based on peer-reviewed research
+struct MetricImpactDetail: Codable, Identifiable, Equatable {
     let id: String
-    
-    /// The type of health metric
     let metricType: HealthMetricType
+    let currentValue: Double
+    let baselineValue: Double  // Research-based optimal/reference value
+    let variance: Double       // How far from baseline (positive = better, negative = worse)
     
-    /// Impact on lifespan in minutes (positive or negative)
-    let lifespanImpactMinutes: Double
+    // Research-backed impact calculations
+    let studyReferences: [StudyReference]  // Supporting peer-reviewed studies
+    let effectType: HealthEffectType       // How this effect accumulates over time
+    let lifespanImpactMinutes: Double      // Daily impact in minutes (can be scaled appropriately)
+    let confidenceInterval: ConfidenceInterval? // Statistical confidence in the estimate
     
-    /// Comparison to baseline
-    let comparisonToBaseline: ComparisonResult
+    // Scientific grounding
+    let calculationMethod: CalculationMethod
+    let evidenceStrength: EvidenceStrength
+    let applicabilityScore: Double  // How well studies apply to current user (0-100)
     
-    /// Scientific reference for the impact calculation (optional)
-    let scientificReference: String?
+    // User guidance
+    let recommendation: String
+    let actionability: ActionabilityLevel
+    let improvementPotential: Double  // Potential lifespan gain if optimized (minutes/day)
     
-    // MARK: - Initialization
+    enum CalculationMethod: String, Codable, CaseIterable {
+        case directStudyMapping = "Direct Study Mapping"       // Direct from study results
+        case interpolatedDoseResponse = "Interpolated Dose-Response"  // Interpolated from dose-response curve
+        case metaAnalysisSynthesis = "Meta-Analysis Synthesis"  // Synthesized from multiple studies
+        case expertConsensus = "Expert Consensus"             // When direct data unavailable
+        case algorithmicEstimate = "Algorithmic Estimate"     // Mathematical modeling
+        
+        var reliability: Double {
+            switch self {
+            case .directStudyMapping: return 0.9
+            case .metaAnalysisSynthesis: return 0.85
+            case .interpolatedDoseResponse: return 0.75
+            case .expertConsensus: return 0.6
+            case .algorithmicEstimate: return 0.4
+            }
+        }
+    }
     
+    enum EvidenceStrength: String, Codable, CaseIterable {
+        case strong = "Strong"     // Multiple high-quality studies, consistent results
+        case moderate = "Moderate" // Good studies but some limitations
+        case limited = "Limited"   // Some evidence but gaps or inconsistencies
+        case weak = "Weak"        // Minimal or low-quality evidence
+        
+        var color: String {
+            switch self {
+            case .strong: return "ampedGreen"
+            case .moderate: return "ampedYellow"
+            case .limited: return "ampedYellow"
+            case .weak: return "ampedRed"
+            }
+        }
+        
+        var score: Double {
+            switch self {
+            case .strong: return 1.0
+            case .moderate: return 0.75
+            case .limited: return 0.5
+            case .weak: return 0.25
+            }
+        }
+    }
+    
+    enum ActionabilityLevel: String, Codable, CaseIterable {
+        case high = "High"       // User can easily change this metric
+        case medium = "Medium"   // Requires effort but achievable
+        case low = "Low"        // Difficult to change or not under direct control
+        
+        var description: String {
+            switch self {
+            case .high: return "Easy to improve with daily habits"
+            case .medium: return "Requires consistent effort to change"
+            case .low: return "Challenging to modify directly"
+            }
+        }
+    }
+    
+    /// Initialize with research-backed calculations
     init(
         id: String = UUID().uuidString,
         metricType: HealthMetricType,
+        currentValue: Double,
+        baselineValue: Double,
+        studyReferences: [StudyReference],
         lifespanImpactMinutes: Double,
-        comparisonToBaseline: ComparisonResult,
-        scientificReference: String? = nil
+        calculationMethod: CalculationMethod,
+        recommendation: String,
+        improvementPotential: Double? = nil
     ) {
         self.id = id
         self.metricType = metricType
+        self.currentValue = currentValue
+        self.baselineValue = baselineValue
+        self.variance = currentValue - baselineValue
+        self.studyReferences = studyReferences
         self.lifespanImpactMinutes = lifespanImpactMinutes
-        self.comparisonToBaseline = comparisonToBaseline
-        self.scientificReference = scientificReference
-    }
-    
-    // MARK: - Computed Properties
-    
-    /// The impact converted to hours (for display purposes)
-    var lifespanImpactHours: Double {
-        lifespanImpactMinutes / 60.0
-    }
-    
-    /// The impact converted to days (for display purposes)
-    var lifespanImpactDays: Double {
-        lifespanImpactHours / 24.0
-    }
-    
-    /// A user-friendly description of the impact
-    var impactDescription: String {
-        let absImpact = abs(lifespanImpactMinutes)
-        let direction = lifespanImpactMinutes >= 0 ? "gained" : "lost"
+        self.calculationMethod = calculationMethod
+        self.recommendation = recommendation
+        self.improvementPotential = improvementPotential ?? (lifespanImpactMinutes < 0 ? abs(lifespanImpactMinutes) : 0)
         
-        // Define time conversions
-        let minutesInHour = 60.0
-        let minutesInDay = 1440.0 // 60 * 24
-        let minutesInWeek = 10080.0 // 60 * 24 * 7
-        let minutesInMonth = 43200.0 // 60 * 24 * 30 (approximate)
-        let minutesInYear = 525600.0 // 60 * 24 * 365
+        // Derive effect type from primary study
+        self.effectType = studyReferences.first?.effectType ?? .linearCumulative
         
-        // Years
-        if absImpact >= minutesInYear {
-            let years = absImpact / minutesInYear
-            if years >= 1.0 {
-                let unit = years == 1.0 ? "year" : "years"
-                let valueString = years.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", years) : String(format: "%.1f", years)
-                return "\(valueString) \(unit) \(direction)"
-            } else {
-                return String(format: "%.1f year %@", years, direction)
-            }
-        }
-        
-        // Months
-        if absImpact >= minutesInMonth {
-            let months = absImpact / minutesInMonth
-            if months >= 1.0 {
-                let unit = months == 1.0 ? "month" : "months"
-                let valueString = months.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", months) : String(format: "%.1f", months)
-                return "\(valueString) \(unit) \(direction)"
-            } else {
-                return String(format: "%.1f month %@", months, direction)
-            }
-        }
-        
-        // Weeks
-        if absImpact >= minutesInWeek {
-            let weeks = absImpact / minutesInWeek
-            if weeks >= 1.0 {
-                let unit = weeks == 1.0 ? "week" : "weeks"
-                let valueString = weeks.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", weeks) : String(format: "%.1f", weeks)
-                return "\(valueString) \(unit) \(direction)"
-            } else {
-                return String(format: "%.1f week %@", weeks, direction)
-            }
-        }
-        
-        // Days
-        if absImpact >= minutesInDay {
-            let days = absImpact / minutesInDay
-            if days >= 1.0 {
-                let unit = days == 1.0 ? "day" : "days"
-                let valueString = days.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", days) : String(format: "%.1f", days)
-                return "\(valueString) \(unit) \(direction)"
-            } else {
-                return String(format: "%.1f day %@", days, direction)
-            }
-        }
-        
-        // Hours
-        if absImpact >= minutesInHour {
-            let hours = absImpact / minutesInHour
-            if hours >= 1.0 {
-                let unit = hours == 1.0 ? "hour" : "hours"
-                let valueString = hours.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", hours) : String(format: "%.1f", hours)
-                return "\(valueString) \(unit) \(direction)"
-            } else {
-                return String(format: "%.1f hour %@", hours, direction)
-            }
-        }
-        
-        // Minutes
-        let minutes = Int(absImpact)
-        return "\(minutes) minute\(minutes == 1 ? "" : "s") \(direction)"
-    }
-    
-    /// Formatted impact for UI display
-    var formattedImpact: String {
-        impactDescription
-    }
-    
-    // MARK: - Battery Power Level
-    
-    /// Returns the power level for battery visualization
-    var powerLevel: PowerLevel {
-        if lifespanImpactMinutes > 120 {
-            return .full
-        } else if lifespanImpactMinutes > 60 {
-            return .high
-        } else if lifespanImpactMinutes > -60 {
-            return .medium
-        } else if lifespanImpactMinutes > -120 {
-            return .low
+        // Calculate evidence strength from studies
+        let averageEvidenceScore = studyReferences.isEmpty ? 0 : studyReferences.map(\.evidenceStrength).reduce(0, +) / Double(studyReferences.count)
+        if averageEvidenceScore >= 80 {
+            self.evidenceStrength = .strong
+        } else if averageEvidenceScore >= 60 {
+            self.evidenceStrength = .moderate
+        } else if averageEvidenceScore >= 40 {
+            self.evidenceStrength = .limited
         } else {
-            return .critical
+            self.evidenceStrength = .weak
+        }
+        
+        // Use confidence interval from primary study
+        self.confidenceInterval = studyReferences.first?.confidenceInterval
+        
+        // Calculate applicability (simplified - would be more complex in real implementation)
+        self.applicabilityScore = studyReferences.isEmpty ? 50 : 
+            studyReferences.map { _ in 80.0 }.reduce(0, +) / Double(studyReferences.count)
+        
+        // Determine actionability based on metric type
+        self.actionability = metricType.actionabilityLevel
+    }
+    
+    /// Get time-period appropriate impact with scientific validity check
+    func impactForPeriod(_ periodType: ImpactDataPoint.PeriodType) -> Double {
+        // CRITICAL: Only scale if the effect type supports linear scaling
+        guard effectType.allowsLinearScaling else {
+            // For non-linear effects, return daily impact with a note that longer-term effects
+            // require more complex modeling
+            return lifespanImpactMinutes
+        }
+        
+        // Apply scaling for linear cumulative effects only
+        switch periodType {
+        case .day:
+            return lifespanImpactMinutes
+        case .month:
+            return lifespanImpactMinutes * 30.0
+        case .year:
+            return lifespanImpactMinutes * 365.0
         }
     }
     
-    // MARK: - UI Compatibility Methods
+    /// Get impact status with research confidence
+    var impactStatus: ImpactStatus {
+        if lifespanImpactMinutes > 0 {
+            return .positive
+        } else if lifespanImpactMinutes < 0 {
+            return .negative
+        } else {
+            return .neutral
+        }
+    }
     
-    /// Get impact for a specific period - returns current impact for compatibility
-    func impactForPeriod(_ period: TimePeriod) -> Double {
-        // For now, return the current lifespanImpactMinutes regardless of period
-        // In future iterations, this could calculate period-specific impacts
-        return lifespanImpactMinutes
+    /// Get formatted description of the scientific basis
+    var scientificBasis: String {
+        let studyCount = studyReferences.count
+        let primaryStudy = studyReferences.first
+        
+        if studyCount == 0 {
+            return "Based on algorithmic estimation (limited evidence)"
+        } else if studyCount == 1 {
+            return "Based on: \(primaryStudy?.citation ?? "1 peer-reviewed study")"
+        } else {
+            return "Based on \(studyCount) peer-reviewed studies including: \(primaryStudy?.citation ?? "")"
+        }
+    }
+    
+    /// Get reliability score combining evidence and method
+    var reliabilityScore: Double {
+        let evidenceScore = evidenceStrength.score
+        let methodScore = calculationMethod.reliability
+        let applicabilityModifier = applicabilityScore / 100.0
+        
+        return (evidenceScore * 0.5 + methodScore * 0.3 + applicabilityModifier * 0.2)
+    }
+    
+    enum ImpactStatus: String, Codable, CaseIterable {
+        case positive = "Positive"
+        case neutral = "Neutral"
+        case negative = "Negative"
+        
+        var color: String {
+            switch self {
+            case .positive: return "ampedGreen"
+            case .neutral: return "ampedSilver"
+            case .negative: return "ampedRed"
+            }
+        }
+        
+        var icon: String {
+            switch self {
+            case .positive: return "plus.circle.fill"
+            case .neutral: return "minus.circle.fill"
+            case .negative: return "exclamationmark.triangle.fill"
+            }
+        }
     }
 }
 
-/// Result of comparing a metric to baseline
-enum ComparisonResult: String, Codable {
-    case better
-    case same
-    case worse
+// MARK: - Extensions for Health Metric Types
+
+extension HealthMetricType {
+    /// Actionability level for each metric type based on user control
+    var actionabilityLevel: MetricImpactDetail.ActionabilityLevel {
+        switch self {
+        case .steps, .exerciseMinutes, .sleepHours:
+            return .high
+        case .restingHeartRate, .vo2Max, .bodyMass:
+            return .medium
+        case .heartRateVariability:
+            return .low
+        case .alcoholConsumption, .smokingStatus, .stressLevel, .nutritionQuality, .socialConnectionsQuality, .activeEnergyBurned, .oxygenSaturation:
+            return .medium
+        }
+    }
+    
+    /// Research-based optimal baseline values
+    var researchBaseline: Double {
+        switch self {
+        case .steps: return 7500          // Based on meta-analyses showing mortality benefits
+        case .exerciseMinutes: return 150 // WHO/AHA guidelines (150 min/week = ~21 min/day)
+        case .sleepHours: return 7.5      // Sleep studies showing U-shaped mortality curve
+        case .restingHeartRate: return 65 // Cardiovascular health studies
+        case .heartRateVariability: return 40 // HRV research (varies by age/gender)
+        case .vo2Max: return 35           // Fitness studies (varies by age/gender)
+        case .bodyMass: return 70         // Placeholder - should be BMI-based
+        case .alcoholConsumption: return 0.5 // Moderate consumption studies
+        case .smokingStatus: return 0     // No smoking
+        case .stressLevel: return 3       // 1-10 scale, 3 = low stress
+        case .nutritionQuality: return 8  // 1-10 scale, 8 = high quality
+        case .socialConnectionsQuality: return 7 // 1-10 scale, 7 = good connections
+        case .activeEnergyBurned: return 400 // kcal per day
+        case .oxygenSaturation: return 98 // percent
+        }
+    }
 }
 
-extension ComparisonResult {
-    var symbol: String {
-        switch self {
-        case .better: return "arrow.up.circle.fill"
-        case .same: return "equal.circle.fill"
-        case .worse: return "arrow.down.circle.fill"
-        }
+// MARK: - Formatting Extensions
+
+extension MetricImpactDetail {
+    /// Format the impact value for display with appropriate units
+    func formattedImpact(for periodType: ImpactDataPoint.PeriodType) -> String {
+        let impactMinutes = impactForPeriod(periodType)
+        return ImpactDataPoint.formatLifespanImpact(minutes: impactMinutes)
     }
     
-    var color: String {
-        switch self {
-        case .better: return "ampedGreen"
-        case .same: return "ampedYellow"
-        case .worse: return "ampedRed"
+    /// Format with confidence interval if available
+    var formattedImpactWithConfidence: String {
+        let baseImpact = ImpactDataPoint.formatLifespanImpact(minutes: lifespanImpactMinutes)
+        if let ci = confidenceInterval {
+            return "\(baseImpact) (\(ci.description))"
         }
-    }
-    
-    var description: String {
-        switch self {
-        case .better: return "better than recommended"
-        case .same: return "at the recommended level"
-        case .worse: return "below the recommended level"
-        }
+        return baseImpact
     }
 }
 

@@ -34,7 +34,7 @@ struct LifeImpactData: Identifiable, Codable, Equatable {
     
     /// Create from ImpactDataPoint
     init(from impactDataPoint: ImpactDataPoint) {
-        self.id = impactDataPoint.id
+        self.id = UUID() // Create new UUID since impactDataPoint.id is String
         self.calculationDate = impactDataPoint.date
         self.timePeriod = TimePeriod(from: impactDataPoint.periodType)
         
@@ -56,8 +56,12 @@ struct LifeImpactData: Identifiable, Codable, Equatable {
         for (metricType, impactValue) in impactDataPoint.metricImpacts {
             let impact = MetricImpactDetail(
                 metricType: metricType,
+                currentValue: abs(impactValue), // Use absolute value as placeholder
+                baselineValue: 0, // Default baseline
+                studyReferences: [],
                 lifespanImpactMinutes: impactValue,
-                comparisonToBaseline: impactValue > 0 ? .better : (impactValue < 0 ? .worse : .same)
+                calculationMethod: .algorithmicEstimate,
+                recommendation: impactValue > 0 ? "Keep up the good work!" : "Consider improvements to optimize this metric."
             )
             contributions[metricType] = impact
         }

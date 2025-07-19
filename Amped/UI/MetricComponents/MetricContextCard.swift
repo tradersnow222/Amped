@@ -54,7 +54,7 @@ struct MetricContextCard: View {
                 .font(.body)
                 .foregroundColor(.secondary)
             
-            if let scientificRef = metric.impactDetails?.scientificReference {
+            if let firstStudy = metric.impactDetails?.studyReferences.first {
                 Divider()
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -62,7 +62,7 @@ struct MetricContextCard: View {
                         .font(.subheadline)
                         .fontWeight(.semibold)
                     
-                    Text(scientificRef)
+                    Text(firstStudy.shortCitation)
                         .font(.caption)
                 }
             }
@@ -177,15 +177,15 @@ struct MetricContextCard: View {
     private var comparisonColor: Color {
         guard let impact = metric.impactDetails else { return .primary }
         
-        switch impact.comparisonToBaseline {
-        case .better:
-            return .ampedGreen
-        case .same:
-            return .primary
-        case .worse:
-            return .ampedRed
-        @unknown default:
-            return .primary
+        // Calculate comparison based on lifespan impact minutes
+        let impactValue = impact.lifespanImpactMinutes
+        
+        if impactValue > 0 {
+            return .ampedGreen // Positive impact
+        } else if impactValue < 0 {
+            return .ampedRed // Negative impact
+        } else {
+            return .primary // Neutral impact
         }
     }
     
@@ -238,9 +238,12 @@ struct MetricContextCard: View {
                 source: .healthKit,
                 impactDetails: MetricImpactDetail(
                     metricType: .steps,
+                    currentValue: 8500,
+                    baselineValue: 8000,
+                    studyReferences: [],
                     lifespanImpactMinutes: 12.5,
-                    comparisonToBaseline: .better,
-                    scientificReference: "Association of Daily Step Count and Step Intensity With Mortality Among US Adults"
+                    calculationMethod: .metaAnalysisSynthesis,
+                    recommendation: "Excellent step count! Keep up the great work."
                 )
             )
         )
@@ -254,9 +257,12 @@ struct MetricContextCard: View {
                 source: .healthKit,
                 impactDetails: MetricImpactDetail(
                     metricType: .sleepHours,
+                    currentValue: 6.5,
+                    baselineValue: 7.5,
+                    studyReferences: [],
                     lifespanImpactMinutes: -5.2,
-                    comparisonToBaseline: .worse,
-                    scientificReference: "Sleep Duration and All-Cause Mortality: A Systematic Review and Meta-Analysis"
+                    calculationMethod: .metaAnalysisSynthesis,
+                    recommendation: "Aim for 7-9 hours of sleep per night for optimal health."
                 )
             )
         )

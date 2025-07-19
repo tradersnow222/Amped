@@ -137,8 +137,8 @@ class DashboardViewModel: ObservableObject {
                     logger.info("📊 Found \(metricsWithImpact.count) metrics with impact data out of \(periodMetrics.count) total")
                     
                     lifeImpactData = lifeImpactService.calculateLifeImpact(
-                        from: periodMetrics,
-                        for: timePeriod,
+                        from: healthMetrics,
+                        for: timePeriod.impactDataPointPeriodType,
                         userProfile: userProfile
                     )
                     
@@ -261,7 +261,7 @@ class DashboardViewModel: ObservableObject {
                 // Calculate life impact
                 lifeImpactData = lifeImpactService.calculateLifeImpact(
                     from: periodMetrics,
-                    for: self.selectedTimePeriod,
+                    for: self.selectedTimePeriod.impactDataPointPeriodType,
                     userProfile: self.userProfile
                 )
                 

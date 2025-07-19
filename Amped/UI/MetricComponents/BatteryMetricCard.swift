@@ -187,13 +187,13 @@ struct BatteryMetricCard: View {
     private func impactSection(_ impact: MetricImpactDetail) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Image(systemName: impact.comparisonToBaseline.symbol)
+                let symbolName = impact.lifespanImpactMinutes > 0 ? "arrow.up.circle.fill" : (impact.lifespanImpactMinutes < 0 ? "arrow.down.circle.fill" : "minus.circle.fill")
+                Image(systemName: symbolName)
                     .foregroundColor(impactColor(for: impact))
                 
-                Text("Impact: \(impact.formattedImpact)")
+                Text("Impact: \(impact.formattedImpact(for: .day))")
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .foregroundColor(impactColor(for: impact))
                 
                 Spacer()
                 
@@ -265,9 +265,12 @@ struct BatteryMetricCard_Previews: PreviewProvider {
                     source: .healthKit,
                     impactDetails: MetricImpactDetail(
                         metricType: .steps,
+                        currentValue: 9500,
+                        baselineValue: 8000,
+                        studyReferences: [],
                         lifespanImpactMinutes: 10,
-                        comparisonToBaseline: .better,
-                        scientificReference: "Steps and Longevity Study"
+                        calculationMethod: .metaAnalysisSynthesis,
+                        recommendation: "Excellent step count! Keep up the great work."
                     )
                 ),
                 showDetails: true
@@ -294,9 +297,12 @@ struct BatteryMetricCard_Previews: PreviewProvider {
                     source: .healthKit,
                     impactDetails: MetricImpactDetail(
                         metricType: .heartRateVariability,
+                        currentValue: 25,
+                        baselineValue: 35,
+                        studyReferences: [],
                         lifespanImpactMinutes: -5,
-                        comparisonToBaseline: .worse,
-                        scientificReference: "HRV and Recovery Study"
+                        calculationMethod: .expertConsensus,
+                        recommendation: "Consider stress reduction and recovery activities to improve HRV."
                     )
                 ),
                 showDetails: true

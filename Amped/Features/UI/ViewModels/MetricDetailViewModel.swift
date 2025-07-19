@@ -12,8 +12,11 @@ final class MetricDetailViewModel: ObservableObject {
     @Published var metric: HealthMetric
     @Published var selectedPeriod: ImpactDataPoint.PeriodType = .day {
         didSet {
+            // Cancel previous task to prevent race conditions
+            currentDataTask?.cancel()
+            
             // Reload real data when period changes
-            Task {
+            currentDataTask = Task {
                 await loadRealHistoryData(for: metric)
             }
         }
@@ -21,6 +24,7 @@ final class MetricDetailViewModel: ObservableObject {
     
     private let healthKitManager: HealthKitManager
     private let healthDataService: HealthDataService
+    private var currentDataTask: Task<Void, Never>?
     
     // Convert history data to chart data points
     var chartDataPoints: [MetricDataPoint] {
@@ -71,20 +75,45 @@ final class MetricDetailViewModel: ObservableObject {
     // MARK: - Initialization
     
     init(metric: HealthMetric) {
-        self.metric = metric
+        // CRITICAL FIX: Ensure we always work with daily impacts in the detail view
+        // The metric might have scaled impacts from period views, so recalculate daily impact
+        let userProfile = UserProfile() // Using default initialization
+        
         // Initialize health services
         self.healthKitManager = HealthKitManager()
         self.healthDataService = HealthDataService(
             healthKitManager: healthKitManager,
-            userProfile: UserProfile()  // Using default initialization
+            userProfile: userProfile
         )
+        
+        // Always recalculate daily impact to ensure consistency
+        let tempLifeImpactService = LifeImpactService(userProfile: userProfile)
+        let dailyImpact = tempLifeImpactService.calculateImpact(for: metric)
+        
+        // Create metric with daily impact details
+        self.metric = HealthMetric(
+            id: metric.id,
+            type: metric.type,
+            value: metric.value,
+            date: metric.date,
+            source: metric.source,
+            impactDetails: dailyImpact
+        )
+    }
+    
+    deinit {
+        // Cancel any running tasks to prevent memory leaks
+        currentDataTask?.cancel()
     }
     
     // MARK: - Methods
     
     func loadData(for metric: HealthMetric) {
+        // Cancel previous task to prevent race conditions
+        currentDataTask?.cancel()
+        
         // Load real historical data from HealthKit
-        Task {
+        currentDataTask = Task {
             await loadRealHistoryData(for: metric)
         }
         generateRecommendations(for: metric)
@@ -113,6 +142,9 @@ final class MetricDetailViewModel: ObservableObject {
     
     @MainActor
     private func loadRealHistoryData(for metric: HealthMetric) async {
+        // Check if task was cancelled before proceeding
+        guard !Task.isCancelled else { return }
+        
         // Clear existing data
         historyData.removeAll()
         

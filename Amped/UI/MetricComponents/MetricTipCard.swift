@@ -221,17 +221,16 @@ struct MetricTipCard: View {
     }
     
     private var cardTitle: String {
-        switch metric.impactDetails?.comparisonToBaseline {
-        case .better:
+        guard let impact = metric.impactDetails else { return "Health Tip" }
+        
+        let impactValue = impact.lifespanImpactMinutes
+        
+        if impactValue > 0 {
             return "Keep up the good work!"
-        case .same:
-            return "You're on the right track"
-        case .worse:
+        } else if impactValue < 0 {
             return "Room for improvement"
-        case nil:
-            return "Tips for improvement"
-        @unknown default:
-            return "Health tips"
+        } else {
+            return "You're on the right track"
         }
     }
 }

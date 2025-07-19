@@ -237,9 +237,12 @@ final class MetricDetailsViewModel: ObservableObject {
             source: .healthKit,
             impactDetails: MetricImpactDetail(
                 metricType: .steps,
+                currentValue: 9500,
+                baselineValue: 8000,
+                studyReferences: [],
                 lifespanImpactMinutes: 45,
-                comparisonToBaseline: .better,
-                scientificReference: "Daily Step Count and Mortality"
+                calculationMethod: .metaAnalysisSynthesis,
+                recommendation: "Outstanding daily step count! This contributes significantly to your longevity."
             )
         )
     )

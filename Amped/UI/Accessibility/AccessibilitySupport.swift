@@ -35,12 +35,14 @@ extension View {
         
         var hint = ""
         if includeImpact, let impact = metric.impactDetails {
-            hint = "This value is \(impact.comparisonToBaseline.accessibilityDescription) and has a "
+            let impactValue = impact.lifespanImpactMinutes
+            let comparisonDescription = impactValue > 0 ? "better than the baseline" : (impactValue < 0 ? "worse than the baseline" : "at the baseline")
+            hint = "This value is \(comparisonDescription) and has a "
             
             if impact.lifespanImpactMinutes > 0 {
-                hint += "positive impact of \(impact.formattedImpact) on your lifespan."
+                hint += "positive impact of \(impact.formattedImpact(for: .day)) on your lifespan."
             } else if impact.lifespanImpactMinutes < 0 {
-                hint += "negative impact of \(impact.formattedImpact) on your lifespan."
+                hint += "negative impact of \(impact.formattedImpact(for: .day)) on your lifespan."
             } else {
                 hint += "neutral impact on your lifespan."
             }
@@ -187,22 +189,5 @@ extension View {
     /// Erase to AnyView type
     func eraseToAnyView() -> AnyView {
         AnyView(self)
-    }
-}
-
-/// Extension to help format accessibility descriptions for metric impacts
-extension ComparisonResult {
-    /// Human-readable description for accessibility
-    var accessibilityDescription: String {
-        switch self {
-        case .better:
-            return "better than the target value"
-        case .same:
-            return "at the target value"
-        case .worse:
-            return "worse than the target value"
-        @unknown default:
-            return "compared to the target value"
-        }
     }
 } 

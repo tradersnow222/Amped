@@ -316,19 +316,54 @@ struct MetricStatistics {
                     let tempLifeImpactService = LifeImpactService(userProfile: self.userProfile)
                     let impactDetails = tempLifeImpactService.calculateImpact(for: metric)
                     
-                    // Create metric with impact details
+                    // CRITICAL FIX: Only scale HealthKit metrics, NOT manual metrics
+                    // Manual metrics represent lifestyle factors with constant daily impact
+                    let finalImpactDetails: MetricImpactDetail
+                    
+                    if metric.source == .userInput {
+                        // Manual metrics: Use daily impact without scaling
+                        finalImpactDetails = impactDetails
+                        logger.info("📋 Manual metric \(metricType.displayName): \(metric.formattedValue) (Daily Impact: \(impactDetails.lifespanImpactMinutes) min)")
+                    } else {
+                        // HealthKit metrics: Scale impacts based on time period
+                        let scaledImpactMinutes: Double
+                        switch timePeriod {
+                        case .day:
+                            // For day view, use the raw daily impact
+                            scaledImpactMinutes = impactDetails.lifespanImpactMinutes
+                        case .month:
+                            // For month view, scale by 30 days to show cumulative monthly impact
+                            scaledImpactMinutes = impactDetails.lifespanImpactMinutes * 30
+                        case .year:
+                            // For year view, scale by 365 days to show cumulative yearly impact
+                            scaledImpactMinutes = impactDetails.lifespanImpactMinutes * 365
+                        }
+                        
+                        // Create scaled impact details for HealthKit metrics
+                        finalImpactDetails = MetricImpactDetail(
+                            metricType: impactDetails.metricType,
+                            currentValue: metric.value,
+                            baselineValue: impactDetails.baselineValue,
+                            studyReferences: impactDetails.studyReferences,
+                            lifespanImpactMinutes: scaledImpactMinutes,
+                            calculationMethod: impactDetails.calculationMethod,
+                            recommendation: impactDetails.recommendation
+                        )
+                        logger.info("📊 HealthKit metric \(metricType.displayName): \(metric.formattedValue) (Scaled Impact: \(scaledImpactMinutes) min)")
+                    }
+                    
+                    // Create metric with appropriate impact details
                     let metricWithImpact = HealthMetric(
                         id: metric.id,
                         type: metric.type,
                         value: metric.value,
                         date: metric.date,
                         source: metric.source,
-                        impactDetails: impactDetails
+                        impactDetails: finalImpactDetails
                     )
                     
                     metrics.append(metricWithImpact)
                     successfulMetrics += 1
-                    logger.info("✅ Added \(metricType.displayName) for \(timePeriod.displayName): \(metric.formattedValue) (Impact: \(impactDetails.lifespanImpactMinutes) min)")
                 } else {
                     failedMetrics += 1
                     logger.warning("⚠️ No data for \(metricType.displayName) in \(timePeriod.displayName)")
@@ -822,6 +857,10 @@ struct MetricStatistics {
             // Calculate impact details for manual metric with time period context
             let tempLifeImpactService = LifeImpactService(userProfile: userProfile)
             let impactDetails = tempLifeImpactService.calculateImpact(for: healthMetric)
+            
+            // Note: Manual metrics are NOT scaled by time period since they represent lifestyle factors
+            // that have the same daily impact regardless of the viewing period
+            // The impact already represents the ongoing effect of this lifestyle choice
             
             // Add impact details to the metric
             healthMetric = HealthMetric(

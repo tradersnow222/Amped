@@ -72,8 +72,9 @@ struct HealthMetricRow: View {
             // Impact value
             HStack(spacing: 4) {
                 if let impact = metric.impactDetails {
-                    // Calculate daily average impact if showing averages
-                    let displayImpact: Double = showingAverage ? impact.lifespanImpactMinutes : impact.lifespanImpactMinutes
+                    // CRITICAL FIX: The impact details already contain period-scaled values from HealthDataService
+                    // No additional scaling needed here - just display the scaled impact
+                    let displayImpact: Double = impact.lifespanImpactMinutes
                     
                     Text(formattedImpact(minutes: displayImpact))
                         .font(.system(size: 13, weight: .medium))
@@ -336,8 +337,12 @@ struct HealthMetricRow: View {
                 source: .healthKit,
                 impactDetails: MetricImpactDetail(
                     metricType: .sleepHours,
+                    currentValue: 7.5,
+                    baselineValue: 7.0,
+                    studyReferences: [],
                     lifespanImpactMinutes: 30,
-                    comparisonToBaseline: .better
+                    calculationMethod: .expertConsensus,
+                    recommendation: "Good sleep duration for optimal health."
                 )
             )
         )
@@ -352,8 +357,12 @@ struct HealthMetricRow: View {
                 source: .userInput,
                 impactDetails: MetricImpactDetail(
                     metricType: .stressLevel,
+                    currentValue: 7.0,
+                    baselineValue: 5.0,
+                    studyReferences: [],
                     lifespanImpactMinutes: -15,
-                    comparisonToBaseline: .worse
+                    calculationMethod: .expertConsensus,
+                    recommendation: "Consider stress management techniques to improve overall health."
                 )
             )
         )
@@ -368,8 +377,12 @@ struct HealthMetricRow: View {
                 source: .healthKit,
                 impactDetails: MetricImpactDetail(
                     metricType: .activeEnergyBurned,
+                    currentValue: 382,
+                    baselineValue: 300,
+                    studyReferences: [],
                     lifespanImpactMinutes: 0.001, // 0.06 seconds
-                    comparisonToBaseline: .better
+                    calculationMethod: .expertConsensus,
+                    recommendation: "Great active energy burn! Keep up the excellent activity level."
                 )
             )
         )

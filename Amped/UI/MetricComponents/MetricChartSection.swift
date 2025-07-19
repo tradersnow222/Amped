@@ -128,9 +128,13 @@ struct MetricChartSection: View {
                         .foregroundStyle(Color.secondary.opacity(0.2))
                     AxisTick()
                         .foregroundStyle(Color.secondary.opacity(0.2))
-                    AxisValueLabel()
-                        .foregroundStyle(Color.secondary)
-                        .font(.caption)
+                    AxisValueLabel {
+                        if let doubleValue = value.as(Double.self) {
+                            Text(formatYAxisValueWithUnit(doubleValue))
+                                .foregroundStyle(Color.secondary)
+                                .font(.caption)
+                        }
+                    }
                 }
             }
             .chartBackground { chartProxy in
@@ -263,6 +267,45 @@ struct MetricChartSection: View {
             return .green
         } else {
             return .red
+        }
+    }
+    
+    /// Format Y-axis values with appropriate units for chart display
+    private func formatYAxisValueWithUnit(_ value: Double) -> String {
+        switch metricType {
+        case .steps:
+            return formatLargeNumber(value)
+        case .exerciseMinutes:
+            return "\(Int(value))"
+        case .sleepHours:
+            return String(format: "%.1f", value)
+        case .heartRateVariability:
+            return "\(Int(value))"
+        case .restingHeartRate:
+            return "\(Int(value))"
+        case .bodyMass:
+            let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem")
+            let displayValue = useMetric ? value : value * 2.20462
+            return String(format: "%.0f", displayValue)
+        case .activeEnergyBurned:
+            return "\(Int(value))"
+        case .vo2Max:
+            return String(format: "%.1f", value)
+        case .oxygenSaturation:
+            return String(format: "%.0f", value)
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+            return String(format: "%.1f", value)
+        }
+    }
+    
+    /// Format large numbers with appropriate abbreviations (K, M, etc.)
+    private func formatLargeNumber(_ value: Double) -> String {
+        if value >= 1_000_000 {
+            return String(format: "%.1fM", value / 1_000_000)
+        } else if value >= 1_000 {
+            return String(format: "%.1fK", value / 1_000)
+        } else {
+            return String(format: "%.0f", value)
         }
     }
 }
