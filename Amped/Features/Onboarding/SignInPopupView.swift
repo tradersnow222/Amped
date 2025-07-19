@@ -22,7 +22,7 @@ struct SignInPopupView: View {
     var body: some View {
         ZStack {
             // Blurred background tap to dismiss
-            Color.black.opacity(0.3)
+            Color.black.opacity(0.6)
                 .ignoresSafeArea()
                 .onTapGesture {
                     dismissPopup()
@@ -36,7 +36,7 @@ struct SignInPopupView: View {
                     // Simple, realistic messaging - Rules: Following user requirement for not overpromising
                     Text("Join early")
                         .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(themeManager.textColor)
+                        .foregroundColor(.white)
                     
                     // Vague but enticing subtitle
                     Text("Get future perks")
@@ -72,7 +72,7 @@ struct SignInPopupView: View {
                     }) {
                         Text("Maybe later")
                             .font(.system(size: 13, weight: .regular))
-                            .foregroundColor(themeManager.textColor.opacity(0.4))
+                            .foregroundColor(.white.opacity(0.6))
                     }
                     .opacity(animateAppleButton ? 1.0 : 0.0)
                     .hapticFeedback(.light)
@@ -80,9 +80,9 @@ struct SignInPopupView: View {
                 .padding(.horizontal, 24)
                 .padding(.bottom, 28)
             }
-            .background(Color.cardBackground)
+            .background(Color.black.opacity(0.75))
             .cornerRadius(20)
-            .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
+            .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
             .padding(.horizontal, 20)
             .scaleEffect(showContent ? 1.0 : 0.9)
             .opacity(showContent ? 1.0 : 0.0)
@@ -131,7 +131,7 @@ struct SignInPopupView: View {
                 logger.info("🍎 Apple Sign In successful - User ID: \(userID)")
                 
                 // Update app state with authentication - Rules: Track authentication
-                appState.setAuthenticated(userID: userID)
+                appState.setAuthenticated(true)
                 
                 // Dismiss popup
                 dismissPopup()

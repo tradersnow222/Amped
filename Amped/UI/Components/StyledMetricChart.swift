@@ -100,9 +100,13 @@ struct StyledMetricChart: View {
                 AxisMarks(values: .automatic(desiredCount: 5)) { value in
                     AxisGridLine()
                         .foregroundStyle(Color.secondary.opacity(0.1))
-                    AxisValueLabel()
-                        .foregroundStyle(Color.secondary.opacity(0.7))
-                        .font(.caption)
+                    AxisValueLabel {
+                        if let doubleValue = value.as(Double.self) {
+                            Text(formatYAxisValueWithUnit(doubleValue))
+                                .foregroundStyle(Color.secondary.opacity(0.7))
+                                .font(.caption)
+                        }
+                    }
                 }
             }
             .overlay(alignment: .topLeading) {
@@ -206,7 +210,9 @@ struct StyledMetricChart: View {
         case .restingHeartRate:
             return "\(Int(value)) bpm"
         case .bodyMass:
-            return String(format: "%.1f lbs", value)
+            let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem")
+            let displayValue = useMetric ? value : value * 2.20462
+            return String(format: "%.1f %@", displayValue, useMetric ? "kg" : "lbs")
         case .activeEnergyBurned:
             return "\(Int(value)) cal"
         case .vo2Max:
@@ -248,5 +254,59 @@ struct StyledMetricChart: View {
         }
         
         return formatter.string(from: date)
+    }
+    
+    private func getYAxisLabel() -> String {
+        switch metricType {
+        case .steps:
+            return "Steps"
+        case .exerciseMinutes:
+            return "Minutes"
+        case .sleepHours:
+            return "Hours"
+        case .heartRateVariability:
+            return "ms"
+        case .restingHeartRate:
+            return "bpm"
+        case .bodyMass:
+            let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem")
+            return useMetric ? "kg" : "lbs"
+        case .activeEnergyBurned:
+            return "cal"
+        case .vo2Max:
+            return "mL/kg/min"
+        case .oxygenSaturation:
+            return "%"
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+            return "Score"
+        }
+    }
+    
+    private func formatYAxisValueWithUnit(_ value: Double) -> String {
+        switch metricType {
+        case .steps:
+            return "\(Int(value))"
+        case .exerciseMinutes:
+            return "\(Int(value)) min"
+        case .sleepHours:
+            return String(format: "%.1f hrs", value)
+        case .heartRateVariability:
+            return "\(Int(value)) ms"
+        case .restingHeartRate:
+            return "\(Int(value)) bpm"
+        case .bodyMass:
+            let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem")
+            let displayValue = useMetric ? value : value * 2.20462
+            let unit = useMetric ? "kg" : "lbs"
+            return String(format: "%.0f %@", displayValue, unit)
+        case .activeEnergyBurned:
+            return "\(Int(value)) cal"
+        case .vo2Max:
+            return String(format: "%.1f mL/kg/min", value)
+        case .oxygenSaturation:
+            return String(format: "%.0f%%", value)
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+            return String(format: "%.1f", value)
+        }
     }
 } 

@@ -4,7 +4,7 @@ import SwiftUI
 struct ProcessingOverlay: View {
     var body: some View {
         ZStack {
-            Color.black.opacity(0.3)
+            Color.black.opacity(0.6)
                 .edgesIgnoringSafeArea(.all)
             
             VStack(spacing: 16) {
@@ -17,9 +17,9 @@ struct ProcessingOverlay: View {
                     .foregroundColor(.white)
             }
             .padding(32)
-            .background(Color.cardBackground)
+            .background(Color.black.opacity(0.75))
             .cornerRadius(16)
-            .shadow(radius: 20)
+            .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
         }
     }
 }

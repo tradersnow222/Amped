@@ -28,6 +28,14 @@ final class QuestionnaireManager: ObservableObject {
     // MARK: - Initialization
     
     init() {
+        // Defer loading to avoid main thread I/O during launch
+        Task { @MainActor in
+            await loadDataAsync()
+        }
+    }
+    
+    /// Load all data asynchronously
+    private func loadDataAsync() async {
         loadUserProfile()
         loadManualMetrics()
         loadQuestionnaireDataFromDefaults()

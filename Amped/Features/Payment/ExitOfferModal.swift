@@ -10,7 +10,7 @@ struct ExitOfferModal: View {
     var body: some View {
         ZStack {
             // Background overlay
-            Color.black.opacity(0.4)
+            Color.black.opacity(0.6)
                 .edgesIgnoringSafeArea(.all)
                 .onTapGesture {
                     // Prevent dismissing by tapping outside
@@ -22,12 +22,12 @@ struct ExitOfferModal: View {
                 VStack(spacing: 12) {
                     Text("Wait — special offer just for you!")
                         .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(themeManager.textColor)
+                        .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                     
                     Text("Get full access now for just $4.99/week after your free trial.")
                         .font(.system(size: 16, weight: .regular))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.85))
                         .multilineTextAlignment(.center)
                         .lineSpacing(4)
                 }
@@ -60,7 +60,7 @@ struct ExitOfferModal: View {
                     Button(action: onDecline) {
                         Text("No thanks, I'll stick with $6.99/week")
                             .font(.system(size: 15, weight: .regular))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white.opacity(0.7))
                             .frame(height: 44)
                     }
                     .hapticFeedback(.heavy)
@@ -72,8 +72,8 @@ struct ExitOfferModal: View {
             .padding(28)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.cardBackground)
-                    .shadow(color: Color.black.opacity(0.2), radius: 20, y: 8)
+                    .fill(Color.black.opacity(0.75))
+                    .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
             )
             .padding(.horizontal, 32)
             .scaleEffect(animateContent ? 1 : 0.95)

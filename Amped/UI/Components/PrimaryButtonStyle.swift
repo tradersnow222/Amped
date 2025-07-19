@@ -15,6 +15,9 @@ struct PrimaryButtonStyle: ButtonStyle {
         configuration.label
             .fontWeight(.bold)
             .font(.system(.title3, design: .default))
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
+            .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
             .padding()
             .background(
@@ -70,6 +73,9 @@ struct QuestionnaireButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 17, weight: .medium, design: .rounded))
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
+            .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .padding(.horizontal, 20)
@@ -134,6 +140,9 @@ struct ContinueButtonStyle: ButtonStyle {
         configuration.label
             .fontWeight(.bold)
             .font(.system(.title3, design: .monospaced))
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
+            .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
             .padding()
             .background(

@@ -212,7 +212,9 @@ struct MetricContextCard: View {
         case .restingHeartRate:
             return "\(Int(value)) bpm"
         case .bodyMass:
-            return String(format: "%.1f lbs", value)
+            let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem")
+            let displayValue = useMetric ? value : value * 2.20462
+            return String(format: "%.1f %@", displayValue, useMetric ? "kg" : "lbs")
         case .activeEnergyBurned:
             return "\(Int(value)) cal"
         case .vo2Max:

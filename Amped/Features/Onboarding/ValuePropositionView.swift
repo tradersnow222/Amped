@@ -24,13 +24,19 @@ struct ValuePropositionView: View {
                 VStack(spacing: 40) {
                     // Header section - positioned for rule of thirds
                     VStack(spacing: 16) {
-                        Text("Track Your Life.")
-                            .font(.system(size: 38, weight: .semibold, design: .serif))
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                            .opacity(animateElements ? 1 : 0)
-                            .offset(y: animateElements ? 0 : 20)
-                            .animation(.easeOut(duration: 0.6), value: animateElements)
+                        VStack(spacing: 2) {
+                            Text("Live Longer.")
+                                .font(.system(size: 38, weight: .semibold, design: .serif))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.center)
+                            Text("Live Stronger.")
+                                .font(.system(size: 38, weight: .semibold, design: .serif))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.center)
+                        }
+                        .opacity(animateElements ? 1 : 0)
+                        .offset(y: animateElements ? 0 : 20)
+                        .animation(.easeOut(duration: 0.6), value: animateElements)
                         
                         Text("See exactly how your habits affect your lifespan.")
                             .font(.system(size: 18, weight: .regular, design: .serif))
@@ -52,22 +58,22 @@ struct ValuePropositionView: View {
                     VStack(spacing: 24) {
                         valuePropositionItem(
                             icon: "heart.fill",
-                            title: "Real Impact",
-                            description: "Every choice affects your lifespan",
+                            title: "Track Impact",
+                            description: "See which habits add or cut years from your life",
                             delay: 0.3
                         )
                         
                         valuePropositionItem(
                             icon: "clock.fill",
-                            title: "Live Updates",
-                            description: "See changes in real-time",
+                            title: "Live Guidance",
+                            description: "View the results of your choices in real-time",
                             delay: 0.4
                         )
                         
                         valuePropositionItem(
                             icon: "lightbulb.fill",
-                            title: "Smart Tips",
-                            description: "Get personalized longevity recommendations",
+                            title: "Smart Actions",
+                            description: "Get steps to live longer, tailored to you",
                             delay: 0.5
                         )
                     }
@@ -82,7 +88,7 @@ struct ValuePropositionView: View {
                     Button(action: {
                         onContinue?()
                     }) {
-                        Text("Power Up")
+                        Text("Get Started")
                             .fontWeight(.bold)
                             .font(.system(.title3, design: .monospaced))
                             .frame(maxWidth: .infinity)
@@ -178,11 +184,6 @@ struct ValuePropositionView: View {
                     .foregroundColor(.white)
                     .scaleEffect(iconScale)
             }
-            
-            // Descriptive text below battery
-            Text("Your Life Battery")
-                .font(.system(size: 16, weight: .medium, design: .serif))
-                .foregroundColor(.white.opacity(0.9))
         }
     }
     

@@ -113,7 +113,29 @@ final class SettingsManager: ObservableObject {
         let regionIdentifier = locale.region?.identifier ?? ""
         let defaultToMetric = !["US", "GB", "MM", "LR"].contains(regionIdentifier)
         
+        // Set minimal critical settings synchronously
         self.useMetricSystem = defaults.bool(forKey: SettingKey.useMetricSystem.rawValue, defaultValue: defaultToMetric)
+        self.notificationsEnabled = true // Default value
+        self.showBatteryAnimation = true // Default value
+        self.privacyAnalyticsEnabled = false // Default value
+        self.preferredDisplayMode = .system // Default value
+        self.reminderTime = Date() // Default value
+        self.showUnavailableMetrics = false // Default value
+        self.showRealtimeCountdown = true // Default value
+        self.showLifeProjectionAsPercentage = false // Default value
+        
+        // Defer loading non-critical settings
+        Task { @MainActor in
+            await loadSettingsAsync()
+        }
+    }
+    
+    /// Load non-critical settings asynchronously
+    @MainActor
+    private func loadSettingsAsync() async {
+        let defaults = UserDefaults.standard
+        
+        // Load actual values from UserDefaults
         self.notificationsEnabled = defaults.bool(forKey: SettingKey.notificationsEnabled.rawValue, defaultValue: true)
         self.showBatteryAnimation = defaults.bool(forKey: SettingKey.showBatteryAnimation.rawValue, defaultValue: true)
         self.privacyAnalyticsEnabled = defaults.bool(forKey: SettingKey.privacyAnalyticsEnabled.rawValue, defaultValue: false)

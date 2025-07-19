@@ -141,7 +141,8 @@ final class PaymentViewModel: ObservableObject {
     /// Skip payment and continue with free version
     func skipPayment(completion: @escaping () -> Void) {
         logger.info("User skipped payment")
-        // Don't complete onboarding for free users - they can upgrade later
+        // Complete onboarding for free users too - they've finished the flow
+        appState?.completeOnboarding()
         completion()
     }
     

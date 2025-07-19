@@ -120,9 +120,9 @@ struct DashboardView: View {
                 return lhsHasImpact // Metrics with any impact data come first
             }
             
-            // If both have no impact data, maintain their relative order
+            // If both have no impact data, sort alphabetically for consistent ordering
             if !lhsHasImpact && !rhsHasImpact {
-                return false // Keep original order for metrics without impact
+                return lhs.type.displayName < rhs.type.displayName
             }
             
             // Both have impact data - sort by absolute impact value, highest first
@@ -526,17 +526,8 @@ struct DashboardView: View {
             // Rules: Smart intro animations - only when appropriate
             handleIntroAnimations()
             
-            // Simulate initial calculations
-            if !hasInitiallyCalculated {
-                Task {
-                    try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
-                    await MainActor.run {
-                        isCalculatingImpact = false
-                        isCalculatingLifespan = false
-                        hasInitiallyCalculated = true
-                    }
-                }
-            }
+            // Rules: Enhanced loading experience - let the loading components control their own timing
+            // The EnhancedLoadingView components will handle their own timing and completion
             
             // Rules: Check if we should show sign-in popup on second app launch
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
@@ -554,25 +545,21 @@ struct DashboardView: View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 0) {
-                    // Prominent Total Impact Display
+                    // Prominent Total Impact Display - Rules: Enhanced loading experience
                     if isCalculatingImpact && !hasInitiallyCalculated {
-                        // Calculating state
-                        VStack(spacing: 16) {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .ampedGreen))
-                                .scaleEffect(1.2)
-                            
-                            Text("Calculating your health impact...")
-                                .font(.headline)
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 40)
-                        .padding(.horizontal, 20)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.cardBackground.opacity(0.3))
+                        // Enhanced calculating state with Apple-quality UX
+                        EnhancedLoadingView(
+                            loadingType: .healthImpact,
+                            onComplete: {
+                                // Complete the health impact calculation with haptic feedback
+                                withAnimation(.easeInOut(duration: 0.4)) {
+                                    isCalculatingImpact = false
+                                    hasInitiallyCalculated = true
+                                }
+                                HapticManager.shared.playSuccess()
+                            }
                         )
+                        .frame(maxWidth: .infinity)
                         .padding(.horizontal, 16)
                         .padding(.top, 20)
                         .padding(.bottom, 24)
@@ -643,10 +630,24 @@ struct DashboardView: View {
                     
                     // New Actionable Recommendations Section - Rules: Better spacing
                     if !filteredMetrics.isEmpty && !isCalculatingImpact {
-                        ActionableRecommendationsView(metrics: filteredMetrics, selectedPeriod: selectedPeriod)
-                            .padding(.horizontal, 16)
-                            .padding(.top, 8) // Rules: Reduced top padding for better flow
-                            .padding(.bottom, 20) // Rules: Consistent bottom spacing
+                        ActionableRecommendationsView(
+                            metrics: filteredMetrics, 
+                            selectedPeriod: selectedPeriod,
+                            onMetricTap: { metric in
+                                // Rules: Different handling for manual vs HealthKit metrics
+                                if metric.source == .userInput {
+                                    // For manual metrics, show update health profile
+                                    showingUpdateHealthProfile = true
+                                } else {
+                                    // For HealthKit metrics, show detail view
+                                    selectedMetric = metric
+                                }
+                                HapticManager.shared.playSelection()
+                            }
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8) // Rules: Reduced top padding for better flow
+                        .padding(.bottom, 20) // Rules: Consistent bottom spacing
                     }
                     
                     // Add consistent padding for page indicators - Rules: Better spacing
@@ -659,7 +660,7 @@ struct DashboardView: View {
         }
     }
     
-    /// Page 2: Today's Lifespan Factors
+    /// Page 2: Today's/This Month's/This Year's Impact
     private var lifespanFactorsPage: some View {
         GeometryReader { geometry in
             ScrollView {
@@ -680,6 +681,10 @@ struct DashboardView: View {
                                 .font(.title2)
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)
+                            
+                            Text("See how each habit is changing your lifespan")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.8))
                         }
                         
                         Spacer()
@@ -724,18 +729,19 @@ struct DashboardView: View {
                 .padding(.bottom, 24)
             
             if isCalculatingLifespan && !hasInitiallyCalculated {
-                // Calculating state - centered
-                Spacer()
-                VStack(spacing: 16) {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .scaleEffect(1.2)
-                    
-                    Text("Calculating your lifespan...")
-                        .font(.system(size: 16, weight: .regular, design: .rounded))
-                        .foregroundColor(.white.opacity(0.6))
-                }
-                Spacer()
+                // Enhanced calculating state with Apple-quality UX - Rules: Apple loading standards
+                EnhancedLoadingView(
+                    loadingType: .lifeProjection,
+                    onComplete: {
+                        // Complete the life projection calculation with haptic feedback
+                        withAnimation(.easeInOut(duration: 0.4)) {
+                            isCalculatingLifespan = false
+                            hasInitiallyCalculated = true
+                        }
+                        HapticManager.shared.playSuccess()
+                    }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 // Main content - focused on the key message
                 EnhancedBatterySystemView(
@@ -1048,11 +1054,11 @@ struct DashboardView: View {
     private func titleForPeriod(_ period: ImpactDataPoint.PeriodType) -> String {
         switch period {
         case .day:
-            return "Today's Lifespan Factors"
+            return "Today's Impact"
         case .month:
-            return "This Month's Lifespan Factors"
+            return "This Month's Impact"
         case .year:
-            return "This Year's Lifespan Factors"
+            return "This Year's Impact"
         }
     }
 }
@@ -1274,6 +1280,7 @@ public struct ThreePageDashboardContainer: View {
 struct ActionableRecommendationsView: View {
     let metrics: [HealthMetric]
     let selectedPeriod: ImpactDataPoint.PeriodType
+    let onMetricTap: (HealthMetric) -> Void
     @State private var showContent = false
     
     // Get the most impactful metric to recommend improvement for
@@ -1383,6 +1390,11 @@ struct ActionableRecommendationsView: View {
                 .padding(.bottom, 20)
                 .opacity(showContent ? 1 : 0)
                 .offset(y: showContent ? 0 : 10)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onMetricTap(metric)
+                HapticManager.shared.playSelection()
             }
             .background(
                 // Clean glass background matching the app's design

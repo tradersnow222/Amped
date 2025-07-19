@@ -109,6 +109,31 @@ struct ProfileSection: View {
                         .foregroundColor(.secondary)
                 }
             }
+            
+            NavigationLink {
+                BackgroundRefreshSettingsView()
+            } label: {
+                HStack {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.body)
+                        .foregroundColor(.ampedGreen)
+                        .frame(width: 30)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Background App Refresh")
+                            .foregroundColor(.primary)
+                        Text("Automatic data updates")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+            }
         } header: {
             Text("Profile")
         }
@@ -151,6 +176,24 @@ struct DisplaySection: View {
                         Text("Show Unavailable Metrics")
                             .font(.body)
                         Text("Display metrics with no data")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .tint(.ampedGreen)
+            
+            Toggle(isOn: $settingsManager.useMetricSystem) {
+                HStack {
+                    Image(systemName: "scalemass")
+                        .font(.body)
+                        .foregroundColor(.ampedGreen)
+                        .frame(width: 30)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Use Metric Units")
+                            .font(.body)
+                        Text("kg, cm instead of lbs, ft")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }

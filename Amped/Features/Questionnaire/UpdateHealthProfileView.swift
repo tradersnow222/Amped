@@ -106,6 +106,8 @@ struct UpdateHealthProfileView: View {
                     HStack {
                         Text(option.displayName)
                             .foregroundColor(.white)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
                         Spacer()
                         if viewModel.selectedNutritionQuality == option {
                             Image(systemName: "checkmark.circle.fill")
@@ -211,6 +213,8 @@ struct UpdateHealthProfileView: View {
                     HStack {
                         Text(option.displayName)
                             .foregroundColor(.white)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
                         Spacer()
                         if viewModel.selectedSocialConnectionsQuality == option {
                             Image(systemName: "checkmark.circle.fill")
@@ -289,10 +293,14 @@ struct MetricUpdateCard<Content: View>: View {
                         Text(title)
                             .font(.headline)
                             .foregroundColor(.white)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
                         
                         Text(currentValue)
                             .font(.subheadline)
                             .foregroundColor(.gray)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     
                     Spacer()
@@ -310,6 +318,8 @@ struct MetricUpdateCard<Content: View>: View {
                     Text(helpText)
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.7))
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.leading, 38)
                     
                     content()

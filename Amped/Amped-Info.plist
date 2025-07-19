@@ -9,6 +9,12 @@
     <key>UIBackgroundModes</key>
     <array>
         <string>fetch</string>
+        <string>background-processing</string>
+    </array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>ai.ampedlife.amped.health-refresh</string>
+        <string>ai.ampedlife.amped.health-processing</string>
     </array>
 </dict>
 </plist> 

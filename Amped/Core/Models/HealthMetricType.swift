@@ -65,6 +65,16 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         }
     }
     
+    /// Returns true if this metric should use plural form in questions ("What are...?")
+    var isPlural: Bool {
+        switch self {
+        case .steps, .socialConnectionsQuality:
+            return true
+        default:
+            return false
+        }
+    }
+    
     /// Intuitive grouping by what the metric does for your health
     var functionalGroup: MetricFunctionalGroup {
         switch self {

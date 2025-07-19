@@ -13,6 +13,8 @@ func FormattedButtonText(text: String, subtitle: String? = nil) -> some View {
             .font(.system(size: 17, weight: .medium, design: .rounded))
             .foregroundColor(.white)
             .multilineTextAlignment(.center)
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
         
         // Show parentheses content as smaller, greyed subtext
         if let parenthesesText = components.parentheses {
@@ -20,6 +22,8 @@ func FormattedButtonText(text: String, subtitle: String? = nil) -> some View {
                 .font(.system(size: 14, weight: .regular, design: .rounded))
                 .foregroundColor(.white.opacity(0.65))
                 .multilineTextAlignment(.center)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
         }
         
         // Show additional subtitle if provided
@@ -28,6 +32,8 @@ func FormattedButtonText(text: String, subtitle: String? = nil) -> some View {
                 .font(.system(size: 14, weight: .regular))
                 .foregroundColor(.white.opacity(0.8))
                 .multilineTextAlignment(.center)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
@@ -76,6 +82,8 @@ struct QuestionViews {
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.bottom, 10)
                         .frame(maxWidth: .infinity)
 
@@ -153,6 +161,8 @@ struct QuestionViews {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 10)
                     .frame(maxWidth: .infinity)
                 
@@ -200,9 +210,9 @@ struct QuestionViews {
             .frame(maxHeight: .infinity)
             .onAppear {
                 // Simplified focus management - only focus when this specific question appears
-                // Add longer delay to ensure transition is completely finished
+                // Use async dispatch to focus after current main loop, ensuring transition is finished without long delay
                 if viewModel.currentQuestion == .name {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                    DispatchQueue.main.async {
                         isTextFieldFocused = true
                     }
                 }
@@ -237,6 +247,8 @@ struct QuestionViews {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 10)
                     .frame(maxWidth: .infinity)
                 
@@ -277,14 +289,12 @@ struct QuestionViews {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 10)
                     .frame(maxWidth: .infinity)
                 
-                // Scientific credibility for nutrition question
-                if let credibilityView = ScientificCredibilityView.forMetric(.nutritionQuality, style: .inline) {
-                    credibilityView
-                        .padding(.bottom, 8)
-                }
+
                 
                 Spacer()
                 
@@ -323,14 +333,12 @@ struct QuestionViews {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 10)
                     .frame(maxWidth: .infinity)
                 
-                // Scientific credibility for smoking question
-                if let credibilityView = ScientificCredibilityView.forMetric(.smokingStatus, style: .inline) {
-                    credibilityView
-                        .padding(.bottom, 8)
-                }
+
                 
                 Spacer()
                 
@@ -366,6 +374,8 @@ struct QuestionViews {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 10)
                     .frame(maxWidth: .infinity)
                 
@@ -403,14 +413,12 @@ struct QuestionViews {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 10)
                     .frame(maxWidth: .infinity)
                 
-                // Scientific credibility for social connections question
-                if let credibilityView = ScientificCredibilityView.forMetric(.socialConnectionsQuality, style: .inline) {
-                    credibilityView
-                        .padding(.bottom, 8)
-                }
+
                 
                 Spacer()
                 
@@ -461,6 +469,8 @@ struct QuestionViews {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 10)
                     .frame(maxWidth: .infinity)
@@ -540,6 +550,8 @@ struct QuestionViews {
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 10)
                     .frame(maxWidth: .infinity)
                 

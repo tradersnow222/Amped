@@ -43,12 +43,12 @@ struct MetricDetailsView: View {
                             .padding()
                     }
                     
-                    // Contextual information
-                    MetricContextCard(metric: metric)
+                    // Personal history evaluation section
+                    HistoryEvaluationCard(metric: metric, dataPoints: viewModel.historyDataPoints, period: selectedPeriod)
                         .padding(.horizontal)
                     
-                    // Actionable tip
-                    MetricTipCard(metric: metric)
+                    // Single recommendation section
+                    SingleRecommendationCard(metric: metric)
                         .padding(.horizontal)
                     
                     // Space at bottom for better scrolling

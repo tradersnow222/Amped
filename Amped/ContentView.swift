@@ -39,21 +39,9 @@ struct ContentView: View {
         ZStack {
             // The main content view takes up the full screen
             Group {
-                switch selectedView {
-                case .welcome:
-                    WelcomeView(onContinue: {})
-                case .personalizationIntro:
-                    PersonalizationIntroView(onContinue: {})
-                case .questionnaire:
-                    QuestionnaireView(exitToPersonalizationIntro: .constant(false), proceedToHealthPermissions: .constant(false))
-                case .healthkitPermissions:
-                    HealthKitPermissionsView(onContinue: {})
-                case .signInWithApple:
-                    SignInWithAppleView(onContinue: {})
-                case .payment:
-                    PaymentView(onContinue: {})
-                        .environmentObject(appState)
-                case .dashboard:
+                // PRODUCTION LOGIC: Show dashboard if onboarding is complete, otherwise show onboarding flow
+                if appState.hasCompletedOnboarding && !showDebugControls {
+                    // Show main dashboard for completed users
                     if #available(iOS 16.0, *) {
                         NavigationStack {
                             DashboardView()
@@ -64,9 +52,41 @@ struct ContentView: View {
                         }
                         .navigationViewStyle(StackNavigationViewStyle())
                     }
-                case .onboardingFlow:
+                } else if !showDebugControls {
+                    // Show onboarding flow for new users
                     OnboardingFlow()
                         .environmentObject(appState)
+                } else {
+                    // DEBUG MODE: Show selected view
+                    switch selectedView {
+                    case .welcome:
+                        WelcomeView(onContinue: {})
+                    case .personalizationIntro:
+                        PersonalizationIntroView(onContinue: {})
+                    case .questionnaire:
+                        QuestionnaireView(exitToPersonalizationIntro: .constant(false), proceedToHealthPermissions: .constant(false))
+                    case .healthkitPermissions:
+                        HealthKitPermissionsView(onContinue: {})
+                    case .signInWithApple:
+                        SignInWithAppleView(onContinue: {})
+                    case .payment:
+                        PaymentView(onContinue: {})
+                            .environmentObject(appState)
+                    case .dashboard:
+                        if #available(iOS 16.0, *) {
+                            NavigationStack {
+                                DashboardView()
+                            }
+                        } else {
+                            NavigationView {
+                                DashboardView()
+                            }
+                            .navigationViewStyle(StackNavigationViewStyle())
+                        }
+                    case .onboardingFlow:
+                        OnboardingFlow()
+                            .environmentObject(appState)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -90,8 +110,7 @@ struct ContentView: View {
                         
                         // Add button to reset onboarding state for testing
                         Button("Reset Onboarding") {
-                            appState.hasCompletedOnboarding = false
-                            UserDefaults.standard.removeObject(forKey: "hasCompletedOnboarding")
+                            appState.resetOnboarding()
                         }
                         .font(.caption)
                         .padding(.vertical, 4)
