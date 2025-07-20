@@ -435,8 +435,7 @@ class UpdateHealthProfileViewModel: ObservableObject {
         switch value {
         case 9...10: return .veryHealthy
         case 7..<9: return .mostlyHealthy
-        case 4..<7: return .mixed
-        case 2..<4: return .mostlyUnhealthy
+        case 2..<7: return .mixedToUnhealthy
         case 0..<2: return .veryUnhealthy
         default: return nil
         }
@@ -457,8 +456,7 @@ class UpdateHealthProfileViewModel: ObservableObject {
         case 9...10: return .never
         case 7..<9: return .occasionally
         case 3..<7: return .severalTimesWeek
-        case 1..<3: return .daily
-        case 0..<1: return .heavy
+        case 0..<3: return .dailyOrHeavy
         default: return nil
         }
     }
@@ -466,8 +464,7 @@ class UpdateHealthProfileViewModel: ObservableObject {
     private func mapValueToSocial(_ value: Double) -> QuestionnaireViewModel.SocialConnectionsQuality? {
         switch value {
         case 9...10: return .veryStrong
-        case 7..<9: return .good
-        case 4..<7: return .moderate
+        case 4..<9: return .moderateToGood
         case 2..<4: return .limited
         case 0..<2: return .isolated
         default: return nil

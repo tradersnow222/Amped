@@ -81,8 +81,14 @@ class LifeImpactService {
                 userProfile: userProfile
             )
             
+        case .socialConnectionsQuality:
+            impactDetail = lifestyleCalculator.calculateSocialConnectionsImpact(
+                socialConnectionsQuality: metric.value,
+                userProfile: userProfile
+            )
+            
         // Additional HealthKit metrics with basic fallback calculations
-        case .bodyMass, .activeEnergyBurned, .vo2Max, .oxygenSaturation, .socialConnectionsQuality:
+        case .bodyMass, .activeEnergyBurned, .vo2Max, .oxygenSaturation:
             // Use fallback calculation for metrics without specialized research-based calculators
             impactDetail = calculateFallbackImpact(for: metric)
         }

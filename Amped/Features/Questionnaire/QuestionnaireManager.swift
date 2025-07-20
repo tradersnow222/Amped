@@ -80,7 +80,7 @@ final class QuestionnaireManager: ObservableObject {
             smokingStatus: viewModel.selectedSmokingStatus?.smokingValue,
             alcoholConsumption: viewModel.selectedAlcoholFrequency?.alcoholValue,
             socialConnectionsQuality: viewModel.selectedSocialConnectionsQuality?.socialValue,
-            stressLevel: 5.0, // Default moderate stress level
+            stressLevel: viewModel.selectedStressLevel?.stressValue, // User-selected stress level
             savedDate: Date()
         )
         saveQuestionnaireData(questionnaireData)
@@ -165,16 +165,27 @@ final class QuestionnaireManager: ObservableObject {
             logger.info("👥 Added social connections metric: \(social.socialValue)/10")
         }
         
-        // Add a default stress level if not collected yet
-        // (This could be expanded to include a stress question in the questionnaire)
-        let stressMetric = ManualMetricInput(
-            type: .stressLevel,
-            value: 5.0, // Default moderate stress (middle of 1-10 scale)
-            date: currentDate,
-            notes: "Default value - moderate stress level"
-        )
-        metrics.append(stressMetric)
-        logger.info("🧠 Added default stress level metric: 5.0/10")
+        // Add stress level from questionnaire
+        if let stressLevel = questionnaireData?.stressLevel {
+            let stressMetric = ManualMetricInput(
+                type: .stressLevel,
+                value: stressLevel,
+                date: currentDate,
+                notes: "From questionnaire: stress level \(Int(stressLevel))/10"
+            )
+            metrics.append(stressMetric)
+            logger.info("🧠 Added stress level metric from questionnaire: \(stressLevel)/10")
+        } else {
+            // Fallback to default only if no questionnaire data exists
+            let stressMetric = ManualMetricInput(
+                type: .stressLevel,
+                value: 5.0, // Default moderate stress (middle of 1-10 scale)
+                date: currentDate,
+                notes: "Default value - moderate stress level (questionnaire not completed)"
+            )
+            metrics.append(stressMetric)
+            logger.info("🧠 Added default stress level metric: 5.0/10 (questionnaire not completed)")
+        }
         
         return metrics
     }

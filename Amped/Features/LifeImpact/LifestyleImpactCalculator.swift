@@ -11,7 +11,10 @@ class LifestyleImpactCalculator {
     /// Calculate alcohol impact using research-based linear dose-response
     /// Based on Wood et al. (2018) Lancet meta-analysis of 599,912 current drinkers
     func calculateAlcoholImpact(drinksPerDay: Double, userProfile: UserProfile) -> MetricImpactDetail {
-        logger.info("🍷 Calculating alcohol impact for \(String(format: "%.1f", drinksPerDay)) drinks/day using research-based formula")
+        // CRITICAL FIX: Convert questionnaire scale (1-10) to actual drinks per day
+        let actualDrinksPerDay = convertQuestionnaireScaleToActualDrinks(questionnaireValue: drinksPerDay)
+        
+        logger.info("🍷 Converting alcohol questionnaire value \(String(format: "%.1f", drinksPerDay)) to \(String(format: "%.2f", actualDrinksPerDay)) drinks/day")
         
         let studies = StudyReferenceProvider.getApplicableStudies(for: .alcoholConsumption, userProfile: userProfile)
         let primaryStudy = studies.first ?? StudyReferenceProvider.lifestyleResearch[0]
@@ -21,27 +24,44 @@ class LifestyleImpactCalculator {
         let moderateThreshold = 1.0 // ~7 drinks per week
         let heavyThreshold = 2.0 // Above this considered heavy drinking
         
-        // Calculate impact using research-derived linear model
+        // Calculate impact using research-derived linear model with converted drinks per day
         let dailyImpactMinutes = calculateAlcoholLifeImpact(
-            drinksPerDay: drinksPerDay,
+            drinksPerDay: actualDrinksPerDay,
             safeThreshold: safeThreshold,
             moderateThreshold: moderateThreshold
         )
         
         let recommendation = generateAlcoholRecommendation(
-            drinksPerDay: drinksPerDay,
+            drinksPerDay: actualDrinksPerDay,
             moderateThreshold: moderateThreshold
         )
         
         return MetricImpactDetail(
             metricType: .alcoholConsumption,
-            currentValue: drinksPerDay,
+            currentValue: drinksPerDay, // Keep original questionnaire value for display
             baselineValue: safeThreshold,
             studyReferences: studies,
             lifespanImpactMinutes: dailyImpactMinutes,
             calculationMethod: .directStudyMapping,
             recommendation: recommendation
         )
+    }
+    
+    /// Convert questionnaire alcohol scale (1-10) to actual drinks per day
+    /// Scale: 10=Never, 8=Occasionally, 4=Several times/week, 1.5=Daily or Heavy
+    private func convertQuestionnaireScaleToActualDrinks(questionnaireValue: Double) -> Double {
+        switch questionnaireValue {
+        case 9...10: // Never or almost never
+            return 0.0
+        case 7..<9: // Occasionally (weekly or less)
+            return 0.2 // ~1 drink per week = 0.14 drinks/day, rounded to 0.2
+        case 3..<7: // Several times per week
+            return 0.7 // ~5 drinks per week = 0.71 drinks/day
+        case 1..<2: // Daily or Heavy
+            return 2.5 // 2-3 drinks per day average
+        default:
+            return 0.0 // Fallback to no drinking
+        }
     }
     
     /// Research-based alcohol life impact using linear dose-response
@@ -92,6 +112,11 @@ class LifestyleImpactCalculator {
     func calculateSmokingImpact(smokingStatus: Double, userProfile: UserProfile) -> MetricImpactDetail {
         logger.info("🚭 Calculating smoking impact for status \(smokingStatus) using research-based formula")
         
+        // CRITICAL FIX: Convert questionnaire scale (1-10) to smoking status codes (0-3)
+        let actualSmokingStatus = convertQuestionnaireScaleToSmokingStatus(questionnaireValue: smokingStatus)
+        
+        logger.info("🚭 Converting smoking questionnaire value \(String(format: "%.1f", smokingStatus)) to status code \(actualSmokingStatus)")
+        
         // Simplified smoking status: 0 = never, 1 = former, 2 = current light, 3 = current heavy
         let statusMapping: [Double: String] = [
             0: "Never smoker",
@@ -100,18 +125,35 @@ class LifestyleImpactCalculator {
             3: "Current heavy smoker (≥1 pack/day)"
         ]
         
-        let dailyImpactMinutes = calculateSmokingLifeImpact(smokingStatus: smokingStatus)
-        let recommendation = generateSmokingRecommendation(smokingStatus: smokingStatus)
+        let dailyImpactMinutes = calculateSmokingLifeImpact(smokingStatus: actualSmokingStatus)
+        let recommendation = generateSmokingRecommendation(smokingStatus: actualSmokingStatus)
         
         return MetricImpactDetail(
             metricType: .smokingStatus,
-            currentValue: smokingStatus,
+            currentValue: smokingStatus, // Keep original questionnaire value for display
             baselineValue: 0.0, // Never smoker baseline
             studyReferences: [], // Would include extensive smoking studies
             lifespanImpactMinutes: dailyImpactMinutes,
             calculationMethod: .metaAnalysisSynthesis,
             recommendation: recommendation
         )
+    }
+    
+    /// Convert questionnaire smoking scale (1-10) to smoking status codes (0-3)
+    /// Scale: 10=Never, 7=Former, 3=Occasionally, 1=Daily
+    private func convertQuestionnaireScaleToSmokingStatus(questionnaireValue: Double) -> Double {
+        switch questionnaireValue {
+        case 9...10: // Never
+            return 0.0
+        case 6..<9: // Former smoker
+            return 1.0
+        case 2..<6: // Occasionally
+            return 2.0
+        case 0..<2: // Daily
+            return 3.0
+        default:
+            return 0.0 // Fallback to never smoker
+        }
     }
     
     /// Research-based smoking life impact using cumulative dose-response
@@ -329,6 +371,86 @@ class LifestyleImpactCalculator {
             return "Moderate nutrition quality. Focus on reducing processed foods and increasing whole food consumption."
         } else {
             return "Poor nutrition significantly impacts health. Consider consulting a nutritionist for a comprehensive dietary overhaul."
+        }
+    }
+    
+    // MARK: - Social Connections Impact Calculation
+    
+    /// Calculate social connections impact using research-based principles
+    /// Based on Holt-Lunstad et al. (2010) meta-analysis and social epidemiology research
+    func calculateSocialConnectionsImpact(socialConnectionsQuality: Double, userProfile: UserProfile) -> MetricImpactDetail {
+        logger.info("🤝 Calculating social connections impact for quality \(Int(socialConnectionsQuality)) using research-based principles")
+        
+        // Social connections on 1-10 scale (10 = very strong social connections)
+        let optimalConnections = 8.0 // Strong social connections
+        let moderateThreshold = 5.0
+        let poorThreshold = 3.0
+        
+        let dailyImpactMinutes = calculateSocialConnectionsLifeImpact(
+            socialQuality: socialConnectionsQuality,
+            optimalConnections: optimalConnections,
+            moderateThreshold: moderateThreshold,
+            poorThreshold: poorThreshold
+        )
+        
+        let recommendation = generateSocialConnectionsRecommendation(
+            socialQuality: socialConnectionsQuality,
+            optimalConnections: optimalConnections
+        )
+        
+        return MetricImpactDetail(
+            metricType: .socialConnectionsQuality,
+            currentValue: socialConnectionsQuality,
+            baselineValue: optimalConnections,
+            studyReferences: [], // Would include Holt-Lunstad meta-analysis
+            lifespanImpactMinutes: dailyImpactMinutes,
+            calculationMethod: .metaAnalysisSynthesis,
+            recommendation: recommendation
+        )
+    }
+    
+    /// Research-based social connections life impact
+    /// Based on meta-analysis showing 50% increased survival odds with strong social connections
+    private func calculateSocialConnectionsLifeImpact(socialQuality: Double, optimalConnections: Double, moderateThreshold: Double, poorThreshold: Double) -> Double {
+        let effectiveQuality = max(1, min(socialQuality, 10))
+        
+        let relativeRisk: Double
+        if effectiveQuality >= optimalConnections {
+            // Strong connections: Protective effect
+            let qualityBonus = effectiveQuality - optimalConnections
+            relativeRisk = 0.85 - (qualityBonus * 0.03) // Up to 15% reduced risk
+        } else if effectiveQuality >= moderateThreshold {
+            // Moderate connections: Slightly protective
+            let qualityDeficit = optimalConnections - effectiveQuality
+            relativeRisk = 0.85 + (qualityDeficit * 0.04) // Progressive risk increase
+        } else if effectiveQuality >= poorThreshold {
+            // Poor connections: Increased risk
+            let poorDeficit = moderateThreshold - effectiveQuality
+            relativeRisk = 1.0 + (poorDeficit * 0.06) // Progressive risk increase
+        } else {
+            // Isolated: High risk
+            let isolationDeficit = poorThreshold - effectiveQuality
+            relativeRisk = 1.12 + (isolationDeficit * 0.08) // Additional risk
+        }
+        
+        // Convert with moderate scaling (social connections have significant impact)
+        let baselineLifeExpectancy = 78.0 * 365.25 * 24 * 60
+        let riskReduction = 1.0 - relativeRisk
+        let totalLifeMinutesImpact = baselineLifeExpectancy * riskReduction * 0.05 // ~5% max impact
+        
+        let remainingYears = 45.0
+        return totalLifeMinutesImpact / (remainingYears * 365.25)
+    }
+    
+    private func generateSocialConnectionsRecommendation(socialQuality: Double, optimalConnections: Double) -> String {
+        if socialQuality >= optimalConnections {
+            return "Excellent social connections! Continue nurturing these important relationships for optimal health benefits."
+        } else if socialQuality >= 6.0 {
+            return "Good social connections. Consider joining community groups or scheduling regular social activities to strengthen bonds."
+        } else if socialQuality >= 3.0 {
+            return "Limited social connections. Prioritize building meaningful relationships through shared activities or interests."
+        } else {
+            return "Social isolation significantly impacts health. Consider reaching out to friends, joining clubs, or seeking support groups."
         }
     }
 } 

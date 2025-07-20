@@ -6,6 +6,7 @@ final class QuestionnaireViewModel: ObservableObject {
     enum Question: Int, CaseIterable, Hashable {
         case birthdate
         case name
+        case stressLevel        // NEW: Question #3 for stress level
         case gender
         case nutritionQuality
         case smokingStatus
@@ -15,19 +16,42 @@ final class QuestionnaireViewModel: ObservableObject {
         case lifeMotivation // Moved to last - will be shown after HealthKit
     }
     
+    enum StressLevel: CaseIterable {
+        case veryLow            // 2.0 - Most positive (very low stress)
+        case low                // 3.0 
+        case moderateToHigh     // 6.0 - Combined moderate and high
+        case veryHigh           // 9.0 - Most negative (very high stress)
+        
+        var displayName: String {
+            switch self {
+            case .veryLow: return "Very Low\n(rarely feel stressed)"
+            case .low: return "Low\n(occasionally stressed)"
+            case .moderateToHigh: return "Moderate to High\n(regular stress)"
+            case .veryHigh: return "Very High\n(constantly stressed)"
+            }
+        }
+        
+        var stressValue: Double {
+            switch self {
+            case .veryLow: return 2.0
+            case .low: return 3.0
+            case .moderateToHigh: return 6.0
+            case .veryHigh: return 9.0
+            }
+        }
+    }
+    
     enum NutritionQuality: CaseIterable {
         case veryHealthy        // 10.0 - Most positive
         case mostlyHealthy      // 8.0
-        case mixed              // 5.0
-        case mostlyUnhealthy    // 2.0
+        case mixedToUnhealthy   // 3.5 - Combined mixed and mostly unhealthy
         case veryUnhealthy      // 1.0 - Most negative
         
         var displayName: String {
             switch self {
             case .veryHealthy: return "Very Healthy\n(whole foods, plant-based)"
             case .mostlyHealthy: return "Mostly Healthy\n(balanced diet)"
-            case .mixed: return "Mixed\n(some healthy, some processed)"
-            case .mostlyUnhealthy: return "Mostly Processed\n(convenience foods)"
+            case .mixedToUnhealthy: return "Mixed to Unhealthy\n(some processed foods)"
             case .veryUnhealthy: return "Very Unhealthy\n(fast food, highly processed)"
             }
         }
@@ -36,8 +60,7 @@ final class QuestionnaireViewModel: ObservableObject {
             switch self {
             case .veryHealthy: return 10.0
             case .mostlyHealthy: return 8.0
-            case .mixed: return 5.0
-            case .mostlyUnhealthy: return 2.0
+            case .mixedToUnhealthy: return 3.5
             case .veryUnhealthy: return 1.0
             }
         }
@@ -72,16 +95,14 @@ final class QuestionnaireViewModel: ObservableObject {
         case never              // 10.0 - Most positive
         case occasionally       // 8.0
         case severalTimesWeek   // 4.0
-        case daily              // 2.0
-        case heavy              // 1.0 - Most negative
+        case dailyOrHeavy       // 1.5 - Combined daily and heavy daily
         
         var displayName: String {
             switch self {
             case .never: return "Never"
             case .occasionally: return "Occasionally\n(weekly or less)"
             case .severalTimesWeek: return "Several Times\n(per week)"
-            case .daily: return "Daily"
-            case .heavy: return "Heavy Daily\n(multiple drinks daily)"
+            case .dailyOrHeavy: return "Daily or Heavy\n(one or more daily)"
             }
         }
         
@@ -90,24 +111,21 @@ final class QuestionnaireViewModel: ObservableObject {
             case .never: return 10.0
             case .occasionally: return 8.0
             case .severalTimesWeek: return 4.0
-            case .daily: return 2.0
-            case .heavy: return 1.0
+            case .dailyOrHeavy: return 1.5
             }
         }
     }
     
     enum SocialConnectionsQuality: CaseIterable {
         case veryStrong         // 10.0 - Most positive
-        case good               // 8.0
-        case moderate           // 5.0
+        case moderateToGood     // 6.5 - Combined moderate and good
         case limited            // 2.0
         case isolated           // 1.0 - Most negative
         
         var displayName: String {
             switch self {
             case .veryStrong: return "Very Strong\n(daily interactions)"
-            case .good: return "Good\n(regular engagement)"
-            case .moderate: return "Moderate\n(occasional connections)"
+            case .moderateToGood: return "Moderate to Good\n(regular connections)"
             case .limited: return "Limited\n(rare interactions)"
             case .isolated: return "Isolated\n(minimal social contact)"
             }
@@ -116,8 +134,7 @@ final class QuestionnaireViewModel: ObservableObject {
         var socialValue: Double {
             switch self {
             case .veryStrong: return 10.0
-            case .good: return 8.0
-            case .moderate: return 5.0
+            case .moderateToGood: return 6.5
             case .limited: return 2.0
             case .isolated: return 1.0
             }
@@ -284,13 +301,16 @@ final class QuestionnaireViewModel: ObservableObject {
     // Life Motivation
     @Published var selectedLifeMotivation: LifeMotivation?
     
+    // Stress Level
+    @Published var selectedStressLevel: StressLevel?
+    
     // Progress tracking for indicator
     var currentStep: Int {
         // Personalization Intro is step 1, so the first question starts at step 2
         currentQuestion.rawValue + 2 
     }
     var totalSteps: Int {
-        11 // Total steps in the onboarding flow (excluding welcome and dashboard)
+        12 // Total steps in the onboarding flow (excluding welcome and dashboard) - added stress question
     }
     
     var isComplete: Bool {
@@ -304,6 +324,8 @@ final class QuestionnaireViewModel: ObservableObject {
             return age >= 18 && age <= 120 // Validate age from birthdate
         case .name:
             return !userName.isEmpty // Validate name
+        case .stressLevel:
+            return selectedStressLevel != nil
         case .gender:
             return selectedGender != nil // Require user to make a selection
         case .nutritionQuality:

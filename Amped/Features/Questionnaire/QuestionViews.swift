@@ -235,6 +235,48 @@ struct QuestionViews {
         }
     }
     
+    // MARK: - Stress Level Question
+    
+    struct StressQuestionView: View {
+        @ObservedObject var viewModel: QuestionnaireViewModel
+        
+        var body: some View {
+            VStack(alignment: .center, spacing: 0) {
+                // Question placed higher
+                Text("How would you describe your typical stress levels?")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.bottom, 10)
+                    .frame(maxWidth: .infinity)
+                
+                Spacer()
+                
+                // Options at bottom for thumb access
+                VStack(spacing: 12) {
+                    ForEach(QuestionnaireViewModel.StressLevel.allCases, id: \.self) { stressLevel in
+                        Button(action: {
+                            viewModel.selectedStressLevel = stressLevel
+                            viewModel.proceedToNextQuestion()
+                        }) {
+                            FormattedButtonText(
+                                text: stressLevel.displayName,
+                                subtitle: nil
+                            )
+                        }
+                        .questionnaireButtonStyle(isSelected: viewModel.selectedStressLevel == stressLevel)
+                        .hapticFeedback(.heavy)
+                    }
+                }
+                .padding(.bottom, 30)
+            }
+            .padding(.horizontal, 24)
+            .frame(maxHeight: .infinity)
+        }
+    }
+    
     // MARK: - Gender Question
     
     struct GenderQuestionView: View {

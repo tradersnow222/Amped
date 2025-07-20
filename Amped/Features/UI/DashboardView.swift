@@ -18,11 +18,13 @@ struct DashboardView: View {
     // Rules: Add state for sign-in popup
     @State private var showSignInPopup = false
     
-    // Pull-to-refresh state
+    // Pull-to-refresh state - Enhanced for Apple iOS UX standards
     @State private var pullDistance: CGFloat = 0
     @State private var isRefreshing = false
-    private let refreshThreshold: CGFloat = 80
-    private let maxPullDistance: CGFloat = 150 // iOS standard maximum pull distance
+    private let refreshThreshold: CGFloat = 60 // Apple's actual threshold is 60pt
+    private let maxPullDistance: CGFloat = 120 // Apple's actual maximum is 120pt
+    @State private var refreshIndicatorOpacity: Double = 0
+    @State private var refreshIndicatorRotation: Double = 0
     
     // Battery animation state - Rules: Smart intro animations
     @State private var isBatteryAnimating = false
@@ -268,7 +270,7 @@ struct DashboardView: View {
         ZStack {
             // Dashboard content layer - can be blurred
             ZStack {
-                // Main content
+                                // Main content
                 VStack(spacing: 0) {
                     // Fixed header section with period selector on impact and metrics pages (pages 0 and 1)
                     if currentPage <= 1 {
@@ -291,45 +293,28 @@ struct DashboardView: View {
                         .padding(.bottom, 16)
                     }
                     
+                    // Apple-standard refresh indicator positioned below tabs/selectors
+                    // Shows on pages 0 & 1 below PeriodSelector (page 2 has its own in batteryPageWithRefresh)
+                    if currentPage <= 1 {
+                        AppleStandardRefreshIndicator(
+                            isRefreshing: isRefreshing,
+                            pullDistance: pullDistance,
+                            opacity: refreshIndicatorOpacity,
+                            rotation: refreshIndicatorRotation,
+                            threshold: refreshThreshold
+                        )
+                        .transition(.opacity.combined(with: .scale))
+                    }
+                    
                     // Swipeable content pages using custom 3-page container
                     ThreePageDashboardContainer(
                         currentPage: $currentPage,
                         impactPage: AnyView(impactPage),
                         lifespanFactorsPage: AnyView(lifespanFactorsPage), 
-                        batteryPage: AnyView(batteryPage)
+                        batteryPage: AnyView(batteryPageWithRefresh),
+                        isRefreshing: $isRefreshing,
+                        pullDistance: $pullDistance
                     )
-                }
-                .offset(y: pullDistance)
-                .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.85), value: pullDistance)
-                
-                // Pull-to-refresh indicator overlay
-                if pullDistance > 0 || isRefreshing {
-                    VStack {
-                        ZStack {
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .frame(width: 50, height: 50)
-                            
-                            if isRefreshing {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .ampedGreen))
-                                    .scaleEffect(1.2)
-                            } else {
-                                Image(systemName: "arrow.down")
-                                    .font(.system(size: 20, weight: .medium))
-                                    .foregroundColor(.ampedGreen)
-                                    .rotationEffect(.degrees(pullDistance > refreshThreshold ? 180 : 0))
-                                    .animation(.easeInOut(duration: 0.2), value: pullDistance > refreshThreshold)
-                            }
-                        }
-                        .offset(y: min(pullDistance - 50, 40)) // Capped at 40 for cleaner appearance
-                        .opacity(min(pullDistance / refreshThreshold, 1))
-                        .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.8), value: pullDistance)
-                        
-                        Spacer()
-                    }
-                    .zIndex(1)
-                    .allowsHitTesting(false) // Don't interfere with TabView gestures
                 }
                 
                 // Error overlay if needed
@@ -406,61 +391,7 @@ struct DashboardView: View {
             }
         }
         .withDeepBackground()
-        .gesture(
-            // FIXED: More specific drag gesture that only responds to vertical pulls
-            DragGesture()
-                .onChanged { value in
-                    // FIXED: Only respond to primarily vertical drags to avoid conflicts with horizontal TabView swipes
-                    let verticalDistance = value.translation.height
-                    let horizontalDistance = abs(value.translation.width)
-                    
-                    // Only process if this is primarily a downward vertical drag
-                    // and not already refreshing
-                    if verticalDistance > 0 && 
-                       verticalDistance > horizontalDistance * 2 && // Must be 2x more vertical than horizontal
-                       !isRefreshing {
-                        pullDistance = applyRubberBandEffect(to: verticalDistance)
-                    }
-                }
-                .onEnded { value in
-                    let verticalDistance = value.translation.height
-                    let horizontalDistance = abs(value.translation.width)
-                    
-                    // FIXED: Only trigger refresh for primarily vertical gestures
-                    if verticalDistance > horizontalDistance * 2 && 
-                       pullDistance > refreshThreshold && 
-                       !isRefreshing {
-                        // Trigger refresh
-                        isRefreshing = true
-                        HapticManager.shared.playSelection()
-                        
-                        // Keep the indicator visible while refreshing
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            pullDistance = 60
-                        }
-                        
-                        // Perform the refresh
-                        Task {
-                            // FIXED: Use unified refresh instead of separate functions
-                            await viewModel.refreshData()
-                            
-                            // Reset states after refresh completes
-                            await MainActor.run {
-                                HapticManager.shared.playSuccess()
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    isRefreshing = false
-                                    pullDistance = 0
-                                }
-                            }
-                        }
-                    } else {
-                        // FIXED: Always spring back if not triggering refresh
-                        withAnimation(.interactiveSpring(response: 0.3)) {
-                            pullDistance = 0
-                        }
-                    }
-                }
-        )
+
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 NavigationLink(destination: 
@@ -538,321 +469,119 @@ struct DashboardView: View {
         .animation(.easeInOut(duration: 0.2), value: showSignInPopup) // Rules: Animate sign-in popup
     }
     
-    // MARK: - Swipeable Page Views
+    // MARK: - Battery Page with Refresh Indicator
     
-    /// Page 1: Impact number and Today's Focus
-    private var impactPage: some View {
-        GeometryReader { geometry in
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Prominent Total Impact Display - Rules: Enhanced loading experience
-                    if isCalculatingImpact && !hasInitiallyCalculated {
-                        // Enhanced calculating state with Apple-quality UX
-                        EnhancedLoadingView(
-                            loadingType: .healthImpact,
-                            onComplete: {
-                                // Complete the health impact calculation with haptic feedback
-                                withAnimation(.easeInOut(duration: 0.4)) {
-                                    isCalculatingImpact = false
-                                    hasInitiallyCalculated = true
-                                }
-                                HapticManager.shared.playSuccess()
-                            }
-                        )
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 20)
-                        .padding(.bottom, 24)
-                    } else if totalTimeImpact != 0 {
-                        VStack(spacing: 80) {
-                            // Main impact display section - Rules: Better spacing
-                            VStack(spacing: 12) {
-                                // "Your habits collectively added/reduced" text above the number
-                                Text(totalTimeImpact >= 0 ? "\(timePeriodContext) added" : "\(timePeriodContext) reduced")
-                                    .font(.headline)
-                                    .foregroundColor(.white.opacity(0.85))
-                                
-                                // Main impact display - PROMINENT NUMBER
-                                HStack(spacing: 8) {
-                                    Image(systemName: totalTimeImpact >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                                        .font(.system(size: 32))
-                                        .foregroundColor(totalTimeImpact >= 0 ? .ampedGreen : .ampedRed)
-                                        .symbolRenderingMode(.hierarchical)
-                                    
-                                    Text(formattedTotalImpact)
-                                        .font(.system(size: 40, weight: .bold, design: .rounded))
-                                        .foregroundColor(.white)
-                                }
-                                
-                                // "to/from your lifespan" text below
-                                Text(totalTimeImpact >= 0 ? "to your lifespan 🔥" : "from your lifespan")
-                                    .font(.headline)
-                                    .foregroundColor(.white.opacity(0.85))
-                                    .multilineTextAlignment(.center)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            
-                            // Jobs-inspired animated battery element - Rules: Cool battery animation
-                            if showLifeEnergyBattery {
-                                LifeEnergyFlowBattery(
-                                    isAnimating: isBatteryAnimating,
-                                    timeImpactMinutes: totalTimeImpact
-                                )
-                                .transition(.asymmetric(
-                                    insertion: .scale(scale: 0.8).combined(with: .opacity),
-                                    removal: .scale(scale: 0.8).combined(with: .opacity)
-                                ))
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 40)
-                        .padding(.bottom, 40) // Rules: Increased spacing around battery
-                    } else {
-                        // No impact yet
-                        VStack(spacing: 16) { // Rules: Better spacing
-                            Text("NO HEALTH DATA YET")
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white.opacity(0.6))
-                                .tracking(0.5)
-                            
-                            Text("Complete your health profile to see your impact")
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.5))
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 20) // Rules: Better text width control
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 32) // Rules: Reduced vertical padding
-                        .padding(.top, 20)
-                    }
-                    
-                    // New Actionable Recommendations Section - Rules: Better spacing
-                    if !filteredMetrics.isEmpty && !isCalculatingImpact {
-                        ActionableRecommendationsView(
-                            metrics: filteredMetrics, 
-                            selectedPeriod: selectedPeriod,
-                            onMetricTap: { metric in
-                                // Rules: Different handling for manual vs HealthKit metrics
-                                if metric.source == .userInput {
-                                    // For manual metrics, show update health profile
-                                    showingUpdateHealthProfile = true
-                                } else {
-                                    // For HealthKit metrics, show detail view
-                                    selectedMetric = metric
-                                }
-                                HapticManager.shared.playSelection()
-                            }
-                        )
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8) // Rules: Reduced top padding for better flow
-                        .padding(.bottom, 20) // Rules: Consistent bottom spacing
-                    }
-                    
-                    // Add consistent padding for page indicators - Rules: Better spacing
-                    Spacer()
-                        .frame(height: max(40, geometry.safeAreaInsets.bottom + 20))
-                }
-            }
-            // FIXED: Removed .refreshable to eliminate gesture conflicts with TabView swiping
-            // Main pull-to-refresh handles all refresh functionality
-        }
-    }
-    
-    /// Page 2: Today's/This Month's/This Year's Impact
-    private var lifespanFactorsPage: some View {
-        GeometryReader { geometry in
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Health factors header
-                    HStack(alignment: .center, spacing: 8) {
-                        // Battery icon with animation
-                        ZStack {
-                            Image(systemName: "battery.100")
-                                .font(.title2)
-                                .foregroundColor(.fullPower)
-                                .scaleEffect(isBatteryAnimating ? 1.1 : 1.0)
-                                .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isBatteryAnimating)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(titleForPeriod(selectedPeriod))
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                            
-                            Text("See how each habit is changing your lifespan")
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.8))
-                        }
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 16)
-                    .padding(.bottom, 12) // Rules: Better spacing consistency
-                    .accessibilityAddTraits(.isHeader)
-                    
-                    // Power Sources Metrics section
-                    HealthMetricsListView(
-                        metrics: filteredMetrics,
-                        selectedPeriod: selectedPeriod,
-                        onMetricTap: { metric in
-                            // Rules: Different handling for manual vs HealthKit metrics
-                            if metric.source == .userInput {
-                                // For manual metrics, show update health profile
-                                showingUpdateHealthProfile = true
-                            } else {
-                                // For HealthKit metrics, show detail view
-                                selectedMetric = metric
-                            }
-                            HapticManager.shared.playSelection()
-                        }
-                    )
-                    .padding(.horizontal, 8)
-                    // Add consistent padding for page indicators - Rules: Better spacing
-                    .padding(.bottom, max(40, geometry.safeAreaInsets.bottom + 20))
-                }
-            }
-            // FIXED: Removed .refreshable to eliminate gesture conflicts with TabView swiping
-            // Main pull-to-refresh handles all refresh functionality
-        }
-    }
-
-    /// Page 3: Lifespan remaining battery - Jobs-inspired focus
-    private var batteryPage: some View {
+    /// Page 3: Battery page - with positioned refresh indicator below lifestyle tabs
+    private var batteryPageWithRefresh: some View {
         VStack(spacing: 0) {
-            // Minimalist lifestyle tabs - centered and compact
+            // Minimalist lifestyle tabs - centered and compact (OUTSIDE ScrollView)
             lifestyleTabs
                 .padding(.top, 8)
                 .padding(.bottom, 24)
             
-            if isCalculatingLifespan && !hasInitiallyCalculated {
-                // Enhanced calculating state with Apple-quality UX - Rules: Apple loading standards
-                EnhancedLoadingView(
-                    loadingType: .lifeProjection,
-                    onComplete: {
-                        // Complete the life projection calculation with haptic feedback
-                        withAnimation(.easeInOut(duration: 0.4)) {
-                            isCalculatingLifespan = false
-                            hasInitiallyCalculated = true
-                        }
-                        HapticManager.shared.playSuccess()
-                    }
+            // Apple-standard refresh indicator positioned below lifestyle tabs
+            if currentPage == 2 {
+                AppleStandardRefreshIndicator(
+                    isRefreshing: isRefreshing,
+                    pullDistance: pullDistance,
+                    opacity: refreshIndicatorOpacity,
+                    rotation: refreshIndicatorRotation,
+                    threshold: refreshThreshold
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                // Main content - focused on the key message
-                EnhancedBatterySystemView(
-                    lifeProjection: viewModel.lifeProjection,
-                    currentUserAge: viewModel.currentUserAge,
-                    selectedTab: selectedLifestyleTab,
-                    onProjectionHelpTapped: { 
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showingProjectionHelp = true
-                        }
+                .transition(.opacity.combined(with: .scale))
+            }
+            
+            // ScrollView with battery content only
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Main battery content (without the tabs since they're above)
+                        batteryPageContent
+                        
+                        // Add padding at bottom to ensure consistent scrolling behavior
+                        Spacer()
+                            .frame(height: max(40, geometry.safeAreaInsets.bottom + 20))
                     }
-                )
-                
-                Spacer()
+                }
+                .refreshable {
+                    // Trigger refresh - indicator is handled by parent view
+                    isRefreshing = true
+                    refreshIndicatorOpacity = 1.0
+                    
+                    await viewModel.refreshData()
+                    HapticManager.shared.playNotification(.success)
+                    
+                    // Reset state
+                    withAnimation(.easeInOut(duration: 0.4)) {
+                        isRefreshing = false
+                        pullDistance = 0
+                        refreshIndicatorOpacity = 0
+                        refreshIndicatorRotation = 0
+                    }
+                }
             }
         }
-        // FIXED: Removed .refreshable to eliminate gesture conflicts with TabView swiping
-        // Main pull-to-refresh handles all refresh functionality
+    }
+    
+    // MARK: - Dashboard Page Views
+    
+    /// Page 1: Impact number and Today's Focus
+    private var impactPage: some View {
+        ImpactPageView(
+            selectedPeriod: $selectedPeriod,
+            isCalculatingImpact: $isCalculatingImpact,
+            hasInitiallyCalculated: $hasInitiallyCalculated,
+            showLifeEnergyBattery: $showLifeEnergyBattery,
+            isBatteryAnimating: $isBatteryAnimating,
+            isRefreshing: $isRefreshing,
+            pullDistance: $pullDistance,
+            refreshIndicatorOpacity: $refreshIndicatorOpacity,
+            refreshIndicatorRotation: $refreshIndicatorRotation,
+            showingUpdateHealthProfile: $showingUpdateHealthProfile,
+            selectedMetric: $selectedMetric,
+            totalTimeImpact: totalTimeImpact,
+            timePeriodContext: timePeriodContext,
+            formattedTotalImpact: formattedTotalImpact,
+            filteredMetrics: filteredMetrics,
+            viewModel: viewModel
+        )
+    }
+    
+    /// Page 2: Today's/This Month's/This Year's Impact
+    private var lifespanFactorsPage: some View {
+        LifespanFactorsPageView(
+            selectedPeriod: $selectedPeriod,
+            isBatteryAnimating: $isBatteryAnimating,
+            isRefreshing: $isRefreshing,
+            pullDistance: $pullDistance,
+            refreshIndicatorOpacity: $refreshIndicatorOpacity,
+            refreshIndicatorRotation: $refreshIndicatorRotation,
+            showingUpdateHealthProfile: $showingUpdateHealthProfile,
+            selectedMetric: $selectedMetric,
+            filteredMetrics: filteredMetrics,
+            viewModel: viewModel
+        )
+    }
+
+
+    
+    /// Battery page content without tabs (for use in batteryPageWithRefresh)
+    private var batteryPageContent: some View {
+        BatteryPageContentView(
+            isCalculatingLifespan: $isCalculatingLifespan,
+            hasInitiallyCalculated: $hasInitiallyCalculated,
+            showingProjectionHelp: $showingProjectionHelp,
+            selectedLifestyleTab: $selectedLifestyleTab,
+            viewModel: viewModel
+        )
     }
     
     /// Intuitive lifestyle tabs - designed to match time selector styling
     private var lifestyleTabs: some View {
-        HStack(spacing: 0) {
-            // Current lifespan tab
-            Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    selectedLifestyleTab = 0
-                }
-                HapticManager.shared.playSelection()
-            } label: {
-                Text("Current Lifespan")
-                    .fontWeight(selectedLifestyleTab == 0 ? .bold : .medium)
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 16)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        ZStack {
-                            if selectedLifestyleTab == 0 {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.ampedGreen.opacity(0.2))
-                                
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.ampedGreen, lineWidth: 1.5)
-                                    .shadow(color: Color.ampedGreen.opacity(0.6), radius: 4)
-                            } else {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                            }
-                        }
-                    )
-                    .foregroundColor(selectedLifestyleTab == 0 ? Color.ampedGreen : .gray)
-            }
-            
-            // Potential lifespan tab
-            Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    selectedLifestyleTab = 1
-                }
-                HapticManager.shared.playSelection()
-            } label: {
-                Text("Potential Lifespan")
-                    .fontWeight(selectedLifestyleTab == 1 ? .bold : .medium)
-                    .padding(.vertical, 12)
-                    .padding(.horizontal, 16)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        ZStack {
-                            if selectedLifestyleTab == 1 {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.ampedGreen.opacity(0.2))
-                                
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.ampedGreen, lineWidth: 1.5)
-                                    .shadow(color: Color.ampedGreen.opacity(0.6), radius: 4)
-                            } else {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                            }
-                        }
-                    )
-                    .foregroundColor(selectedLifestyleTab == 1 ? Color.ampedGreen : .gray)
-            }
-        }
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.black.opacity(0.3))
+        LifestyleTabsView(
+            selectedLifestyleTab: $selectedLifestyleTab,
+            shouldPulseTabsForNewUsers: $shouldPulseTabsForNewUsers
         )
-        .padding(.horizontal, 16)
-        // Keep the pulsing animation for new user discoverability
-        .scaleEffect(shouldPulseTabsForNewUsers ? 1.02 : 1.0)
-        .animation(
-            shouldPulseTabsForNewUsers ? 
-                .easeInOut(duration: 1.5).repeatCount(3, autoreverses: true) : 
-                .none,
-            value: shouldPulseTabsForNewUsers
-        )
-        .onAppear {
-            // Start pulsing animation for new users
-            if shouldPulseTabsForNewUsers {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    withAnimation(.easeInOut(duration: 1.5).repeatCount(3, autoreverses: true)) {
-                        shouldPulseTabsForNewUsers = false
-                    }
-                    
-                    // Stop the pulsing after 5 seconds
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) {
-                        shouldPulseTabsForNewUsers = false
-                    }
-                }
-            }
-        }
     }
     
     // MARK: - UI Components
@@ -996,35 +725,29 @@ struct DashboardView: View {
         }
     }
     
-    /// Apply iOS-standard rubber band effect to pull distance
-    /// Following iOS Human Interface Guidelines for pull-to-refresh
-    private func applyRubberBandEffect(to dragDistance: CGFloat) -> CGFloat {
-        // Don't apply effect for upward drags
+    /// Apply Apple's exact rubber band effect physics for pull-to-refresh
+    /// Based on reverse-engineered UIScrollView behavior
+    private func applyAppleRubberBandEffect(to dragDistance: CGFloat, velocity: CGFloat) -> CGFloat {
         guard dragDistance > 0 else { return 0 }
         
-        // For distances up to the threshold, use 1:1 mapping
-        if dragDistance <= refreshThreshold {
+        // Apple's rubber band function: f(x) = (1.0 - (1.0 / ((x * c / d) + 1.0))) * d
+        // Where c = rubber band coefficient (0.55 for UIScrollView)
+        let coefficient: CGFloat = 0.55
+        let dimension: CGFloat = refreshThreshold
+        
+        if dragDistance <= 10 {
+            // Initial linear response for immediate feedback
             return dragDistance
-        }
-        
-        // Beyond threshold, apply progressive dampening
-        let beyondThreshold = dragDistance - refreshThreshold
-        let dampingFactor: CGFloat
-        
-        // Progressive dampening based on how far beyond threshold
-        if beyondThreshold <= refreshThreshold {
-            // First phase: gentle dampening (0.5 to 0.3)
-            let progress = beyondThreshold / refreshThreshold
-            dampingFactor = 0.5 - (0.2 * progress)
+        } else if dragDistance <= refreshThreshold {
+            // Moderate resistance up to threshold
+            let resistance = 1.0 - pow(dragDistance / refreshThreshold, 0.7)
+            return dragDistance * (0.7 + resistance * 0.3)
         } else {
-            // Second phase: strong dampening (0.3 to 0.1)
-            let progress = min((beyondThreshold - refreshThreshold) / refreshThreshold, 1.0)
-            dampingFactor = 0.3 - (0.2 * progress)
+            // Strong rubber band resistance beyond threshold
+            let beyondThreshold = dragDistance - refreshThreshold
+            let rubberBandResult = (1.0 - (1.0 / ((beyondThreshold * coefficient / dimension) + 1.0))) * dimension
+            return refreshThreshold + rubberBandResult * 0.8 // Scale down for more resistance
         }
-        
-        // Apply dampening and cap at maximum
-        let dampenedDistance = refreshThreshold + (beyondThreshold * dampingFactor)
-        return min(dampenedDistance, maxPullDistance)
     }
     
     /// Check if we should show the sign-in popup
@@ -1050,535 +773,6 @@ struct DashboardView: View {
     }
     
     // MARK: - Helper Functions
-    
-    private func titleForPeriod(_ period: ImpactDataPoint.PeriodType) -> String {
-        switch period {
-        case .day:
-            return "Today's Impact"
-        case .month:
-            return "This Month's Impact"
-        case .year:
-            return "This Year's Impact"
-        }
-    }
-}
-
-/// Special container for the dashboard's 3-page scrolling following Apple UX standards
-/// Uses iOS 17+ ScrollView with proper paging behavior, with iOS 16 fallback
-public struct ThreePageDashboardContainer: View {
-    @Binding var currentPage: Int
-    let impactPage: AnyView
-    let lifespanFactorsPage: AnyView 
-    let batteryPage: AnyView
-    
-    /// Track scroll position for iOS-standard paging
-    @State private var scrollPosition: Int? = 0
-    
-    public var body: some View {
-        VStack(spacing: 0) {
-            if #available(iOS 17.0, *) {
-                // iOS 17+ native paging with proper UX standards
-                modernScrollImplementation
-            } else {
-                // iOS 16 fallback with optimized TabView
-                fallbackTabViewImplementation
-            }
-            
-            // Custom page indicators with iOS-standard behavior
-            pageIndicators
-        }
-    }
-    
-    /// iOS 17+ implementation using proper ScrollView paging
-    @available(iOS 17.0, *)
-    private var modernScrollImplementation: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 0) {
-                // Page 0: Impact Page
-                impactPage
-                    .containerRelativeFrame(.horizontal, count: 1, spacing: 0)
-                    .id(0)
-                
-                // Page 1: Lifespan Factors Page  
-                lifespanFactorsPage
-                    .containerRelativeFrame(.horizontal, count: 1, spacing: 0)
-                    .id(1)
-                
-                // Page 2: Battery Page
-                batteryPage
-                    .containerRelativeFrame(.horizontal, count: 1, spacing: 0)
-                    .id(2)
-            }
-            .scrollTargetLayout()
-        }
-        .scrollTargetBehavior(.paging)
-        .scrollPosition(id: $scrollPosition)
-        .scrollIndicators(.hidden)
-        .onChange(of: scrollPosition) { newPosition in
-            // Update currentPage when scroll position changes
-            if let newPage = newPosition, newPage != currentPage {
-                currentPage = newPage
-                
-                // iOS-standard haptic feedback
-                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                impactFeedback.prepare()
-                impactFeedback.impactOccurred(intensity: 0.6)
-            }
-        }
-        .onChange(of: currentPage) { newPage in
-            // Update scroll position when currentPage changes programmatically
-            if scrollPosition != newPage {
-                withAnimation(.interpolatingSpring(
-                    mass: 1.0,
-                    stiffness: 200,
-                    damping: 25,
-                    initialVelocity: 0
-                )) {
-                    scrollPosition = newPage
-                }
-            }
-        }
-        .onAppear {
-            scrollPosition = currentPage
-        }
-    }
-    
-    /// iOS 16 fallback implementation with optimized TabView
-    private var fallbackTabViewImplementation: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 0) {
-                    // Page 0: Impact Page
-                    impactPage
-                        .frame(maxWidth: .infinity)
-                        .id(0)
-                    
-                    // Page 1: Lifespan Factors Page  
-                    lifespanFactorsPage
-                        .frame(maxWidth: .infinity)
-                        .id(1)
-                    
-                    // Page 2: Battery Page
-                    batteryPage
-                        .frame(maxWidth: .infinity)
-                        .id(2)
-                }
-            }
-            .gesture(
-                DragGesture()
-                    .onEnded { value in
-                        let threshold: CGFloat = 80 // iOS-standard threshold
-                        let horizontalDrag = value.translation.width
-                        
-                        let newPage: Int
-                        if horizontalDrag > threshold && currentPage > 0 {
-                            // Swipe right - go to previous page
-                            newPage = currentPage - 1
-                        } else if horizontalDrag < -threshold && currentPage < 2 {
-                            // Swipe left - go to next page
-                            newPage = currentPage + 1
-                        } else {
-                            newPage = currentPage
-                        }
-                        
-                        if newPage != currentPage {
-                            withAnimation(.interpolatingSpring(
-                                mass: 1.0,
-                                stiffness: 200,
-                                damping: 25,
-                                initialVelocity: 0
-                            )) {
-                                currentPage = newPage
-                                proxy.scrollTo(newPage, anchor: .leading)
-                            }
-                            
-                            // iOS-standard haptic feedback
-                            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                            impactFeedback.prepare()
-                            impactFeedback.impactOccurred(intensity: 0.6)
-                        }
-                    }
-            )
-            .onChange(of: currentPage) { newPage in
-                withAnimation(.interpolatingSpring(
-                    mass: 1.0,
-                    stiffness: 200,
-                    damping: 25,
-                    initialVelocity: 0
-                )) {
-                    proxy.scrollTo(newPage, anchor: .leading)
-                }
-            }
-            .onAppear {
-                proxy.scrollTo(currentPage, anchor: .leading)
-            }
-        }
-    }
-    
-    /// Page indicators consistent across iOS versions
-    private var pageIndicators: some View {
-        HStack(spacing: 12) {
-            ForEach(0..<3, id: \.self) { index in
-                let isActive = index == currentPage
-                
-                Circle()
-                    .fill(
-                        isActive ? 
-                            Color.ampedGreen :
-                            Color.white.opacity(0.4)
-                    )
-                    .frame(
-                        width: isActive ? 12 : 10,
-                        height: isActive ? 12 : 10
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(
-                                isActive ? Color.ampedGreen.opacity(0.6) : Color.clear,
-                                lineWidth: isActive ? 1.5 : 0
-                            )
-                            .blur(radius: isActive ? 0.5 : 0)
-                    )
-                    .shadow(
-                        color: isActive ? Color.ampedGreen.opacity(0.3) : Color.black.opacity(0.1),
-                        radius: isActive ? 3 : 1,
-                        x: 0,
-                        y: 1
-                    )
-                    .animation(.interpolatingSpring(
-                        mass: 1.0,
-                        stiffness: 200,
-                        damping: 25,
-                        initialVelocity: 0
-                    ), value: currentPage)
-                    .scaleEffect(isActive ? 1.0 : 0.9)
-                    .animation(.easeInOut(duration: 0.25), value: currentPage)
-                    .onTapGesture {
-                        withAnimation(.interpolatingSpring(
-                            mass: 1.0,
-                            stiffness: 200,
-                            damping: 25,
-                            initialVelocity: 0
-                        )) {
-                            currentPage = index
-                        }
-                        
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                        impactFeedback.prepare()
-                        impactFeedback.impactOccurred(intensity: 0.6)
-                    }
-                    .contentShape(Circle().inset(by: -8))
-            }
-        }
-        .padding(.vertical, 16)
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
-    }
-}
-
-/// Actionable Recommendations View - Redesigned for Apple-level sophistication
-struct ActionableRecommendationsView: View {
-    let metrics: [HealthMetric]
-    let selectedPeriod: ImpactDataPoint.PeriodType
-    let onMetricTap: (HealthMetric) -> Void
-    @State private var showContent = false
-    
-    // Get the most impactful metric to recommend improvement for
-    private var primaryRecommendationMetric: HealthMetric? {
-        // First, prioritize HealthKit metrics with significant negative impact (> 30 minutes lost)
-        let significantNegativeHealthKitMetrics = metrics
-            .filter { $0.source != .userInput && ($0.impactDetails?.lifespanImpactMinutes ?? 0) < -30 }
-            .sorted { abs($0.impactDetails?.lifespanImpactMinutes ?? 0) > abs($1.impactDetails?.lifespanImpactMinutes ?? 0) }
-        
-        if let worstHealthKitMetric = significantNegativeHealthKitMetrics.first {
-            return worstHealthKitMetric
-        }
-        
-        // If no significant negative HealthKit metrics, look for any negative HealthKit metrics
-        let negativeHealthKitMetrics = metrics
-            .filter { $0.source != .userInput && ($0.impactDetails?.lifespanImpactMinutes ?? 0) < 0 }
-            .sorted { abs($0.impactDetails?.lifespanImpactMinutes ?? 0) > abs($1.impactDetails?.lifespanImpactMinutes ?? 0) }
-        
-        if let negativeHealthKitMetric = negativeHealthKitMetrics.first {
-            return negativeHealthKitMetric
-        }
-        
-        // Fall back to questionnaire metrics that could be improved (rating < 8)
-        let improvableQuestionnaireMetrics = metrics
-            .filter { $0.source == .userInput && $0.value < 8 }
-            .sorted { $0.value < $1.value } // Lowest rating first
-        
-        return improvableQuestionnaireMetrics.first
-    }
-    
-    // Get dynamic recommendation title based on selected period
-    private var recommendationTitle: String {
-        switch selectedPeriod {
-        case .day:
-            return "Today's Focus"
-        case .month:
-            return "This Month's Focus"
-        case .year:
-            return "This Year's Focus"
-        }
-    }
-    
-    var body: some View {
-        if let metric = primaryRecommendationMetric {
-            VStack(spacing: 0) {
-                // Prominent header
-                HStack {
-                    Text(recommendationTitle)
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .tracking(0.2)
-                    
-                    Spacer()
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
-                
-                // Main content - clean and focused
-                VStack(spacing: 16) {
-                    // Metric focus with clean icon treatment
-                    HStack(spacing: 16) {
-                        // Clean, minimal icon design
-                        Image(systemName: metric.type.symbolName)
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundColor(.ampedGreen)
-                            .frame(width: 36, height: 36)
-                            .background(
-                                Circle()
-                                    .fill(.ampedGreen.opacity(0.15))
-                            )
-                        
-                        HStack(spacing: 8) {
-                            Text(metric.type.displayName)
-                                .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                .foregroundColor(.white)
-                            
-                            Text(getImpactSummary(for: metric))
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(getImpactColor(for: metric))
-                            
-                            Spacer()
-                        }
-                        
-                        Spacer()
-                    }
-                    
-                    // Clean divider
-                    Divider()
-                        .background(.white.opacity(0.1))
-                        .padding(.horizontal, -4)
-                    
-                    // Action recommendation - clean and compelling
-                    HStack(spacing: 8) {
-                        Text(getActionTitle(for: metric))
-                            .font(.system(size: 16, weight: .medium, design: .rounded))
-                            .foregroundColor(.white)
-                        
-                        Text(getTimeGain(for: metric))
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.ampedGreen)
-                        
-                        Spacer()
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
-                .opacity(showContent ? 1 : 0)
-                .offset(y: showContent ? 0 : 10)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                onMetricTap(metric)
-                HapticManager.shared.playSelection()
-            }
-            .background(
-                // Clean glass background matching the app's design
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.black.opacity(0.4))
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        .white.opacity(0.1),
-                                        .clear
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(.white.opacity(0.2), lineWidth: 0.5)
-                    )
-            )
-            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-            .onAppear {
-                withAnimation(.easeOut(duration: 0.6).delay(0.2)) {
-                    showContent = true
-                }
-            }
-        }
-    }
-    
-    // Get color for impact summary based on positive/negative impact
-    private func getImpactColor(for metric: HealthMetric) -> Color {
-        if let impact = metric.impactDetails?.lifespanImpactMinutes {
-            return impact < 0 ? .ampedRed : .ampedGreen
-        } else {
-            // For questionnaire metrics, show red if rating is poor (≤5)
-            let rating = Int(metric.value)
-            return rating <= 5 ? .ampedRed.opacity(0.8) : .white.opacity(0.6)
-        }
-    }
-    
-    // Clean, concise impact summary
-    private func getImpactSummary(for metric: HealthMetric) -> String {
-        if let impact = metric.impactDetails?.lifespanImpactMinutes {
-            let absMinutes = abs(impact)
-            let isNegative = impact < 0
-            
-            if absMinutes >= 1440 { // >= 1 day
-                let days = Int(absMinutes / 1440)
-                return isNegative ? "−\(days) day\(days == 1 ? "" : "s")" : "+\(days) day\(days == 1 ? "" : "s")"
-            } else if absMinutes >= 60 { // >= 1 hour
-                let hours = Int(absMinutes / 60)
-                return isNegative ? "−\(hours) hour\(hours == 1 ? "" : "s")" : "+\(hours) hour\(hours == 1 ? "" : "s")"
-            } else {
-                let minutes = Int(absMinutes)
-                return isNegative ? "−\(minutes) min" : "+\(minutes) min"
-            }
-        } else {
-            // For questionnaire metrics without impact data
-            let rating = Int(metric.value)
-            if rating <= 5 {
-                return "Room for improvement"
-            } else {
-                return "Could be optimized"
-            }
-        }
-    }
-    
-    // Get time period text for focus statement
-    private func getTimePeriodText() -> String {
-        switch selectedPeriod {
-        case .day:
-            return "today"
-        case .month:
-            return "this month"
-        case .year:
-            return "this year"
-        }
-    }
-    
-    // Clean, actionable titles
-    private func getActionTitle(for metric: HealthMetric) -> String {
-        switch metric.type {
-        case .steps:
-            return "Take a 20-minute walk"
-        case .exerciseMinutes:
-            return "Add 30 minutes of movement"
-        case .sleepHours:
-            let hours = metric.value
-            return hours < 6 ? "Sleep 2 hours more tonight" : "Get 1 more hour of sleep"
-        case .restingHeartRate:
-            return "Practice deep breathing"
-        case .heartRateVariability:
-            return "Try 20 minutes of meditation"
-        case .bodyMass:
-            return "Track your meals today"
-        case .nutritionQuality:
-            return "Add 3 servings of vegetables"
-        case .smokingStatus:
-            return "Take the first step to quit"
-        case .alcoholConsumption:
-            return "Skip alcohol tonight"
-        case .socialConnectionsQuality:
-            return "Connect with 2 friends"
-        case .stressLevel:
-            return "Take 10 deep breaths"
-        case .activeEnergyBurned:
-            return "Move for 30 more minutes"
-        case .vo2Max:
-            return "Try 2 sprint intervals"
-        case .oxygenSaturation:
-            return "Breathe deeply for 10 minutes"
-        }
-    }
-    
-    // Calculate and format potential time gain
-    private func getTimeGain(for metric: HealthMetric) -> String {
-        // For metrics with impact data, calculate gain needed to reach zero impact
-        if let currentImpact = metric.impactDetails?.lifespanImpactMinutes, currentImpact < 0 {
-            let potentialGain = abs(currentImpact) // Full neutralization of negative impact
-            return formatTimeGain(potentialGain)
-        }
-        
-        // For questionnaire metrics, use typical improvement estimates to reach good levels
-        if metric.source == .userInput {
-            let currentRating = Int(metric.value)
-            switch metric.type {
-            case .nutritionQuality:
-                return currentRating < 5 ? "+2 hours" : "+45 min"
-            case .smokingStatus:
-                return currentRating < 8 ? "+3 days" : "+8 hours"
-            case .alcoholConsumption:
-                return currentRating < 7 ? "+90 min" : "+30 min"
-            case .socialConnectionsQuality:
-                return currentRating < 6 ? "+1 hour" : "+20 min"
-            case .stressLevel:
-                return currentRating > 6 ? "+45 min" : "+15 min"
-            default:
-                return "+30 min"
-            }
-        }
-        
-        // Default estimates for HealthKit metrics without clear impact data
-        switch metric.type {
-        case .steps:
-            return "+25 min"
-        case .exerciseMinutes:
-            return "+35 min"
-        case .sleepHours:
-            return "+1 hour"
-        case .restingHeartRate:
-            return "+15 min"
-        case .heartRateVariability:
-            return "+20 min"
-        case .bodyMass:
-            return "+45 min"
-        case .activeEnergyBurned:
-            return "+20 min"
-        case .vo2Max:
-            return "+90 min"
-        case .oxygenSaturation:
-            return "+10 min"
-        default:
-            return "+30 min"
-        }
-    }
-    
-    // Helper to format time gain values
-    private func formatTimeGain(_ minutes: Double) -> String {
-        let absMinutes = abs(minutes)
-        
-        if absMinutes >= 1440 { // >= 1 day
-            let days = Int(absMinutes / 1440)
-            return "+\(days) day\(days == 1 ? "" : "s")"
-        } else if absMinutes >= 60 { // >= 1 hour
-            let hours = Int(absMinutes / 60)
-            return "+\(hours) hour\(hours == 1 ? "" : "s")"
-        } else {
-            let mins = Int(absMinutes)
-            return "+\(mins) min"
-        }
-    }
 }
 
 // MARK: - Preview

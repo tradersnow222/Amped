@@ -139,6 +139,10 @@ struct QuestionnaireView: View {
             QuestionViews.NameQuestionView(
                 viewModel: viewModel
             )
+        case .stressLevel:
+            QuestionViews.StressQuestionView(
+                viewModel: viewModel
+            )
         case .gender:
             QuestionViews.GenderQuestionView(
                 viewModel: viewModel

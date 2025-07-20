@@ -86,6 +86,20 @@ final class HapticManager {
         generator.prepare()
         generator.notificationOccurred(.error)
     }
+    
+    /// Play impact haptic feedback with specified intensity
+    func playImpact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        let generator = UIImpactFeedbackGenerator(style: style)
+        generator.prepare()
+        generator.impactOccurred()
+    }
+    
+    /// Play notification haptic feedback
+    func playNotification(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        generator.notificationOccurred(type)
+    }
 }
 
 // MARK: - Dashboard UI Components
