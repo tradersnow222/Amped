@@ -6,38 +6,31 @@ import OSLog
 class CardiovascularImpactCalculator {
     private let logger = Logger(subsystem: "Amped", category: "CardiovascularImpactCalculator")
     
+    // MARK: - Global Constants (from Playbook)
+    private let baselineLifeMinutes = 78.0 * 365.25 * 24 * 60  // 78 years in minutes
+    
     // MARK: - Resting Heart Rate Impact Calculation
     
-    /// Calculate resting heart rate impact using research-based linear dose-response
+    /// Calculate resting heart rate impact using exact playbook linear formula
     /// Based on Aune et al. (2013) CMAJ meta-analysis
     func calculateRestingHeartRateImpact(heartRate: Double, userProfile: UserProfile) -> MetricImpactDetail {
-        logger.info("❤️ Calculating resting heart rate impact for \(Int(heartRate)) bpm using research-based formula")
+        logger.info("❤️ Calculating resting heart rate impact for \(Int(heartRate)) bpm using linear formula")
         
         let studies = StudyReferenceProvider.getApplicableStudies(for: .restingHeartRate, userProfile: userProfile)
         let primaryStudy = studies.first ?? StudyReferenceProvider.cardiovascularResearch[0]
         
-        // Research-based optimal range: 50-70 bpm for healthy adults
-        let optimalRHR = 60.0
-        let healthyRange = 50.0...70.0
-        
-        // Calculate impact using research-derived linear model
+        // Calculate impact using exact playbook linear model
         let dailyImpactMinutes = calculateRHRLifeImpact(
             currentRHR: heartRate,
-            optimalRHR: optimalRHR,
-            healthyRange: healthyRange,
             userProfile: userProfile
         )
         
-        let recommendation = generateRHRRecommendation(
-            currentRHR: heartRate,
-            optimalRHR: optimalRHR,
-            healthyRange: healthyRange
-        )
+        let recommendation = generateRHRRecommendation(currentRHR: heartRate)
         
         return MetricImpactDetail(
             metricType: .restingHeartRate,
             currentValue: heartRate,
-            baselineValue: optimalRHR,
+            baselineValue: 60.0, // Reference from playbook
             studyReferences: studies,
             lifespanImpactMinutes: dailyImpactMinutes,
             calculationMethod: .directStudyMapping,
@@ -45,77 +38,52 @@ class CardiovascularImpactCalculator {
         )
     }
     
-    /// Research-based RHR life impact using linear dose-response
-    /// Based on meta-analysis showing 16% increased mortality per 10 bpm increase above 60
-    private func calculateRHRLifeImpact(currentRHR: Double, optimalRHR: Double, healthyRange: ClosedRange<Double>, userProfile: UserProfile) -> Double {
-        // Clamp to physiologically reasonable range
-        let effectiveRHR = max(40, min(currentRHR, 120))
+    /// Research-based RHR life impact using exact playbook linear formula
+    /// Linear risk: +16% per 10 bpm > 60, scaling factor 0.04
+    private func calculateRHRLifeImpact(currentRHR: Double, userProfile: UserProfile) -> Double {
+        let bpm = max(40, min(currentRHR, 120))
+        let reference = 60.0  // Reference point from playbook
         
-        // Research findings: Linear relationship between RHR and mortality
-        // Each 10 bpm increase above 60 associated with 16% increased mortality
-        let difference = effectiveRHR - optimalRHR
+        // Linear risk: +16% per 10 bpm > 60
+        let bpmDifference = bpm - reference
+        let relativeRisk = 1.0 + (bpmDifference / 10.0) * 0.16
         
-        let relativeRisk: Double
-        if healthyRange.contains(effectiveRHR) {
-            // Within healthy range: minimal impact
-            relativeRisk = 1.0 + (abs(difference) * 0.02) // Small penalty for deviation from optimal
-        } else if effectiveRHR > healthyRange.upperBound {
-            // Above healthy range: linear increase in risk
-            let excessBPM = effectiveRHR - healthyRange.upperBound
-            let riskIncreasePer10BPM = 0.16 // 16% from research
-            relativeRisk = 1.0 + ((excessBPM / 10.0) * riskIncreasePer10BPM)
-        } else {
-            // Below healthy range: potential issues but not well studied
-            let deficitBPM = healthyRange.lowerBound - effectiveRHR
-            relativeRisk = 1.0 + ((deficitBPM / 10.0) * 0.08) // Conservative estimate
-        }
-        
-        // Convert relative risk to daily life minutes
-        let baselineLifeExpectancy = 78.0 * 365.25 * 24 * 60
+        // Convert relative risk to daily life minutes using playbook formula
         let riskReduction = 1.0 - relativeRisk
-        let totalLifeMinutesImpact = baselineLifeExpectancy * riskReduction * 0.04 // ~4% max impact
+        let impactScaling = 0.04  // Scaling factor from playbook
+        let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
         
         // Convert to daily impact
         let remainingYears = max(1.0, 78.0 - Double(userProfile.age ?? 40))
-        let dailyImpact = totalLifeMinutesImpact / (remainingYears * 365.25)
+        let dailyImpact = totalLifeMinChange / (remainingYears * 365.25)
         
-        logger.info("📊 RHR impact: \(Int(currentRHR)) bpm → \(String(format: "%.1f", dailyImpact)) minutes/day (RR: \(String(format: "%.2f", relativeRisk)))")
+        logger.info("📊 RHR impact: \(Int(bpm)) bpm → \(String(format: "%.1f", dailyImpact)) minutes/day (RR: \(String(format: "%.3f", relativeRisk)))")
         
         return dailyImpact
     }
     
     // MARK: - Sleep Duration Impact Calculation
     
-    /// Calculate sleep duration impact using research-based U-shaped curve
+    /// Calculate sleep duration impact using exact playbook U-shaped curve
     /// Based on Jike et al. (2018) Sleep Medicine meta-analysis
     func calculateSleepImpact(sleepHours: Double, userProfile: UserProfile) -> MetricImpactDetail {
-        logger.info("😴 Calculating sleep impact for \(String(format: "%.1f", sleepHours)) hours using research-based formula")
+        logger.info("😴 Calculating sleep impact for \(String(format: "%.1f", sleepHours)) hours using U-shaped model")
         
         let studies = StudyReferenceProvider.getApplicableStudies(for: .sleepHours, userProfile: userProfile)
         let primaryStudy = studies.first ?? StudyReferenceProvider.sleepResearch[0]
         
-        // Research-based optimal range: 7-8 hours for most adults
-        let optimalSleep = 7.5
-        let healthyRange = 7.0...8.0
-        
-        // Calculate impact using research-derived U-shaped model
+        // Calculate impact using exact playbook U-shaped model
         let dailyImpactMinutes = calculateSleepLifeImpact(
             currentSleep: sleepHours,
-            optimalSleep: optimalSleep,
-            healthyRange: healthyRange,
             userProfile: userProfile
         )
         
-        let recommendation = generateSleepRecommendation(
-            currentSleep: sleepHours,
-            optimalSleep: optimalSleep,
-            healthyRange: healthyRange
-        )
+        let recommendation = generateSleepRecommendation(currentSleep: sleepHours)
         
         return MetricImpactDetail(
             metricType: .sleepHours,
             currentValue: sleepHours,
-            baselineValue: optimalSleep,
+            baselineValue: 7.5, // Optimal from playbook
             studyReferences: studies,
             lifespanImpactMinutes: dailyImpactMinutes,
             calculationMethod: .interpolatedDoseResponse,
@@ -123,128 +91,101 @@ class CardiovascularImpactCalculator {
         )
     }
     
-    /// Research-based sleep life impact using U-shaped curve
-    /// Based on meta-analysis showing increased mortality for both short and long sleep
-    private func calculateSleepLifeImpact(currentSleep: Double, optimalSleep: Double, healthyRange: ClosedRange<Double>, userProfile: UserProfile) -> Double {
-        // Clamp to reasonable range
-        let effectiveSleep = max(3, min(currentSleep, 12))
-        
-        // Research findings: U-shaped relationship
-        // Short sleep (<6h): 12% increased mortality
-        // Long sleep (>9h): 17% increased mortality
-        // Optimal: 7-8 hours
+    /// Research-based sleep life impact using exact playbook U-shaped penalties
+    /// U-shaped penalties: Short <6h: +8% RR per hr deficit, Borderline 6–7h: +6% RR/hr, etc.
+    private func calculateSleepLifeImpact(currentSleep: Double, userProfile: UserProfile) -> Double {
+        let sleepH = max(3, min(currentSleep, 12))
         
         let relativeRisk: Double
         
-        if healthyRange.contains(effectiveSleep) {
-            // Within optimal range: minimal risk
-            let deviation = abs(effectiveSleep - optimalSleep)
-            relativeRisk = 1.0 + (deviation * 0.02) // Small penalty for deviation from optimal
-        } else if effectiveSleep < 6.0 {
-            // Short sleep: Increased mortality risk
-            let shortageHours = 6.0 - effectiveSleep
-            // Research: 12% increased risk for short sleep, scaling with severity
-            relativeRisk = 1.0 + (shortageHours * 0.08) // Progressive risk increase
-        } else if effectiveSleep > 9.0 {
-            // Long sleep: Increased mortality risk (often due to underlying health issues)
-            let excessHours = effectiveSleep - 9.0
-            // Research: 17% increased risk for long sleep, scaling with excess
-            relativeRisk = 1.0 + (excessHours * 0.10) // Progressive risk increase
+        if sleepH >= 7.0 && sleepH <= 8.0 {
+            // Optimal band 7–8 h: +2% RR / 0.5 h deviation
+            let deviation = min(abs(sleepH - 7.5), 0.5)
+            relativeRisk = 1.0 + (deviation / 0.5) * 0.02
+        } else if sleepH < 6.0 {
+            // Short <6 h: +8% RR per hr deficit
+            let deficit = 6.0 - sleepH
+            relativeRisk = 1.0 + deficit * 0.08
+        } else if sleepH < 7.0 {
+            // Borderline 6–7 h: +6% RR / hr
+            let deficit = 7.0 - sleepH
+            relativeRisk = 1.0 + deficit * 0.06
+        } else if sleepH <= 9.0 {
+            // Borderline 8–9 h: +6% RR / hr excess
+            let excess = sleepH - 8.0
+            relativeRisk = 1.0 + excess * 0.06
         } else {
-            // Borderline ranges (6-7h, 8-9h): Moderate risk
-            if effectiveSleep < healthyRange.lowerBound {
-                let shortfall = healthyRange.lowerBound - effectiveSleep
-                relativeRisk = 1.0 + (shortfall * 0.06)
-            } else {
-                let excess = effectiveSleep - healthyRange.upperBound
-                relativeRisk = 1.0 + (excess * 0.08)
-            }
+            // Excess >9 h: +10% RR / hr
+            let excess = sleepH - 9.0
+            relativeRisk = 1.0 + excess * 0.10
         }
         
-        // Convert relative risk to daily life minutes
-        let baselineLifeExpectancy = 78.0 * 365.25 * 24 * 60
+        // Convert relative risk to daily life minutes using playbook formula
         let riskReduction = 1.0 - relativeRisk
-        let totalLifeMinutesImpact = baselineLifeExpectancy * riskReduction * 0.05 // ~5% max impact
+        let impactScaling = 0.05  // impactScaling from playbook
+        let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
         
         // Convert to daily impact
         let remainingYears = max(1.0, 78.0 - Double(userProfile.age ?? 40))
-        let dailyImpact = totalLifeMinutesImpact / (remainingYears * 365.25)
+        let dailyImpact = totalLifeMinChange / (remainingYears * 365.25)
         
-        logger.info("📊 Sleep impact: \(String(format: "%.1f", currentSleep))h → \(String(format: "%.1f", dailyImpact)) minutes/day (RR: \(String(format: "%.2f", relativeRisk)))")
+        logger.info("📊 Sleep impact: \(String(format: "%.1f", sleepH))h → \(String(format: "%.1f", dailyImpact)) minutes/day (RR: \(String(format: "%.3f", relativeRisk)))")
         
         return dailyImpact
     }
     
-    // MARK: - Heart Rate Variability Impact (Estimated)
+    // MARK: - Heart Rate Variability Impact
     
-    /// Calculate HRV impact using cardiovascular research principles
-    /// Note: Limited direct mortality studies, using cardiovascular health proxy
+    /// Calculate HRV impact using exact playbook formula
+    /// Reference 40 ms = 0 impact. ±17.4 min per 10 ms, plateau ±70 ms
     func calculateHRVImpact(hrv: Double, userProfile: UserProfile) -> MetricImpactDetail {
-        logger.info("📈 Calculating HRV impact for \(Int(hrv)) ms using cardiovascular research principles")
+        logger.info("📈 Calculating HRV impact for \(Int(hrv)) ms using exact playbook formula")
         
         let studies = StudyReferenceProvider.getApplicableStudies(for: .heartRateVariability, userProfile: userProfile)
         
-        // Age-adjusted optimal HRV (decreases with age)
-        let ageAdjustedOptimal = calculateAgeAdjustedOptimalHRV(age: userProfile.age ?? 40)
-        
-        // HRV impact is less direct but follows cardiovascular health principles
+        // Calculate impact using exact playbook formula
         let dailyImpactMinutes = calculateHRVLifeImpact(
             currentHRV: hrv,
-            optimalHRV: ageAdjustedOptimal,
-            userAge: userProfile.age ?? 40
+            userProfile: userProfile
         )
         
-        let recommendation = generateHRVRecommendation(currentHRV: hrv, optimalHRV: ageAdjustedOptimal)
+        let recommendation = generateHRVRecommendation(currentHRV: hrv, optimalHRV: 40.0)
         
         return MetricImpactDetail(
             metricType: .heartRateVariability,
             currentValue: hrv,
-            baselineValue: ageAdjustedOptimal,
+            baselineValue: 40.0, // Reference from playbook
             studyReferences: studies,
             lifespanImpactMinutes: dailyImpactMinutes,
-            calculationMethod: .expertConsensus, // Limited direct mortality data
+            calculationMethod: .expertConsensus,
             recommendation: recommendation
         )
     }
     
-    private func calculateAgeAdjustedOptimalHRV(age: Int) -> Double {
-        // HRV decreases with age - approximate formula based on research
-        let baseHRV = 50.0 // Young adult baseline
-        let ageDeclineRate = 0.8 // Per year decline
-        return max(15.0, baseHRV - (Double(age - 20) * ageDeclineRate))
-    }
-    
-    private func calculateHRVLifeImpact(currentHRV: Double, optimalHRV: Double, userAge: Int?) -> Double {
-        let age = userAge ?? 30 // Default age if not provided
-        let effectiveHRV = max(5, min(currentHRV, 100))
-        let hrvRatio = effectiveHRV / optimalHRV
+    /// HRV life impact using exact playbook formula
+    /// Reference 40 ms = 0 impact. +17.4 min per 10 ms above, −17.4 min per 10 ms below, plateau ±70 ms
+    private func calculateHRVLifeImpact(currentHRV: Double, userProfile: UserProfile) -> Double {
+        let hrv = max(5, min(currentHRV, 150))  // Reasonable bounds
+        let reference = 40.0  // Reference point from playbook
         
-        // HRV impact is more conservative due to limited direct mortality evidence
-        let relativeRisk: Double
-        if hrvRatio >= 0.8 && hrvRatio <= 1.2 {
-            relativeRisk = 1.0 // Within normal range
-        } else if hrvRatio < 0.8 {
-            // Low HRV: Associated with cardiovascular risk
-            let deficit = 0.8 - hrvRatio
-            relativeRisk = 1.0 + (deficit * 0.05) // Conservative estimate
-        } else {
-            // High HRV: Generally beneficial
-            let excess = hrvRatio - 1.2
-            relativeRisk = 1.0 - (excess * 0.02) // Small benefit
-        }
+        // Calculate deviation from reference
+        let hrvDifference = hrv - reference
         
-        // Convert with conservative scaling due to limited direct evidence
-        let baselineLifeExpectancy = 78.0 * 365.25 * 24 * 60
-        let riskReduction = 1.0 - relativeRisk
-        let totalLifeMinutesImpact = baselineLifeExpectancy * riskReduction * 0.02 // ~2% max impact (conservative)
+        // Clamp to plateau at ±70 ms
+        let clampedDifference = max(-70.0, min(hrvDifference, 70.0))
         
-        let remainingYears = max(1.0, 78.0 - Double(userAge ?? 40))
-        return totalLifeMinutesImpact / (remainingYears * 365.25)
+        // Direct calculation: ±17.4 min per 10 ms deviation
+        let dailyImpact = (clampedDifference / 10.0) * 17.4
+        
+        logger.info("📊 HRV impact: \(String(format: "%.1f", hrv)) ms → \(String(format: "%.1f", dailyImpact)) minutes/day")
+        
+        return dailyImpact
     }
     
     // MARK: - Recommendation Generation
     
-    private func generateRHRRecommendation(currentRHR: Double, optimalRHR: Double, healthyRange: ClosedRange<Double>) -> String {
+    private func generateRHRRecommendation(currentRHR: Double) -> String {
+        let healthyRange = 50.0...70.0
         if healthyRange.contains(currentRHR) {
             return "Great! Your resting heart rate is in the healthy range. Maintain your current fitness level."
         } else if currentRHR > healthyRange.upperBound {
@@ -255,7 +196,9 @@ class CardiovascularImpactCalculator {
         }
     }
     
-    private func generateSleepRecommendation(currentSleep: Double, optimalSleep: Double, healthyRange: ClosedRange<Double>) -> String {
+    private func generateSleepRecommendation(currentSleep: Double) -> String {
+        let optimalSleep = 7.5
+        let healthyRange = 7.0...8.0
         if healthyRange.contains(currentSleep) {
             return "Perfect! You're getting optimal sleep duration. Maintain good sleep hygiene for best quality."
         } else if currentSleep < healthyRange.lowerBound {
@@ -277,4 +220,4 @@ class CardiovascularImpactCalculator {
             return "Excellent HRV! Your autonomic nervous system shows good balance and recovery capacity."
         }
     }
-} 
+}

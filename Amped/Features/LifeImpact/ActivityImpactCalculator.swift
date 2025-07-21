@@ -6,38 +6,32 @@ import OSLog
 class ActivityImpactCalculator {
     private let logger = Logger(subsystem: "Amped", category: "ActivityImpactCalculator")
     
+    // MARK: - Global Constants (from Playbook)
+    private let baselineLifeMinutes = 78.0 * 365.25 * 24 * 60  // 78 years in minutes
+    
     // MARK: - Steps Impact Calculation
     
-    /// Calculate steps impact using research-based J-shaped dose-response curve
-    /// Based on Saint-Maurice et al. (2020) JAMA, Paluch et al. (2022) Lancet Public Health, 
-    /// Lee et al. (2019) JAMA Internal Medicine, and overuse injury research
+    /// Calculate steps impact using J-shaped logarithmic model from playbook
+    /// Based on Saint-Maurice et al. (2020) JAMA, Paluch et al. (2022) Lancet Public Health
     func calculateStepsImpact(steps: Double, userProfile: UserProfile) -> MetricImpactDetail {
-        logger.info("🚶 Calculating steps impact for \(Int(steps)) steps using research-based formula")
+        logger.info("🚶 Calculating steps impact for \(Int(steps)) steps using J-shaped model")
         
         let studies = StudyReferenceProvider.getApplicableStudies(for: .steps, userProfile: userProfile)
         let primaryStudy = studies.first ?? StudyReferenceProvider.stepsResearch[0]
         
-        // Research-based optimal range: 8,000-12,000 steps per day
-        let optimalSteps = 10000.0
-        let minimumBenefit = 4000.0  // From Saint-Maurice study
-        let maximumBenefit = 12000.0 // Point of diminishing returns
-        
-        // Calculate impact using research-derived logarithmic model
+        // Calculate impact using exact playbook J-shaped model
         let dailyImpactMinutes = calculateStepsLifeImpact(
             currentSteps: steps,
-            optimalSteps: optimalSteps,
-            minimumBenefit: minimumBenefit,
-            maximumBenefit: maximumBenefit,
             userProfile: userProfile
         )
         
         // Generate evidence-based recommendation
-        let recommendation = generateStepsRecommendation(currentSteps: steps, optimalSteps: optimalSteps)
+        let recommendation = generateStepsRecommendation(currentSteps: steps)
         
         return MetricImpactDetail(
             metricType: .steps,
             currentValue: steps,
-            baselineValue: optimalSteps,
+            baselineValue: 10000.0, // Optimal from playbook
             studyReferences: studies,
             lifespanImpactMinutes: dailyImpactMinutes,
             calculationMethod: .interpolatedDoseResponse,
@@ -45,62 +39,43 @@ class ActivityImpactCalculator {
         )
     }
     
-    /// Research-based steps life impact calculation using J-shaped dose-response
-    /// Based on meta-analysis findings showing non-linear benefits and overuse risks
+    /// Research-based steps life impact calculation using exact J-shaped model from playbook
+    /// All values match the playbook table exactly
     private func calculateStepsLifeImpact(
         currentSteps: Double,
-        optimalSteps: Double,
-        minimumBenefit: Double,
-        maximumBenefit: Double,
         userProfile: UserProfile
     ) -> Double {
-        // Enhanced algorithm based on Saint-Maurice et al. 2020 + overuse injury research
-        // J-shaped curve: benefits plateau then decline due to overuse risks
-        let clampedSteps = max(500, min(currentSteps, 35000)) // Extended range for realistic calculation
+        let steps = max(0, currentSteps)
         
         let relativeRisk: Double
-        if clampedSteps < 2700 {
-            // Very sedentary (below Lee et al. 2019 minimum): Severe risk with gradient
-            let sedentaryRatio = clampedSteps / 2700.0
-            relativeRisk = 1.6 - (0.2 * sedentaryRatio) // 60% risk decreasing to 40% as steps increase
-        } else if clampedSteps < minimumBenefit {
-            // Low activity (2700-4000): Moderate risk with gradient improvement
-            let lowActivityRatio = (clampedSteps - 2700) / (minimumBenefit - 2700)
-            relativeRisk = 1.4 - (0.1 * lowActivityRatio) // 40% risk decreasing to 30% 
-        } else if clampedSteps <= optimalSteps {
-            // Improvement zone (4000-10000): Logarithmic benefits
-            let stepRatio = (clampedSteps - minimumBenefit) / (optimalSteps - minimumBenefit)
-            relativeRisk = 1.3 - (0.35 * log(1 + stepRatio * (exp(1) - 1))) // Optimized curve
-        } else if clampedSteps <= maximumBenefit {
-            // Optimal zone (10000-12000): Peak benefits with diminishing returns
-            let additionalRatio = (clampedSteps - optimalSteps) / (maximumBenefit - optimalSteps)
-            relativeRisk = 0.95 - (0.05 * additionalRatio) // Small additional benefit to 0.90
-        } else if clampedSteps <= 20000 {
-            // High activity (12000-20000): Plateaued benefits, emerging injury risk
-            let highActivityRatio = (clampedSteps - maximumBenefit) / (20000 - maximumBenefit)
-            let injuryRiskPenalty = highActivityRatio * 0.03 // 3% risk increase due to overuse
-            relativeRisk = 0.90 + injuryRiskPenalty // Benefits maintained but injury risk grows
-        } else if clampedSteps <= 25000 {
-            // Very high activity (20000-25000): Net benefits decline due to overuse
-            let veryHighRatio = (clampedSteps - 20000) / 5000.0
-            relativeRisk = 0.93 + (veryHighRatio * 0.07) // Injury risks outweigh benefits
+        
+        if steps < 2700 {
+            relativeRisk = 1.6 - 0.2 * (steps / 2700)
+        } else if steps < 4000 {
+            relativeRisk = 1.4 - 0.1 * ((steps - 2700) / (4000 - 2700))
+        } else if steps <= 10000 {
+            let ratio = (steps - 4000) / (10000 - 4000)
+            relativeRisk = 1.3 - 0.35 * log(1 + ratio * (exp(1) - 1))
+        } else if steps <= 12000 {
+            relativeRisk = 0.95 - 0.05 * ((steps - 10000) / 2000)
+        } else if steps <= 20000 {
+            relativeRisk = 0.90 + 0.03 * ((steps - 12000) / 8000)
+        } else if steps <= 25000 {
+            relativeRisk = 0.93 + 0.07 * ((steps - 20000) / 5000)
         } else {
-            // Extreme activity (25000+): Net negative due to overuse injuries and stress
-            let extremeExcess = min((clampedSteps - 25000) / 10000.0, 1.0) // Cap at 100% excess
-            relativeRisk = 1.00 + (extremeExcess * 0.15) // Net harmful: up to 15% increased risk
+            relativeRisk = 1.00 + 0.15 * min((steps - 25000) / 10000, 1)
         }
         
-        // Convert relative risk to daily life minutes using research-derived conversion
-        // Based on Saint-Maurice et al. (2020): 50% mortality reduction = 3.2 years gained
-        let baselineLifeExpectancy = 78.0 * 365.25 * 24 * 60 // Average life expectancy in minutes
+        // Convert relative risk to daily life minutes using playbook formula
         let riskReduction = 1.0 - relativeRisk
-        let totalLifeMinutesGained = baselineLifeExpectancy * riskReduction * 0.082 // Research-aligned scaling: 3.2 years for 50% risk reduction
+        let impactScaling = 0.082  // 3.2 y gain for 50% RR reduction
+        let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
         
-        // Convert to daily impact (spread over expected remaining lifespan)
+        // Convert to daily impact
         let remainingYears = max(1.0, 78.0 - Double(userProfile.age ?? 40))
-        let dailyImpact = totalLifeMinutesGained / (remainingYears * 365.25)
+        let dailyImpact = totalLifeMinChange / (remainingYears * 365.25)
         
-        logger.info("📊 Steps impact: \(Int(currentSteps)) steps → \(String(format: "%.1f", dailyImpact)) minutes/day (RR: \(String(format: "%.2f", relativeRisk)))")
+        logger.info("📊 Steps impact: \(Int(steps)) steps → \(String(format: "%.1f", dailyImpact)) minutes/day (RR: \(String(format: "%.3f", relativeRisk)))")
         
         return dailyImpact
     }
@@ -145,55 +120,228 @@ class ActivityImpactCalculator {
         )
     }
     
-    /// Research-based exercise life impact using logarithmic dose-response
+    /// Research-based exercise life impact using exact playbook formula
     /// Based on meta-analysis showing 23% mortality reduction for meeting guidelines
     private func calculateExerciseLifeImpact(
         weeklyMinutes: Double,
         optimalWeekly: Double,
         userProfile: UserProfile
     ) -> Double {
-        let effectiveMinutes = max(0, min(weeklyMinutes, 600)) // Research range: 0-600 min/week
+        let wkMin = max(0, weeklyMinutes)
         
-        // Research findings from meta-analysis:
-        // - 0 min/week: Baseline mortality risk
-        // - 150 min/week: 23% mortality reduction
-        // - 300 min/week: ~35% mortality reduction (diminishing returns)
-        
+        // Exact formula from playbook
         let relativeRisk: Double
         
-        if effectiveMinutes <= 0 {
-            relativeRisk = 1.0 // Sedentary baseline
-        } else if effectiveMinutes <= optimalWeekly {
-            // 0-150 min/week: Steep logarithmic benefits
-            let benefitFactor = effectiveMinutes / optimalWeekly
-            let logarithmicFactor = log(1 + benefitFactor * (exp(1) - 1))
-            relativeRisk = 1.0 - (0.23 * logarithmicFactor) // Up to 23% reduction
-        } else if effectiveMinutes <= 300 {
-            // 150-300 min/week: Diminishing returns
-            let additionalFactor = (effectiveMinutes - optimalWeekly) / (300 - optimalWeekly)
-            relativeRisk = 0.77 - (0.12 * additionalFactor) // Additional 12% reduction
+        if wkMin <= 0 {
+            relativeRisk = 1.0
+        } else if wkMin <= 150 {
+            relativeRisk = 1 - 0.23 * log(1 + wkMin/150 * (exp(1) - 1))
+        } else if wkMin <= 300 {
+            relativeRisk = 0.77 - 0.12 * ((wkMin - 150) / 150)
         } else {
-            // Above 300 min/week: Plateau with possible small additional benefits
-            let excessFactor = min(1.0, (effectiveMinutes - 300) / 300)
-            relativeRisk = 0.65 - (0.05 * excessFactor) // Small additional benefit
+            relativeRisk = 0.65 - 0.05 * min((wkMin - 300) / 300, 1)
         }
         
-        // Convert to daily life minutes using research-derived conversion
-        // Based on Zhao et al. (2020): 35% max mortality reduction = 3.4 years gained
-        let baselineLifeExpectancy = 78.0 * 365.25 * 24 * 60
+        // Convert relative risk to daily life minutes using playbook formula
         let riskReduction = 1.0 - relativeRisk
-        let totalLifeMinutesGained = baselineLifeExpectancy * riskReduction * 0.126 // Research-aligned scaling: 3.4 years for 35% risk reduction
+        let impactScaling = 0.126  // 3.4 y gain for 35% RR reduction
+        let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
         
         // Convert to daily impact
         let remainingYears = max(1.0, 78.0 - Double(userProfile.age ?? 40))
-        let dailyImpact = totalLifeMinutesGained / (remainingYears * 365.25)
+        let dailyImpact = totalLifeMinChange / (remainingYears * 365.25)
+        
+        logger.info("📊 Exercise impact: \(String(format: "%.1f", wkMin)) min/week → \(String(format: "%.1f", dailyImpact)) minutes/day (RR: \(String(format: "%.3f", relativeRisk)))")
+        
+        return dailyImpact
+    }
+    
+    // MARK: - Active Energy Burned Impact Calculation
+    
+    /// Calculate active energy impact using exact playbook formula
+    /// Reference 400 kcal = 0 impact. ±17.4 min per 100 kcal deviation, clamped ±900 kcal
+    func calculateActiveEnergyImpact(activeEnergyBurned: Double, userProfile: UserProfile) -> MetricImpactDetail {
+        logger.info("🔥 Calculating active energy impact for \(Int(activeEnergyBurned)) kcal using exact playbook formula")
+        
+        let studies = StudyReferenceProvider.getApplicableStudies(for: .activeEnergyBurned, userProfile: userProfile)
+        
+        let dailyImpactMinutes = calculateActiveEnergyLifeImpact(
+            activeEnergy: activeEnergyBurned,
+            userProfile: userProfile
+        )
+        
+        let recommendation = generateActiveEnergyRecommendation(currentEnergy: activeEnergyBurned)
+        
+        return MetricImpactDetail(
+            metricType: .activeEnergyBurned,
+            currentValue: activeEnergyBurned,
+            baselineValue: 400.0, // Reference from playbook
+            studyReferences: studies,
+            lifespanImpactMinutes: dailyImpactMinutes,
+            calculationMethod: .expertConsensus,
+            recommendation: recommendation
+        )
+    }
+    
+    /// Active energy life impact using exact playbook formula
+    /// Reference 400 kcal = 0 impact. ±17.4 min per 100 kcal deviation, clamped ±900 kcal
+    private func calculateActiveEnergyLifeImpact(activeEnergy: Double, userProfile: UserProfile) -> Double {
+        let energy = max(0, min(activeEnergy, 1300))  // Reasonable bounds (0 to 1300 kcal)
+        let reference = 400.0  // Reference point from playbook
+        
+        // Calculate deviation from reference
+        let energyDifference = energy - reference
+        
+        // Clamp to ±900 kcal as specified in playbook
+        let clampedDifference = max(-900.0, min(energyDifference, 900.0))
+        
+        // Direct calculation: ±17.4 min per 100 kcal deviation
+        let dailyImpact = (clampedDifference / 100.0) * 17.4
+        
+        logger.info("📊 Active Energy impact: \(String(format: "%.0f", energy)) kcal → \(String(format: "%.1f", dailyImpact)) minutes/day")
+        
+        return dailyImpact
+    }
+    
+    // MARK: - Body Mass Impact Calculation
+    
+    /// Calculate body mass impact using exact playbook formula
+    /// Reference 160 lbs (≈24.5 BMI). ±17.4 min impact every ±20 lbs (linear)
+    func calculateBodyMassImpact(bodyMass: Double, userProfile: UserProfile) -> MetricImpactDetail {
+        logger.info("⚖️ Calculating body mass impact for \(String(format: "%.1f", bodyMass)) lbs using exact playbook formula")
+        
+        let studies = StudyReferenceProvider.getApplicableStudies(for: .bodyMass, userProfile: userProfile)
+        
+        let dailyImpactMinutes = calculateBodyMassLifeImpact(
+            bodyMass: bodyMass,
+            userProfile: userProfile
+        )
+        
+        let recommendation = generateBodyMassRecommendation(currentMass: bodyMass)
+        
+        return MetricImpactDetail(
+            metricType: .bodyMass,
+            currentValue: bodyMass,
+            baselineValue: 160.0, // Reference from playbook (≈24.5 BMI)
+            studyReferences: studies,
+            lifespanImpactMinutes: dailyImpactMinutes,
+            calculationMethod: .expertConsensus,
+            recommendation: recommendation
+        )
+    }
+    
+    /// Body mass life impact using exact playbook formula
+    /// Reference 160 lbs (≈24.5 BMI). ±17.4 min impact every ±20 lbs (linear)
+    private func calculateBodyMassLifeImpact(bodyMass: Double, userProfile: UserProfile) -> Double {
+        let mass = max(80, min(bodyMass, 400))  // Reasonable bounds (80 to 400 lbs)
+        let reference = 160.0  // Reference point from playbook (≈24.5 BMI)
+        
+        // Calculate deviation from reference
+        let massDifference = mass - reference
+        
+        // Direct calculation: ±17.4 min impact every ±20 lbs (linear)
+        let dailyImpact = (massDifference / 20.0) * 17.4
+        
+        logger.info("📊 Body Mass impact: \(String(format: "%.1f", mass)) lbs → \(String(format: "%.1f", dailyImpact)) minutes/day")
+        
+        return dailyImpact
+    }
+    
+    // MARK: - VO2 Max Impact Calculation
+    
+    /// Calculate VO2 Max impact using exact playbook formula
+    /// Reference 40. ±21.8 min per ±5 ml difference, capped ±60→±87 min
+    func calculateVO2MaxImpact(vo2Max: Double, userProfile: UserProfile) -> MetricImpactDetail {
+        logger.info("🫁 Calculating VO2 Max impact for \(String(format: "%.1f", vo2Max)) ml·kg⁻¹·min⁻¹ using exact playbook formula")
+        
+        let studies = StudyReferenceProvider.getApplicableStudies(for: .vo2Max, userProfile: userProfile)
+        
+        let dailyImpactMinutes = calculateVO2MaxLifeImpact(
+            vo2Max: vo2Max,
+            userProfile: userProfile
+        )
+        
+        let recommendation = generateVO2MaxRecommendation(currentVO2Max: vo2Max)
+        
+        return MetricImpactDetail(
+            metricType: .vo2Max,
+            currentValue: vo2Max,
+            baselineValue: 40.0, // Reference from playbook
+            studyReferences: studies,
+            lifespanImpactMinutes: dailyImpactMinutes,
+            calculationMethod: .expertConsensus,
+            recommendation: recommendation
+        )
+    }
+    
+    /// VO2 Max life impact using exact playbook formula
+    /// Reference 40. ±21.8 min per ±5 ml difference, capped ±60→±87 min
+    private func calculateVO2MaxLifeImpact(vo2Max: Double, userProfile: UserProfile) -> Double {
+        let vo2 = max(15, min(vo2Max, 80))  // Reasonable bounds (15 to 80 ml·kg⁻¹·min⁻¹)
+        let reference = 40.0  // Reference point from playbook
+        
+        // Calculate deviation from reference
+        let vo2Difference = vo2 - reference
+        
+        // Clamp to ±60→±87 min as specified in playbook
+        let clampedDifference = max(-20.0, min(vo2Difference, 20.0))  // ±20 gives ±87 min
+        
+        // Direct calculation: ±21.8 min per ±5 ml difference
+        let dailyImpact = (clampedDifference / 5.0) * 21.8
+        
+        logger.info("📊 VO2 Max impact: \(String(format: "%.1f", vo2)) ml·kg⁻¹·min⁻¹ → \(String(format: "%.1f", dailyImpact)) minutes/day")
+        
+        return dailyImpact
+    }
+    
+    // MARK: - Oxygen Saturation Impact Calculation
+    
+    /// Calculate oxygen saturation impact using exact playbook formula
+    /// Reference 98%. ±8.7 min per ±2% deviation below or above
+    func calculateOxygenSaturationImpact(oxygenSaturation: Double, userProfile: UserProfile) -> MetricImpactDetail {
+        logger.info("🫁 Calculating oxygen saturation impact for \(String(format: "%.1f", oxygenSaturation))% using exact playbook formula")
+        
+        let studies = StudyReferenceProvider.getApplicableStudies(for: .oxygenSaturation, userProfile: userProfile)
+        
+        let dailyImpactMinutes = calculateOxygenSaturationLifeImpact(
+            oxygenSaturation: oxygenSaturation,
+            userProfile: userProfile
+        )
+        
+        let recommendation = generateOxygenSaturationRecommendation(currentSaturation: oxygenSaturation)
+        
+        return MetricImpactDetail(
+            metricType: .oxygenSaturation,
+            currentValue: oxygenSaturation,
+            baselineValue: 98.0, // Reference from playbook
+            studyReferences: studies,
+            lifespanImpactMinutes: dailyImpactMinutes,
+            calculationMethod: .expertConsensus,
+            recommendation: recommendation
+        )
+    }
+    
+    /// Oxygen saturation life impact using exact playbook formula
+    /// Reference 98%. ±8.7 min per ±2% deviation below or above
+    private func calculateOxygenSaturationLifeImpact(oxygenSaturation: Double, userProfile: UserProfile) -> Double {
+        let saturation = max(80, min(oxygenSaturation, 100))  // Reasonable bounds (80% to 100%)
+        let reference = 98.0  // Reference point from playbook
+        
+        // Calculate deviation from reference
+        let saturationDifference = saturation - reference
+        
+        // Direct calculation: ±8.7 min per ±2% deviation
+        let dailyImpact = (saturationDifference / 2.0) * 8.7
+        
+        logger.info("📊 Oxygen Saturation impact: \(String(format: "%.1f", saturation))% → \(String(format: "%.1f", dailyImpact)) minutes/day")
         
         return dailyImpact
     }
     
     // MARK: - Recommendation Generation
     
-    private func generateStepsRecommendation(currentSteps: Double, optimalSteps: Double) -> String {        
+    private func generateStepsRecommendation(currentSteps: Double) -> String {
+        let optimalSteps = 10000.0
         if currentSteps >= 25000 {
             return "⚠️ Very high activity level detected. Consider reducing to 15,000-20,000 steps to prevent overuse injuries while maintaining health benefits."
         } else if currentSteps >= 20000 {
@@ -226,4 +374,51 @@ class ActivityImpactCalculator {
             return "Start gradually with 10-15 minutes daily. Build towards 150 minutes of moderate exercise per week."
         }
     }
-} 
+    
+    private func generateActiveEnergyRecommendation(currentEnergy: Double) -> String {
+        let reference = 400.0
+        if currentEnergy >= reference + 200 {
+            return "Excellent active energy burn! Maintain this level for optimal health benefits."
+        } else if currentEnergy >= reference {
+            return "Good active energy level. Consider increasing intensity or duration of activities for additional benefits."
+        } else {
+            let deficit = Int(reference - currentEnergy)
+            return "Aim to burn \(deficit) more calories daily through increased physical activity."
+        }
+    }
+    
+    private func generateBodyMassRecommendation(currentMass: Double) -> String {
+        let reference = 160.0
+        let healthyRange = 140.0...180.0
+        
+        if healthyRange.contains(currentMass) {
+            return "Your body mass is in a healthy range. Maintain through balanced nutrition and regular exercise."
+        } else if currentMass > healthyRange.upperBound {
+            return "Consider gradual weight loss through caloric reduction and increased physical activity. Consult a healthcare provider for personalized guidance."
+        } else {
+            return "Consider gradual weight gain through increased caloric intake and strength training. Consult a healthcare provider if underweight concerns persist."
+        }
+    }
+    
+    private func generateVO2MaxRecommendation(currentVO2Max: Double) -> String {
+        let reference = 40.0
+        if currentVO2Max >= reference + 10 {
+            return "Excellent cardiovascular fitness! Maintain with regular high-intensity exercise."
+        } else if currentVO2Max >= reference {
+            return "Good cardiovascular fitness. Consider adding interval training to improve further."
+        } else {
+            return "Focus on improving cardiovascular fitness through regular aerobic exercise and interval training."
+        }
+    }
+    
+    private func generateOxygenSaturationRecommendation(currentSaturation: Double) -> String {
+        let reference = 98.0
+        if currentSaturation >= reference {
+            return "Excellent oxygen saturation. Continue maintaining good respiratory health."
+        } else if currentSaturation >= 95.0 {
+            return "Good oxygen saturation. Practice deep breathing exercises to optimize respiratory function."
+        } else {
+            return "Low oxygen saturation detected. Consider consulting a healthcare provider, especially if persistent."
+        }
+    }
+}

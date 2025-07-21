@@ -461,10 +461,10 @@ struct ActionableRecommendationsView: View {
         
         // Build the complete sentence with styled text
         return Text(baseAction + " to add ")
-            .style(.body, color: .primary) +
+            .style(.body) +
         Text(timeText)
             .style(.body, color: .ampedGreen) +
         Text(periodSuffix)
-            .style(.body, color: .primary)
+            .style(.body)
     }
 }

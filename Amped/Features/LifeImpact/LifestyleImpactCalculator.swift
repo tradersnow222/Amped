@@ -6,12 +6,15 @@ import OSLog
 class LifestyleImpactCalculator {
     private let logger = Logger(subsystem: "Amped", category: "LifestyleImpactCalculator")
     
+    // MARK: - Global Constants (from Playbook)
+    private let baselineLifeMinutes = 78.0 * 365.25 * 24 * 60  // 78 years in minutes
+    
     // MARK: - Alcohol Consumption Impact Calculation
     
-    /// Calculate alcohol impact using research-based linear dose-response
+    /// Calculate alcohol impact using exact playbook linear formula
     /// Based on Wood et al. (2018) Lancet meta-analysis of 599,912 current drinkers
     func calculateAlcoholImpact(drinksPerDay: Double, userProfile: UserProfile) -> MetricImpactDetail {
-        // CRITICAL FIX: Convert questionnaire scale (1-10) to actual drinks per day
+        // Convert questionnaire scale (1-10) to actual drinks per day
         let actualDrinksPerDay = convertQuestionnaireScaleToActualDrinks(questionnaireValue: drinksPerDay)
         
         logger.info("🍷 Converting alcohol questionnaire value \(String(format: "%.1f", drinksPerDay)) to \(String(format: "%.2f", actualDrinksPerDay)) drinks/day")
@@ -19,27 +22,18 @@ class LifestyleImpactCalculator {
         let studies = StudyReferenceProvider.getApplicableStudies(for: .alcoholConsumption, userProfile: userProfile)
         let primaryStudy = studies.first ?? StudyReferenceProvider.lifestyleResearch[0]
         
-        // Research-based thresholds from Lancet study
-        let safeThreshold = 0.0 // No safe level according to research
-        let moderateThreshold = 1.0 // ~7 drinks per week
-        let heavyThreshold = 2.0 // Above this considered heavy drinking
-        
-        // Calculate impact using research-derived linear model with converted drinks per day
+        // Calculate impact using exact playbook formula
         let dailyImpactMinutes = calculateAlcoholLifeImpact(
             drinksPerDay: actualDrinksPerDay,
-            safeThreshold: safeThreshold,
-            moderateThreshold: moderateThreshold
+            userProfile: userProfile
         )
         
-        let recommendation = generateAlcoholRecommendation(
-            drinksPerDay: actualDrinksPerDay,
-            moderateThreshold: moderateThreshold
-        )
+        let recommendation = generateAlcoholRecommendation(drinksPerDay: actualDrinksPerDay)
         
         return MetricImpactDetail(
             metricType: .alcoholConsumption,
             currentValue: drinksPerDay, // Keep original questionnaire value for display
-            baselineValue: safeThreshold,
+            baselineValue: 0.0, // No safe level
             studyReferences: studies,
             lifespanImpactMinutes: dailyImpactMinutes,
             calculationMethod: .directStudyMapping,
@@ -54,53 +48,41 @@ class LifestyleImpactCalculator {
         case 9...10: // Never or almost never
             return 0.0
         case 7..<9: // Occasionally (weekly or less)
-            return 0.2 // ~1 drink per week = 0.14 drinks/day, rounded to 0.2
+            return 0.5 // ~3.5 drinks per week = 0.5 drinks/day
         case 3..<7: // Several times per week
-            return 0.7 // ~5 drinks per week = 0.71 drinks/day
-        case 1..<2: // Daily or Heavy
-            return 2.5 // 2-3 drinks per day average
+            return 1.0 // ~7 drinks per week = 1 drink/day
+        case 1..<3: // Daily or Heavy
+            return 2.0 // 2+ drinks per day average
         default:
             return 0.0 // Fallback to no drinking
         }
     }
     
-    /// Research-based alcohol life impact using linear dose-response
-    /// Based on meta-analysis showing increased mortality above 100g/week (~7 drinks)
-    private func calculateAlcoholLifeImpact(drinksPerDay: Double, safeThreshold: Double, moderateThreshold: Double) -> Double {
-        let effectiveDrinks = max(0, min(drinksPerDay, 10)) // Clamp to reasonable range
-        
-        // Research findings: Linear increase in mortality risk above ~7 drinks/week
-        // Converting to daily: ~1 drink per day threshold
-        let weeklyDrinks = effectiveDrinks * 7
+    /// Research-based alcohol life impact using exact playbook formula
+    /// Rule: +5% RR per drink up to 1/day, then steeper
+    private func calculateAlcoholLifeImpact(drinksPerDay: Double, userProfile: UserProfile) -> Double {
+        let drinks = max(0, min(drinksPerDay, 5)) // Clamp to reasonable range
         
         let relativeRisk: Double
-        if effectiveDrinks <= 0.1 {
-            // Minimal or no drinking: Baseline (optimal)
-            relativeRisk = 1.0
-        } else if effectiveDrinks <= moderateThreshold {
-            // Light to moderate drinking: Small risk increase
-            // Research shows even light drinking has some risk
-            relativeRisk = 1.0 + (effectiveDrinks * 0.05) // 5% risk increase per drink
-        } else if effectiveDrinks <= 2.0 {
-            // Moderate to heavy: Linear risk increase
-            let excessDrinks = effectiveDrinks - moderateThreshold
-            relativeRisk = 1.05 + (excessDrinks * 0.10) // 10% additional risk per drink above 1/day
+        if drinks <= 1.0 {
+            // +5% RR per drink up to 1/day
+            relativeRisk = 1.0 + (drinks * 0.05)
         } else {
-            // Heavy drinking: Accelerated risk increase
-            let heavyExcess = effectiveDrinks - 2.0
-            relativeRisk = 1.15 + (heavyExcess * 0.15) // 15% additional risk per drink above 2/day
+            // Steeper increase above 1 drink/day
+            let excessDrinks = drinks - 1.0
+            relativeRisk = 1.05 + (excessDrinks * 0.15) // Steeper penalty
         }
         
-        // Convert relative risk to daily life minutes
-        let baselineLifeExpectancy = 78.0 * 365.25 * 24 * 60
+        // Convert relative risk to daily life minutes using playbook formula
         let riskReduction = 1.0 - relativeRisk
-        let totalLifeMinutesImpact = baselineLifeExpectancy * riskReduction * 0.08 // ~8% max impact for heavy drinking
+        let impactScaling = 0.08  // Approximate scaling for alcohol
+        let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
         
         // Convert to daily impact
-        let remainingYears = 45.0 // Average remaining lifespan
-        let dailyImpact = totalLifeMinutesImpact / (remainingYears * 365.25)
+        let remainingYears = max(1.0, 78.0 - Double(userProfile.age ?? 40))
+        let dailyImpact = totalLifeMinChange / (remainingYears * 365.25)
         
-        logger.info("📊 Alcohol impact: \(String(format: "%.1f", effectiveDrinks)) drinks/day → \(String(format: "%.1f", dailyImpact)) minutes/day (RR: \(String(format: "%.2f", relativeRisk)))")
+        logger.info("📊 Alcohol impact: \(String(format: "%.1f", drinks)) drinks/day → \(String(format: "%.1f", dailyImpact)) minutes/day (RR: \(String(format: "%.3f", relativeRisk)))")
         
         return dailyImpact
     }
@@ -156,37 +138,32 @@ class LifestyleImpactCalculator {
         }
     }
     
-    /// Research-based smoking life impact using cumulative dose-response
+    /// Research-based smoking life impact using exact playbook values
     /// Based on meta-analyses showing linear cumulative effects over time
     private func calculateSmokingLifeImpact(smokingStatus: Double) -> Double {
-        // Research-based relative risks for mortality
-        let relativeRisk: Double
+        // Exact daily impact values from playbook table
+        let dailyImpact: Double
         
         switch Int(smokingStatus) {
         case 0:
-            // Never smoker: Baseline risk
-            relativeRisk = 1.0
+            // Never smoker: 0 min daily loss
+            dailyImpact = 0.0
         case 1:
-            // Former smoker: Reduced but elevated risk
-            relativeRisk = 1.3 // 30% increased risk compared to never smokers
+            // Former smoker: −116.1 min daily loss
+            dailyImpact = -116.1
         case 2:
-            // Current light smoker: Significant risk
-            relativeRisk = 2.0 // 100% increased risk (doubles mortality)
+            // Light smoker: −232.2 min daily loss
+            dailyImpact = -232.2
         case 3:
-            // Current heavy smoker: Very high risk
-            relativeRisk = 3.0 // 200% increased risk (triples mortality)
+            // Heavy smoker: −348.3 min daily loss
+            dailyImpact = -348.3
         default:
-            relativeRisk = 1.0
+            dailyImpact = 0.0
         }
         
-        // Convert relative risk to daily life minutes
-        let baselineLifeExpectancy = 78.0 * 365.25 * 24 * 60
-        let riskReduction = 1.0 - relativeRisk
-        let totalLifeMinutesImpact = baselineLifeExpectancy * riskReduction * 0.15 // ~15% max impact for heavy smoking
+        logger.info("📊 Smoking impact: Status \(Int(smokingStatus)) → \(String(format: "%.1f", dailyImpact)) minutes/day")
         
-        // Convert to daily impact
-        let remainingYears = 45.0
-        return totalLifeMinutesImpact / (remainingYears * 365.25)
+        return dailyImpact
     }
     
     // MARK: - Stress Level Impact Calculation
@@ -205,7 +182,8 @@ class LifestyleImpactCalculator {
             stressLevel: stressLevel,
             optimalStress: optimalStress,
             moderateThreshold: moderateThreshold,
-            highThreshold: highThreshold
+            highThreshold: highThreshold,
+            userProfile: userProfile
         )
         
         let recommendation = generateStressRecommendation(
@@ -224,36 +202,40 @@ class LifestyleImpactCalculator {
         )
     }
     
-    /// Research-based stress life impact using threshold model
-    /// Based on chronic stress research showing threshold effects
-    private func calculateStressLifeImpact(stressLevel: Double, optimalStress: Double, moderateThreshold: Double, highThreshold: Double) -> Double {
-        let effectiveStress = max(1, min(stressLevel, 10))
+    /// Research-based stress life impact using exact playbook formula
+    /// Linear RR = 1 + 0.03*(level-3) between 3–6, then +0.05 (6–8) & +0.08 (8–10)
+    private func calculateStressLifeImpact(stressLevel: Double, optimalStress: Double, moderateThreshold: Double, highThreshold: Double, userProfile: UserProfile) -> Double {
+        let level = max(1, min(stressLevel, 10))
         
         let relativeRisk: Double
-        if effectiveStress <= optimalStress {
-            // Low stress: Minimal impact
+        if level <= 3.0 {
+            // Below optimal: baseline
             relativeRisk = 1.0
-        } else if effectiveStress <= moderateThreshold {
-            // Moderate stress: Linear increase
-            let stressExcess = effectiveStress - optimalStress
-            relativeRisk = 1.0 + (stressExcess * 0.03) // 3% risk increase per stress point
-        } else if effectiveStress <= highThreshold {
-            // High stress: Accelerated impact
-            let highStressExcess = effectiveStress - moderateThreshold
-            relativeRisk = 1.09 + (highStressExcess * 0.05) // 5% additional risk per point
+        } else if level <= 6.0 {
+            // 3-6: Linear RR = 1 + 0.03*(level-3)
+            relativeRisk = 1.0 + 0.03 * (level - 3.0)
+        } else if level <= 8.0 {
+            // 6-8: +0.05 per level
+            let baseRisk = 1.0 + 0.03 * 3.0  // Risk at level 6
+            relativeRisk = baseRisk + 0.05 * (level - 6.0)
         } else {
-            // Severe stress: Maximum impact
-            let severeExcess = effectiveStress - highThreshold
-            relativeRisk = 1.19 + (severeExcess * 0.08) // 8% additional risk per point
+            // 8-10: +0.08 per level
+            let baseRisk = 1.0 + 0.03 * 3.0 + 0.05 * 2.0  // Risk at level 8
+            relativeRisk = baseRisk + 0.08 * (level - 8.0)
         }
         
-        // Convert with conservative scaling (stress impact is indirect)
-        let baselineLifeExpectancy = 78.0 * 365.25 * 24 * 60
+        // Convert relative risk to daily life minutes using playbook formula
         let riskReduction = 1.0 - relativeRisk
-        let totalLifeMinutesImpact = baselineLifeExpectancy * riskReduction * 0.04 // ~4% max impact (conservative)
+        let impactScaling = 0.04  // Scaling factor from playbook
+        let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
         
-        let remainingYears = 45.0
-        return totalLifeMinutesImpact / (remainingYears * 365.25)
+        // Convert to daily impact
+        let remainingYears = max(1.0, 78.0 - Double(userProfile.age ?? 40))
+        let dailyImpact = totalLifeMinChange / (remainingYears * 365.25)
+        
+        logger.info("📊 Stress impact: Level \(String(format: "%.1f", level)) → \(String(format: "%.1f", dailyImpact)) minutes/day (RR: \(String(format: "%.3f", relativeRisk)))")
+        
+        return dailyImpact
     }
     
     // MARK: - Nutrition Quality Impact Calculation
@@ -272,7 +254,8 @@ class LifestyleImpactCalculator {
             nutritionQuality: nutritionQuality,
             optimalNutrition: optimalNutrition,
             moderateNutrition: moderateNutrition,
-            poorNutrition: poorNutrition
+            poorNutrition: poorNutrition,
+            userProfile: userProfile
         )
         
         let recommendation = generateNutritionRecommendation(
@@ -291,41 +274,37 @@ class LifestyleImpactCalculator {
         )
     }
     
-    /// Research-based nutrition life impact using dietary pattern evidence
-    private func calculateNutritionLifeImpact(nutritionQuality: Double, optimalNutrition: Double, moderateNutrition: Double, poorNutrition: Double) -> Double {
-        let effectiveQuality = max(1, min(nutritionQuality, 10))
+    /// Research-based nutrition life impact using exact playbook linear model
+    /// Below 7: linear penalty to −139 min at score 1, 8–10: linear gain to +66.7 min at score 10
+    private func calculateNutritionLifeImpact(nutritionQuality: Double, optimalNutrition: Double, moderateNutrition: Double, poorNutrition: Double, userProfile: UserProfile) -> Double {
+        let quality = max(1, min(nutritionQuality, 10))
         
-        let relativeRisk: Double
-        if effectiveQuality >= optimalNutrition {
-            // High quality diet: Protective effect
-            let qualityBonus = effectiveQuality - optimalNutrition
-            relativeRisk = 0.85 - (qualityBonus * 0.02) // Up to 15% reduced risk
-        } else if effectiveQuality >= moderateNutrition {
-            // Moderate quality: Neutral to slightly protective
-            let qualityDeficit = optimalNutrition - effectiveQuality
-            relativeRisk = 0.85 + (qualityDeficit * 0.05) // Progressive risk increase
-        } else if effectiveQuality >= poorNutrition {
-            // Poor quality: Increased risk
-            let poorDeficit = moderateNutrition - effectiveQuality
-            relativeRisk = 1.0 + (poorDeficit * 0.08) // Progressive risk increase
+        let dailyImpact: Double
+        if quality < 7.0 {
+            // Below 7: linear penalty to −139 min at score 1
+            // Linear interpolation: score 7 = 0 min, score 1 = -139 min
+            dailyImpact = (quality - 7.0) * (139.0 / 6.0) // (7-1=6 point range)
+        } else if quality <= 10.0 {
+            // 8-10: linear gain to +66.7 min at score 10
+            // Assuming score 7 = 0, score 8 starts gaining, score 10 = +66.7
+            if quality < 8.0 {
+                dailyImpact = 0.0 // Score 7-8 range stays at 0
+            } else {
+                dailyImpact = (quality - 8.0) * (66.7 / 2.0) // Score 8-10 is 2 point range
+            }
         } else {
-            // Very poor quality: High risk
-            let veryPoorDeficit = poorNutrition - effectiveQuality
-            relativeRisk = 1.16 + (veryPoorDeficit * 0.10) // Additional risk
+            dailyImpact = 0.0
         }
         
-        // Convert with moderate scaling (nutrition has significant but gradual impact)
-        let baselineLifeExpectancy = 78.0 * 365.25 * 24 * 60
-        let riskReduction = 1.0 - relativeRisk
-        let totalLifeMinutesImpact = baselineLifeExpectancy * riskReduction * 0.06 // ~6% max impact
+        logger.info("📊 Nutrition impact: Quality \(String(format: "%.1f", quality)) → \(String(format: "%.1f", dailyImpact)) minutes/day")
         
-        let remainingYears = 45.0
-        return totalLifeMinutesImpact / (remainingYears * 365.25)
+        return dailyImpact
     }
     
     // MARK: - Recommendation Generation
     
-    private func generateAlcoholRecommendation(drinksPerDay: Double, moderateThreshold: Double) -> String {
+    private func generateAlcoholRecommendation(drinksPerDay: Double) -> String {
+        let moderateThreshold = 1.0
         if drinksPerDay <= 0.1 {
             return "Excellent! No alcohol consumption supports optimal longevity."
         } else if drinksPerDay <= moderateThreshold {
@@ -409,37 +388,20 @@ class LifestyleImpactCalculator {
         )
     }
     
-    /// Research-based social connections life impact
-    /// Based on meta-analysis showing 50% increased survival odds with strong social connections
+    /// Research-based social connections life impact using exact playbook linear model
+    /// Same linear model (±52 min at extremes), scaling 0.05
     private func calculateSocialConnectionsLifeImpact(socialQuality: Double, optimalConnections: Double, moderateThreshold: Double, poorThreshold: Double) -> Double {
-        let effectiveQuality = max(1, min(socialQuality, 10))
+        let quality = max(1, min(socialQuality, 10))
+        let reference = 5.5  // Midpoint for linear model
         
-        let relativeRisk: Double
-        if effectiveQuality >= optimalConnections {
-            // Strong connections: Protective effect
-            let qualityBonus = effectiveQuality - optimalConnections
-            relativeRisk = 0.85 - (qualityBonus * 0.03) // Up to 15% reduced risk
-        } else if effectiveQuality >= moderateThreshold {
-            // Moderate connections: Slightly protective
-            let qualityDeficit = optimalConnections - effectiveQuality
-            relativeRisk = 0.85 + (qualityDeficit * 0.04) // Progressive risk increase
-        } else if effectiveQuality >= poorThreshold {
-            // Poor connections: Increased risk
-            let poorDeficit = moderateThreshold - effectiveQuality
-            relativeRisk = 1.0 + (poorDeficit * 0.06) // Progressive risk increase
-        } else {
-            // Isolated: High risk
-            let isolationDeficit = poorThreshold - effectiveQuality
-            relativeRisk = 1.12 + (isolationDeficit * 0.08) // Additional risk
-        }
+        // Linear model: ±52 min at extremes (quality 1 = -52 min, quality 10 = +52 min)
+        // Linear interpolation around reference point
+        let qualityDifference = quality - reference
+        let dailyImpact = qualityDifference * (52.0 / 4.5)  // 4.5 is half the range (10-1)/2
         
-        // Convert with moderate scaling (social connections have significant impact)
-        let baselineLifeExpectancy = 78.0 * 365.25 * 24 * 60
-        let riskReduction = 1.0 - relativeRisk
-        let totalLifeMinutesImpact = baselineLifeExpectancy * riskReduction * 0.05 // ~5% max impact
+        logger.info("📊 Social connections impact: Quality \(String(format: "%.1f", quality)) → \(String(format: "%.1f", dailyImpact)) minutes/day")
         
-        let remainingYears = 45.0
-        return totalLifeMinutesImpact / (remainingYears * 365.25)
+        return dailyImpact
     }
     
     private func generateSocialConnectionsRecommendation(socialQuality: Double, optimalConnections: Double) -> String {
@@ -453,4 +415,4 @@ class LifestyleImpactCalculator {
             return "Social isolation significantly impacts health. Consider reaching out to friends, joining clubs, or seeking support groups."
         }
     }
-} 
+}
