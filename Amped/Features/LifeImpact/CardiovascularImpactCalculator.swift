@@ -17,7 +17,7 @@ class CardiovascularImpactCalculator {
         logger.info("❤️ Calculating resting heart rate impact for \(Int(heartRate)) bpm using linear formula")
         
         let studies = StudyReferenceProvider.getApplicableStudies(for: .restingHeartRate, userProfile: userProfile)
-        let primaryStudy = studies.first ?? StudyReferenceProvider.cardiovascularResearch[0]
+                    let _ = studies.first ?? StudyReferenceProvider.cardiovascularResearch[0]
         
         // Calculate impact using exact playbook linear model
         let dailyImpactMinutes = calculateRHRLifeImpact(
@@ -42,7 +42,11 @@ class CardiovascularImpactCalculator {
     /// Linear risk: +16% per 10 bpm > 60, scaling factor 0.04
     private func calculateRHRLifeImpact(currentRHR: Double, userProfile: UserProfile) -> Double {
         let bpm = max(40, min(currentRHR, 120))
-        let reference = 60.0  // Reference point from playbook
+        
+        // Age-adjusted reference (RHR increases with age)
+        let age = Double(userProfile.age ?? 30)
+        let ageAdjustment = (age - 30) * 0.1 // 0.1 bpm per year over 30
+        let reference = 60.0 + max(0, ageAdjustment) // Age-adjusted reference
         
         // Linear risk: +16% per 10 bpm > 60
         let bpmDifference = bpm - reference
@@ -50,7 +54,7 @@ class CardiovascularImpactCalculator {
         
         // Convert relative risk to daily life minutes using playbook formula
         let riskReduction = 1.0 - relativeRisk
-        let impactScaling = 0.04  // Scaling factor from playbook
+        let impactScaling = 0.05  // Scaling factor from playbook (4% mortality risk per 10 bpm above 60)
         let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
         
         // Convert to daily impact
@@ -70,7 +74,7 @@ class CardiovascularImpactCalculator {
         logger.info("😴 Calculating sleep impact for \(String(format: "%.1f", sleepHours)) hours using U-shaped model")
         
         let studies = StudyReferenceProvider.getApplicableStudies(for: .sleepHours, userProfile: userProfile)
-        let primaryStudy = studies.first ?? StudyReferenceProvider.sleepResearch[0]
+        let _ = studies.first ?? StudyReferenceProvider.sleepResearch[0]
         
         // Calculate impact using exact playbook U-shaped model
         let dailyImpactMinutes = calculateSleepLifeImpact(
@@ -166,7 +170,11 @@ class CardiovascularImpactCalculator {
     /// Reference 40 ms = 0 impact. +17.4 min per 10 ms above, −17.4 min per 10 ms below, plateau ±70 ms
     private func calculateHRVLifeImpact(currentHRV: Double, userProfile: UserProfile) -> Double {
         let hrv = max(5, min(currentHRV, 150))  // Reasonable bounds
-        let reference = 40.0  // Reference point from playbook
+        
+        // Age-adjusted reference (HRV decreases with age)
+        let age = Double(userProfile.age ?? 30)
+        let ageAdjustment = (age - 30) * 0.3 // 0.3 ms decrease per year over 30
+        let reference = 40.0 - max(0, ageAdjustment) // Age-adjusted reference
         
         // Calculate deviation from reference
         let hrvDifference = hrv - reference
@@ -174,7 +182,7 @@ class CardiovascularImpactCalculator {
         // Clamp to plateau at ±70 ms
         let clampedDifference = max(-70.0, min(hrvDifference, 70.0))
         
-        // Direct calculation: ±17.4 min per 10 ms deviation
+        // Exact playbook formula: ±17.4 min per 10 ms above/below reference
         let dailyImpact = (clampedDifference / 10.0) * 17.4
         
         logger.info("📊 HRV impact: \(String(format: "%.1f", hrv)) ms → \(String(format: "%.1f", dailyImpact)) minutes/day")

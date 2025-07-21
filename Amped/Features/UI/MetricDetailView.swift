@@ -316,13 +316,20 @@ struct MetricDetailView: View {
                 return "\(valueString) \(singularOrPlural)"
             }
             return "\(sign)\(valueString) \(singularOrPlural)"
-        } else {
+        } else if absMinutes >= 1.0 {
             let singularOrPlural = absMinutes == 1.0 ? "minute added" : "minutes added"
             if minutes < 0 {
                 let singularOrPlural = absMinutes == 1.0 ? "minute lost" : "minutes lost"
                 return String(format: "%.0f %@", absMinutes, singularOrPlural)
             }
             return String(format: "%@%.0f %@", sign, absMinutes, singularOrPlural)
+        } else {
+            // For values less than 1 minute, show as 0 for display purposes
+            // (actual calculations remain unchanged)
+            if minutes < 0 {
+                return "0 lost"
+            }
+            return "0 added"
         }
     }
     

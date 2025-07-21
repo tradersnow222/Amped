@@ -11,6 +11,7 @@ struct ActionableRecommendationsView: View {
     
     // Initialize services for accurate calculations
     private let lifeImpactService: LifeImpactService
+    private let recommendationService: RecommendationService
     private let userProfile: UserProfile
     
     init(metrics: [HealthMetric], selectedPeriod: ImpactDataPoint.PeriodType, onMetricTap: @escaping (HealthMetric) -> Void) {
@@ -21,6 +22,7 @@ struct ActionableRecommendationsView: View {
         // Initialize with actual user profile
         self.userProfile = UserProfile()
         self.lifeImpactService = LifeImpactService(userProfile: userProfile)
+        self.recommendationService = RecommendationService(userProfile: userProfile)
     }
     
     // Get the most impactful metric to recommend improvement for
@@ -160,52 +162,8 @@ struct ActionableRecommendationsView: View {
     }
     
     private func actionText(for metric: HealthMetric) -> String {
-        let baseAction: String
-        
-        switch metric.type {
-        case .steps:
-            baseAction = selectedPeriod == .day ? 
-                "Take a 20-minute walk today to add" :
-                "Walk 20 minutes daily to add"
-        case .exerciseMinutes:
-            baseAction = selectedPeriod == .day ?
-                "Add 30 minutes of exercise today to add" :
-                "Exercise 30 minutes daily to add"
-        case .sleepHours:
-            baseAction = selectedPeriod == .day ?
-                "Get better sleep tonight to add" :
-                "Improve sleep quality daily to add"
-        case .restingHeartRate:
-            baseAction = selectedPeriod == .day ?
-                "Practice deep breathing today to add" :
-                "Practice daily breathing exercises to add"
-        case .nutritionQuality:
-            baseAction = selectedPeriod == .day ?
-                "Eat nutritious meals today to add" :
-                "Maintain healthy eating daily to add"
-        case .smokingStatus:
-            baseAction = selectedPeriod == .day ?
-                "Take steps to quit smoking to add" :
-                "Work on quitting smoking to add"
-        case .alcoholConsumption:
-            baseAction = selectedPeriod == .day ?
-                "Reduce alcohol today to add" :
-                "Limit alcohol daily to add"
-        case .socialConnectionsQuality:
-            baseAction = selectedPeriod == .day ?
-                "Connect with others today to add" :
-                "Maintain social connections to add"
-        case .stressLevel:
-            baseAction = selectedPeriod == .day ?
-                "Try meditation today to add" :
-                "Practice stress management daily to add"
-        default:
-            baseAction = selectedPeriod == .day ?
-                "Improve your \(metric.type.displayName.lowercased()) today to add" :
-                "Maintain better \(metric.type.displayName.lowercased()) daily to add"
-        }
-        
-        return baseAction
+        // Use the RecommendationService for accurate, contextual recommendations
+        return recommendationService.generateRecommendation(for: metric, selectedPeriod: selectedPeriod)
     }
     
     private func timeImpactText(for metric: HealthMetric) -> String {
@@ -222,79 +180,87 @@ struct ActionableRecommendationsView: View {
             let roundedMinutes = Int(round(absMinutes))
             return "\(sign)\(roundedMinutes) min"
         } else {
-            return "\(sign)1 min"
+            // For values less than 1 minute, show as 0 for display purposes
+            // (actual calculations remain unchanged)
+            return "0"
         }
     }
     
     private func benefitText(for metric: HealthMetric) -> String {
-        let dailyBenefit = calculatePotentialBenefit(for: metric)
-        
-        // Scale benefit based on selected period
-        let scaledBenefit: Double
-        let periodSuffix: String
-        
-        switch selectedPeriod {
-        case .day:
-            scaledBenefit = dailyBenefit
-            periodSuffix = ""
-        case .month:
-            scaledBenefit = dailyBenefit * 30
-            periodSuffix = " over the next month"
-        case .year:
-            scaledBenefit = dailyBenefit * 365
-            periodSuffix = " over the next year"
-        }
-        
-        // Format the time appropriately
-        let timeText = formatTimeImpact(scaledBenefit)
-        return "+\(timeText)\(periodSuffix)"
+        // Since actionText now includes the benefit, return empty string
+        // The RecommendationService handles all the calculation and formatting
+        return ""
     }
     
-    /// Calculate realistic potential benefit for specific improvements
+    /// Calculate potential DAILY benefit for specific improvements using research-based models
+    /// CRITICAL: Returns daily benefit only - no period scaling should be applied to non-linear models
     private func calculatePotentialBenefit(for metric: HealthMetric) -> Double {
-        // Create a hypothetical improved metric to calculate benefit
+        let currentImpact = lifeImpactService.calculateImpact(for: metric)
+        
+        // Create improved metric based on specific, achievable improvements
         let improvedMetric: HealthMetric
         
         switch metric.type {
         case .steps:
-            // Calculate benefit of adding ~3000 steps (20-minute walk)
+            // Calculate benefit of adding realistic step improvement (20-minute walk)
             let currentSteps = metric.value
-            let improvedSteps = currentSteps + 3000 // Approximate steps in 20-minute walk
+            // 20-minute walk = ~2000-2500 steps. Use conservative 2000 for realistic calculation
+            let stepImprovement: Double = 2000 
             improvedMetric = HealthMetric(
                 id: UUID().uuidString,
                 type: .steps,
-                value: improvedSteps,
+                value: currentSteps + stepImprovement,
                 date: metric.date,
                 source: metric.source
             )
             
         case .exerciseMinutes:
-            // Calculate benefit of adding 30 minutes of exercise
+            // Calculate benefit of adding 30 minutes of exercise weekly
+            // Convert to daily equivalent: 30 min/week = ~4.3 min/day
             improvedMetric = HealthMetric(
                 id: UUID().uuidString,
                 type: .exerciseMinutes,
-                value: metric.value + 30,
+                value: metric.value + (30.0 / 7.0), // Weekly 30 min as daily average
                 date: metric.date,
                 source: metric.source
             )
             
         case .sleepHours:
-            // Calculate benefit of improving sleep by 1 hour (if currently < 8)
-            let improvementAmount = metric.value < 8 ? min(1.0, 8.0 - metric.value) : 0.5
+            // Calculate benefit of improving sleep by realistic amount
+            let currentSleep = metric.value
+            let improvementAmount: Double
+            if currentSleep < 6 {
+                improvementAmount = 1.0 // Bigger improvement for very poor sleep
+            } else if currentSleep < 7.5 {
+                improvementAmount = 0.5 // Moderate improvement
+            } else {
+                improvementAmount = 0.25 // Small optimization for already good sleep
+            }
+            
             improvedMetric = HealthMetric(
                 id: UUID().uuidString,
                 type: .sleepHours,
-                value: metric.value + improvementAmount,
+                value: min(9.0, currentSleep + improvementAmount), // Cap at 9 hours
                 date: metric.date,
                 source: metric.source
             )
             
         case .restingHeartRate:
-            // Calculate benefit of reducing RHR by 5 bpm (achievable with conditioning)
+            // Calculate benefit of reducing RHR by achievable amount
+            let currentRHR = metric.value
+            let reduction: Double
+            if currentRHR > 80 {
+                reduction = 10.0 // Larger reduction for high RHR
+            } else if currentRHR > 70 {
+                reduction = 5.0 // Moderate reduction
+            } else {
+                reduction = 2.0 // Small improvement for already good RHR
+            }
+            
             improvedMetric = HealthMetric(
                 id: UUID().uuidString,
                 type: .restingHeartRate,
-                value: max(50, metric.value - 5),
+                value: max(50, currentRHR - reduction), // Don't go below 50 bpm
                 date: metric.date,
                 source: metric.source
             )
@@ -351,24 +317,22 @@ struct ActionableRecommendationsView: View {
             )
             
         default:
-            // Generic 10% improvement for other metrics
+            // Generic 5% improvement for other metrics (more conservative)
             improvedMetric = HealthMetric(
                 id: UUID().uuidString,
                 type: metric.type,
-                value: metric.value * 1.1,
+                value: metric.value * 1.05,
                 date: metric.date,
                 source: metric.source
             )
         }
         
-        // Calculate impact difference
-        let currentImpact = lifeImpactService.calculateImpact(for: metric)
+        // Calculate impact difference using the research-based formulas
         let improvedImpact = lifeImpactService.calculateImpact(for: improvedMetric)
-        
         let benefitMinutes = improvedImpact.lifespanImpactMinutes - currentImpact.lifespanImpactMinutes
         
-        // Ensure minimum realistic benefit (at least 5 minutes for any positive action)
-        return max(5.0, benefitMinutes)
+        // CRITICAL: This returns DAILY benefit only - never scale for non-linear models
+        return max(0.0, benefitMinutes)
     }
     
     /// Format time impact for display
@@ -384,87 +348,21 @@ struct ActionableRecommendationsView: View {
         } else if absMinutes >= 60 {
             let hours = absMinutes / 60
             return String(format: "%.1f h", hours)
-        } else {
+        } else if absMinutes >= 1 {
             let roundedMinutes = Int(round(absMinutes))
             return "\(roundedMinutes) min"
+        } else {
+            // For values less than 1 minute, show as 0 for display purposes
+            // (actual calculations remain unchanged)
+            return "0"
         }
     }
     
-    /// Build one elegant sentence combining action and benefit with styled text
+    /// Build one elegant sentence using the RecommendationService
     private func buildActionSentence(for metric: HealthMetric) -> Text {
-        let dailyBenefit = calculatePotentialBenefit(for: metric)
+        let recommendationText = actionText(for: metric)
         
-        // Scale benefit based on selected period
-        let scaledBenefit: Double
-        let periodSuffix: String
-        
-        switch selectedPeriod {
-        case .day:
-            scaledBenefit = dailyBenefit
-            periodSuffix = ""
-        case .month:
-            scaledBenefit = dailyBenefit * 30
-            periodSuffix = " over the next month"
-        case .year:
-            scaledBenefit = dailyBenefit * 365
-            periodSuffix = " over the next year"
-        }
-        
-        // Get action text without "to add"
-        let baseAction: String
-        
-        switch metric.type {
-        case .steps:
-            baseAction = selectedPeriod == .day ? 
-                "Take a 20-minute walk today" :
-                "Walk 20 minutes daily"
-        case .exerciseMinutes:
-            baseAction = selectedPeriod == .day ?
-                "Add 30 minutes of exercise today" :
-                "Exercise 30 minutes daily"
-        case .sleepHours:
-            baseAction = selectedPeriod == .day ?
-                "Get better sleep tonight" :
-                "Improve sleep quality daily"
-        case .restingHeartRate:
-            baseAction = selectedPeriod == .day ?
-                "Practice deep breathing today" :
-                "Practice daily breathing exercises"
-        case .nutritionQuality:
-            baseAction = selectedPeriod == .day ?
-                "Eat nutritious meals today" :
-                "Maintain healthy eating daily"
-        case .smokingStatus:
-            baseAction = selectedPeriod == .day ?
-                "Take steps to quit smoking" :
-                "Work on quitting smoking"
-        case .alcoholConsumption:
-            baseAction = selectedPeriod == .day ?
-                "Reduce alcohol today" :
-                "Limit alcohol daily"
-        case .socialConnectionsQuality:
-            baseAction = selectedPeriod == .day ?
-                "Connect with others today" :
-                "Maintain social connections"
-        case .stressLevel:
-            baseAction = selectedPeriod == .day ?
-                "Try meditation today" :
-                "Practice stress management daily"
-        default:
-            baseAction = selectedPeriod == .day ?
-                "Improve your \(metric.type.displayName.lowercased()) today" :
-                "Maintain better \(metric.type.displayName.lowercased()) daily"
-        }
-        
-        // Format the time benefit (without + sign)
-        let timeText = formatTimeImpact(scaledBenefit)
-        
-        // Build the complete sentence with styled text
-        return Text(baseAction + " to add ")
-            .style(.body) +
-        Text(timeText)
-            .style(.body, color: .ampedGreen) +
-        Text(periodSuffix)
+        return Text(recommendationText)
             .style(.body)
     }
 }

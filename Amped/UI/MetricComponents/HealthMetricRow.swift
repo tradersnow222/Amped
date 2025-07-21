@@ -76,12 +76,19 @@ struct HealthMetricRow: View {
                     // This ensures consistent display regardless of selected time period
                     let displayImpact: Double = impact.lifespanImpactMinutes
                     
-                    Text(formattedImpact(minutes: displayImpact))
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(impactColor)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .accessibilityLabel(accessibilityImpactValue)
+                    // Show "No impact data" for zero/negligible impacts (< 1 minute)
+                    if abs(displayImpact) < 1.0 {
+                        Text("No impact data")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                    } else {
+                        Text(formattedImpact(minutes: displayImpact))
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(impactColor)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .accessibilityLabel(accessibilityImpactValue)
+                    }
                 } else {
                     Text("No impact data")
                         .font(.system(size: 14))
@@ -166,6 +173,11 @@ struct HealthMetricRow: View {
     
     /// Icon foreground color based on source and impact
     private var iconForegroundColor: Color {
+        // Grey out icons for metrics with no meaningful impact (< 1 minute)
+        guard let impact = metric.impactDetails, abs(impact.lifespanImpactMinutes) >= 1.0 else {
+            return .gray.opacity(0.5)
+        }
+        
         if metric.source == .userInput {
             // More muted color for manual metrics
             return impactColor.opacity(0.8)
@@ -203,6 +215,9 @@ struct HealthMetricRow: View {
     /// Get impact color based on whether impact is positive or negative
     private var impactColor: Color {
         guard let impact = metric.impactDetails else { return .gray }
+        
+        // Grey out for negligible impacts (< 1 minute)
+        guard abs(impact.lifespanImpactMinutes) >= 1.0 else { return .gray }
         
         // Always show proper color based on direction - following rule: ACCURATE DATA DISPLAYED TO THE USER IS KING
         return impact.lifespanImpactMinutes >= 0 ? .ampedGreen : .ampedRed
@@ -280,32 +295,26 @@ struct HealthMetricRow: View {
             }
         }
         
-        // Minutes - show exact value even if less than 1
+        // Minutes - show exact value if 1 or more
         if absMinutes >= 1.0 {
             let roundedMinutes = Int(round(absMinutes))
             let unit = roundedMinutes == 1 ? "minute" : "minutes"
             return "\(roundedMinutes) \(unit) \(direction)"
         }
         
-        // Seconds - convert minutes to seconds
-        // Following rule: smallest units at seconds to avoid confusion with "No impact data"
-        let absSeconds = absMinutes * 60.0
-        
-        // For very small values (less than 0.1 seconds), show in decimal format
-        if absSeconds < 0.1 {
-            return String(format: "%.3f sec %@", absSeconds, direction)
-        } else if absSeconds < 1.0 {
-            return String(format: "%.2f sec %@", absSeconds, direction)
-        } else if absSeconds < 10.0 {
-            return String(format: "%.1f sec %@", absSeconds, direction)
-        } else {
-            return String(format: "%.0f sec %@", absSeconds, direction)
-        }
+        // For values less than 1 minute, show as 0 for display purposes
+        // (actual calculations remain unchanged)
+        return "0 \(direction)"
     }
     
     /// Formatted impact value for accessibility
     private var accessibilityImpactValue: String {
         guard let impact = metric.impactDetails else { return "No impact data" }
+        
+        // Show "No impact data" for zero/negligible impacts (< 1 minute)
+        if abs(impact.lifespanImpactMinutes) < 1.0 {
+            return "No impact data"
+        }
         
         let direction = impact.lifespanImpactMinutes >= 0 ? "Gaining" : "Losing"
         return "\(direction) \(formattedImpact(minutes: impact.lifespanImpactMinutes))"

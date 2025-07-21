@@ -26,11 +26,18 @@ final class MetricDetailViewModel: ObservableObject {
     private let healthDataService: HealthDataService
     private var currentDataTask: Task<Void, Never>?
     
-    // Convert history data to chart data points
+    // Convert history data to chart data points with processing
     var chartDataPoints: [MetricDataPoint] {
-        historyData.map { 
+        let rawPoints = historyData.map { 
             MetricDataPoint(date: $0.date, value: $0.value)
         }
+        
+        // Apply data processing with smoothing and outlier detection
+        return ChartDataProcessor.processDataPoints(
+            rawPoints,
+            metricType: metric.type,
+            smoothingLevel: .light
+        )
     }
     
     // Calculate total impact for the selected period
@@ -206,32 +213,13 @@ final class MetricDetailViewModel: ObservableObject {
         let calendar = Calendar.current
         
         if selectedPeriod == .day {
-            // For daily view, we need to fetch the actual sleep sessions and show them properly
-            // First get today's total sleep
+            // For daily view, show single value for sleep (not hourly)
             if let todaysSleep = await sleepManager.processSleepData(from: startDate, to: endDate) {
-                // For daily view, we'll show the total sleep as a single value
-                // Sleep doesn't vary hourly, so we'll show it as a constant across sleep hours
-                
-                // Generate 24 hourly points - showing sleep during typical sleep hours
-                for hour in 0..<24 {
-                    let date = calendar.date(byAdding: .hour, value: hour - 24, to: endDate) ?? endDate
-                    let hourOfDay = calendar.component(.hour, from: date)
-                    
-                    // Show sleep value during typical sleep hours (10 PM to 6 AM)
-                    // In a production app, we'd fetch actual sleep sessions to show precise times
-                    if hourOfDay >= 22 || hourOfDay < 6 {
-                        // Distribute the total sleep across sleep hours (8 hours)
-                        historyData.append(HistoryDataPoint(date: date, value: todaysSleep.value / 8.0))
-                    } else {
-                        historyData.append(HistoryDataPoint(date: date, value: 0.0))
-                    }
-                }
+                // Show sleep as a single data point for the day
+                historyData.append(HistoryDataPoint(date: endDate, value: todaysSleep.value))
             } else {
-                // No sleep data for today - show zeros
-                for hour in 0..<24 {
-                    let date = calendar.date(byAdding: .hour, value: hour - 24, to: endDate) ?? endDate
-                    historyData.append(HistoryDataPoint(date: date, value: 0.0))
-                }
+                // Show current metric value if no data
+                historyData.append(HistoryDataPoint(date: endDate, value: metric.value))
             }
         } else if selectedPeriod == .month {
             // For monthly view, show daily sleep totals

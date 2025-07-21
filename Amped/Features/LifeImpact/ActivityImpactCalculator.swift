@@ -17,7 +17,7 @@ class ActivityImpactCalculator {
         logger.info("🚶 Calculating steps impact for \(Int(steps)) steps using J-shaped model")
         
         let studies = StudyReferenceProvider.getApplicableStudies(for: .steps, userProfile: userProfile)
-        let primaryStudy = studies.first ?? StudyReferenceProvider.stepsResearch[0]
+        let _ = studies.first ?? StudyReferenceProvider.stepsResearch[0]
         
         // Calculate impact using exact playbook J-shaped model
         let dailyImpactMinutes = calculateStepsLifeImpact(
@@ -68,7 +68,7 @@ class ActivityImpactCalculator {
         
         // Convert relative risk to daily life minutes using playbook formula
         let riskReduction = 1.0 - relativeRisk
-        let impactScaling = 0.082  // 3.2 y gain for 50% RR reduction
+        let impactScaling = 0.082  // Scaling factor from playbook (3.2 y gain for 50% RR reduction)
         let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
         
         // Convert to daily impact
@@ -88,7 +88,7 @@ class ActivityImpactCalculator {
         logger.info("🏃 Calculating exercise impact for \(Int(exerciseMinutes)) minutes using research-based formula")
         
         let studies = StudyReferenceProvider.getApplicableStudies(for: .exerciseMinutes, userProfile: userProfile)
-        let primaryStudy = studies.first ?? StudyReferenceProvider.exerciseResearch[0]
+        let _ = studies.first ?? StudyReferenceProvider.exerciseResearch[0]
         
         // Research-based guidelines: 150 minutes moderate exercise per week
         let weeklyOptimal = 150.0
@@ -144,7 +144,7 @@ class ActivityImpactCalculator {
         
         // Convert relative risk to daily life minutes using playbook formula
         let riskReduction = 1.0 - relativeRisk
-        let impactScaling = 0.126  // 3.4 y gain for 35% RR reduction
+        let impactScaling = 0.126  // Scaling factor from playbook (3.4 y gain for 35% RR reduction)
         let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
         
         // Convert to daily impact
@@ -195,7 +195,7 @@ class ActivityImpactCalculator {
         // Clamp to ±900 kcal as specified in playbook
         let clampedDifference = max(-900.0, min(energyDifference, 900.0))
         
-        // Direct calculation: ±17.4 min per 100 kcal deviation
+        // Exact playbook formula: ±17.4 min per 100 kcal deviation
         let dailyImpact = (clampedDifference / 100.0) * 17.4
         
         logger.info("📊 Active Energy impact: \(String(format: "%.0f", energy)) kcal → \(String(format: "%.1f", dailyImpact)) minutes/day")
@@ -239,7 +239,7 @@ class ActivityImpactCalculator {
         // Calculate deviation from reference
         let massDifference = mass - reference
         
-        // Direct calculation: ±17.4 min impact every ±20 lbs (linear)
+        // Exact playbook formula: ±17.4 min impact every ±20 lbs (linear)
         let dailyImpact = (massDifference / 20.0) * 17.4
         
         logger.info("📊 Body Mass impact: \(String(format: "%.1f", mass)) lbs → \(String(format: "%.1f", dailyImpact)) minutes/day")
@@ -278,7 +278,19 @@ class ActivityImpactCalculator {
     /// Reference 40. ±21.8 min per ±5 ml difference, capped ±60→±87 min
     private func calculateVO2MaxLifeImpact(vo2Max: Double, userProfile: UserProfile) -> Double {
         let vo2 = max(15, min(vo2Max, 80))  // Reasonable bounds (15 to 80 ml·kg⁻¹·min⁻¹)
-        let reference = 40.0  // Reference point from playbook
+        
+        // Age and gender adjusted reference
+        let age = Double(userProfile.age ?? 30)
+        let gender = userProfile.gender ?? .male
+        
+        // VO2 max declines ~1% per year after age 30
+        let ageDecline = max(0, (age - 30) * 0.4) // 0.4 mL/kg/min per year
+        var reference = 40.0 - ageDecline
+        
+        // Gender adjustment (females typically 10-15% lower)
+        if gender == .female {
+            reference *= 0.88
+        }
         
         // Calculate deviation from reference
         let vo2Difference = vo2 - reference
@@ -286,7 +298,7 @@ class ActivityImpactCalculator {
         // Clamp to ±60→±87 min as specified in playbook
         let clampedDifference = max(-20.0, min(vo2Difference, 20.0))  // ±20 gives ±87 min
         
-        // Direct calculation: ±21.8 min per ±5 ml difference
+        // Exact playbook formula: ±21.8 min per ±5 ml difference
         let dailyImpact = (clampedDifference / 5.0) * 21.8
         
         logger.info("📊 VO2 Max impact: \(String(format: "%.1f", vo2)) ml·kg⁻¹·min⁻¹ → \(String(format: "%.1f", dailyImpact)) minutes/day")
@@ -330,7 +342,7 @@ class ActivityImpactCalculator {
         // Calculate deviation from reference
         let saturationDifference = saturation - reference
         
-        // Direct calculation: ±8.7 min per ±2% deviation
+        // Exact playbook formula: ±8.7 min per ±2% deviation below or above
         let dailyImpact = (saturationDifference / 2.0) * 8.7
         
         logger.info("📊 Oxygen Saturation impact: \(String(format: "%.1f", saturation))% → \(String(format: "%.1f", dailyImpact)) minutes/day")
@@ -362,7 +374,7 @@ class ActivityImpactCalculator {
     
     private func generateExerciseRecommendation(currentDaily: Double, optimalDaily: Double) -> String {
         let currentWeekly = currentDaily * 7
-        let optimalWeekly = optimalDaily * 7
+        let _ = optimalDaily * 7
         
         if currentWeekly >= 300 {
             return "Outstanding! You exceed WHO guidelines. Maintain this excellent exercise routine."
@@ -388,7 +400,7 @@ class ActivityImpactCalculator {
     }
     
     private func generateBodyMassRecommendation(currentMass: Double) -> String {
-        let reference = 160.0
+        let _ = 160.0
         let healthyRange = 140.0...180.0
         
         if healthyRange.contains(currentMass) {

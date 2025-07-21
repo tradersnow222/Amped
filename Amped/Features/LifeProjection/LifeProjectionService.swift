@@ -5,6 +5,7 @@ import OSLog
 /// Uses daily impact rates to project cumulative life expectancy changes over remaining lifespan
 class LifeProjectionService {
     private let logger = Logger(subsystem: "Amped", category: "LifeProjectionService")
+    private let mortalityAdjuster = BaselineMortalityAdjuster()
     
     /// Calculate life projection from health metrics using daily impact rates
     /// CRITICAL: Uses DAILY impacts, not period-scaled impacts for accurate projections
@@ -59,18 +60,31 @@ class LifeProjectionService {
     ) -> LifeProjection {
         
         // Calculate baseline life expectancy using actuarial tables
-        let baselineLifeExpectancy = calculateBaselineLifeExpectancy(userProfile: userProfile)
+        let baselineLifeExpectancy = mortalityAdjuster.getBaselineLifeExpectancy(for: userProfile)
         let userAge = Double(userProfile.age ?? 30) // Default age if not provided
         let remainingYears = max(1.0, baselineLifeExpectancy - userAge)
         
-        // Convert daily impact to total remaining lifespan impact
-        // Daily impact accumulated over remaining days
-        let remainingDays = remainingYears * 365.25
-        let totalLifespanImpactMinutes = dailyImpactMinutes * remainingDays
+        // Apply behavior decay over time instead of assuming static behavior
+        var totalLifespanImpactMinutes = 0.0
+        let yearsPerSegment = 5.0 // Calculate in 5-year segments
+        var currentYear = 0.0
         
-        // Convert total impact minutes to years (conservative conversion)
-        // Use research-based conversion: major lifestyle changes can affect lifespan by several years
-        let lifespanImpactYears = totalLifespanImpactMinutes / (365.25 * 24 * 60) // Convert to years
+        while currentYear < remainingYears {
+            let segmentYears = min(yearsPerSegment, remainingYears - currentYear)
+            let segmentDays = segmentYears * 365.25
+            
+            // Apply decay for this segment
+            let decayedDailyImpact = applyBehaviorDecayToAggregate(
+                dailyImpact: dailyImpactMinutes,
+                yearsInFuture: currentYear + segmentYears / 2.0 // Use midpoint
+            )
+            
+            totalLifespanImpactMinutes += decayedDailyImpact * segmentDays
+            currentYear += segmentYears
+        }
+        
+        // Convert total impact minutes to years
+        let lifespanImpactYears = totalLifespanImpactMinutes / (365.25 * 24 * 60)
         
         // Apply evidence quality weighting (lower quality = more conservative projection)
         let evidenceAdjustedImpact = lifespanImpactYears * evidenceQuality
@@ -176,5 +190,18 @@ class LifeProjectionService {
         } else {
             return "Low confidence (\(confidencePercentage)% evidence quality)"
         }
+    }
+    
+    /// Apply behavior decay to aggregate daily impact
+    private func applyBehaviorDecayToAggregate(
+        dailyImpact: Double,
+        yearsInFuture: Double
+    ) -> Double {
+        // Average decay rate across all behaviors (conservative estimate)
+        let averageDecayRate = 0.10 // 10% annual decay
+        
+        // Exponential decay model
+        let decayFactor = exp(-averageDecayRate * yearsInFuture)
+        return dailyImpact * decayFactor
     }
 } 

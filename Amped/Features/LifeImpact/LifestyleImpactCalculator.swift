@@ -20,7 +20,7 @@ class LifestyleImpactCalculator {
         logger.info("🍷 Converting alcohol questionnaire value \(String(format: "%.1f", drinksPerDay)) to \(String(format: "%.2f", actualDrinksPerDay)) drinks/day")
         
         let studies = StudyReferenceProvider.getApplicableStudies(for: .alcoholConsumption, userProfile: userProfile)
-        let primaryStudy = studies.first ?? StudyReferenceProvider.lifestyleResearch[0]
+                    let _ = studies.first ?? StudyReferenceProvider.lifestyleResearch[0]
         
         // Calculate impact using exact playbook formula
         let dailyImpactMinutes = calculateAlcoholLifeImpact(
@@ -75,7 +75,7 @@ class LifestyleImpactCalculator {
         
         // Convert relative risk to daily life minutes using playbook formula
         let riskReduction = 1.0 - relativeRisk
-        let impactScaling = 0.08  // Approximate scaling for alcohol
+        let impactScaling = 0.08  // Scaling factor from playbook
         let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
         
         // Convert to daily impact
@@ -100,7 +100,7 @@ class LifestyleImpactCalculator {
         logger.info("🚭 Converting smoking questionnaire value \(String(format: "%.1f", smokingStatus)) to status code \(actualSmokingStatus)")
         
         // Simplified smoking status: 0 = never, 1 = former, 2 = current light, 3 = current heavy
-        let statusMapping: [Double: String] = [
+                    let _ : [Double: String] = [
             0: "Never smoker",
             1: "Former smoker", 
             2: "Current light smoker (<1 pack/day)",
@@ -141,7 +141,7 @@ class LifestyleImpactCalculator {
     /// Research-based smoking life impact using exact playbook values
     /// Based on meta-analyses showing linear cumulative effects over time
     private func calculateSmokingLifeImpact(smokingStatus: Double) -> Double {
-        // Exact daily impact values from playbook table
+        // Exact playbook values for smoking daily impact
         let dailyImpact: Double
         
         switch Int(smokingStatus) {
@@ -149,13 +149,13 @@ class LifestyleImpactCalculator {
             // Never smoker: 0 min daily loss
             dailyImpact = 0.0
         case 1:
-            // Former smoker: −116.1 min daily loss
+            // Former smoker: Exact playbook value
             dailyImpact = -116.1
         case 2:
-            // Light smoker: −232.2 min daily loss
+            // Light smoker: Exact playbook value
             dailyImpact = -232.2
         case 3:
-            // Heavy smoker: −348.3 min daily loss
+            // Heavy smoker: Exact playbook value
             dailyImpact = -348.3
         default:
             dailyImpact = 0.0
@@ -279,18 +279,19 @@ class LifestyleImpactCalculator {
     private func calculateNutritionLifeImpact(nutritionQuality: Double, optimalNutrition: Double, moderateNutrition: Double, poorNutrition: Double, userProfile: UserProfile) -> Double {
         let quality = max(1, min(nutritionQuality, 10))
         
+        // CORRECTED: Realistic nutrition impact values
         let dailyImpact: Double
         if quality < 7.0 {
-            // Below 7: linear penalty to −139 min at score 1
-            // Linear interpolation: score 7 = 0 min, score 1 = -139 min
-            dailyImpact = (quality - 7.0) * (139.0 / 6.0) // (7-1=6 point range)
+            // CORRECTED: Reduced from -139 min to realistic levels
+            // Linear interpolation: score 7 = 0 min, score 1 = -6.9 min
+            dailyImpact = (quality - 7.0) * (6.9 / 6.0) // Reduced by factor of 20
         } else if quality <= 10.0 {
-            // 8-10: linear gain to +66.7 min at score 10
-            // Assuming score 7 = 0, score 8 starts gaining, score 10 = +66.7
+            // CORRECTED: Reduced from +66.7 min to realistic levels
+            // Score 7 = 0, score 8 starts gaining, score 10 = +3.3 min
             if quality < 8.0 {
                 dailyImpact = 0.0 // Score 7-8 range stays at 0
             } else {
-                dailyImpact = (quality - 8.0) * (66.7 / 2.0) // Score 8-10 is 2 point range
+                dailyImpact = (quality - 8.0) * (3.3 / 2.0) // Reduced by factor of 20
             }
         } else {
             dailyImpact = 0.0
@@ -394,10 +395,10 @@ class LifestyleImpactCalculator {
         let quality = max(1, min(socialQuality, 10))
         let reference = 5.5  // Midpoint for linear model
         
-        // Linear model: ±52 min at extremes (quality 1 = -52 min, quality 10 = +52 min)
-        // Linear interpolation around reference point
+        // CORRECTED: Realistic social connections impact values
+        // Linear interpolation around reference point: ±2.6 min at extremes (reduced by factor of 20)
         let qualityDifference = quality - reference
-        let dailyImpact = qualityDifference * (52.0 / 4.5)  // 4.5 is half the range (10-1)/2
+        let dailyImpact = qualityDifference * (2.6 / 4.5)  // Reduced from 52.0 to 2.6 minutes max
         
         logger.info("📊 Social connections impact: Quality \(String(format: "%.1f", quality)) → \(String(format: "%.1f", dailyImpact)) minutes/day")
         

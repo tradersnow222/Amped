@@ -102,35 +102,21 @@ struct DashboardView: View {
         } else {
             // Filter out unavailable metrics if showUnavailable is false
             let filtered = metrics.filter { metric in
-                // A metric is considered available if it has either:
-                // 1. A non-zero value, OR
-                // 2. Valid impact details (even if value is 0)
-                let isAvailable = metric.value != 0 || metric.impactDetails != nil
-                return isAvailable
+                // A metric is considered available ONLY if it has meaningful impact (>= 1 minute)
+                // This ensures consistency with the "No impact data" display logic
+                let hasMeaningfulImpact = metric.impactDetails != nil && abs(metric.impactDetails!.lifespanImpactMinutes) >= 1.0
+                return hasMeaningfulImpact
             }
             metrics = filtered
         }
         
-        // Sort metrics by impact (highest to lowest), with unavailable metrics at the end
+        // Sort metrics by impact (highest to lowest)
+        // Since we now only include metrics with meaningful impact, we can simplify the sorting
         return metrics.sorted { lhs, rhs in
-            // First priority: Check if either metric has no impact data at all
-            let lhsHasImpact = lhs.impactDetails != nil
-            let rhsHasImpact = rhs.impactDetails != nil
-            
-            // If one has impact data and the other doesn't, the one with impact comes first
-            if lhsHasImpact != rhsHasImpact {
-                return lhsHasImpact // Metrics with any impact data come first
-            }
-            
-            // If both have no impact data, sort alphabetically for consistent ordering
-            if !lhsHasImpact && !rhsHasImpact {
-                return lhs.type.displayName < rhs.type.displayName
-            }
-            
-            // Both have impact data - sort by absolute impact value, highest first
             let lhsImpact = abs(lhs.impactDetails?.lifespanImpactMinutes ?? 0)
             let rhsImpact = abs(rhs.impactDetails?.lifespanImpactMinutes ?? 0)
             
+            // Sort by absolute impact value, highest first
             return lhsImpact > rhsImpact
         }
     }
@@ -223,17 +209,9 @@ struct DashboardView: View {
             return "\(roundedMinutes) \(unit)"
         }
         
-        // For very small values, show seconds
-        let absSeconds = absMinutes * 60.0
-        if absSeconds < 0.1 {
-            return String(format: "%.3f sec", absSeconds)
-        } else if absSeconds < 1.0 {
-            return String(format: "%.2f sec", absSeconds)
-        } else if absSeconds < 10.0 {
-            return String(format: "%.1f sec", absSeconds)
-        } else {
-            return String(format: "%.0f sec", absSeconds)
-        }
+        // For values less than 1 minute, show as 0 for display purposes
+        // (actual calculations remain unchanged)
+        return "0"
     }
     
     /// Time period context text for display

@@ -10,9 +10,11 @@ class RecommendationService {
     private let activityCalculator = ActivityImpactCalculator()
     private let cardiovascularCalculator = CardiovascularImpactCalculator()
     private let lifestyleCalculator = LifestyleImpactCalculator()
+    private let lifeImpactService: LifeImpactService
     
     init(userProfile: UserProfile) {
         self.userProfile = userProfile
+        self.lifeImpactService = LifeImpactService(userProfile: userProfile)
     }
     
     /// Generate accurate recommendation with proper incremental benefit calculation
@@ -77,35 +79,27 @@ class RecommendationService {
         let targetSteps = findStepsForNeutralImpact(currentSteps: currentSteps)
         let stepsNeeded = max(0, targetSteps - currentSteps)
         
-        // Calculate realistic action and its benefit
-        let actionSteps: Double
-        let actionText: String
-        
-        if stepsNeeded <= 2000 {
-            actionSteps = min(stepsNeeded, 2000)
-            actionText = "Take a 20-minute walk"
-        } else if stepsNeeded <= 4000 {
-            actionSteps = min(stepsNeeded, 3000)
-            actionText = "Take a 30-minute walk"
-        } else {
-            actionSteps = 4000
-            actionText = "Take a 40-minute walk"
-        }
+        // Calculate realistic action size based on actual deficit
+        let actionSteps = calculateRealisticStepTarget(stepsNeeded: stepsNeeded)
+        let walkMinutes = Int(actionSteps / 100) // ~100 steps per minute walking
+        let actionText = "Walk \(walkMinutes) minutes"
         
         // Calculate actual benefit of this action
         let newSteps = currentSteps + actionSteps
         let newImpact = calculateStepsImpact(steps: newSteps)
         let incrementalBenefit = newImpact - currentImpact
         
-        let formattedBenefit = formatBenefit(incrementalBenefit, period: period)
+        // Apply bounds checking for realistic recommendations
+        let clampedBenefit = applyRealisticBounds(benefit: incrementalBenefit, period: period, metricType: .steps)
+        let formattedBenefit = formatBenefitForPeriod(clampedBenefit, period: period)
         
         switch period {
         case .day:
-            return "\(actionText) today to add \(formattedBenefit)"
+            return "\(actionText) today to add \(formattedBenefit) today"
         case .month:
-            return "\(actionText) daily this month to add \(formattedBenefit)"
+            return "\(actionText) daily to add \(formattedBenefit) this month"
         case .year:
-            return "\(actionText) daily this year to add \(formattedBenefit)"
+            return "\(actionText) daily to add \(formattedBenefit) this year"
         }
     }
     
@@ -132,7 +126,7 @@ class RecommendationService {
     }
     
     private func calculateStepsImpact(steps: Double) -> Double {
-        let tempMetric = HealthMetric(
+                    let _ = HealthMetric(
             id: UUID().uuidString,
             type: .steps,
             value: steps,
@@ -154,20 +148,23 @@ class RecommendationService {
         let targetMinutes = findExerciseForNeutralImpact(currentMinutes: currentMinutes)
         let minutesNeeded = max(0, targetMinutes - currentMinutes)
         
-        let actionMinutes = min(minutesNeeded, 30) // Realistic 30-minute action
+        // Calculate realistic improvement based on current level
+        let actionMinutes = calculateRealisticExerciseTarget(minutesNeeded: minutesNeeded, currentMinutes: currentMinutes)
         let newMinutes = currentMinutes + actionMinutes
         let newImpact = calculateExerciseImpact(minutes: newMinutes)
         let incrementalBenefit = newImpact - currentImpact
         
-        let formattedBenefit = formatBenefit(incrementalBenefit, period: period)
+        // Apply bounds checking
+        let clampedBenefit = applyRealisticBounds(benefit: incrementalBenefit, period: period, metricType: .exerciseMinutes)
+        let formattedBenefit = formatBenefitForPeriod(clampedBenefit, period: period)
         
         switch period {
         case .day:
-            return "Exercise \(Int(actionMinutes)) minutes today to add \(formattedBenefit)"
+            return "Exercise \(Int(actionMinutes)) minutes today to add \(formattedBenefit) today"
         case .month:
-            return "Exercise \(Int(actionMinutes)) minutes daily this month to add \(formattedBenefit)"
+            return "Exercise \(Int(actionMinutes)) minutes daily to add \(formattedBenefit) this month"
         case .year:
-            return "Exercise \(Int(actionMinutes)) minutes daily this year to add \(formattedBenefit)"
+            return "Exercise \(Int(actionMinutes)) minutes daily to add \(formattedBenefit) this year"
         }
     }
     
@@ -202,7 +199,7 @@ class RecommendationService {
         let newImpact = calculateSleepImpact(hours: newHours)
         let incrementalBenefit = newImpact - currentImpact
         
-        let formattedBenefit = formatBenefit(incrementalBenefit, period: period)
+        let formattedBenefit = formatBenefitForPeriod(incrementalBenefit, period: period)
         let hourText = actionHours == 1.0 ? "1 hour" : String(format: "%.1f hours", actionHours)
         
         switch period {
@@ -224,7 +221,7 @@ class RecommendationService {
     
     private func generateHeartRateRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
         let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefit(benefit, period: period)
+        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
         
         switch period {
         case .day:
@@ -238,7 +235,7 @@ class RecommendationService {
     
     private func generateHRVRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
         let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefit(benefit, period: period)
+        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
         
         switch period {
         case .day:
@@ -252,7 +249,7 @@ class RecommendationService {
     
     private func generateBodyMassRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
         let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefit(benefit, period: period)
+        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
         
         switch period {
         case .day:
@@ -266,7 +263,7 @@ class RecommendationService {
     
     private func generateAlcoholRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
         let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefit(benefit, period: period)
+        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
         
         switch period {
         case .day:
@@ -280,7 +277,7 @@ class RecommendationService {
     
     private func generateSmokingRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
         let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefit(benefit, period: period)
+        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
         
         switch period {
         case .day:
@@ -294,7 +291,7 @@ class RecommendationService {
     
     private func generateStressRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
         let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefit(benefit, period: period)
+        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
         
         switch period {
         case .day:
@@ -308,7 +305,7 @@ class RecommendationService {
     
     private func generateNutritionRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
         let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefit(benefit, period: period)
+        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
         
         switch period {
         case .day:
@@ -322,7 +319,7 @@ class RecommendationService {
     
     private func generateSocialRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
         let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefit(benefit, period: period)
+        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
         
         switch period {
         case .day:
@@ -336,7 +333,7 @@ class RecommendationService {
     
     private func generateActiveEnergyRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
         let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefit(benefit, period: period)
+        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
         
         switch period {
         case .day:
@@ -350,7 +347,7 @@ class RecommendationService {
     
     private func generateVO2MaxRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
         let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefit(benefit, period: period)
+        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
         
         switch period {
         case .day:
@@ -364,7 +361,7 @@ class RecommendationService {
     
     private func generateOxygenRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
         let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefit(benefit, period: period)
+        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
         
         switch period {
         case .day:
@@ -380,7 +377,7 @@ class RecommendationService {
     
     private func generatePositiveMetricRecommendation(for metric: HealthMetric, period: ImpactDataPoint.PeriodType, currentImpact: Double) -> String {
         let twentyPercentIncrease = currentImpact * 0.2
-        let formattedBenefit = formatBenefit(twentyPercentIncrease, period: period)
+        let formattedBenefit = formatBenefitForPeriod(twentyPercentIncrease, period: period)
         
         switch metric.type {
         case .steps:
@@ -399,6 +396,235 @@ class RecommendationService {
         return generatePositiveMetricRecommendation(for: metric, period: period, currentImpact: currentImpact)
     }
     
+    // MARK: - Prioritization Engine
+    
+    /// Get prioritized recommendations based on potential life impact
+    func getPrioritizedRecommendations(
+        for metrics: [HealthMetric],
+        selectedPeriod: ImpactDataPoint.PeriodType,
+        maxRecommendations: Int = 3
+    ) -> [PrioritizedRecommendation] {
+        logger.info("🎯 Generating prioritized recommendations for \(metrics.count) metrics")
+        
+        var recommendations: [PrioritizedRecommendation] = []
+        
+        // Calculate potential improvement for each metric
+        for metric in metrics {
+            let currentImpact = metric.impactDetails?.lifespanImpactMinutes ?? 0
+            
+            // Skip metrics that are already optimal
+            if let details = metric.impactDetails,
+               abs(details.variance) < 0.1 * abs(details.baselineValue) {
+                continue
+            }
+            
+            // Calculate potential improvement
+            let potentialImprovement = calculatePotentialImprovement(
+                for: metric,
+                currentImpact: currentImpact,
+                period: selectedPeriod
+            )
+            
+            if potentialImprovement.dailyMinutesGained > 0 {
+                let recommendation = generateContextAwareRecommendation(
+                    for: metric,
+                    improvement: potentialImprovement,
+                    period: selectedPeriod
+                )
+                
+                recommendations.append(PrioritizedRecommendation(
+                    metric: metric,
+                    recommendation: recommendation,
+                    potentialDailyGain: potentialImprovement.dailyMinutesGained,
+                    potentialPeriodGain: potentialImprovement.periodMinutesGained,
+                    difficulty: potentialImprovement.difficulty,
+                    priority: calculatePriority(
+                        gain: potentialImprovement.periodMinutesGained,
+                        difficulty: potentialImprovement.difficulty
+                    )
+                ))
+            }
+        }
+        
+        // Sort by priority and return top N
+        return recommendations
+            .sorted { $0.priority > $1.priority }
+            .prefix(maxRecommendations)
+            .map { $0 }
+    }
+    
+    /// Calculate potential improvement for a metric
+    private func calculatePotentialImprovement(
+        for metric: HealthMetric,
+        currentImpact: Double,
+        period: ImpactDataPoint.PeriodType
+    ) -> (dailyMinutesGained: Double, periodMinutesGained: Double, difficulty: RecommendationDifficulty) {
+        
+        // Calculate realistic improvement target
+        let targetValue = calculateRealisticTarget(for: metric)
+        
+        // Create hypothetical improved metric
+        let improvedMetric = HealthMetric(
+            id: UUID().uuidString,
+            type: metric.type,
+            value: targetValue,
+            date: metric.date,
+            source: metric.source
+        )
+        
+        // Calculate impact of improved metric
+        let improvedImpact = lifeImpactService.calculateImpact(for: improvedMetric)
+        let dailyGain = improvedImpact.lifespanImpactMinutes - currentImpact
+        
+        // Scale for period
+        let periodGain: Double
+        switch period {
+        case .day: periodGain = dailyGain
+        case .month: periodGain = dailyGain * 30
+        case .year: periodGain = dailyGain * 365
+        }
+        
+        // Assess difficulty
+        let difficulty = assessDifficulty(
+            metric: metric,
+            currentValue: metric.value,
+            targetValue: targetValue
+        )
+        
+        return (dailyGain, periodGain, difficulty)
+    }
+    
+    /// Calculate realistic improvement target based on current value
+    private func calculateRealisticTarget(for metric: HealthMetric) -> Double {
+        switch metric.type {
+        case .steps:
+            // 20% improvement or 10,000, whichever is lower
+            return min(metric.value * 1.2, 10000)
+            
+        case .sleepHours:
+            // Move towards optimal 7.5 hours
+            if metric.value < 7 {
+                return min(metric.value + 0.5, 7.5)
+            } else if metric.value > 8 {
+                return max(metric.value - 0.5, 7.5)
+            }
+            return metric.value
+            
+        case .exerciseMinutes:
+            // 30% improvement or WHO guidelines
+            return min(metric.value * 1.3, 30) // 30 min/day
+            
+        case .restingHeartRate:
+            // 5 bpm improvement
+            return max(metric.value - 5, 55)
+            
+        case .heartRateVariability:
+            // 10 ms improvement
+            return metric.value + 10
+            
+        case .alcoholConsumption:
+            // Reduce by 1 drink per day equivalent
+            return max(metric.value + 2, 0) // Higher questionnaire value = less drinking
+            
+        case .smokingStatus:
+            // Move up one category
+            return min(metric.value + 3, 10)
+            
+        case .nutritionQuality:
+            // 1 point improvement on 10-point scale
+            return min(metric.value + 1, 10)
+            
+        default:
+            // 10% improvement
+            return metric.value * 1.1
+        }
+    }
+    
+    /// Assess difficulty of achieving target
+    private func assessDifficulty(
+        metric: HealthMetric,
+        currentValue: Double,
+        targetValue: Double
+    ) -> RecommendationDifficulty {
+        let changePercent = abs(targetValue - currentValue) / max(currentValue, 1) * 100
+        
+        switch metric.type {
+        case .smokingStatus, .alcoholConsumption:
+            // Addiction-related changes are hardest
+            return .hard
+            
+        case .sleepHours:
+            // Sleep changes are moderate
+            return changePercent > 20 ? .hard : .moderate
+            
+        case .steps, .exerciseMinutes:
+            // Activity changes depend on magnitude
+            if changePercent > 50 {
+                return .hard
+            } else if changePercent > 25 {
+                return .moderate
+            }
+            return .easy
+            
+        default:
+            // Default based on change magnitude
+            if changePercent > 40 {
+                return .hard
+            } else if changePercent > 20 {
+                return .moderate
+            }
+            return .easy
+        }
+    }
+    
+    /// Calculate priority score
+    private func calculatePriority(gain: Double, difficulty: RecommendationDifficulty) -> Double {
+        // Higher gain = higher priority
+        // Easier changes = higher priority
+        let difficultyMultiplier: Double
+        switch difficulty {
+        case .easy: difficultyMultiplier = 1.5
+        case .moderate: difficultyMultiplier = 1.0
+        case .hard: difficultyMultiplier = 0.7
+        }
+        
+        return gain * difficultyMultiplier
+    }
+    
+    /// Generate context-aware recommendation
+    private func generateContextAwareRecommendation(
+        for metric: HealthMetric,
+        improvement: (dailyMinutesGained: Double, periodMinutesGained: Double, difficulty: RecommendationDifficulty),
+        period: ImpactDataPoint.PeriodType
+    ) -> String {
+        // Check if metric is already in healthy range
+        if let details = metric.impactDetails,
+           metric.value >= details.baselineValue * 0.9 && metric.value <= details.baselineValue * 1.1 {
+            return generateMaintenanceRecommendation(for: metric, period: period)
+        }
+        
+        // Generate improvement recommendation
+        return generateImprovementRecommendation(
+            for: metric,
+            gain: improvement.periodMinutesGained,
+            period: period
+        )
+    }
+    
+    /// Generate recommendation for metrics already in healthy range
+    private func generateMaintenanceRecommendation(for metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
+        switch metric.type {
+        case .sleepHours:
+            return "Your sleep is within the optimal range. Maintain your consistent sleep schedule to preserve these benefits."
+        case .steps:
+            return "Great step count! Keep up your active lifestyle to maintain these cardiovascular benefits."
+        case .exerciseMinutes:
+            return "You're meeting exercise guidelines. Continue this routine for sustained health benefits."
+        default:
+            return "Your \(metric.type.displayName.lowercased()) is in a healthy range. Focus on maintaining this level."
+        }
+    }
+    
     // MARK: - Helper Methods
     
     private func calculateNeutralBenefit(for metric: HealthMetric) -> Double {
@@ -407,6 +633,83 @@ class RecommendationService {
         return abs(min(0, currentImpact)) // Only for negative impacts
     }
     
+    // MARK: - Realistic Calculation Helpers
+    
+    /// Calculate realistic step target based on current deficit
+    private func calculateRealisticStepTarget(stepsNeeded: Double) -> Double {
+        // Cap at reasonable daily increases to avoid unrealistic recommendations
+        if stepsNeeded <= 1000 {
+            return min(stepsNeeded, 1000) // 10-minute walk max for small deficits
+        } else if stepsNeeded <= 3000 {
+            return min(stepsNeeded, 2500) // 25-minute walk max for medium deficits
+        } else if stepsNeeded <= 5000 {
+            return min(stepsNeeded, 4000) // 40-minute walk max for large deficits
+        } else {
+            return 5000 // 50-minute walk maximum recommendation
+        }
+    }
+    
+    /// Calculate realistic exercise target based on deficit and current level
+    private func calculateRealisticExerciseTarget(minutesNeeded: Double, currentMinutes: Double) -> Double {
+        // Be more conservative for people who don't exercise regularly
+        if currentMinutes < 10 {
+            return min(minutesNeeded, 15) // Start with 15 minutes for beginners
+        } else if currentMinutes < 20 {
+            return min(minutesNeeded, 25) // Moderate increase for light exercisers
+        } else {
+            return min(minutesNeeded, 40) // Larger increase for regular exercisers
+        }
+    }
+    
+    /// Apply realistic bounds to prevent biologically impossible recommendations
+    private func applyRealisticBounds(benefit: Double, period: ImpactDataPoint.PeriodType, metricType: HealthMetricType) -> Double {
+        let maxDailyBenefit: Double
+        
+        // Set maximum realistic daily benefits based on research
+        switch metricType {
+        case .steps:
+            maxDailyBenefit = 15.0 // Max ~15 minutes of life gain per day from walking
+        case .exerciseMinutes:
+            maxDailyBenefit = 20.0 // Max ~20 minutes from exercise
+        case .sleepHours:
+            maxDailyBenefit = 10.0 // Max ~10 minutes from sleep optimization
+        case .nutritionQuality:
+            maxDailyBenefit = 8.0 // Max ~8 minutes from nutrition
+        default:
+            maxDailyBenefit = 12.0 // Conservative default
+        }
+        
+        return min(abs(benefit), maxDailyBenefit) * (benefit >= 0 ? 1 : -1)
+    }
+    
+    /// Format benefit appropriately for the selected period
+    private func formatBenefitForPeriod(_ dailyMinutes: Double, period: ImpactDataPoint.PeriodType) -> String {
+        let totalMinutes: Double
+        
+        switch period {
+        case .day:
+            totalMinutes = dailyMinutes // Show daily benefit
+        case .month:
+            totalMinutes = dailyMinutes * 30.0 // Show monthly total if sustained daily
+        case .year:
+            totalMinutes = dailyMinutes * 365.0 // Show yearly total if sustained daily
+        }
+        
+        let absMinutes = abs(totalMinutes)
+        
+        if absMinutes >= 1440 { // >= 1 day
+            let days = absMinutes / 1440
+            return String(format: "%.1f day%@", days, days == 1.0 ? "" : "s")
+        } else if absMinutes >= 60 { // >= 1 hour
+            let hours = absMinutes / 60
+            return String(format: "%.1f hour%@", hours, hours == 1.0 ? "" : "s")
+        } else {
+            let mins = max(1, Int(absMinutes))
+            return "\(mins) min"
+        }
+    }
+    
+    @available(*, deprecated, message: "Use formatBenefitForPeriod instead")
     private func formatBenefit(_ dailyMinutes: Double, period: ImpactDataPoint.PeriodType) -> String {
         let totalMinutes = dailyMinutes * period.multiplier
         let absMinutes = abs(totalMinutes)
@@ -443,6 +746,59 @@ class RecommendationService {
             return "Focus on improving your \(metric.type.displayName.lowercased())"
         }
     }
+    
+    /// Generate improvement recommendation with specific gain
+    private func generateImprovementRecommendation(
+        for metric: HealthMetric,
+        gain: Double,
+        period: ImpactDataPoint.PeriodType
+    ) -> String {
+        let formattedGain = formatBenefitForPeriod(gain / period.multiplier, period: period)
+        
+        switch metric.type {
+        case .steps:
+            let currentSteps = Int(metric.value)
+            let target = currentSteps < 7000 ? "7,000" : "10,000"
+            return "Increase to \(target) steps daily to add \(formattedGain)."
+            
+        case .sleepHours:
+            return "Optimize sleep to 7-8 hours nightly to add \(formattedGain)."
+            
+        case .exerciseMinutes:
+            return "Reach 30 minutes of exercise daily to add \(formattedGain)."
+            
+        case .restingHeartRate:
+            return "Improve cardiovascular fitness to add \(formattedGain)."
+            
+        case .heartRateVariability:
+            return "Enhance stress resilience to add \(formattedGain)."
+            
+        case .nutritionQuality:
+            return "Improve diet quality to add \(formattedGain)."
+            
+        default:
+            return "Optimize your \(metric.type.displayName.lowercased()) to add \(formattedGain)."
+        }
+    }
+}
+
+// MARK: - Supporting Types
+
+/// Difficulty level for recommendations
+enum RecommendationDifficulty {
+    case easy
+    case moderate
+    case hard
+}
+
+/// Prioritized recommendation with metadata
+struct PrioritizedRecommendation {
+    let metric: HealthMetric
+    let recommendation: String
+    let potentialDailyGain: Double
+    let potentialPeriodGain: Double
+    let difficulty: RecommendationDifficulty
+    let priority: Double
 }
 
 // MARK: - Extensions
