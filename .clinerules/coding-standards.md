@@ -1,0 +1,42 @@
+## Coding Standards
+
+### Adhere to iOS Swift Modularization Guidelines
+
+- Break app into small feature-focused modules instead of large ViewControllers
+- **Keep all Swift files under 300 lines** with single responsibility per class/struct
+- Separate business logic from UI using MVVM or Clean architecture patterns 
+- Create independent modules for core services (networking, persistence, authentication)
+- Use protocols to define clear interfaces between components
+- Implement dependency injection to reduce coupling between modules
+- Build reusable UI components in dedicated files
+- Organize files in logical folder structures matching architectural layers
+- Write isolated unit tests for each module to ensure independent functionality
+
+### Swift Practices
+- Prefer value types (structs) over reference types
+- Use strong type safety and proper optionals handling
+- Implement error handling with Result type and try/catch
+- Follow Swift naming conventions
+- Structure code for future team collaboration
+
+### Documentation Practices
+- Use /// comments for Swift DocC compatible documentation
+- Include examples for non-obvious functionality
+- Document internal decisions with comments when necessary
+- Document all type and function parameters
+- Use MARK comments to organize code sections
+- Keep comments up-to-date with code changes
+
+### SwiftUI Patterns
+- Use @State for local view state
+- @StateObject for view model ownership
+- @EnvironmentObject for shared dependencies
+- Extract reusable components into separate views
+- Use ViewBuilder for flexible view composition
+
+### Architecture Guidelines
+- Maintain separation of concerns
+- Implement dependency injection for testability
+- Use protocols for dependency abstraction
+- Keep files under 300 lines with single responsibility
+- Create clear module boundaries for future team scaling

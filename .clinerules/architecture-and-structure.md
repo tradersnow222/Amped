@@ -1,0 +1,64 @@
+## Architecture & Structure
+
+### Design Pattern
+- Implement MVVM (Model-View-ViewModel) architecture
+- Use SwiftUI's native state management (@State, @StateObject, @EnvironmentObject)
+- Incorporate Combine framework for reactive programming
+- Implement Swift Concurrency with async/await and Task
+- Use dependency injection with protocols for future scalability and testability
+
+### Directory Structure
+Amped/
+├── Assets.xcassets/ # Asset catalog containing all images and colors
+├── Core/ # Core business logic and models
+│ └── Models/ # Core data models
+├── Features/ # Feature modules organized by domain
+│ ├── HealthKit/ # HealthKit integration
+│ ├── LifeImpact/ # Life impact calculations
+│ ├── LifeProjection/ # Life expectancy projection calculations
+│ ├── Onboarding/ # User onboarding flow
+│ ├── Questionnaire/ # Custom health metric questions
+│ ├── Payment/ # Subscription handling
+│ ├── Settings/ # App settings
+│ └── UI/ # Feature-specific UI components
+├── UI/ # Shared UI components and design system
+│ ├── Components/ # Reusable UI components
+│ └── MetricComponents/ # UI components for health metrics
+├── Analytics/ # Analytics framework (privacy-focused)
+├── Documentation/ # Project documentation
+│ ├── Architecture/ # Architecture decisions and diagrams
+│ ├── API/ # Internal API documentation
+│ ├── UserFlows/ # User flow documentation and diagrams
+│ └── HealthAlgorithms/ # Documentation of health impact algorithms
+├── Preview Content/ # Preview assets for SwiftUI previews
+└── AmpedApp.swift # App entry point and main navigation flow
+
+### Project Documentation Structure
+README.md # Project overview, setup instructions, contribution guidelines
+CHANGELOG.md # Version history and changes
+Documentation/
+├── Architecture.md # High-level architecture overview
+├── CodeStyle.md # Project-specific coding standards
+├── Onboarding.md # Developer onboarding guide
+├── HealthMetrics.md # Health metrics implementation details
+├── LifeImpactModel.md # Life impact calculation documentation
+├── LifeProjection.md # Life expectancy projection algorithm
+├── Testing.md # Testing strategy and guidelines
+├── Images/ # Documentation images and diagrams
+└── API/ # API documentation
+├── HealthKitManager.md # HealthKit integration documentation
+├── LifeImpactService.md # Life impact service documentation
+└── etc.
+
+
+### Core Services
+- **HealthKitManager**: Handle HealthKit permissions, data access, and monitoring
+- **HealthDataService**: Process raw HealthKit data into usable metrics
+- **LifeImpactService**: Calculate life impact based on health metrics
+- **LifeProjectionService**: Calculate total life expectancy projections
+- **OnboardingManager**: Manage the onboarding state and flow
+- **QuestionnaireManager**: Handle personalized health questions and processing
+- **PaymentManager**: Handle subscription and payment processing
+- **SettingsManager**: Handle user preferences and app settings
+- **BatteryThemeManager**: Implement time-based theme management
+- **AnalyticsService**: Collect anonymized usage data for product improvement

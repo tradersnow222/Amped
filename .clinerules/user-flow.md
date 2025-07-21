@@ -1,0 +1,51 @@
+## User Flow
+
+### Onboarding Flow (Implementing "Little Yesses" Principle)
+1. **Welcome Screen**: Initial engaging welcome with app logo and brand introduction
+   - Visually appealing with battery-themed animation
+   - Simple, engaging "Continue" or "Get Started" button (first small "yes")
+
+2. **App Explainer & Personalization Intro**: Introduction to app and questionnaire
+   - Battery icon at 50% charge with "Power Up Your Experience" text
+   - 2-3 benefit icons with single-line descriptions (no paragraphs)
+   - Quick visual showing "Your habits → Your battery life"
+   - Simple message: “Let’s go through a few quick questions to customize your battery" (5-8 questions, 1 min)
+   - Subtle animation showing swipe-right gesture
+   - Clear instruction: "Swipe right to begin"
+   - Progress indicator showing first step completed
+   - Minimalist design with visual focus on battery and swipe indicator
+
+3. **Questionnaire (5 questions/metrics)**: Manually gather most impactful health metrics from user
+   - Engaging, conversational questions about metrics not in HealthKit
+   - Simple, tap-based inputs (sliders, buttons) rather than text entry
+   - Show immediate positive feedback after each answer
+   - Progress indicator showing advancement through questions
+   - Each question represents another small "yes"
+   - Final question subtly leads into HealthKit permission value
+   - No duplicate metrics between Questionnaire and HealthKit Permissions
+
+4. **HealthKit Permissions (5 metrics)**: Request access to most impactful health data
+   - Clear explanation of why granting permission benefits the user and gives a more accurate calculation
+   - A simple and scalable integration to meet iOS best practices and project MVP standards
+   - **Read Only**
+  
+
+5. **Sign in with Apple**: Authentication
+   - Familiar, low-friction authentication flow
+   - Clear privacy messaging to build trust
+   - Position as "secure account creation" to save progress
+   - Present as natural next step after permissions
+
+6. **Payment Screen**: Subscription options
+   - Position after users have invested time in questionnaire and permissions
+   - Clear value proposition based on previously collected information
+   - Highlight features unlocked with subscription
+   - Offer limited-time trial option to reduce commitment barrier
+   - Show before/after views of what premium provides
+   - Present as final step to "fully power up your experience"
+
+7. **Dashboard**: Transition to main app experience
+   - Immediate value displays showing time-period-based life impact and total life left calculations
+   - Animated dual battery visualization filling up
+   - Clear next steps for exploring the app
+

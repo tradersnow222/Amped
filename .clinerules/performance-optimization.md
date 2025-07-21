@@ -1,0 +1,6 @@
+## Performance Optimization
+- Efficient HealthKit queries with appropriate limits
+- Lazy loading of UI components and data
+- Memory-efficient data structures with value types
+- Structured background task management
+- Optimize for scale with efficient algorithm implementation

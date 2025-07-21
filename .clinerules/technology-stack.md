@@ -1,0 +1,14 @@
+### Primary Technologies
+- Swift 5.9+ with SwiftUI for UI
+- HealthKit for health data integration
+- Combine for reactive programming
+- Swift Concurrency (async/await, Task) for performance
+- OSLog for structured logging
+- UserDefaults for settings persistence
+- Sign in with Apple for authentication
+- StoreKit for in-app purchases
+- CloudKit (preparation for future sync capabilities)
+
+### Dependencies
+- Focus on native Apple frameworks, minimal third-party dependencies
+- Any third-party libraries must have proven scalability to millions of users

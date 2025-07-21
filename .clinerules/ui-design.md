@@ -1,0 +1,50 @@
+## UI Design
+
+### Design System
+- **Theme**: Battery-themed visuals with different energy/charge states
+- **Colors**:
+  - Base: ampedGreen (fully charged), ampedYellow (medium charge), ampedRed (low charge), ampedSilver, ampedDark
+  - Energy levels: fullPower, highPower, mediumPower, lowPower, criticalPower
+  - Time-based schemes: morning, midday, afternoon, evening, night
+- **Typography**: System fonts with dynamic type support
+- **Icons**: Battery icons following Apple's familiar design patterns (horizontal battery with segments)
+
+### Key UI Components
+- **BatteryLifeImpactCard**: Recent impact visualization with battery charge level
+- **BatteryLifeProjectionCard**: Total projected life expectancy visualization
+- **BatteryMetricCard**: Individual metric card with power level visualization
+- **MetricDetailView**: Expanded view for single health metric
+- **MetricChartSection**: Data visualization for metric history
+- **MetricContextCard**: Contextual information about metrics
+- **MetricTipCard**: Actionable tips for improving metrics
+
+### Dual Battery Visualization System
+- **Life Impact Battery**: Shows short-term health habit impacts
+  - Visualizes recent changes from daily behaviors
+  - Changes more dynamically based on recent activities
+  - Time period selector limited to Day, Month, Year options
+  - Changes feed into the overall Life Projection Battery
+
+- **Life Projection Battery**: Shows total projected lifespan
+  - Displayed as either “Total Life Energy Left" or "% Time Left to Live"
+  - Based on baseline life expectancy plus cumulative impacts
+  - More stable visualization that changes gradually over time, based on Life impact battery changes
+  - Provides context for how daily habits affect long-term outcomes
+
+### Animations
+- Simple battery charging/discharging animations (optimized for performance)
+- Energy flow animation between impact battery and projection battery
+- Smooth transitions between app sections
+- Minimal but effective animations for user engagement
+
+### UX Principles
+- Frictionless interactions with minimal taps to complete tasks
+- Progressive disclosure of information (avoid overwhelming users)
+- Consistent visual cues and feedback on all actions
+- Optimize touch targets for easy interaction
+- Minimize data input requirements where possible
+- Use animations as functional indicators (not just decoration)
+- Ensure all screens have clear next steps
+- Design for interruption (users can leave and return easily)
+- **Apply "Little Yesses" principle throughout the flow**
+- User flow should give the feeling of “Making Progress” or “Moving forward” visually

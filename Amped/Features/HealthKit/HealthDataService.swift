@@ -316,50 +316,21 @@ struct MetricStatistics {
                     let tempLifeImpactService = LifeImpactService(userProfile: self.userProfile)
                     let impactDetails = tempLifeImpactService.calculateImpact(for: metric)
                     
-                    // CRITICAL FIX: Only scale HealthKit metrics, NOT manual metrics
-                    // Manual metrics represent lifestyle factors with constant daily impact
-                    let finalImpactDetails: MetricImpactDetail
+                    // CRITICAL FIX: Individual metrics should ALWAYS show DAILY impact, never scaled!
+                    // Only the total aggregate impact should be scaled for the dashboard
+                    // This fixes the -360.4h issue where individual metrics were incorrectly scaled
                     
-                    if metric.source == .userInput {
-                        // Manual metrics: Use daily impact without scaling
-                        finalImpactDetails = impactDetails
-                        logger.info("📋 Manual metric \(metricType.displayName): \(metric.formattedValue) (Daily Impact: \(impactDetails.lifespanImpactMinutes) min)")
-                    } else {
-                        // HealthKit metrics: Scale impacts based on time period
-                        let scaledImpactMinutes: Double
-                        switch timePeriod {
-                        case .day:
-                            // For day view, use the raw daily impact
-                            scaledImpactMinutes = impactDetails.lifespanImpactMinutes
-                        case .month:
-                            // For month view, scale by 30 days to show cumulative monthly impact
-                            scaledImpactMinutes = impactDetails.lifespanImpactMinutes * 30
-                        case .year:
-                            // For year view, scale by 365 days to show cumulative yearly impact
-                            scaledImpactMinutes = impactDetails.lifespanImpactMinutes * 365
-                        }
-                        
-                        // Create scaled impact details for HealthKit metrics
-                        finalImpactDetails = MetricImpactDetail(
-                            metricType: impactDetails.metricType,
-                            currentValue: metric.value,
-                            baselineValue: impactDetails.baselineValue,
-                            studyReferences: impactDetails.studyReferences,
-                            lifespanImpactMinutes: scaledImpactMinutes,
-                            calculationMethod: impactDetails.calculationMethod,
-                            recommendation: impactDetails.recommendation
-                        )
-                        logger.info("📊 HealthKit metric \(metricType.displayName): \(metric.formattedValue) (Scaled Impact: \(scaledImpactMinutes) min)")
-                    }
+                    // Always use daily impact for individual metrics regardless of time period
+                    logger.info("📊 \(metric.source.rawValue) metric \(metricType.displayName): \(metric.formattedValue) (Daily Impact: \(impactDetails.lifespanImpactMinutes) min)")
                     
-                    // Create metric with appropriate impact details
+                    // Create metric with DAILY impact details (no scaling for individual metrics)
                     let metricWithImpact = HealthMetric(
                         id: metric.id,
                         type: metric.type,
                         value: metric.value,
                         date: metric.date,
                         source: metric.source,
-                        impactDetails: finalImpactDetails
+                        impactDetails: impactDetails
                     )
                     
                     metrics.append(metricWithImpact)
@@ -895,4 +866,4 @@ struct MetricStatistics {
         // Notify observers of the update
         self.metricsSubject.send(self.latestMetrics)
     }
-} 
+}

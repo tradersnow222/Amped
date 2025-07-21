@@ -72,8 +72,8 @@ struct HealthMetricRow: View {
             // Impact value
             HStack(spacing: 4) {
                 if let impact = metric.impactDetails {
-                    // CRITICAL FIX: The impact details already contain period-scaled values from HealthDataService
-                    // No additional scaling needed here - just display the scaled impact
+                    // Individual metrics now always contain daily impact values (fixed in HealthDataService)
+                    // This ensures consistent display regardless of selected time period
                     let displayImpact: Double = impact.lifespanImpactMinutes
                     
                     Text(formattedImpact(minutes: displayImpact))
@@ -401,4 +401,4 @@ struct HealthMetricRow: View {
     }
     .padding()
     .background(Color.black)
-} 
+}

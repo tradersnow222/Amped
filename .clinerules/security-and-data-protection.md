@@ -1,0 +1,15 @@
+# Security and privacy
+- **Encrypt sensitive data** using **AES or Secure Enclave**.
+- Store credentials securely in **Keychain**.
+- Use **biometric authentication** wherever necessary.
+- Implement **certificate pinning** for networking security.
+- Enable **App Transport Security (ATS)**.
+- Validate **all user input** to prevent injection attacks.
+- **Never hardcode API keys**—store them securely (e.g., environment variables or Keychain).
+- Follow **OAuth 2.0** best practices for authentication.
+- All health data processing on-device
+- No transmission of health data to external servers
+- Secure authentication with Sign in with Apple
+- Clear permissions and privacy explanations
+- Analytics designed with privacy-by-default (opt-in, anonymized)
+- Secure storage of questionnaire responses

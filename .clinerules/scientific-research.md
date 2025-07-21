@@ -1,0 +1,9 @@
+## Scientific Research
+The impact calculations should be based on peer-reviewed research for:
+- Physical activity (steps, exercise minutes)
+- Cardiovascular health (resting heart rate, HRV)
+- Sleep duration and quality
+- Cardiovascular fitness (VO2 max)
+- Age, gender, weight (from questionnaire)
+- Nutritional habits (from questionnaire)
+- Stress levels (from questionnaire)

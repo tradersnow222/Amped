@@ -1,0 +1,19 @@
+## Data Models
+
+### Core Models
+- **HealthMetric**: Single health metric with value, impact, and display properties
+- **HealthMetricType**: Enumeration of supported health metric types
+- **MetricImpactDetail**: Calculated impact details for each metric
+- **ImpactDataPoint**: Historical tracking point for life impact
+- **LifeProjection**: Model for total life expectancy projection
+- **StudyReference**: Scientific research reference for impact calculations
+- **UserProfile**: Minimal user profile with anonymous ID for future analytics
+- **ManualMetricInput**: User-provided health data from questionnaire
+
+### Data Flow
+1. **Collection**: HealthKitManager fetches data, HealthDataService processes it
+2. **Manual Input**: QuestionnaireManager collects additional user-provided data
+3. **Calculation**: LifeImpactService analyzes health data against scientific baselines
+4. **Projection**: LifeProjectionService calculates total life expectancy
+5. **Presentation**: ViewModels prepare data, Views render it in the UI
+6. **Analytics**: Anonymous usage patterns captured (with consent from repeat users only) for feature optimization
