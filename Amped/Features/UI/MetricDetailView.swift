@@ -12,11 +12,11 @@ struct MetricDetailView: View {
     @EnvironmentObject var themeManager: BatteryThemeManager
     
     // State for chart interaction
-    @State private var selectedDataPoint: MetricDataPoint?
+    @State private var selectedImpactDataPoint: ChartImpactDataPoint?  // For impact chart
     @State private var isDragging = false
     @State private var showingDescriptionToast = false
     
-    // Convenience property for accessing current metric
+    // Convenience property for accessing current metric (always the original daily metric)
     private var metric: HealthMetric {
         viewModel.metric
     }
@@ -150,7 +150,7 @@ struct MetricDetailView: View {
             HStack(alignment: .top) {
                 // Current metric value with units
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(formatMetricValueWithUnit(metric.value))
+                    Text(formatMetricValueWithUnit(viewModel.displayMetricValue))
                         .font(.system(size: 32, weight: .semibold, design: .rounded))
                         .foregroundColor(.white)
                     
@@ -161,30 +161,37 @@ struct MetricDetailView: View {
                 
                 Spacer()
                 
-                // Impact display
+                // Impact display - simplified to show only the clear time impact
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(formatImpactDisplay(viewModel.totalImpactForPeriod))
                         .font(.system(size: 18, weight: .medium, design: .rounded))
                         .foregroundColor(viewModel.totalImpactForPeriod >= 0 ? .ampedGreen : .ampedRed)
                     
-                    Text(percentageText)
+                    Text("total impact")
                         .style(.caption)
-                        .foregroundColor(viewModel.totalImpactForPeriod >= 0 ? .ampedGreen.opacity(0.8) : .ampedRed.opacity(0.8))
+                        .foregroundColor(.white.opacity(0.5))
                 }
             }
             .padding(.horizontal, 4)
             .padding(.bottom, 20)
             
-            // Chart
-            StyledMetricChart(
-                metricType: metric.type,
-                dataPoints: viewModel.chartDataPoints,
-                period: viewModel.selectedPeriod,
-                totalImpact: viewModel.totalImpactForPeriod,
-                selectedDataPoint: $selectedDataPoint,
-                isDragging: $isDragging
-            )
-            .frame(height: 200)
+            // Impact chart - Rule: Simplicity is KING
+            if !viewModel.impactChartDataPoints.isEmpty {
+                ImpactMetricChart(
+                    metricType: metric.type,
+                    dataPoints: viewModel.impactChartDataPoints,
+                    period: viewModel.selectedPeriod,
+                    selectedDataPoint: $selectedImpactDataPoint,
+                    isDragging: $isDragging
+                )
+                .frame(height: 200)
+            } else {
+                // Show loading or empty state
+                Text("Loading impact data...")
+                    .style(.caption)
+                    .foregroundColor(.white.opacity(0.5))
+                    .frame(height: 200)
+            }
         }
         .padding(16)
         .background(
@@ -245,27 +252,10 @@ struct MetricDetailView: View {
     
     // MARK: - Helper Methods
     
-    private var percentageText: String {
-        // Calculate percentage relative to the period duration
-        let periodMinutes: Double = {
-            switch viewModel.selectedPeriod {
-            case .day: return 24 * 60 // 1,440 minutes in a day
-            case .month: return 30 * 24 * 60 // ~43,200 minutes in a month
-            case .year: return 365 * 24 * 60 // ~525,600 minutes in a year
-            }
-        }()
-        
-        let percentage = (abs(viewModel.totalImpactForPeriod) / periodMinutes) * 100
-        let sign = viewModel.totalImpactForPeriod >= 0 ? "+" : ""
-        
-        if percentage < 0.01 {
-            return "\(sign)<0.01%"
-        } else {
-            return String(format: "%@%.2f%%", sign, percentage)
-        }
-    }
-    
     private func formatMetricValueWithUnit(_ value: Double) -> String {
+        // CRITICAL FIX: Simplify display - no totals, just clear values
+        // Rule: Simplicity is KING - Steve Jobs principle
+        
         switch metric.type {
         case .steps:
             return "\(Int(value)) steps"
@@ -343,43 +333,43 @@ struct MetricDetailView: View {
             switch viewModel.selectedPeriod {
             case .day: return "today"
             case .month: return "daily avg"
-            case .year: return "daily avg per month"
+            case .year: return "daily avg"
             }
         case .sleepHours:
             switch viewModel.selectedPeriod {
             case .day: return "last night"
             case .month: return "nightly avg"
-            case .year: return "nightly avg per month"
+            case .year: return "nightly avg"
             }
         case .exerciseMinutes:
             switch viewModel.selectedPeriod {
             case .day: return "today"
             case .month: return "daily avg"
-            case .year: return "daily avg per month"
+            case .year: return "daily avg"
             }
         case .heartRateVariability:
             switch viewModel.selectedPeriod {
             case .day: return "current"
             case .month: return "avg"
-            case .year: return "avg per month"
+            case .year: return "avg"
             }
         case .restingHeartRate:
             switch viewModel.selectedPeriod {
             case .day: return "current"
             case .month: return "avg"
-            case .year: return "avg per month"
+            case .year: return "avg"
             }
         case .bodyMass:
             switch viewModel.selectedPeriod {
             case .day: return "today"
             case .month: return "avg"
-            case .year: return "avg per month"
+            case .year: return "avg"
             }
         case .activeEnergyBurned:
             switch viewModel.selectedPeriod {
             case .day: return "today"
             case .month: return "daily avg"
-            case .year: return "daily avg per month"
+            case .year: return "daily avg"
             }
         case .vo2Max:
             return "fitness level"

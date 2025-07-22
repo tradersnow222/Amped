@@ -1,15 +1,21 @@
 import SwiftUI
 import Combine
 import HealthKit
+import OSLog
 
 /// View model for the metric detail view
+/// CRITICAL FIX: Prevents value corruption when switching between time periods.
+/// The original daily metric is preserved immutably, while period-specific display values
+/// are stored separately to maintain data integrity during period switching.
 @MainActor
 final class MetricDetailViewModel: ObservableObject {
     // MARK: - Properties
     
+    private let logger = Logger(subsystem: "Amped", category: "MetricDetailViewModel")
+    
     @Published var historyData: [HistoryDataPoint] = []
     @Published var recommendations: [MetricRecommendation] = []
-    @Published var metric: HealthMetric
+    @Published var metric: HealthMetric  // Always stores the original daily metric
     @Published var selectedPeriod: ImpactDataPoint.PeriodType = .day {
         didSet {
             // Cancel previous task to prevent race conditions
@@ -17,14 +23,134 @@ final class MetricDetailViewModel: ObservableObject {
             
             // Reload real data when period changes
             currentDataTask = Task {
-                await loadRealHistoryData(for: metric)
+                await loadRealHistoryData(for: originalMetric)
+                await updatePeriodSpecificValue()
             }
         }
     }
     
+    // CRITICAL FIX: Store original daily metric to prevent value corruption
+    private let originalMetric: HealthMetric
+    
+    // Store period-specific calculated values separately
+    @Published private var periodSpecificValue: Double?
+    
     private let healthKitManager: HealthKitManager
     private let healthDataService: HealthDataService
     private var currentDataTask: Task<Void, Never>?
+    
+    // MARK: - Impact Chart Data
+    
+    /// Chart data points showing cumulative life impact over time
+    var impactChartDataPoints: [ChartImpactDataPoint] {
+        // Rule: Simplicity is KING - Clear, focused calculation
+        let userProfile = UserProfile()
+        let lifeImpactService = LifeImpactService(userProfile: userProfile)
+        
+        var impactPoints: [ChartImpactDataPoint] = []
+        var cumulativeImpact: Double = 0.0
+        
+        // Sort history data by date for proper cumulative calculation
+        let sortedHistory = historyData.sorted { $0.date < $1.date }
+        
+        // Track current day for resetting cumulative impact (Rule: Follow Apple's Human Interface Guidelines)
+        let calendar = Calendar.current
+        var currentDay = calendar.startOfDay(for: sortedHistory.first?.date ?? Date())
+        
+        for (index, dataPoint) in sortedHistory.enumerated() {
+            // Check if we've moved to a new day (for daily period view)
+            if selectedPeriod == .day {
+                let dataPointDay = calendar.startOfDay(for: dataPoint.date)
+                if dataPointDay != currentDay {
+                    // Reset cumulative impact for new day
+                    cumulativeImpact = 0.0
+                    currentDay = dataPointDay
+                }
+            }
+            
+            // Create a temporary metric for this data point using original metric properties
+            let tempMetric = HealthMetric(
+                id: UUID().uuidString,
+                type: originalMetric.type,
+                value: dataPoint.value,
+                date: dataPoint.date,
+                source: originalMetric.source
+            )
+            
+            // Calculate the impact for this specific value
+            let impactDetail = lifeImpactService.calculateImpact(for: tempMetric)
+            let impactMinutes = impactDetail.lifespanImpactMinutes
+            
+            // For cumulative metrics in daily view, calculate incremental impact
+            if selectedPeriod == .day && [.steps, .exerciseMinutes, .activeEnergyBurned].contains(originalMetric.type) {
+                // Calculate incremental impact based on change from previous value
+                let previousValue = index > 0 ? sortedHistory[index - 1].value : 0
+                let incrementalValue = max(0, dataPoint.value - previousValue)
+                
+                // Scale impact based on incremental value to show progressive gains
+                let incrementalImpact = dataPoint.value > 0 ? (incrementalValue / dataPoint.value) * impactMinutes : 0
+                cumulativeImpact += incrementalImpact
+            } else {
+                // For discrete metrics or other periods, accumulate the full impact
+                // This shows how sustained healthy behaviors add up over time
+                cumulativeImpact += impactMinutes
+            }
+            
+            impactPoints.append(ChartImpactDataPoint(
+                date: dataPoint.date,
+                rawValue: dataPoint.value,
+                impactMinutes: impactMinutes,
+                cumulativeImpactMinutes: cumulativeImpact
+            ))
+        }
+        
+        return impactPoints
+    }
+    
+    // MARK: - Computed Properties for Period-Appropriate Display
+    
+    /// Get the appropriate metric value for the selected period
+    var displayMetricValue: Double {
+        // CRITICAL FIX: Always use original daily value for day period
+        if selectedPeriod == .day {
+            return originalMetric.value
+        }
+        
+        // For month/year periods, use the calculated period-specific value if available
+        if let periodValue = periodSpecificValue {
+            return periodValue
+        }
+        
+        // Fallback to calculating from history data if available
+        if !historyData.isEmpty {
+            let totalValue = historyData.reduce(0.0) { $0 + $1.value }
+            let averageValue = totalValue / Double(historyData.count)
+            return averageValue
+        }
+        
+        // Final fallback to original metric value
+        return originalMetric.value
+    }
+    
+    /// Get contextual information about the displayed value
+    var displayValueContext: String {
+        switch selectedPeriod {
+        case .day:
+            return "current"
+        case .month:
+            if !historyData.isEmpty {
+                return "avg over \(historyData.count) days"
+            } else {
+                return "avg (limited data)"
+            }
+        case .year:
+            if !historyData.isEmpty {
+                return "avg over \(historyData.count) data points"
+            } else {
+                return "avg (limited data)"
+            }
+        }
+    }
     
     // Convert history data to chart data points with processing
     var chartDataPoints: [MetricDataPoint] {
@@ -35,15 +161,15 @@ final class MetricDetailViewModel: ObservableObject {
         // Apply data processing with smoothing and outlier detection
         return ChartDataProcessor.processDataPoints(
             rawPoints,
-            metricType: metric.type,
+            metricType: originalMetric.type,
             smoothingLevel: .light
         )
     }
     
     // Calculate total impact for the selected period
     var totalImpactForPeriod: Double {
-        // If we have impact details, scale them based on the period
-        guard let baseImpact = metric.impactDetails?.lifespanImpactMinutes else {
+        // CRITICAL FIX: Always use original metric's daily impact details
+        guard let baseImpact = originalMetric.impactDetails?.lifespanImpactMinutes else {
             return 0
         }
         
@@ -61,8 +187,8 @@ final class MetricDetailViewModel: ObservableObject {
     
     // Computed properties for the power level indicator
     var powerLevel: Int {
-        // Simulate power level based on metric's impact
-        if let impact = metric.impactDetails?.lifespanImpactMinutes {
+        // CRITICAL FIX: Use original metric's impact for consistent power level
+        if let impact = originalMetric.impactDetails?.lifespanImpactMinutes {
             if impact > 120 { return 5 }
             else if impact > 60 { return 4 }
             else if impact > 0 { return 3 }
@@ -73,7 +199,7 @@ final class MetricDetailViewModel: ObservableObject {
     }
     
     var powerColor: Color {
-        if let impact = metric.impactDetails?.lifespanImpactMinutes, impact >= 0 {
+        if let impact = originalMetric.impactDetails?.lifespanImpactMinutes, impact >= 0 {
             return .ampedGreen
         }
         return .ampedRed
@@ -82,8 +208,7 @@ final class MetricDetailViewModel: ObservableObject {
     // MARK: - Initialization
     
     init(metric: HealthMetric) {
-        // CRITICAL FIX: Ensure we always work with daily impacts in the detail view
-        // The metric might have scaled impacts from period views, so recalculate daily impact
+        // CRITICAL FIX: Store original daily metric to prevent corruption during period switching
         let userProfile = UserProfile() // Using default initialization
         
         // Initialize health services
@@ -97,8 +222,8 @@ final class MetricDetailViewModel: ObservableObject {
         let tempLifeImpactService = LifeImpactService(userProfile: userProfile)
         let dailyImpact = tempLifeImpactService.calculateImpact(for: metric)
         
-        // Create metric with daily impact details
-        self.metric = HealthMetric(
+        // Store the original daily metric permanently
+        self.originalMetric = HealthMetric(
             id: metric.id,
             type: metric.type,
             value: metric.value,
@@ -106,6 +231,9 @@ final class MetricDetailViewModel: ObservableObject {
             source: metric.source,
             impactDetails: dailyImpact
         )
+        
+        // Initialize the displayed metric with the original
+        self.metric = self.originalMetric
     }
     
     deinit {
@@ -119,11 +247,40 @@ final class MetricDetailViewModel: ObservableObject {
         // Cancel previous task to prevent race conditions
         currentDataTask?.cancel()
         
-        // Load real historical data from HealthKit
+        // Load real historical data from HealthKit using original metric
         currentDataTask = Task {
-            await loadRealHistoryData(for: metric)
+            await loadRealHistoryData(for: originalMetric)
+            await updatePeriodSpecificValue()
         }
-        generateRecommendations(for: metric)
+        generateRecommendations(for: originalMetric)
+    }
+    
+    /// Update the period-specific display value without modifying the original metric
+    @MainActor
+    private func updatePeriodSpecificValue() async {
+        // For day period, clear the period-specific value to use original
+        guard selectedPeriod != .day else { 
+            periodSpecificValue = nil
+            return 
+        }
+        
+        // For month/year periods, fetch the period-appropriate value
+        do {
+            let timePeriod: TimePeriod = selectedPeriod == .month ? .month : .year
+            let periodMetrics = try await healthDataService.fetchHealthMetricsForPeriod(timePeriod: timePeriod)
+            
+            // Find the matching metric type in the period results
+            if let updatedMetric = periodMetrics.first(where: { $0.type == originalMetric.type }) {
+                // Store the period-specific value separately - NEVER modify original metric
+                self.periodSpecificValue = updatedMetric.value
+                
+                logger.info("✅ Updated period-specific value for \(self.selectedPeriod.rawValue): \(self.originalMetric.type.displayName) = \(updatedMetric.formattedValue)")
+            }
+        } catch {
+            logger.error("❌ Failed to update period-specific value: \(error.localizedDescription)")
+            // On error, clear period-specific value to fall back to original
+            periodSpecificValue = nil
+        }
     }
     
     func getChartYRange(for metric: HealthMetric) -> ClosedRange<Double> {
@@ -187,20 +344,24 @@ final class MetricDetailViewModel: ObservableObject {
         
         switch period {
         case .day:
-            // Show last 24 hours
-            let startDate = calendar.date(byAdding: .hour, value: -24, to: now) ?? now
+            // Align with HealthKit's day boundaries (Rule: Follow Apple's Human Interface Guidelines)
+            // Start from beginning of current day
+            let startOfToday = calendar.startOfDay(for: now)
+            // For daily view, we want to show from start of day to current time
             interval.hour = 1
-            return (startDate, now, interval)
+            return (startOfToday, now, interval)
             
         case .month:
-            // Show last 30 days
-            let startDate = calendar.date(byAdding: .day, value: -30, to: now) ?? now
+            // Show last 30 days aligned to day boundaries
+            let startOfToday = calendar.startOfDay(for: now)
+            let startDate = calendar.date(byAdding: .day, value: -29, to: startOfToday) ?? startOfToday
             interval.day = 1
             return (startDate, now, interval)
             
         case .year:
-            // Show last 12 months
-            let startDate = calendar.date(byAdding: .month, value: -12, to: now) ?? now
+            // Show last 12 months aligned to month boundaries
+            let startOfMonth = calendar.dateInterval(of: .month, for: now)?.start ?? now
+            let startDate = calendar.date(byAdding: .month, value: -11, to: startOfMonth) ?? startOfMonth
             interval.month = 1
             return (startDate, now, interval)
         }
@@ -219,7 +380,7 @@ final class MetricDetailViewModel: ObservableObject {
                 historyData.append(HistoryDataPoint(date: endDate, value: todaysSleep.value))
             } else {
                 // Show current metric value if no data
-                historyData.append(HistoryDataPoint(date: endDate, value: metric.value))
+                historyData.append(HistoryDataPoint(date: endDate, value: originalMetric.value))
             }
         } else if selectedPeriod == .month {
             // For monthly view, show daily sleep totals
@@ -375,8 +536,8 @@ final class MetricDetailViewModel: ObservableObject {
         let samples = await healthKitManager.fetchData(for: metricType, from: startDate, to: endDate)
         
         if samples.isEmpty {
-            // If no data, show current value as a flat line
-            generateManualMetricData(metric: metric, startDate: startDate, endDate: endDate, interval: DateComponents(hour: 1))
+                    // If no data, show current value as a flat line
+        generateManualMetricData(metric: originalMetric, startDate: startDate, endDate: endDate, interval: DateComponents(hour: 1))
             return
         }
         
@@ -399,14 +560,14 @@ final class MetricDetailViewModel: ObservableObject {
         
         // If we still have no data after fetching, show current value as fallback
         if historyData.isEmpty {
-            generateManualMetricData(metric: metric, startDate: startDate, endDate: endDate, interval: DateComponents(hour: 1))
+            generateManualMetricData(metric: originalMetric, startDate: startDate, endDate: endDate, interval: DateComponents(hour: 1))
         }
         
         // For body mass, if showing daily view, we should show the actual weight changes throughout the day
         // not just a flat line. Only use flat line if there's truly only one measurement.
         if metricType == .bodyMass && selectedPeriod == .day && historyData.count == 1 {
             // Only one measurement for the whole day, so extend it as a flat line
-            let singleValue = historyData.first?.value ?? metric.value
+            let singleValue = historyData.first?.value ?? originalMetric.value
             historyData.removeAll()
             
             let calendar = Calendar.current
@@ -450,9 +611,9 @@ final class MetricDetailViewModel: ObservableObject {
                     let displayValue: Double
                     if metricType == .bodyMass {
                         let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem")
-                        displayValue = useMetric ? metric.value : metric.value * 2.20462
+                        displayValue = useMetric ? originalMetric.value : originalMetric.value * 2.20462
                     } else {
-                        displayValue = metric.value
+                        displayValue = originalMetric.value
                     }
                     historyData.append(HistoryDataPoint(date: currentMonth, value: displayValue))
                 } else {
@@ -668,4 +829,14 @@ struct MetricRecommendation: Identifiable {
     let description: String
     let iconName: String
     let actionText: String
+}
+
+/// Data point for impact-based chart visualization showing cumulative life impact
+/// Rule: Clear data models that express intent
+struct ChartImpactDataPoint: Identifiable {
+    let id = UUID()
+    let date: Date
+    let rawValue: Double  // Original metric value (e.g., steps taken)
+    let impactMinutes: Double  // Life impact for this specific measurement
+    let cumulativeImpactMinutes: Double  // Total cumulative impact up to this point
 } 
