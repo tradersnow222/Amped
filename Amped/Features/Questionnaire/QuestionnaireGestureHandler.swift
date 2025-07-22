@@ -55,12 +55,15 @@ class QuestionnaireGestureHandler {
             // Backward swipe - go to previous question or back to intro if at first question
             if viewModel?.isFirstQuestion == true {
                 // If at first question, signal parent to navigate back to personalization intro
-                withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
+                // Set backward direction for proper iOS-standard transition
+                viewModel?.navigationDirection = .backward
+                withAnimation(.easeInOut(duration: 0.3)) { // OPTIMIZED: Faster animation
                     exitToPersonalizationIntro.wrappedValue = true
                 }
             } else {
                 // For any other question, navigate internally
-                withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
+                // Direction is set automatically in moveBackToPreviousQuestion()
+                withAnimation(.easeInOut(duration: 0.3)) { // OPTIMIZED: Faster animation
                     viewModel?.moveBackToPreviousQuestion()
                 }
             }
@@ -71,8 +74,8 @@ class QuestionnaireGestureHandler {
             impactFeedback.impactOccurred(intensity: 0.6)
         }
         
-        // iOS-STANDARD: Reset drag state with consistent animation
-        withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
+        // OPTIMIZED: Reset drag state with faster animation
+        withAnimation(.easeInOut(duration: 0.3)) {
             dragOffset = 0
         }
         
@@ -87,13 +90,16 @@ class QuestionnaireGestureHandler {
             isBackButtonTapped = true
             print("🔍 QUESTIONNAIRE: Back to previous onboarding screen (personalization intro) - SCREEN SHOULD EXIT RIGHT")
             
+            // Set backward direction for proper iOS-standard transition
+            viewModel?.navigationDirection = .backward
+            
             // Signal to parent to navigate back
-            withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
+            withAnimation(.easeInOut(duration: 0.3)) { // OPTIMIZED: Faster animation
                 exitToPersonalizationIntro.wrappedValue = true
             }
             
-            // Reset flag after transition completes
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            // OPTIMIZED: Faster reset
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 self.isBackButtonTapped = false
                 print("🔍 QUESTIONNAIRE: Back button flag reset")
             }
@@ -102,13 +108,14 @@ class QuestionnaireGestureHandler {
             isBackButtonTapped = true
             print("🔍 QUESTIONNAIRE: Back to previous question - CURRENT QUESTION SHOULD EXIT RIGHT")
             
+            // Direction is set automatically in moveBackToPreviousQuestion()
             // Use view model with animation
-            withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
+            withAnimation(.easeInOut(duration: 0.3)) { // OPTIMIZED: Faster animation
                 viewModel?.moveBackToPreviousQuestion()
             }
             
-            // Reset flag after transition completes
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            // OPTIMIZED: Faster reset
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 self.isBackButtonTapped = false
                 print("🔍 QUESTIONNAIRE: Back button flag reset")
             }
@@ -117,7 +124,8 @@ class QuestionnaireGestureHandler {
     
     /// Get the appropriate transition based on navigation context
     func getTransition() -> AnyTransition {
-        // With single-question rendering, we use a simple slide transition
+        // NOTE: Transitions are now handled direction-aware in QuestionnaireView
+        // This method is kept for compatibility but transitions are managed by getDirectionalTransition()
         return .asymmetric(
             insertion: .move(edge: .trailing).combined(with: .opacity),
             removal: .move(edge: .leading).combined(with: .opacity)

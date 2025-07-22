@@ -101,7 +101,7 @@ struct SignInWithAppleView: View {
                 .cornerRadius(20)
                 .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
                 .opacity(buttonOpacity)
-                .hapticFeedback(.heavy)
+                .hapticFeedback(.medium)
             }
             .padding(.bottom, 12)
             
@@ -203,8 +203,8 @@ struct SignInWithAppleButton: UIViewRepresentable {
         }
         
         @objc func handleButtonPress() {
-            // Add heavy haptic feedback for consistency
-            let impactFeedback = UIImpactFeedbackGenerator(style: .heavy)
+            // Add medium haptic feedback for important authentication action
+            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
             impactFeedback.impactOccurred()
             
             let request = ASAuthorizationAppleIDProvider().createRequest()

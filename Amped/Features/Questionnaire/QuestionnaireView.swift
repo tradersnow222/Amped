@@ -69,19 +69,16 @@ struct QuestionnaireView: View {
                     // Add spacer to push question down approximately 1/3 from top
                     Spacer().frame(height: geometry.size.height * 0.15)
                     
-                    // Current question view - render only the current question to prevent interference
+                    // Current question view - OPTIMIZED: Direction-aware animations following iOS standards
                     ZStack {
                         questionView(for: viewModel.currentQuestion)
                             .padding()
                             .id("question_\(viewModel.currentQuestion.rawValue)")
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .trailing).combined(with: .opacity),
-                                removal: .move(edge: .leading).combined(with: .opacity)
-                            ))
+                            .transition(getDirectionalTransition())
                     }
                     .clipped() // Ensure off-screen content doesn't show
                     .animation(
-                        .easeInOut(duration: 0.4).delay(0.1),
+                        .easeInOut(duration: 0.3), // OPTIMIZED: Faster, smoother animation without delay
                         value: viewModel.currentQuestion
                     )
                     
@@ -94,11 +91,10 @@ struct QuestionnaireView: View {
                 }
                 .withDeepBackgroundTheme()
             }
-            // Move the gesture to the ZStack level for better gesture recognition
+            // OPTIMIZED: Simplified gesture handling
             .contentShape(Rectangle()) // Ensure the entire area responds to gestures
             .gesture(
-                // iOS-STANDARD: Consistent gesture handling with proper minimum distance
-                DragGesture(minimumDistance: 8, coordinateSpace: .local) // iOS-standard minimum distance
+                DragGesture(minimumDistance: 8, coordinateSpace: .local)
                     .onChanged { gesture in
                         let _ = gestureHandler.handleDragChanged(gesture, geometry: geometry)
                     }
@@ -121,6 +117,26 @@ struct QuestionnaireView: View {
                     _ = HealthKitManager.precomputedHealthTypes
                 }
             }
+        }
+    }
+    
+    // MARK: - Direction-Aware Transitions
+    
+    /// Get the appropriate transition based on navigation direction (iOS standard)
+    private func getDirectionalTransition() -> AnyTransition {
+        switch viewModel.navigationDirection {
+        case .forward:
+            // Forward navigation: new content slides in from right, old content exits to left
+            return .asymmetric(
+                insertion: .move(edge: .trailing).combined(with: .opacity),
+                removal: .move(edge: .leading).combined(with: .opacity)
+            )
+        case .backward:
+            // Backward navigation: new content slides in from left, old content exits to right
+            return .asymmetric(
+                insertion: .move(edge: .leading).combined(with: .opacity),
+                removal: .move(edge: .trailing).combined(with: .opacity)
+            )
         }
     }
     
@@ -186,6 +202,9 @@ struct QuestionnaireView: View {
         // Save questionnaire data before proceeding
         questionnaireManager.saveQuestionnaireData(from: viewModel)
         
+        // Set forward direction for proper iOS-standard transition
+        viewModel.navigationDirection = .forward
+        
         // Move directly to life motivation question after successful HealthKit authorization
         withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
             viewModel.currentQuestion = .lifeMotivation
@@ -197,6 +216,9 @@ struct QuestionnaireView: View {
     
     private func skipToLifeMotivation() {
         // User doesn't track health, move directly to life motivation question
+        // Set forward direction for proper iOS-standard transition
+        viewModel.navigationDirection = .forward
+        
         withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
             viewModel.currentQuestion = .lifeMotivation
         }
@@ -238,9 +260,11 @@ struct QuestionnaireView: View {
             return
         }
         
-        // For all other questions, proceed to next question within questionnaire
-        // Use consistent animation parameters that match the main view animation
-        withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
+        // Set forward direction for proper iOS-standard transition
+        viewModel.navigationDirection = .forward
+        
+        // OPTIMIZED: Use the same fast animation as the main view for consistency
+        withAnimation(.easeInOut(duration: 0.3)) {
             viewModel.proceedToNextQuestion()
         }
     }

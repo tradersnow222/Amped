@@ -4,6 +4,42 @@ This file documents all calculation logic related to health metrics, lifespan im
 
 ## Recent Fixes (2024)
 
+### Phase 5: Fixed Daily Targets Implementation (MAJOR UPDATE)
+
+**Problem Solved:**
+- ❌ **Dynamic Target Shifting** → ✅ Fixed daily targets that remain consistent throughout the day
+- ❌ **User Confusion** ("Why did my target change?") → ✅ Predictable arithmetic users can trust
+- ❌ **Mathematical Precision Over User Psychology** → ✅ User-friendly targets that encourage adherence
+
+**Core Change:**
+**Fixed Daily Targets**: Calculate targets once per day, cache them, and use simple arithmetic for remaining amounts throughout the day.
+
+**Examples of the Fix:**
+- **Before (Dynamic)**: At 2,037 steps → "Walk 7,920 more steps"; At 2,350 steps → "Walk 6,684 more steps" (target shifted by 923 steps)
+- **After (Fixed)**: At 2,037 steps → "Walk 7,920 more steps"; At 2,350 steps → "Walk 7,607 more steps" (consistent 9,957 total target)
+
+**Implementation Details:**
+- **Daily Target Caching**: Targets calculated once and cached for the entire day
+- **Simple Arithmetic**: Remaining = Fixed Target - Current Value
+- **All Metrics**: Applied to steps, exercise, sleep, and all other recommendation types
+- **Period Support**: Separate fixed targets for Day, Month, and Year periods
+- **Automatic Cleanup**: Expired targets cleared automatically
+
+**Files Created:**
+- `Amped/Core/Models/DailyTarget.swift`: New model for fixed daily targets with caching support
+
+**Files Modified:**
+- `Amped/Features/UI/RecommendationService.swift`: Complete overhaul to use fixed targets
+- `.cursor/rules/lifespan-calculations.mdc`: Updated documentation
+- `.clinerules/lifespan-calculations.md`: Updated documentation
+
+**Benefits Achieved:**
+- ✅ **User Trust**: Consistent targets that behave predictably
+- ✅ **Better Adherence**: Users can track progress against fixed goals
+- ✅ **Reduced Confusion**: No more unexplained target changes
+- ✅ **Scientific Accuracy**: Initial targets still based on J-curve research
+- ✅ **Performance**: Cached targets reduce complex recalculations
+
 ### Phase 4: Recommendation Text & Logic Consistency Fix
 
 **Issues Fixed:**
@@ -166,55 +202,114 @@ This file documents all calculation logic related to health metrics, lifespan im
 
 ## Core Recommendation Logic
 
-### Recommendation Principles (Updated Phase 3)
+### Fixed Daily Target System (Updated Phase 5)
 
 ```json
 {
-  "rule_id": "recommendations.core.principles",
+  "rule_id": "recommendations.fixed.targets",
   "file": "Amped/Features/UI/RecommendationService.swift",
-  "description": "Core principles governing recommendation logic",
+  "description": "Fixed daily target system for consistent user experience",
+  "core_principle": "Calculate targets once per day, cache them, use simple arithmetic for remaining amounts",
+  "workflow": [
+    "1. Check for cached daily target for metric type and period",
+    "2. If cached target exists and valid, use simple arithmetic: Remaining = Target - Current",
+    "3. If no cached target, calculate once using J-curve science, cache it, then use",
+    "4. Targets remain fixed throughout the day for predictable user experience"
+  ],
+  "benefits": [
+    "User trust: Consistent targets that behave predictably",
+    "Better adherence: Users can track progress against fixed goals", 
+    "Reduced confusion: No more unexplained target changes",
+    "Scientific accuracy: Initial targets still based on research",
+    "Performance: Cached targets reduce complex recalculations"
+  ]
+}
+```
+
+### Recommendation Principles (Updated Phase 5)
+
+```json
+{
+  "rule_id": "recommendations.core.principles.fixed",
+  "file": "Amped/Features/UI/RecommendationService.swift",
+  "description": "Core principles governing fixed target recommendation logic",
   "principles": [
     {
       "priority": 1,
-      "rule": "Always show user how much they need to change their metric to achieve neutral time (0 impact)",
-      "applies_to": "All negative impact metrics",
-      "example": "Steps -1.7h → Walk 7,900 steps to add 1 hour 42 minutes (reach neutral)"
+      "rule": "Calculate fixed daily targets once, use simple arithmetic thereafter",
+      "applies_to": "All metrics",
+      "example": "At 2,037 steps: Calculate target 9,957 once. At 2,350 steps: Show 9,957 - 2,350 = 7,607 remaining"
     },
     {
       "priority": 2,
-      "rule": "If no negative metrics, take lowest positive metric and show how to add 20% to it",
+      "rule": "For negative impact metrics, target reaches neutral (0 impact)",
+      "applies_to": "All negative impact metrics", 
+      "example": "Steps -1.7h → Fixed target: 9,957 steps to add 1 hour 42 minutes"
+    },
+    {
+      "priority": 3,
+      "rule": "For positive metrics, target achieves 20% improvement",
       "applies_to": "All positive or zero impact metrics",
-      "examples": {
-        "day": "Walk 15min more today to add 4 min to your life",
-        "month": "Walk 15min more daily to add 4 min over the next month", 
-        "year": "Walk 15min more daily to add 4 min over the next year"
-      }
+      "example": "Good steps +30min → Fixed target: 20% improvement for additional 6min benefit"
+    },
+    {
+      "priority": 4,
+      "rule": "Targets expire at midnight and recalculate fresh each day",
+      "applies_to": "All metrics",
+      "rationale": "Daily recalibration maintains scientific accuracy while providing day-level consistency"
     }
   ]
 }
 ```
 
-### Recommendation Generation Logic (Fixed Phase 3)
+### Daily Target Caching Logic (New Phase 5)
 
 ```json
 {
-  "rule_id": "recommendations.generate.fixed",
+  "rule_id": "recommendations.target.caching",
+  "file": "Amped/Core/Models/DailyTarget.swift",
+  "description": "Caching system for fixed daily targets",
+  "model": "DailyTarget",
+  "fields": [
+    "metricType: HealthMetricType",
+    "targetValue: Double (fixed target to reach)",
+    "originalCurrentValue: Double (value when target calculated)",
+    "benefitMinutes: Double (life benefit when target reached)", 
+    "calculationDate: Date (when target was calculated)",
+    "period: ImpactDataPoint.PeriodType (Day/Month/Year)"
+  ],
+  "cache_logic": {
+    "storage": "CacheManager with 24-hour expiration",
+    "validation": "isValidForToday checks if target calculated today",
+    "cleanup": "clearExpiredTargets() removes old targets automatically",
+    "uniqueness": "One target per (metricType, period) combination"
+  }
+}
+```
+
+### Recommendation Generation Logic (Updated Phase 5)
+
+```json
+{
+  "rule_id": "recommendations.generate.fixed.targets",
   "file": "Amped/Features/UI/RecommendationService.swift",
   "function": "generateRecommendation",
-  "description": "Generates truthful, dynamic recommendations without artificial caps",
+  "description": "Generates consistent recommendations using fixed daily targets",
   "inputs": ["metric", "selectedPeriod"],
-  "outputs": ["truthfulRecommendation"],
-  "logic": {
-    "negative_impact": "Calculate exact action to reach neutral (0 impact)",
-         "positive_impact": "Calculate 20% improvement on lowest positive metric, show time benefit over selected period",
-    "no_caps": "Show actual time/action needed, no artificial limits",
-    "formatting": "Large times shown as 'Xh Ymin' for readability"
+  "outputs": ["consistentRecommendation"],
+  "workflow": {
+    "step_1": "Clear expired targets from previous days",
+    "step_2": "Check cache for existing valid target (metricType + period)",
+    "step_3": "If cached: Use target.generateRecommendationText(currentValue)",
+    "step_4": "If not cached: Calculate target, cache it, then use it",
+    "step_5": "Return recommendation with simple arithmetic (Target - Current)"
   },
   "improvements": [
-    "Removed calculateRealisticStepTarget caps (was max 5000 steps)",
-    "Removed applyRealisticBounds caps (was max 15min benefit)",
-    "Show actual benefit of reaching neutral",
-    "Dynamic time formatting for large recommendations"
+    "Consistent targets throughout the day",
+    "Simple arithmetic users can verify",
+    "Cached calculations improve performance", 
+    "Scientific accuracy preserved at target calculation time",
+    "User psychology prioritized over mathematical precision"
   ]
 }
 ```

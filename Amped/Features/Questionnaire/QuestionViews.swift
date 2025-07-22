@@ -138,7 +138,7 @@ struct QuestionViews {
                         .questionnaireButtonStyle(isSelected: false)
                         .opacity(viewModel.canProceed ? 1.0 : 0.6)
                         .disabled(!viewModel.canProceed)
-                        .hapticFeedback(.heavy)
+                        .hapticFeedback(.light)
                     }
                     .padding(.bottom, 30)
                 }
@@ -202,19 +202,16 @@ struct QuestionViews {
                     .questionnaireButtonStyle(isSelected: false)
                     .opacity(viewModel.canProceed ? 1.0 : 0.6)
                     .disabled(!viewModel.canProceed)
-                    .hapticFeedback(.heavy)
+                    .hapticFeedback(.light)
                 }
                 .padding(.bottom, 30)
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
             .onAppear {
-                // Simplified focus management - only focus when this specific question appears
-                // Use async dispatch to focus after current main loop, ensuring transition is finished without long delay
+                // OPTIMIZED: Immediate focus without delay for instant responsiveness
                 if viewModel.currentQuestion == .name {
-                    DispatchQueue.main.async {
-                        isTextFieldFocused = true
-                    }
+                    isTextFieldFocused = true
                 }
             }
             .onDisappear {
@@ -223,15 +220,13 @@ struct QuestionViews {
             }
         }
         
-        // Consolidated navigation function
+        // OPTIMIZED: Simplified navigation function without artificial delays
         private func proceedToNext() {
             // Dismiss keyboard first
             isTextFieldFocused = false
             
-            // Longer delay to ensure keyboard dismissal completes before navigation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                viewModel.proceedToNextQuestion()
-            }
+            // OPTIMIZED: Immediate navigation for responsive feel
+            viewModel.proceedToNextQuestion()
         }
     }
     
@@ -267,7 +262,7 @@ struct QuestionViews {
                             )
                         }
                         .questionnaireButtonStyle(isSelected: viewModel.selectedStressLevel == stressLevel)
-                        .hapticFeedback(.heavy)
+                        .hapticFeedback(.light)
                     }
                 }
                 .padding(.bottom, 30)
@@ -309,7 +304,7 @@ struct QuestionViews {
                             isSelected: (gender == "Male" && viewModel.selectedGender == .male) || 
                                        (gender == "Female" && viewModel.selectedGender == .female)
                         )
-                        .hapticFeedback(.heavy)
+                        .hapticFeedback(.light)
                     }
                 }
                 .padding(.bottom, 30)
@@ -353,7 +348,7 @@ struct QuestionViews {
                             )
                         }
                         .questionnaireButtonStyle(isSelected: viewModel.selectedNutritionQuality == nutrition)
-                        .hapticFeedback(.heavy)
+                        .hapticFeedback(.light)
                     }
                 }
                 .padding(.bottom, 30)
@@ -394,7 +389,7 @@ struct QuestionViews {
                             FormattedButtonText(text: status.displayName)
                         }
                         .questionnaireButtonStyle(isSelected: viewModel.selectedSmokingStatus == status)
-                        .hapticFeedback(.heavy)
+                        .hapticFeedback(.light)
                     }
                 }
                 .padding(.bottom, 30)
@@ -433,7 +428,7 @@ struct QuestionViews {
                             FormattedButtonText(text: frequency.displayName)
                         }
                         .questionnaireButtonStyle(isSelected: viewModel.selectedAlcoholFrequency == frequency)
-                        .hapticFeedback(.heavy)
+                        .hapticFeedback(.light)
                     }
                 }
                 .padding(.bottom, 30)
@@ -477,7 +472,7 @@ struct QuestionViews {
                             )
                         }
                         .questionnaireButtonStyle(isSelected: viewModel.selectedSocialConnectionsQuality == quality)
-                        .hapticFeedback(.heavy)
+                        .hapticFeedback(.light)
                     }
                 }
                 .padding(.bottom, 30)
@@ -532,7 +527,7 @@ struct QuestionViews {
                     .questionnaireButtonStyle(isSelected: viewModel.selectedDeviceTrackingStatus == .yesBoth || 
                                                        viewModel.selectedDeviceTrackingStatus == .yesActivityOnly ||
                                                        viewModel.selectedDeviceTrackingStatus == .yesSleepOnly)
-                    .hapticFeedback(.heavy)
+                    .hapticFeedback(.light)
                     
                     // No option
                     Button(action: {
@@ -542,7 +537,7 @@ struct QuestionViews {
                         Text("No, I don't use any device")
                     }
                     .questionnaireButtonStyle(isSelected: viewModel.selectedDeviceTrackingStatus == .no)
-                    .hapticFeedback(.heavy)
+                    .hapticFeedback(.light)
                 }
                 .padding(.bottom, 30)
             }
@@ -614,7 +609,7 @@ struct QuestionViews {
                             )
                         }
                         .questionnaireButtonStyle(isSelected: viewModel.selectedLifeMotivation == motivation)
-                        .hapticFeedback(.heavy)
+                        .hapticFeedback(.light)
                     }
                 }
                 .padding(.bottom, 30)

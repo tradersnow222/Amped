@@ -62,7 +62,7 @@ struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
-/// Sleek, glass-themed button style for questionnaire - matches health metric cards
+/// Sleek, glass-themed button style for questionnaire - OPTIMIZED for performance
 struct QuestionnaireButtonStyle: ButtonStyle {
     let isSelected: Bool
     
@@ -94,35 +94,29 @@ struct QuestionnaireButtonStyle: ButtonStyle {
             )
             .foregroundColor(.white)
             .overlay(
-                // Enhanced glow effect with smoother transitions
+                // OPTIMIZED: Simplified border without complex glow effects
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(
-                        Color.ampedGreen.opacity(
-                            isSelected ? 0.7 : (configuration.isPressed ? 0.4 : 0.2)
-                        ),
-                        lineWidth: isSelected ? 2 : (configuration.isPressed ? 1.5 : 0.5)
+                        Color.ampedGreen.opacity(isSelected ? 0.7 : 0.2),
+                        lineWidth: isSelected ? 2 : 0.5
                     )
             )
+            // OPTIMIZED: Simplified shadow for better performance
             .shadow(
-                color: Color.ampedGreen.opacity(
-                    isSelected ? 0.5 : (configuration.isPressed ? 0.3 : 0.1)
-                ),
-                radius: isSelected ? 12 : (configuration.isPressed ? 8 : 4),
+                color: Color.ampedGreen.opacity(isSelected ? 0.3 : 0.1),
+                radius: isSelected ? 6 : 2,
                 x: 0,
                 y: 0
             )
-            // More pronounced scale effect
-            .scaleEffect(configuration.isPressed ? 0.95 : (isSelected ? 1.02 : 1.0))
-            // Add subtle brightness change
-            .brightness(configuration.isPressed ? -0.05 : 0)
-            // Smoother spring animation for press
+            // OPTIMIZED: Subtle scale effect only
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            // OPTIMIZED: Faster spring animation
             .animation(
-                .spring(response: 0.3, dampingFraction: 0.7, blendDuration: 0),
+                .spring(response: 0.2, dampingFraction: 0.8, blendDuration: 0),
                 value: configuration.isPressed
             )
-            // Smooth animation for selection with slight bounce
             .animation(
-                .spring(response: 0.4, dampingFraction: 0.65, blendDuration: 0),
+                .easeInOut(duration: 0.2),
                 value: isSelected
             )
     }

@@ -40,7 +40,7 @@ struct BackButton: View {
             .padding(.horizontal, 16)
         }
         .accessibilityLabel(showText ? "Go back to \(text ?? "previous")" : "Go back")
-        .hapticFeedback(.heavy)
+        .hapticFeedback(.light)
     }
 }
 

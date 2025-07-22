@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-/// Service for generating accurate, science-based recommendations with proper incremental benefit calculations
+/// Service for generating accurate, science-based recommendations with fixed daily targets for consistency
 class RecommendationService {
     private let logger = Logger(subsystem: "Amped", category: "RecommendationService")
     private let userProfile: UserProfile
@@ -12,29 +12,121 @@ class RecommendationService {
     private let lifestyleCalculator = LifestyleImpactCalculator()
     private let lifeImpactService: LifeImpactService
     
+    // Daily target management for consistent recommendations
+    private let dailyTargetManager = DailyTargetManager()
+    
     init(userProfile: UserProfile) {
         self.userProfile = userProfile
         self.lifeImpactService = LifeImpactService(userProfile: userProfile)
     }
     
-    /// Generate accurate recommendation with proper incremental benefit calculation
+    /// Generate accurate recommendation with fixed daily targets for consistency
     func generateRecommendation(for metric: HealthMetric, selectedPeriod: ImpactDataPoint.PeriodType) -> String {
         guard let impactDetails = metric.impactDetails else {
             return getDefaultRecommendation(for: metric, period: selectedPeriod)
         }
         
+        // Clean expired targets on each call
+        dailyTargetManager.clearExpiredTargets()
+        
+        // Check for cached daily target first
+        if let cachedTarget = dailyTargetManager.getCachedTarget(for: metric.type, period: selectedPeriod) {
+            logger.info("📋 Using cached daily target for \(metric.type.displayName)")
+            return cachedTarget.generateRecommendationText(currentValue: metric.value)
+        }
+        
+        // No cached target - calculate and cache new target
+        logger.info("🔄 Calculating new daily target for \(metric.type.displayName)")
+        
         let currentDailyImpact = impactDetails.lifespanImpactMinutes
         
         if currentDailyImpact < 0 {
-            // Negative impact: Calculate benefit to reach neutral (0 impact)
-            return generateNegativeMetricRecommendation(for: metric, period: selectedPeriod)
+            // Negative impact: Calculate target to reach neutral (0 impact)
+            return calculateAndCacheNegativeMetricTarget(for: metric, period: selectedPeriod)
         } else {
-            // Positive impact: Calculate 20% improvement benefit
-            return generatePositiveMetricRecommendation(for: metric, period: selectedPeriod, currentImpact: currentDailyImpact)
+            // Positive impact: Calculate 20% improvement target
+            return calculateAndCachePositiveMetricTarget(for: metric, period: selectedPeriod, currentImpact: currentDailyImpact)
         }
     }
     
-    // MARK: - Negative Impact Recommendations
+    // MARK: - Target Calculation and Caching
+    
+    /// Calculate and cache target for negative impact metrics
+    private func calculateAndCacheNegativeMetricTarget(for metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
+        let targetValue: Double
+        let benefitMinutes: Double
+        
+        // Calculate the target value to reach neutral impact
+        switch metric.type {
+        case .steps:
+            targetValue = findStepsForNeutralImpact(currentSteps: metric.value)
+            benefitMinutes = abs(metric.impactDetails?.lifespanImpactMinutes ?? 0)
+        case .exerciseMinutes:
+            targetValue = findExerciseForNeutralImpact(currentMinutes: metric.value)
+            benefitMinutes = abs(metric.impactDetails?.lifespanImpactMinutes ?? 0)
+        case .sleepHours:
+            targetValue = findSleepForOptimalImpact(currentSleep: metric.value)
+            benefitMinutes = abs(metric.impactDetails?.lifespanImpactMinutes ?? 0)
+        default:
+            // For other metrics, use a simple improvement target
+            targetValue = metric.value * 1.1
+            benefitMinutes = abs(metric.impactDetails?.lifespanImpactMinutes ?? 0)
+        }
+        
+        // Create and cache the daily target
+        let dailyTarget = DailyTarget(
+            metricType: metric.type,
+            targetValue: targetValue,
+            originalCurrentValue: metric.value,
+            benefitMinutes: benefitMinutes,
+            period: period
+        )
+        
+        dailyTargetManager.saveTarget(dailyTarget)
+        logger.info("💾 Cached daily target for \(metric.type.displayName): \(targetValue)")
+        
+        // Generate recommendation using the cached target
+        return dailyTarget.generateRecommendationText(currentValue: metric.value)
+    }
+    
+    /// Calculate and cache target for positive impact metrics  
+    private func calculateAndCachePositiveMetricTarget(for metric: HealthMetric, period: ImpactDataPoint.PeriodType, currentImpact: Double) -> String {
+        // For positive metrics, aim for 20% improvement
+        let improvementFactor = 1.2
+        let targetValue: Double
+        let benefitMinutes: Double
+        
+        switch metric.type {
+        case .steps:
+            targetValue = min(metric.value * improvementFactor, 15000) // Cap at reasonable max
+        case .exerciseMinutes:
+            targetValue = min(metric.value * improvementFactor, 60) // Cap at 1 hour
+        case .sleepHours:
+            targetValue = min(metric.value + 0.5, 9.0) // Small improvement, cap at 9 hours
+        default:
+            targetValue = metric.value * improvementFactor
+        }
+        
+        // Calculate benefit (20% of current positive impact)
+        benefitMinutes = currentImpact * 0.2
+        
+        // Create and cache the daily target
+        let dailyTarget = DailyTarget(
+            metricType: metric.type,
+            targetValue: targetValue,
+            originalCurrentValue: metric.value,
+            benefitMinutes: benefitMinutes,
+            period: period
+        )
+        
+        dailyTargetManager.saveTarget(dailyTarget)
+        logger.info("💾 Cached daily target for \(metric.type.displayName): \(targetValue)")
+        
+        // Generate recommendation using the cached target
+        return dailyTarget.generateRecommendationText(currentValue: metric.value)
+    }
+
+    // MARK: - Legacy Target Calculation Methods (for reference)
     
     private func generateNegativeMetricRecommendation(for metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
         switch metric.type {
@@ -190,6 +282,25 @@ class RecommendationService {
     
     private func findExerciseForNeutralImpact(currentMinutes: Double) -> Double {
         return 21.4 // WHO guideline equivalent (150 min/week ÷ 7 days)
+    }
+    
+    private func findSleepForOptimalImpact(currentSleep: Double) -> Double {
+        // Optimal sleep duration based on research (7.5-8 hours)
+        let optimalSleep = 7.5
+        
+        if currentSleep < 6.0 {
+            // If severely under-slept, aim for 7 hours as intermediate target
+            return 7.0
+        } else if currentSleep < 7.0 {
+            // If under-slept, aim for optimal
+            return optimalSleep
+        } else if currentSleep > 9.0 {
+            // If over-sleeping, aim for optimal
+            return optimalSleep
+        }
+        
+        // Already in reasonable range
+        return optimalSleep
     }
     
     private func calculateExerciseImpact(minutes: Double) -> Double {

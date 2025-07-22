@@ -108,7 +108,7 @@ struct HealthKitPermissionsView: View {
                     .padding(.horizontal, 40)
                 }
                 .disabled(viewModel.isRequestingPermissions || viewModel.allPermissionsGranted)
-                .hapticFeedback(.heavy)
+                .hapticFeedback(.medium)
                 .padding(.bottom, 40)
                 
                 // Home indicator area

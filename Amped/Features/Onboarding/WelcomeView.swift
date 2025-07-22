@@ -119,6 +119,9 @@ struct WelcomeView: View {
         .navigationBarHidden(true)
         .withWelcomeTransition(isPresented: isAppeared)
         .onTapGesture {
+            // Add subtle haptic feedback for user interaction
+            HapticFeedback.buttonPress()
+            
             // Cancel auto-advance and navigate immediately when user taps
             autoAdvanceTask?.cancel()
             onContinue?()

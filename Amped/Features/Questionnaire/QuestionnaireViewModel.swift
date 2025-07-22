@@ -191,11 +191,27 @@ final class QuestionnaireViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Properties
+    
+    // Navigation direction tracking for proper iOS-standard transitions
+    @Published var navigationDirection: NavigationDirection = .forward
+    
+    enum NavigationDirection {
+        case forward    // Moving deeper into questionnaire (right to left transition)
+        case backward   // Moving back up questionnaire (left to right transition)
+    }
+    
     // Form data
     @Published var currentQuestion: Question {
         didSet {
-            // Persist current question to UserDefaults to survive app background/foreground transitions
-            UserDefaults.standard.set(currentQuestion.rawValue, forKey: "questionnaire_current_question")
+            // Only persist to UserDefaults if the question actually changed and after a brief delay
+            // This prevents excessive I/O during rapid transitions
+            if currentQuestion != oldValue {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                    guard let self = self else { return }
+                    UserDefaults.standard.set(self.currentQuestion.rawValue, forKey: "questionnaire_current_question")
+                }
+            }
         }
     }
     
@@ -206,9 +222,22 @@ final class QuestionnaireViewModel: ObservableObject {
     @Published var selectedBirthMonth: Int = Calendar.current.component(.month, from: Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date())
     @Published var selectedBirthYear: Int = Calendar.current.component(.year, from: Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date())
     
+    // PERFORMANCE: Cache expensive computations to avoid recalculating on every access
+    private let calendar = Calendar.current
+    private lazy var cachedMonthNames: [String] = {
+        let formatter = DateFormatter()
+        return formatter.monthSymbols
+    }()
+    
+    private lazy var cachedAvailableYears: [Int] = {
+        let currentYear = calendar.component(.year, from: Date())
+        let minYear = currentYear - 120
+        let maxYear = currentYear
+        return Array(minYear...maxYear)
+    }()
+    
     // Update birthdate when month or year changes
     private func updateBirthdateFromMonthYear() {
-        let calendar = Calendar.current
         var components = DateComponents()
         components.year = selectedBirthYear
         components.month = selectedBirthMonth
@@ -221,8 +250,8 @@ final class QuestionnaireViewModel: ObservableObject {
     
     // Available months for picker - limit to current month if current year is selected
     var availableMonths: [Int] {
-        let currentYear = Calendar.current.component(.year, from: Date())
-        let currentMonth = Calendar.current.component(.month, from: Date())
+        let currentYear = calendar.component(.year, from: Date())
+        let currentMonth = calendar.component(.month, from: Date())
         
         if selectedBirthYear == currentYear {
             // If current year is selected, only show months up to current month
@@ -233,19 +262,15 @@ final class QuestionnaireViewModel: ObservableObject {
         }
     }
     
-    // Available years for picker (18-120 years ago from current year)
+    // Available years for picker (18-120 years ago from current year) - CACHED
     var availableYears: [Int] {
-        let currentYear = Calendar.current.component(.year, from: Date())
-        let minYear = currentYear - 120
-        let maxYear = currentYear // Allow up to current year
-        return Array(minYear...maxYear) // Earliest first (removed .reversed())
+        return cachedAvailableYears
     }
     
-    // Month name for display
+    // Month name for display - OPTIMIZED
     func monthName(for month: Int) -> String {
-        let formatter = DateFormatter()
-        formatter.monthSymbols = formatter.monthSymbols
-        return formatter.monthSymbols[month - 1]
+        guard month >= 1 && month <= 12 else { return "" }
+        return cachedMonthNames[month - 1]
     }
     
     // Update month selection
@@ -254,25 +279,25 @@ final class QuestionnaireViewModel: ObservableObject {
         updateBirthdateFromMonthYear()
     }
     
-    // Update year selection
+    // Update year selection  
     func updateSelectedYear(_ year: Int) {
         selectedBirthYear = year
         updateBirthdateFromMonthYear()
     }
     
-    // Birthdate range calculation
-    var birthdateRange: ClosedRange<Date> {
-        let calendar = Calendar.current
-        
+    // Birthdate range calculation - CACHED
+    private lazy var cachedBirthdateRange: ClosedRange<Date> = {
         let maxDate = Date() // Today (no future dates)
         let minDate = calendar.date(byAdding: .year, value: -120, to: Date()) ?? Date() // Max 120 years ago
-        
         return minDate...maxDate
+    }()
+    
+    var birthdateRange: ClosedRange<Date> {
+        return cachedBirthdateRange
     }
     
-    // Calculate age from birthdate
+    // Calculate age from birthdate - OPTIMIZED
     var age: Int {
-        let calendar = Calendar.current
         let ageComponents = calendar.dateComponents([.year], from: birthdate, to: Date())
         return ageComponents.year ?? 0
     }
@@ -370,6 +395,8 @@ final class QuestionnaireViewModel: ObservableObject {
         guard canProceed else { return }
         
         if let nextQuestion = getNextQuestion() {
+            // Set forward direction for iOS-standard right-to-left transition
+            navigationDirection = .forward
             // Remove animation here to consolidate animation control in the View
             currentQuestion = nextQuestion
         }
@@ -378,6 +405,8 @@ final class QuestionnaireViewModel: ObservableObject {
     // Move back to previous question with animation
     func moveBackToPreviousQuestion() {
         if let prevQuestion = getPreviousQuestion() {
+            // Set backward direction for iOS-standard left-to-right transition
+            navigationDirection = .backward
             currentQuestion = prevQuestion
         }
     }
