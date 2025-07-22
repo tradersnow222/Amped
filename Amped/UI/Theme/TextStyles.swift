@@ -87,8 +87,8 @@ enum AmpedTextStyle {
         case .metricValue, .percentValue, .timeIndicator:
             return .rounded
         default:
-            // Using monospaced design for a more robotic, futuristic look
-            return .monospaced
+            // Using rounded design for consistent, friendly typography matching the main impact display
+            return .rounded
         }
     }
     
@@ -174,7 +174,7 @@ struct FuturisticTextModifier: ViewModifier {
     
     func body(content: Content) -> some View {
         content
-            .font(.system(size: size, weight: weight, design: .monospaced))
+            .font(.system(size: size, weight: weight, design: .rounded))
             .foregroundColor(.white)
     }
 }

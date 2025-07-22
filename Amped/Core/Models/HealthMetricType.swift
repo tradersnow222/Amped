@@ -163,7 +163,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .steps: 
             return "Daily steps directly correlate with cardiovascular health and longevity. Research shows that 10,000 steps per day can add years to your life."
         case .exerciseMinutes:
-            return "Regular exercise strengthens your heart, improves mood, and significantly reduces mortality risk. Aim for at least 150 minutes weekly."
+            return "Regular exercise strengthens your heart, improves mood, and significantly reduces mortality risk. Aim for at least \(Double(150).formattedAsTime()) weekly."
         case .sleepHours:
             return "Quality sleep is essential for cellular repair, brain health, and immune function. Most adults need 7-9 hours nightly."
         case .restingHeartRate:

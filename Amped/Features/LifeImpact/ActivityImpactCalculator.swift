@@ -383,7 +383,7 @@ class ActivityImpactCalculator {
         } else if currentWeekly >= 75 {
             return "Good progress! Aim for \(Int(150 - currentWeekly)) more minutes weekly to meet WHO guidelines."
         } else {
-            return "Start gradually with 10-15 minutes daily. Build towards 150 minutes of moderate exercise per week."
+            return "Start gradually with \(Double(10).formattedAsTime()) to \(Double(15).formattedAsTime()) daily. Build towards \(Double(150).formattedAsTime()) of moderate exercise per week."
         }
     }
     

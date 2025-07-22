@@ -253,10 +253,10 @@ struct EnhancedBatterySystemView: View {
             // Scientific attribution - positioned at the very bottom above page indicators
             VStack(spacing: 3) {
                 Text("Based on 45+ peer-reviewed studies from")
-                    .font(.system(size: 12, weight: .medium, design: .default))
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundColor(.white.opacity(0.6))
                 Text("Harvard, AHA, & Mayo Clinic")
-                    .font(.system(size: 12, weight: .semibold, design: .default))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundColor(.white.opacity(0.7))
             }
             .multilineTextAlignment(.center)

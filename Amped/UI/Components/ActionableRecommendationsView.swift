@@ -27,39 +27,29 @@ struct ActionableRecommendationsView: View {
     
     // Get the most impactful metric to recommend improvement for
     private var primaryRecommendationMetric: HealthMetric? {
-        // First, prioritize HealthKit metrics with significant negative impact (> 30 minutes lost)
-        let significantNegativeHealthKitMetrics = metrics
-            .filter { $0.source != .userInput && ($0.impactDetails?.lifespanImpactMinutes ?? 0) < -30 }
+        // PRINCIPLE 1: If there are negative metrics, prioritize the worst one to bring to neutral
+        let allNegativeMetrics = metrics
+            .filter { ($0.impactDetails?.lifespanImpactMinutes ?? 0) < 0 }
             .sorted { abs($0.impactDetails?.lifespanImpactMinutes ?? 0) > abs($1.impactDetails?.lifespanImpactMinutes ?? 0) }
         
-        if let worstHealthKitMetric = significantNegativeHealthKitMetrics.first {
-            return worstHealthKitMetric
+        if let worstNegativeMetric = allNegativeMetrics.first {
+            return worstNegativeMetric
         }
         
-        // If no significant negative HealthKit metrics, look for any negative HealthKit metrics
-        let negativeHealthKitMetrics = metrics
-            .filter { $0.source != .userInput && ($0.impactDetails?.lifespanImpactMinutes ?? 0) < 0 }
-            .sorted { abs($0.impactDetails?.lifespanImpactMinutes ?? 0) > abs($1.impactDetails?.lifespanImpactMinutes ?? 0) }
+        // PRINCIPLE 2: If no negative metrics, take the lowest positive metric for 20% improvement
+        let allPositiveMetrics = metrics
+            .filter { ($0.impactDetails?.lifespanImpactMinutes ?? 0) > 0 }
+            .sorted { ($0.impactDetails?.lifespanImpactMinutes ?? 0) < ($1.impactDetails?.lifespanImpactMinutes ?? 0) } // LOWEST first
         
-        if let negativeHealthKitMetric = negativeHealthKitMetrics.first {
-            return negativeHealthKitMetric
+        if let lowestPositiveMetric = allPositiveMetrics.first {
+            return lowestPositiveMetric
         }
         
-        // If all metrics are positive, find the best one to improve further
-        let positiveHealthKitMetrics = metrics
-            .filter { $0.source != .userInput && ($0.impactDetails?.lifespanImpactMinutes ?? 0) > 0 }
-            .sorted { ($0.impactDetails?.lifespanImpactMinutes ?? 0) > ($1.impactDetails?.lifespanImpactMinutes ?? 0) }
+        // Fallback: Neutral metrics or metrics without impact details
+        let neutralOrUnknownMetrics = metrics
+            .filter { ($0.impactDetails?.lifespanImpactMinutes ?? 0) == 0 || $0.impactDetails == nil }
         
-        if let bestPositiveMetric = positiveHealthKitMetrics.first {
-            return bestPositiveMetric
-        }
-        
-        // Fall back to questionnaire metrics that could be improved (rating < 8)
-        let improvableQuestionnaireMetrics = metrics
-            .filter { $0.source == .userInput && $0.value < 8 }
-            .sorted { $0.value < $1.value } // Lowest rating first
-        
-        return improvableQuestionnaireMetrics.first
+        return neutralOrUnknownMetrics.first
     }
     
     var body: some View {
@@ -169,21 +159,8 @@ struct ActionableRecommendationsView: View {
     private func timeImpactText(for metric: HealthMetric) -> String {
         guard let impact = metric.impactDetails?.lifespanImpactMinutes else { return "" }
         
-        // Individual metrics now always contain daily impact (fixed in HealthDataService)
-        let absMinutes = abs(impact)
         let sign = impact >= 0 ? "+" : "-"
-        
-        if absMinutes >= 60 {
-            let hours = absMinutes / 60
-            return String(format: "%@%.1f h", sign, hours)
-        } else if absMinutes >= 1 {
-            let roundedMinutes = Int(round(absMinutes))
-            return "\(sign)\(roundedMinutes) min"
-        } else {
-            // For values less than 1 minute, show as 0 for display purposes
-            // (actual calculations remain unchanged)
-            return "0"
-        }
+        return "\(sign)\(abs(impact).formattedAsTimeShort())"
     }
     
     private func benefitText(for metric: HealthMetric) -> String {
@@ -337,32 +314,92 @@ struct ActionableRecommendationsView: View {
     
     /// Format time impact for display
     private func formatTimeImpact(_ minutes: Double) -> String {
-        let absMinutes = abs(minutes)
-        
-        if absMinutes >= 10080 { // More than a week
-            let weeks = absMinutes / 10080
-            return String(format: "%.1f weeks", weeks)
-        } else if absMinutes >= 1440 { // More than a day
-            let days = absMinutes / 1440
-            return String(format: "%.1f days", days)
-        } else if absMinutes >= 60 {
-            let hours = absMinutes / 60
-            return String(format: "%.1f h", hours)
-        } else if absMinutes >= 1 {
-            let roundedMinutes = Int(round(absMinutes))
-            return "\(roundedMinutes) min"
-        } else {
-            // For values less than 1 minute, show as 0 for display purposes
-            // (actual calculations remain unchanged)
-            return "0"
-        }
+        return minutes.formattedAsTimeShort()
     }
     
-    /// Build one elegant sentence using the RecommendationService
+    /// Build one elegant sentence using the RecommendationService with colored benefit text
     private func buildActionSentence(for metric: HealthMetric) -> Text {
         let recommendationText = actionText(for: metric)
         
-        return Text(recommendationText)
-            .style(.body)
+        // Parse the recommendation text to identify and color the benefit portion
+        return parseAndColorRecommendationText(recommendationText)
+    }
+    
+    /// Parse recommendation text and apply green color to positive benefit portions
+    private func parseAndColorRecommendationText(_ text: String) -> Text {
+        // Pattern: "Action to add X time" where X time should be green
+        let patterns = [
+            " to add ", " to gain ", " benefit of "
+        ]
+        
+        var result = Text("")
+        var remainingText = text
+        
+        // Find the pattern that splits the action from the benefit
+        for pattern in patterns {
+            if let range = remainingText.range(of: pattern) {
+                let beforePattern = String(remainingText[..<range.lowerBound])
+                let afterPattern = String(remainingText[range.upperBound...])
+                
+                // Add the text before the pattern (action part)
+                result = result + Text(beforePattern).style(.body)
+                
+                // Add the pattern itself
+                result = result + Text(pattern).style(.body)
+                
+                // Parse the benefit part and color positive values green
+                let benefitText = parseBenefitText(afterPattern)
+                result = result + benefitText
+                
+                return result
+            }
+        }
+        
+        // If no pattern found, return the original text
+        return Text(text).style(.body)
+    }
+    
+    /// Parse benefit text and apply green color to positive time values
+    private func parseBenefitText(_ benefitText: String) -> Text {
+        // Combined pattern to match all time values in one regex
+        let timePattern = #"\d+\.?\d*\s+(min|mins|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)\b"#
+        
+        var result = Text("")
+        var remainingText = benefitText
+        var lastProcessedIndex = benefitText.startIndex
+        
+        do {
+            let regex = try NSRegularExpression(pattern: timePattern, options: [.caseInsensitive])
+            let range = NSRange(benefitText.startIndex..., in: benefitText)
+            let matches = regex.matches(in: benefitText, options: [], range: range)
+            
+            for match in matches {
+                guard let matchRange = Range(match.range, in: benefitText) else { continue }
+                
+                // Add text before the match (in default color)
+                let beforeMatch = String(benefitText[lastProcessedIndex..<matchRange.lowerBound])
+                if !beforeMatch.isEmpty {
+                    result = result + Text(beforeMatch).style(.body)
+                }
+                
+                // Add the matched time value in green
+                let timeValue = String(benefitText[matchRange])
+                result = result + Text(timeValue).style(.body, color: .ampedGreen)
+                
+                lastProcessedIndex = matchRange.upperBound
+            }
+            
+            // Add any remaining text after the last match
+            let remainingAfterLastMatch = String(benefitText[lastProcessedIndex...])
+            if !remainingAfterLastMatch.isEmpty {
+                result = result + Text(remainingAfterLastMatch).style(.body)
+            }
+            
+            return result
+            
+        } catch {
+            // If regex fails, return original text
+            return Text(benefitText).style(.body)
+        }
     }
 }

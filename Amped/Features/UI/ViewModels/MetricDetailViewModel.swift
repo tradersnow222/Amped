@@ -496,7 +496,7 @@ final class MetricDetailViewModel: ObservableObject {
             recommendations.append(MetricRecommendation(
                 id: UUID(),
                 title: "Daily Walking",
-                description: "Try to walk for at least 30 minutes each day, ideally reaching 10,000 steps for optimal cardiovascular benefits.",
+                description: "Try to walk for at least \(Double(30).formattedAsTime()) each day, ideally reaching 10,000 steps for optimal cardiovascular benefits.",
                 iconName: "figure.walk",
                 actionText: "Set Walking Reminder"
             ))
@@ -515,7 +515,7 @@ final class MetricDetailViewModel: ObservableObject {
             recommendations.append(MetricRecommendation(
                 id: UUID(),
                 title: "Activity Variety",
-                description: "Mix cardio, strength training, and flexibility exercises for best results. Aim for at least 150 minutes per week.",
+                description: "Mix cardio, strength training, and flexibility exercises for best results. Aim for at least \(Double(150).formattedAsTime()) per week.",
                 iconName: "person.fill.turn.right",
                 actionText: "Explore Exercise Types"
             ))

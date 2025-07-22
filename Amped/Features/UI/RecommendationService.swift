@@ -79,27 +79,35 @@ class RecommendationService {
         let targetSteps = findStepsForNeutralImpact(currentSteps: currentSteps)
         let stepsNeeded = max(0, targetSteps - currentSteps)
         
-        // Calculate realistic action size based on actual deficit
-        let actionSteps = calculateRealisticStepTarget(stepsNeeded: stepsNeeded)
-        let walkMinutes = Int(actionSteps / 100) // ~100 steps per minute walking
-        let actionText = "Walk \(walkMinutes) minutes"
-        
-        // Calculate actual benefit of this action
-        let newSteps = currentSteps + actionSteps
-        let newImpact = calculateStepsImpact(steps: newSteps)
-        let incrementalBenefit = newImpact - currentImpact
-        
-        // Apply bounds checking for realistic recommendations
-        let clampedBenefit = applyRealisticBounds(benefit: incrementalBenefit, period: period, metricType: .steps)
-        let formattedBenefit = formatBenefitForPeriod(clampedBenefit, period: period)
+        // For daily recommendations, show additional steps needed
+        // For month/year recommendations, show total daily target
+        let actionSteps: Double
+        let actionText: String
         
         switch period {
         case .day:
-            return "\(actionText) today to add \(formattedBenefit) today"
+            // Show additional steps for today
+            actionSteps = calculateRealisticStepTarget(stepsNeeded: stepsNeeded)
+            let formattedSteps = Int(actionSteps).formatted(.number.grouping(.automatic))
+            actionText = "Walk \(formattedSteps) more steps"
+        case .month, .year:
+            // Show total daily target for sustained periods
+            actionSteps = targetSteps
+            let formattedSteps = Int(actionSteps).formatted(.number.grouping(.automatic))
+            actionText = "Walk \(formattedSteps) steps"
+        }
+        
+        // Calculate actual benefit of reaching neutral
+        let benefitToNeutral = abs(currentImpact) // How much we gain by reaching 0
+        let formattedBenefit = formatBenefitForPeriod(benefitToNeutral, period: period)
+        
+        switch period {
+        case .day:
+            return "\(actionText) today to add \(formattedBenefit) to your life"
         case .month:
-            return "\(actionText) daily to add \(formattedBenefit) this month"
+            return "\(actionText) daily this month to add \(formattedBenefit) to your life"
         case .year:
-            return "\(actionText) daily to add \(formattedBenefit) this year"
+            return "\(actionText) daily this next year to add \(formattedBenefit) to your life"
         }
     }
     
@@ -148,23 +156,35 @@ class RecommendationService {
         let targetMinutes = findExerciseForNeutralImpact(currentMinutes: currentMinutes)
         let minutesNeeded = max(0, targetMinutes - currentMinutes)
         
-        // Calculate realistic improvement based on current level
-        let actionMinutes = calculateRealisticExerciseTarget(minutesNeeded: minutesNeeded, currentMinutes: currentMinutes)
-        let newMinutes = currentMinutes + actionMinutes
-        let newImpact = calculateExerciseImpact(minutes: newMinutes)
-        let incrementalBenefit = newImpact - currentImpact
-        
-        // Apply bounds checking
-        let clampedBenefit = applyRealisticBounds(benefit: incrementalBenefit, period: period, metricType: .exerciseMinutes)
-        let formattedBenefit = formatBenefitForPeriod(clampedBenefit, period: period)
+        // For daily recommendations, show additional minutes needed
+        // For month/year recommendations, show total daily target
+        let actionMinutes: Double
+        let actionText: String
         
         switch period {
         case .day:
-            return "Exercise \(Int(actionMinutes)) minutes today to add \(formattedBenefit) today"
+            // Show additional minutes for today
+            actionMinutes = minutesNeeded
+            let exerciseTime = Double(actionMinutes).formattedAsTime()
+            actionText = "Exercise \(exerciseTime) more"
+        case .month, .year:
+            // Show total daily target for sustained periods
+            actionMinutes = targetMinutes
+            let exerciseTime = Double(actionMinutes).formattedAsTime()
+            actionText = "Exercise \(exerciseTime)"
+        }
+        
+        // Calculate actual benefit of reaching neutral
+        let benefitToNeutral = abs(currentImpact) // How much we gain by reaching 0
+        let formattedBenefit = formatBenefitForPeriod(benefitToNeutral, period: period)
+        
+        switch period {
+        case .day:
+            return "\(actionText) today to add \(formattedBenefit) to your life"
         case .month:
-            return "Exercise \(Int(actionMinutes)) minutes daily to add \(formattedBenefit) this month"
+            return "\(actionText) daily this month to add \(formattedBenefit) to your life"
         case .year:
-            return "Exercise \(Int(actionMinutes)) minutes daily to add \(formattedBenefit) this year"
+            return "\(actionText) daily this next year to add \(formattedBenefit) to your life"
         }
     }
     
@@ -200,15 +220,29 @@ class RecommendationService {
         let incrementalBenefit = newImpact - currentImpact
         
         let formattedBenefit = formatBenefitForPeriod(incrementalBenefit, period: period)
-        let hourText = actionHours == 1.0 ? "1 hour" : String(format: "%.1f hours", actionHours)
+        
+        // Format action text based on period
+        let actionText: String
+        switch period {
+        case .day:
+            // Show additional hours for tonight
+            let actionMinutes = actionHours * 60
+            let hourText = actionMinutes.formattedAsTime()
+            actionText = "Sleep \(hourText) more"
+        case .month, .year:
+            // Show total target for sustained periods
+            let targetMinutes = targetHours * 60
+            let totalText = targetMinutes.formattedAsTime()
+            actionText = "Sleep \(totalText)"
+        }
         
         switch period {
         case .day:
-            return "Sleep \(hourText) more tonight to add \(formattedBenefit)"
+            return "\(actionText) tonight to add \(formattedBenefit) to your life"
         case .month:
-            return "Sleep \(hourText) more nightly this month to add \(formattedBenefit)"
+            return "\(actionText) nightly this month to add \(formattedBenefit) to your life"
         case .year:
-            return "Sleep \(hourText) more nightly this year to add \(formattedBenefit)"
+            return "\(actionText) nightly this next year to add \(formattedBenefit) to your life"
         }
     }
     
@@ -225,11 +259,11 @@ class RecommendationService {
         
         switch period {
         case .day:
-            return "Practice 10 minutes of deep breathing today to add \(formattedBenefit)"
+            return "Practice \(Double(10).formattedAsTime()) of deep breathing today to add \(formattedBenefit) to your life"
         case .month:
-            return "Practice 10 minutes of deep breathing daily this month to add \(formattedBenefit)"
+            return "Practice \(Double(10).formattedAsTime()) of deep breathing daily this month to add \(formattedBenefit) to your life"
         case .year:
-            return "Practice 10 minutes of deep breathing daily this year to add \(formattedBenefit)"
+            return "Practice \(Double(10).formattedAsTime()) of deep breathing daily this next year to add \(formattedBenefit) to your life"
         }
     }
     
@@ -239,11 +273,11 @@ class RecommendationService {
         
         switch period {
         case .day:
-            return "Meditate for 15 minutes today to add \(formattedBenefit)"
+            return "Meditate for \(Double(15).formattedAsTime()) today to add \(formattedBenefit) to your life"
         case .month:
-            return "Meditate for 15 minutes daily this month to add \(formattedBenefit)"
+            return "Meditate for \(Double(15).formattedAsTime()) daily this month to add \(formattedBenefit) to your life"
         case .year:
-            return "Meditate for 15 minutes daily this year to add \(formattedBenefit)"
+            return "Meditate for \(Double(15).formattedAsTime()) daily this next year to add \(formattedBenefit) to your life"
         }
     }
     
@@ -253,11 +287,11 @@ class RecommendationService {
         
         switch period {
         case .day:
-            return "Reduce caloric intake by 200 calories today to add \(formattedBenefit)"
+            return "Reduce caloric intake by 200 calories today to add \(formattedBenefit) to your life"
         case .month:
-            return "Reduce caloric intake by 200 calories daily this month to add \(formattedBenefit)"
+            return "Reduce caloric intake by 200 calories daily this month to add \(formattedBenefit) to your life"
         case .year:
-            return "Reduce caloric intake by 200 calories daily this year to add \(formattedBenefit)"
+            return "Reduce caloric intake by 200 calories daily this next year to add \(formattedBenefit) to your life"
         }
     }
     
@@ -267,11 +301,11 @@ class RecommendationService {
         
         switch period {
         case .day:
-            return "Skip alcohol today to add \(formattedBenefit)"
+            return "Skip alcohol today to add \(formattedBenefit) to your life"
         case .month:
-            return "Reduce alcohol consumption this month to add \(formattedBenefit)"
+            return "Reduce alcohol consumption daily this month to add \(formattedBenefit) to your life"
         case .year:
-            return "Reduce alcohol consumption this year to add \(formattedBenefit)"
+            return "Reduce alcohol consumption daily this next year to add \(formattedBenefit) to your life"
         }
     }
     
@@ -281,11 +315,11 @@ class RecommendationService {
         
         switch period {
         case .day:
-            return "Avoid smoking today to add \(formattedBenefit)"
+            return "Avoid smoking today to add \(formattedBenefit) to your life"
         case .month:
-            return "Reduce smoking this month to add \(formattedBenefit)"
+            return "Reduce smoking daily this month to add \(formattedBenefit) to your life"
         case .year:
-            return "Quit smoking this year to add \(formattedBenefit)"
+            return "Quit smoking this next year to add \(formattedBenefit) to your life"
         }
     }
     
@@ -295,11 +329,11 @@ class RecommendationService {
         
         switch period {
         case .day:
-            return "Practice stress management for 15 minutes today to add \(formattedBenefit)"
+            return "Practice stress management for \(Double(15).formattedAsTime()) today to add \(formattedBenefit) to your life"
         case .month:
-            return "Practice stress management daily this month to add \(formattedBenefit)"
+            return "Practice stress management for \(Double(15).formattedAsTime()) daily this month to add \(formattedBenefit) to your life"
         case .year:
-            return "Practice stress management daily this year to add \(formattedBenefit)"
+            return "Practice stress management for \(Double(15).formattedAsTime()) daily this next year to add \(formattedBenefit) to your life"
         }
     }
     
@@ -309,11 +343,11 @@ class RecommendationService {
         
         switch period {
         case .day:
-            return "Add 3 servings of vegetables today to add \(formattedBenefit)"
+            return "Add 3 servings of vegetables today to add \(formattedBenefit) to your life"
         case .month:
-            return "Improve nutrition daily this month to add \(formattedBenefit)"
+            return "Add 3 servings of vegetables daily this month to add \(formattedBenefit) to your life"
         case .year:
-            return "Improve nutrition daily this year to add \(formattedBenefit)"
+            return "Add 3 servings of vegetables daily this next year to add \(formattedBenefit) to your life"
         }
     }
     
@@ -323,11 +357,11 @@ class RecommendationService {
         
         switch period {
         case .day:
-            return "Connect with a friend today to add \(formattedBenefit)"
+            return "Connect with a friend today to add \(formattedBenefit) to your life"
         case .month:
-            return "Strengthen social connections this month to add \(formattedBenefit)"
+            return "Connect with friends daily this month to add \(formattedBenefit) to your life"
         case .year:
-            return "Strengthen social connections this year to add \(formattedBenefit)"
+            return "Connect with friends daily this next year to add \(formattedBenefit) to your life"
         }
     }
     
@@ -337,11 +371,11 @@ class RecommendationService {
         
         switch period {
         case .day:
-            return "Increase daily activity to add \(formattedBenefit)"
+            return "Increase daily activity today to add \(formattedBenefit) to your life"
         case .month:
-            return "Increase daily activity this month to add \(formattedBenefit)"
+            return "Increase daily activity this month to add \(formattedBenefit) to your life"
         case .year:
-            return "Increase daily activity this year to add \(formattedBenefit)"
+            return "Increase daily activity this next year to add \(formattedBenefit) to your life"
         }
     }
     
@@ -351,11 +385,11 @@ class RecommendationService {
         
         switch period {
         case .day:
-            return "Do high-intensity exercise today to add \(formattedBenefit)"
+            return "Do high-intensity exercise today to add \(formattedBenefit) to your life"
         case .month:
-            return "Do high-intensity exercise regularly this month to add \(formattedBenefit)"
+            return "Do high-intensity exercise regularly this month to add \(formattedBenefit) to your life"
         case .year:
-            return "Do high-intensity exercise regularly this year to add \(formattedBenefit)"
+            return "Do high-intensity exercise regularly this next year to add \(formattedBenefit) to your life"
         }
     }
     
@@ -365,11 +399,11 @@ class RecommendationService {
         
         switch period {
         case .day:
-            return "Practice breathing exercises today to add \(formattedBenefit)"
+            return "Practice breathing exercises today to add \(formattedBenefit) to your life"
         case .month:
-            return "Practice breathing exercises this month to add \(formattedBenefit)"
+            return "Practice breathing exercises daily this month to add \(formattedBenefit) to your life"
         case .year:
-            return "Practice breathing exercises this year to add \(formattedBenefit)"
+            return "Practice breathing exercises daily this next year to add \(formattedBenefit) to your life"
         }
     }
     
@@ -379,15 +413,46 @@ class RecommendationService {
         let twentyPercentIncrease = currentImpact * 0.2
         let formattedBenefit = formatBenefitForPeriod(twentyPercentIncrease, period: period)
         
+        // Format the time period context
+        let periodText: String
+        let actionFrequency: String
+        switch period {
+        case .day: 
+            periodText = ""  // No additional period text for day
+            actionFrequency = "today"
+        case .month: 
+            periodText = "over the next month"
+            actionFrequency = "daily"
+        case .year: 
+            periodText = "over the next year"
+            actionFrequency = "daily"
+        }
+        
         switch metric.type {
         case .steps:
-            return "Increase your daily steps by 1,000 to add \(formattedBenefit)"
+            if period == .day {
+                return "Walk 15min more \(actionFrequency) to add \(formattedBenefit)"
+            } else {
+                return "Walk 15min more \(actionFrequency) to add \(formattedBenefit) \(periodText)"
+            }
         case .exerciseMinutes:
-            return "Add 10 more minutes of exercise to add \(formattedBenefit)"
+            if period == .day {
+                return "Add 10 more minutes of exercise \(actionFrequency) to add \(formattedBenefit)"
+            } else {
+                return "Add 10 more minutes of exercise \(actionFrequency) to add \(formattedBenefit) \(periodText)"
+            }
         case .sleepHours:
-            return "Optimize sleep quality to add \(formattedBenefit)"
+            if period == .day {
+                return "Optimize sleep quality \(actionFrequency) to add \(formattedBenefit)"
+            } else {
+                return "Optimize sleep quality \(actionFrequency) to add \(formattedBenefit) \(periodText)"
+            }
         default:
-            return "Continue your excellent habits to maintain \(formattedBenefit) benefit"
+            if period == .day {
+                return "Improve your \(metric.type.displayName.lowercased()) \(actionFrequency) to add \(formattedBenefit)"
+            } else {
+                return "Improve your \(metric.type.displayName.lowercased()) \(actionFrequency) to add \(formattedBenefit) \(periodText)"
+            }
         }
     }
     
@@ -637,16 +702,9 @@ class RecommendationService {
     
     /// Calculate realistic step target based on current deficit
     private func calculateRealisticStepTarget(stepsNeeded: Double) -> Double {
-        // Cap at reasonable daily increases to avoid unrealistic recommendations
-        if stepsNeeded <= 1000 {
-            return min(stepsNeeded, 1000) // 10-minute walk max for small deficits
-        } else if stepsNeeded <= 3000 {
-            return min(stepsNeeded, 2500) // 25-minute walk max for medium deficits
-        } else if stepsNeeded <= 5000 {
-            return min(stepsNeeded, 4000) // 40-minute walk max for large deficits
-        } else {
-            return 5000 // 50-minute walk maximum recommendation
-        }
+        // FIXED: Show the actual steps needed to reach neutral
+        // No artificial caps - users deserve to know the truth
+        return stepsNeeded
     }
     
     /// Calculate realistic exercise target based on deficit and current level
@@ -663,23 +721,9 @@ class RecommendationService {
     
     /// Apply realistic bounds to prevent biologically impossible recommendations
     private func applyRealisticBounds(benefit: Double, period: ImpactDataPoint.PeriodType, metricType: HealthMetricType) -> Double {
-        let maxDailyBenefit: Double
-        
-        // Set maximum realistic daily benefits based on research
-        switch metricType {
-        case .steps:
-            maxDailyBenefit = 15.0 // Max ~15 minutes of life gain per day from walking
-        case .exerciseMinutes:
-            maxDailyBenefit = 20.0 // Max ~20 minutes from exercise
-        case .sleepHours:
-            maxDailyBenefit = 10.0 // Max ~10 minutes from sleep optimization
-        case .nutritionQuality:
-            maxDailyBenefit = 8.0 // Max ~8 minutes from nutrition
-        default:
-            maxDailyBenefit = 12.0 // Conservative default
-        }
-        
-        return min(abs(benefit), maxDailyBenefit) * (benefit >= 0 ? 1 : -1)
+        // FIXED: Don't artificially cap benefits - show actual impact of reaching neutral
+        // The research-based calculations already have realistic limits built in
+        return benefit
     }
     
     /// Format benefit appropriately for the selected period
@@ -695,18 +739,7 @@ class RecommendationService {
             totalMinutes = dailyMinutes * 365.0 // Show yearly total if sustained daily
         }
         
-        let absMinutes = abs(totalMinutes)
-        
-        if absMinutes >= 1440 { // >= 1 day
-            let days = absMinutes / 1440
-            return String(format: "%.1f day%@", days, days == 1.0 ? "" : "s")
-        } else if absMinutes >= 60 { // >= 1 hour
-            let hours = absMinutes / 60
-            return String(format: "%.1f hour%@", hours, hours == 1.0 ? "" : "s")
-        } else {
-            let mins = max(1, Int(absMinutes))
-            return "\(mins) min"
-        }
+        return totalMinutes.formattedAsTime()
     }
     
     @available(*, deprecated, message: "Use formatBenefitForPeriod instead")
@@ -739,9 +772,9 @@ class RecommendationService {
         case .steps:
             return "Take a 20-minute walk to improve your health"
         case .exerciseMinutes:
-            return "Add 30 minutes of exercise to your day"
+            return "Add \(Double(30).formattedAsTime()) of exercise to your day"
         case .sleepHours:
-            return "Aim for 7-9 hours of sleep nightly"
+            return "Aim for \(Double(7 * 60).formattedAsTime()) to \(Double(9 * 60).formattedAsTime()) of sleep nightly"
         default:
             return "Focus on improving your \(metric.type.displayName.lowercased())"
         }
@@ -762,10 +795,10 @@ class RecommendationService {
             return "Increase to \(target) steps daily to add \(formattedGain)."
             
         case .sleepHours:
-            return "Optimize sleep to 7-8 hours nightly to add \(formattedGain)."
+            return "Optimize sleep to \(Double(7 * 60).formattedAsTime()) to \(Double(8 * 60).formattedAsTime()) nightly to add \(formattedGain)."
             
         case .exerciseMinutes:
-            return "Reach 30 minutes of exercise daily to add \(formattedGain)."
+            return "Reach \(Double(30).formattedAsTime()) of exercise daily to add \(formattedGain)."
             
         case .restingHeartRate:
             return "Improve cardiovascular fitness to add \(formattedGain)."

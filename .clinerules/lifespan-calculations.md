@@ -59,30 +59,6 @@ This file documents all calculation logic related to health metrics, lifespan im
 **Files Modified:**
 - `Amped/Features/UI/RecommendationService.swift`: Removed caps, show true values
 
-### Phase 2: Collective Impact Scaling Fix
-
-**Issues Fixed:**
-- ❌ **Backwards Scaling** → ✅ Monthly/yearly impacts now properly scale UP from daily impacts
-- ❌ **Complex Effect-Type Scaling** → ✅ Simple linear scaling for collective impacts
-- ❌ **Metrics Averaged for All Periods** → ✅ Properly handled: metrics are daily averages, scaling applied to total
-
-**Root Cause:**
-- Health metrics are always shown as daily averages regardless of period (Apple HealthKit standard)
-- The impact calculation was applying complex effect-type scaling to already-averaged values
-- This caused monthly/yearly impacts to be smaller than daily impacts
-
-**Solution:**
-- Calculate total daily impact first (sum of all weighted metric impacts)
-- Apply simple linear scaling to the total: Day × 1, Month × 30, Year × 365
-- Individual metrics always show daily impact, only the collective total is scaled
-
-**Mathematical Fix:**
-- Before: Day: -96 min, Month: -25 min (wrong!), Year: -55 min (wrong!)
-- After: Day: -96 min, Month: -2,880 min, Year: -35,040 min (correct progression!)
-
-**Files Modified:**
-- `Amped/Features/LifeImpact/LifeImpactService.swift`: Simplified calculateTotalImpact, removed complex scaling
-
 ### Phase 1: Life Impact Scaling Logic Overhaul
 
 **Issues Fixed:**
@@ -1025,4 +1001,4 @@ All calculations use these base constants:
 description:
 globs:
 alwaysApply: false
----
+--- 

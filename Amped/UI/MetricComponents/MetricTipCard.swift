@@ -198,9 +198,9 @@ struct MetricTipCard: View {
         case .restingHeartRate:
             return "Take 5 deep breaths and feel your heart rate slow"
         case .heartRateVariability:
-            return "Schedule 15 minutes of gentle stretching today"
+            return "Schedule \(Double(15).formattedAsTime()) of gentle stretching today"
         case .oxygenSaturation:
-            return "Step outside for 5 minutes and breathe deeply"
+            return "Step outside for \(Double(5).formattedAsTime()) and breathe deeply"
         case .vo2Max:
             return "Add 30 seconds of high intensity to your next walk"
         case .nutritionQuality:
@@ -212,7 +212,7 @@ struct MetricTipCard: View {
         case .bodyMass:
             return "Drink a full glass of water before your next meal"
         case .smokingStatus:
-            return "Delay your next cigarette by 30 minutes"
+            return "Delay your next cigarette by \(Double(30).formattedAsTime())"
         case .alcoholConsumption:
             return "Try sparkling water with lime instead of alcohol today"
         case .socialConnectionsQuality:

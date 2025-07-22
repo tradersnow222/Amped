@@ -88,7 +88,7 @@ struct SingleRecommendationCard: View {
             if isPositive {
                 return "Excellent work with your exercise routine! Regular movement strengthens your heart, improves your mood, and helps your body work at its best."
             } else {
-                return "Adding more movement to your day can have powerful health benefits. Exercise doesn't have to be intense - even 10-15 minutes of walking can help strengthen your heart and boost your energy."
+                return "Adding more movement to your day can have powerful health benefits. Exercise doesn't have to be intense - even \(Double(10).formattedAsTime()) to \(Double(15).formattedAsTime()) of walking can help strengthen your heart and boost your energy."
             }
             
         case .restingHeartRate:
@@ -176,7 +176,7 @@ struct SingleRecommendationCard: View {
         case .steps:
             return "Take a 5-minute walk around your home or office"
         case .sleepHours:
-            return "Set a bedtime alarm 30 minutes before you want to sleep"
+            return "Set a bedtime alarm \(Double(30).formattedAsTime()) before you want to sleep"
         case .exerciseMinutes:
             return "Do 10 jumping jacks or pushups right now"
         case .restingHeartRate, .heartRateVariability:
@@ -184,7 +184,7 @@ struct SingleRecommendationCard: View {
         case .bodyMass:
             return "Drink a glass of water and eat a piece of fruit"
         case .activeEnergyBurned:
-            return "Stand up and stretch for 2 minutes"
+            return "Stand up and stretch for \(Double(2).formattedAsTime())"
         case .vo2Max:
             return "Climb a flight of stairs or do 30 seconds of marching in place"
         case .nutritionQuality:

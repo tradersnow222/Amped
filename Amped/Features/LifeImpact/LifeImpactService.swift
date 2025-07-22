@@ -138,229 +138,52 @@ class LifeImpactService {
             )
         }
         
-        // Create a dictionary of impacts by metric type WITH proper scaling AND evidence weighting
+        // CRITICAL FIX: Metrics are ALWAYS daily averages, regardless of period
+        // The scaling should be applied AFTER summing the daily impacts
+        var totalDailyImpactMinutes: Double = 0
         var impactsByType: [HealthMetricType: Double] = [:]
-        var totalImpactMinutes: Double = 0
         var evidenceQualityScore: Double = 0
         
+        // First, calculate the total DAILY impact (no scaling yet)
         for impact in impacts {
-            // Apply advanced scaling based on effect type and period
-            let scaledImpact = applyAdvancedScaling(impact, periodType: periodType, metrics: metrics)
-            
             // Weight impact by evidence strength and reliability
             let evidenceWeight = impact.reliabilityScore
-            let weightedImpact = scaledImpact * evidenceWeight
+            let weightedDailyImpact = impact.lifespanImpactMinutes * evidenceWeight
             
-            impactsByType[impact.metricType] = weightedImpact
-            totalImpactMinutes += weightedImpact
+            impactsByType[impact.metricType] = weightedDailyImpact
+            totalDailyImpactMinutes += weightedDailyImpact
             evidenceQualityScore += evidenceWeight
         }
         
         // Calculate average evidence quality
         evidenceQualityScore = impacts.isEmpty ? 0 : evidenceQualityScore / Double(impacts.count)
         
-        logger.info("📈 Total impact calculated: \(String(format: "%.1f", totalImpactMinutes)) minutes (\(periodType.rawValue)) - Evidence quality: \(String(format: "%.1f", evidenceQualityScore * 100))%")
+        // NOW apply period scaling to the TOTAL daily impact
+        let scaledTotalImpact: Double
+        switch periodType {
+        case .day:
+            scaledTotalImpact = totalDailyImpactMinutes
+        case .month:
+            // For monthly view, show cumulative impact if behavior sustained for 30 days
+            scaledTotalImpact = totalDailyImpactMinutes * 30.0
+        case .year:
+            // For yearly view, show cumulative impact if behavior sustained for 365 days
+            scaledTotalImpact = totalDailyImpactMinutes * 365.0
+        }
+        
+        logger.info("📈 Total impact calculated:")
+        logger.info("  - Daily impact: \(String(format: "%.1f", totalDailyImpactMinutes)) minutes")
+        logger.info("  - Period: \(periodType.rawValue)")
+        logger.info("  - Scaled total: \(String(format: "%.1f", scaledTotalImpact)) minutes")
+        logger.info("  - Evidence quality: \(String(format: "%.1f", evidenceQualityScore * 100))%")
         
         return ImpactDataPoint(
             date: Date(),
             periodType: periodType,
-            totalImpactMinutes: totalImpactMinutes,
+            totalImpactMinutes: scaledTotalImpact,
             metricImpacts: impactsByType,
             evidenceQualityScore: evidenceQualityScore
         )
-    }
-    
-    /// Apply advanced scaling based on effect type, period, and actual behavior patterns
-    private func applyAdvancedScaling(
-        _ impact: MetricImpactDetail,
-        periodType: ImpactDataPoint.PeriodType,
-        metrics: [HealthMetric]
-    ) -> Double {
-        let dailyImpact = impact.lifespanImpactMinutes
-        
-        switch impact.effectType {
-        case .linearCumulative:
-            // Simple multiplication for truly linear effects
-            return scaleLinearEffect(dailyImpact, periodType: periodType)
-            
-        case .logarithmic, .diminishingReturns:
-            // Apply diminishing returns model
-            return scaleDiminishingEffect(
-                dailyImpact,
-                periodType: periodType,
-                metricType: impact.metricType
-            )
-            
-        case .uShapedCurve:
-            // Special handling for U-shaped effects like sleep
-            return scaleUShapedEffect(
-                impact: impact,
-                periodType: periodType,
-                metrics: metrics
-            )
-            
-        case .thresholdBased:
-            // Threshold effects need minimum exposure duration
-            return scaleThresholdEffect(
-                dailyImpact,
-                periodType: periodType,
-                metricType: impact.metricType
-            )
-            
-        case .exponential:
-            // Compound effects over time
-            return scaleExponentialEffect(
-                dailyImpact,
-                periodType: periodType,
-                metricType: impact.metricType
-            )
-            
-        case .plateau:
-            // Quick plateau, limited scaling
-            return scalePlateauEffect(
-                dailyImpact,
-                periodType: periodType,
-                metricType: impact.metricType
-            )
-        }
-    }
-    
-    // MARK: - Specific Scaling Functions
-    
-    private func scaleLinearEffect(_ dailyImpact: Double, periodType: ImpactDataPoint.PeriodType) -> Double {
-        switch periodType {
-        case .day: return dailyImpact
-        case .month: return dailyImpact * 30.0
-        case .year: return dailyImpact * 365.0
-        }
-    }
-    
-    private func scaleDiminishingEffect(
-        _ dailyImpact: Double,
-        periodType: ImpactDataPoint.PeriodType,
-        metricType: HealthMetricType
-    ) -> Double {
-        // Logarithmic scaling for diminishing returns
-        let days: Double
-        switch periodType {
-        case .day: days = 1
-        case .month: days = 30
-        case .year: days = 365
-        }
-        
-        // Different metrics have different diminishing curves
-        let diminishingFactor: Double
-        switch metricType {
-        case .steps, .exerciseMinutes:
-            // Exercise benefits plateau around 3-6 months
-            diminishingFactor = 0.7
-        case .nutritionQuality:
-            // Nutrition effects take longer to manifest
-            diminishingFactor = 0.85
-        default:
-            diminishingFactor = 0.75
-        }
-        
-        // Logarithmic scaling: impact * log(1 + days) / log(1 + baseDays)
-        let scaledImpact = dailyImpact * log(1 + days * diminishingFactor) / log(1 + diminishingFactor)
-        return scaledImpact
-    }
-    
-    private func scaleUShapedEffect(
-        impact: MetricImpactDetail,
-        periodType: ImpactDataPoint.PeriodType,
-        metrics: [HealthMetric]
-    ) -> Double {
-        // For U-shaped effects, we need to consider consistency
-        // Irregular patterns have worse outcomes than consistent suboptimal patterns
-        
-        guard let metric = metrics.first(where: { $0.type == impact.metricType }) else {
-            return impact.lifespanImpactMinutes
-        }
-        
-        // For sleep, consider that chronic poor sleep has compounding effects
-        if impact.metricType == .sleepHours {
-            let days: Double
-            switch periodType {
-            case .day: days = 1
-            case .month: days = 30
-            case .year: days = 365
-            }
-            
-            // If sleep is far from optimal, effects compound
-            let deviation = abs(metric.value - impact.baselineValue)
-            let compoundingFactor = 1.0 + (deviation / 10.0) // More deviation = more compounding
-            
-            return impact.lifespanImpactMinutes * days * compoundingFactor
-        }
-        
-        // Default to conservative scaling
-        return scaleLinearEffect(impact.lifespanImpactMinutes, periodType: periodType)
-    }
-    
-    private func scaleThresholdEffect(
-        _ dailyImpact: Double,
-        periodType: ImpactDataPoint.PeriodType,
-        metricType: HealthMetricType
-    ) -> Double {
-        // Threshold effects require sustained behavior
-        let days: Double
-        switch periodType {
-        case .day: return dailyImpact // No threshold effect in single day
-        case .month: days = 30
-        case .year: days = 365
-        }
-        
-        // Minimum days before effects kick in
-        let thresholdDays: Double = 21 // 3 weeks for habit formation
-        
-        if days < thresholdDays {
-            // Linear ramp up to threshold
-            return dailyImpact * days * (days / thresholdDays)
-        } else {
-            // Full effect after threshold
-            return dailyImpact * days
-        }
-    }
-    
-    private func scaleExponentialEffect(
-        _ dailyImpact: Double,
-        periodType: ImpactDataPoint.PeriodType,
-        metricType: HealthMetricType
-    ) -> Double {
-        // Exponential effects compound over time
-        let days: Double
-        switch periodType {
-        case .day: return dailyImpact
-        case .month: days = 30
-        case .year: days = 365
-        }
-        
-        // Conservative exponential growth to avoid unrealistic projections
-        let growthRate = 0.001 // 0.1% daily compound
-        let scaledImpact = dailyImpact * days * (1 + growthRate * days)
-        
-        return scaledImpact
-    }
-    
-    private func scalePlateauEffect(
-        _ dailyImpact: Double,
-        periodType: ImpactDataPoint.PeriodType,
-        metricType: HealthMetricType
-    ) -> Double {
-        // Plateau effects reach maximum quickly
-        let days: Double
-        switch periodType {
-        case .day: return dailyImpact
-        case .month: days = 30
-        case .year: days = 365
-        }
-        
-        // Most benefits achieved in first 30 days
-        let plateauDays: Double = 30
-        let effectiveDays = min(days, plateauDays + (days - plateauDays) * 0.1) // 10% effect after plateau
-        
-        return dailyImpact * effectiveDays
     }
     
     // MARK: - Life Impact Data Calculation

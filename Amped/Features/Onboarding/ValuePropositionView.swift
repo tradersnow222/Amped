@@ -26,11 +26,11 @@ struct ValuePropositionView: View {
                     VStack(spacing: 16) {
                         VStack(spacing: 2) {
                             Text("Live Longer.")
-                                .font(.system(size: 38, weight: .semibold, design: .serif))
+                                .font(.system(size: 38, weight: .semibold, design: .rounded))
                                 .foregroundColor(.white)
                                 .multilineTextAlignment(.center)
                             Text("Live Stronger.")
-                                .font(.system(size: 38, weight: .semibold, design: .serif))
+                                .font(.system(size: 38, weight: .semibold, design: .rounded))
                                 .foregroundColor(.white)
                                 .multilineTextAlignment(.center)
                         }
@@ -39,7 +39,7 @@ struct ValuePropositionView: View {
                         .animation(.easeOut(duration: 0.6), value: animateElements)
                         
                         Text("See exactly how your habits affect your lifespan.")
-                            .font(.system(size: 18, weight: .regular, design: .serif))
+                            .font(.system(size: 18, weight: .regular, design: .rounded))
                             .foregroundColor(.white.opacity(0.8))
                             .multilineTextAlignment(.center)
                             .opacity(animateElements ? 1 : 0)
@@ -90,7 +90,7 @@ struct ValuePropositionView: View {
                     }) {
                         Text("Get Started")
                             .fontWeight(.bold)
-                            .font(.system(.title3, design: .monospaced))
+                            .font(.system(.title3, design: .rounded))
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.ampedGreen)
@@ -204,11 +204,11 @@ struct ValuePropositionView: View {
             
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
-                    .font(.system(size: 20, weight: .semibold, design: .serif))
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                 
                 Text(description)
-                    .font(.system(size: 16, weight: .regular, design: .serif))
+                    .font(.system(size: 16, weight: .regular, design: .rounded))
                     .foregroundColor(.white.opacity(0.8))
                     .lineSpacing(2)
             }

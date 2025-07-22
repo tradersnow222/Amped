@@ -25,7 +25,7 @@ struct PersonalizationIntroView: View {
                         // Header section - positioned for rule of thirds
                         VStack(spacing: 0) {
                             Text("Driven by Data,\nFueled by AI.")
-                                .font(.system(size: 32, weight: .semibold, design: .serif))
+                                .font(.system(size: 32, weight: .semibold, design: .rounded))
                                 .foregroundColor(.white)
                                 .multilineTextAlignment(.center)
                                 .opacity(animateElements ? 1 : 0)
@@ -37,7 +37,7 @@ struct PersonalizationIntroView: View {
                         // Statistics section with paired subtitle
                         VStack(spacing: 16) {
                             Text("Our AI lifespan models are based on")
-                                .font(.system(size: 18, weight: .regular, design: .serif))
+                                .font(.system(size: 18, weight: .regular, design: .rounded))
                                 .foregroundColor(.white.opacity(0.7))
                                 .multilineTextAlignment(.center)
                                 .opacity(animateElements ? 1 : 0)
@@ -46,23 +46,23 @@ struct PersonalizationIntroView: View {
                             VStack(spacing: 8) {
                             HStack(spacing: 8) {
                                 Text("200+")
-                                    .font(.system(size: 36, weight: .semibold, design: .serif))
+                                    .font(.system(size: 36, weight: .semibold, design: .rounded))
                                     .foregroundColor(.ampedGreen)
                                 Text("peer-reviewed studies")
-                                    .font(.system(size: 20, weight: .regular, design: .serif))
+                                    .font(.system(size: 20, weight: .regular, design: .rounded))
                                     .foregroundColor(.white)
                             }
                             
                             Text("with over")
-                                .font(.system(size: 16, weight: .regular, design: .serif))
+                                .font(.system(size: 16, weight: .regular, design: .rounded))
                                 .foregroundColor(.white.opacity(0.7))
                             
                             HStack(spacing: 8) {
                                 Text("10 million")
-                                    .font(.system(size: 36, weight: .semibold, design: .serif))
+                                    .font(.system(size: 36, weight: .semibold, design: .rounded))
                                     .foregroundColor(.ampedGreen)
                                 Text("participants")
-                                    .font(.system(size: 20, weight: .regular, design: .serif))
+                                    .font(.system(size: 20, weight: .regular, design: .rounded))
                                     .foregroundColor(.white)
                             }
                             }
@@ -81,7 +81,7 @@ struct PersonalizationIntroView: View {
                         // University partnerships
                         VStack(spacing: 24) {
                             Text("With insights from experts at:")
-                                .font(.system(size: 16, weight: .regular, design: .serif))
+                                .font(.system(size: 16, weight: .regular, design: .rounded))
                                 .foregroundColor(.white.opacity(0.7))
                             
                             // University logos in horizontal layout
@@ -107,7 +107,7 @@ struct PersonalizationIntroView: View {
                     }) {
                         Text("Continue")
                             .fontWeight(.bold)
-                            .font(.system(.title3, design: .monospaced))
+                            .font(.system(.title3, design: .rounded))
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.ampedGreen)
@@ -182,7 +182,7 @@ struct PersonalizationIntroView: View {
             
             // University name
             Text(institute.rawValue)
-                .font(.system(size: 16, weight: .regular, design: .serif))
+                .font(.system(size: 16, weight: .regular, design: .rounded))
                 .foregroundColor(.white.opacity(0.8))
                 .fixedSize()
         }

@@ -14,7 +14,7 @@ struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .fontWeight(.bold)
-            .font(.system(.title3, design: .default))
+            .font(.system(.title3, design: .rounded))
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
             .multilineTextAlignment(.center)
@@ -139,7 +139,7 @@ struct ContinueButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .fontWeight(.bold)
-            .font(.system(.title3, design: .monospaced))
+            .font(.system(.title3, design: .rounded))
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
             .multilineTextAlignment(.center)
@@ -171,7 +171,7 @@ struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .fontWeight(.medium)
-            .font(.system(.body, design: .default))
+            .font(.system(.body, design: .rounded))
             .frame(maxWidth: .infinity)
             .padding()
             .background(

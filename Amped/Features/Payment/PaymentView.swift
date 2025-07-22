@@ -164,7 +164,7 @@ struct PaymentView: View {
     
     private var personalHeadlineView: some View {
         Text("Better habits. Longer life.")
-            .font(.system(size: 32, weight: .bold, design: .default))
+            .font(.system(size: 32, weight: .bold, design: .rounded))
             .foregroundColor(themeManager.textColor)
             .multilineTextAlignment(.center)
             .scaleEffect(animateBattery ? 1.0 : 0.93)

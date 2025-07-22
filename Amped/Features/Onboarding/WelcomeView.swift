@@ -49,7 +49,7 @@ struct WelcomeView: View {
                         // Main content - Amped and lightning bolt
                         VStack(spacing: 16) {
                             Text("Amped")
-                                .font(.system(size: 42, weight: .bold, design: .monospaced))
+                                .font(.system(size: 42, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                                 .shadow(color: Color.ampedGreen, radius: 1.8, x: 0, y: 0)
                                 .shadow(color: Color.white.opacity(0.5), radius: 0.4, x: 0, y: 0)
