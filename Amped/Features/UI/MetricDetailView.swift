@@ -163,9 +163,9 @@ struct MetricDetailView: View {
                 
                 // Impact display - simplified to show only the clear time impact
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text(formatImpactDisplay(viewModel.totalImpactForPeriod))
+                    Text(formatImpactDisplay(viewModel.totalPeriodImpact))
                         .font(.system(size: 18, weight: .medium, design: .rounded))
-                        .foregroundColor(viewModel.totalImpactForPeriod >= 0 ? .ampedGreen : .ampedRed)
+                        .foregroundColor(viewModel.totalPeriodImpact >= 0 ? .ampedGreen : .ampedRed)
                     
                     Text("total impact")
                         .style(.caption)

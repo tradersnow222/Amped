@@ -1,40 +1,90 @@
 import Foundation
 import OSLog
 
-/// Service for generating accurate, science-based recommendations with fixed daily targets for consistency
-class RecommendationService {
-    private let logger = Logger(subsystem: "Amped", category: "RecommendationService")
-    private let userProfile: UserProfile
+/// Service for generating health metric recommendations
+/// CRITICAL: Uses fixed daily targets to prevent confusing target changes throughout the day
+final class RecommendationService {
     
-    // Calculators for impact calculations
+    // MARK: - Properties
+    
+    private let logger = Logger(subsystem: "Amped", category: "RecommendationService")
+    private let dailyTargetManager = DailyTargetManager()
     private let activityCalculator = ActivityImpactCalculator()
     private let cardiovascularCalculator = CardiovascularImpactCalculator()
-    private let lifestyleCalculator = LifestyleImpactCalculator()
     private let lifeImpactService: LifeImpactService
+    private let userProfile: UserProfile
     
-    // Daily target management for consistent recommendations
-    private let dailyTargetManager = DailyTargetManager()
+    // MARK: - Initialization
     
     init(userProfile: UserProfile) {
         self.userProfile = userProfile
         self.lifeImpactService = LifeImpactService(userProfile: userProfile)
     }
     
-    /// Generate accurate recommendation with fixed daily targets for consistency
+    // MARK: - Public Methods
+    
+    /// Generate recommendation for a health metric using fixed daily targets
     func generateRecommendation(for metric: HealthMetric, selectedPeriod: ImpactDataPoint.PeriodType) -> String {
+        // ENHANCED DEBUGGING: Log the input metric data
+        logger.info("🎯 Generating recommendation for \(metric.type.displayName):")
+        logger.info("   Input Value: \(metric.formattedValue)")
+        logger.info("   Input Impact: \(metric.impactDetails?.lifespanImpactMinutes ?? 0) minutes")
+        logger.info("   Period: \(selectedPeriod.rawValue)")
+        
         guard let impactDetails = metric.impactDetails else {
+            logger.warning("⚠️ No impact details for \(metric.type.displayName) - using default recommendation")
             return getDefaultRecommendation(for: metric, period: selectedPeriod)
         }
-        
+
         // Clean expired targets on each call
         dailyTargetManager.clearExpiredTargets()
-        
+
         // Check for cached daily target first
         if let cachedTarget = dailyTargetManager.getCachedTarget(for: metric.type, period: selectedPeriod) {
-            logger.info("📋 Using cached daily target for \(metric.type.displayName)")
-            return cachedTarget.generateRecommendationText(currentValue: metric.value)
+            logger.info("📋 Found cached target for \(metric.type.displayName)")
+            logger.info("   Cached Original Value: \(cachedTarget.originalCurrentValue)")
+            logger.info("   Cached Target Value: \(cachedTarget.targetValue)")
+            
+            // ENHANCED: Comprehensive cache invalidation with metric-specific logic
+            let shouldInvalidateCache = shouldInvalidateCachedTarget(
+                cachedTarget: cachedTarget,
+                currentMetric: metric,
+                currentImpact: impactDetails.lifespanImpactMinutes
+            )
+            
+            if shouldInvalidateCache.shouldInvalidate {
+                logger.info("🔄 Cache invalidation triggered for \(metric.type.displayName): \(shouldInvalidateCache.reason)")
+                
+                // ENHANCED: Progressive cache clearing strategy
+                if shouldInvalidateCache.severity == .high {
+                    // High severity: Clear all targets to ensure complete recalculation
+                    logger.info("⚡ High severity change detected - clearing ALL cached targets")
+                    dailyTargetManager.clearTargets()
+                } else {
+                    // Medium severity: Clear only this metric's targets
+                    logger.info("📝 Medium severity change detected - clearing target for this metric only")
+                    dailyTargetManager.clearTarget(for: metric.type, period: selectedPeriod)
+                }
+                
+                // Recalculate with fresh baseline
+                let currentDailyImpact = impactDetails.lifespanImpactMinutes
+                
+                if currentDailyImpact < 0 {
+                    logger.info("📊 Recalculating negative metric target with fresh data")
+                    return calculateAndCacheNegativeMetricTarget(for: metric, period: selectedPeriod)
+                } else {
+                    logger.info("📊 Recalculating positive metric target with fresh data")
+                    return calculateAndCachePositiveMetricTarget(for: metric, period: selectedPeriod, currentImpact: currentDailyImpact)
+                }
+            }
+            
+            logger.info("📋 Using cached daily target for \(metric.type.displayName) (passed validation)")
+            // CRITICAL FIX: Pass userProfile so benefit can be calculated dynamically
+            let recommendation = cachedTarget.generateRecommendationText(currentValue: metric.value, userProfile: userProfile)
+            logger.info("💬 Generated recommendation: \(recommendation)")
+            return recommendation
         }
-        
+
         // No cached target - calculate and cache new target
         logger.info("🔄 Calculating new daily target for \(metric.type.displayName)")
         
@@ -85,8 +135,8 @@ class RecommendationService {
         dailyTargetManager.saveTarget(dailyTarget)
         logger.info("💾 Cached daily target for \(metric.type.displayName): \(targetValue)")
         
-        // Generate recommendation using the cached target
-        return dailyTarget.generateRecommendationText(currentValue: metric.value)
+        // Generate recommendation using the cached target with userProfile
+        return dailyTarget.generateRecommendationText(currentValue: metric.value, userProfile: userProfile)
     }
     
     /// Calculate and cache target for positive impact metrics  
@@ -122,8 +172,8 @@ class RecommendationService {
         dailyTargetManager.saveTarget(dailyTarget)
         logger.info("💾 Cached daily target for \(metric.type.displayName): \(targetValue)")
         
-        // Generate recommendation using the cached target
-        return dailyTarget.generateRecommendationText(currentValue: metric.value)
+        // Generate recommendation using the cached target with userProfile
+        return dailyTarget.generateRecommendationText(currentValue: metric.value, userProfile: userProfile)
     }
 
     // MARK: - Legacy Target Calculation Methods (for reference)
@@ -924,6 +974,288 @@ class RecommendationService {
             return "Optimize your \(metric.type.displayName.lowercased()) to add \(formattedGain)."
         }
     }
+    
+    // MARK: - Enhanced Cache Invalidation System
+    
+    /// Comprehensive cache invalidation with metric-specific logic and progressive severity
+    private func shouldInvalidateCachedTarget(
+        cachedTarget: DailyTarget,
+        currentMetric: HealthMetric,
+        currentImpact: Double
+    ) -> CacheInvalidationResult {
+        
+        let originalValue = cachedTarget.originalCurrentValue
+        let currentValue = currentMetric.value
+        let metricType = currentMetric.type
+        
+        // ENHANCED DEBUGGING: Log all values for investigation
+        logger.info("🔍 Cache Invalidation Check for \(metricType.displayName):")
+        logger.info("   Original Value: \(originalValue) -> Current Value: \(currentValue)")
+        logger.info("   Absolute Change: \(abs(currentValue - originalValue))")
+        logger.info("   Percentage Change: \(abs(currentValue - originalValue) / max(originalValue, 1.0) * 100)%")
+        
+        // Time-based invalidation: Targets should refresh periodically regardless of value changes
+        let cacheAge = Date().timeIntervalSince(cachedTarget.calculationDate)
+        logger.info("   Cache Age: \(Int(cacheAge)) seconds")
+        
+        if cacheAge > 1800 { // CRITICAL FIX: Reduced from 6 hours to 30 minutes for faster updates
+            logger.info("🕰️ Cache expired due to age - invalidating")
+            return CacheInvalidationResult(
+                shouldInvalidate: true,
+                reason: "Cache expired (age: \(Int(cacheAge/60)) minutes)",
+                severity: .medium
+            )
+        }
+        
+        // Get metric-specific invalidation thresholds
+        let thresholds = getInvalidationThresholds(for: metricType)
+        logger.info("   Thresholds: \(thresholds.percentageThreshold * 100)% or \(thresholds.absoluteThreshold) absolute")
+        
+        // Calculate change metrics
+        let absoluteChange = abs(currentValue - originalValue)
+        let percentageChange = absoluteChange / max(originalValue, 1.0)
+        
+        logger.info("   Calculated Percentage Change: \(percentageChange * 100)%")
+        logger.info("   Threshold Check: \(percentageChange > thresholds.percentageThreshold ? "PASS" : "FAIL") (percentage)")
+        logger.info("   Threshold Check: \(absoluteChange > thresholds.absoluteThreshold ? "PASS" : "FAIL") (absolute)")
+        
+        // Check if thresholds are exceeded
+        let percentageExceeded = percentageChange > thresholds.percentageThreshold
+        let absoluteExceeded = absoluteChange > thresholds.absoluteThreshold
+        
+        if percentageExceeded || absoluteExceeded {
+            let severity: InvalidationSeverity = percentageChange > (thresholds.percentageThreshold * 5) ? .high : .medium
+            let reason = "Value changed significantly: \(String(format: "%.1f", percentageChange * 100))% change, \(String(format: "%.0f", absoluteChange)) absolute change"
+            
+            logger.info("✅ CACHE INVALIDATION TRIGGERED: \(reason)")
+            return CacheInvalidationResult(
+                shouldInvalidate: true,
+                reason: reason,
+                severity: severity
+            )
+        }
+        
+        logger.info("⏸️ Cache invalidation not triggered - changes below threshold")
+        return CacheInvalidationResult(
+            shouldInvalidate: false,
+            reason: "Changes below invalidation threshold",
+            severity: .low
+        )
+    }
+    
+    /// Get metric-specific invalidation thresholds
+    private func getInvalidationThresholds(for metricType: HealthMetricType) -> InvalidationThresholds {
+        switch metricType {
+        case .steps:
+            // CRITICAL FIX: Very sensitive to user progress - 1% change or 50 steps
+            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 50.0)
+            
+        case .exerciseMinutes:
+            // CRITICAL FIX: Very sensitive - 1% change or 1 minute
+            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 1.0)
+            
+        case .sleepHours:
+            // CRITICAL FIX: Very sensitive - 1% change or 6 minutes (0.1 hours)
+            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 0.1)
+            
+        case .restingHeartRate:
+            // CRITICAL FIX: Very sensitive - 1% change or 1 bpm
+            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 1.0)
+            
+        case .heartRateVariability:
+            // CRITICAL FIX: Very sensitive - 1% change or 2 ms
+            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 2.0)
+            
+        case .bodyMass:
+            // Already sensitive at 1% - keep current
+            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 0.45)
+            
+        case .activeEnergyBurned:
+            // CRITICAL FIX: Very sensitive - 1% change or 10 calories
+            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 10.0)
+            
+        case .vo2Max:
+            // CRITICAL FIX: Very sensitive - 1% change or 0.5 units
+            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 0.5)
+            
+        case .oxygenSaturation:
+            // CRITICAL FIX: Very sensitive - 1% change or 0.5%
+            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 0.5)
+            
+        // Manual/Questionnaire metrics - also very sensitive
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, 
+             .socialConnectionsQuality, .stressLevel:
+            // CRITICAL FIX: Very sensitive - 1% change or 0.1 point on scale
+            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 0.1)
+            
+        default:
+            // CRITICAL FIX: Default to very sensitive for any other metrics
+            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 1.0)
+        }
+    }
+    
+    /// Check if changes to this metric should invalidate other metrics' caches
+    private func shouldInvalidateBasedOnCrossMetricEffects(metricType: HealthMetricType, valueChange: Double) -> Bool {
+        switch metricType {
+        case .steps, .exerciseMinutes:
+            // Large activity changes affect cardiovascular metrics
+            return valueChange > 1000 // Large step changes or significant exercise changes
+            
+        case .sleepHours:
+            // Sleep changes affect many other metrics
+            return valueChange > 1.0 // 1+ hour sleep changes
+            
+        case .bodyMass:
+            // Weight changes affect activity and cardiovascular metrics
+            return valueChange > 2.0 // 2+ lb weight changes
+            
+        default:
+            return false // Other metrics don't typically have cross-effects
+        }
+    }
+    
+    // MARK: - Enhanced Cache Invalidation Supporting Types
+    
+    #if DEBUG
+    /// Comprehensive validation test for the three critical fixes
+    /// Tests the scenario: 422 steps -> 2,221 steps to ensure proper behavior
+    func validateFixesIntegration() -> ValidationResult {
+        let logger = Logger(subsystem: "Amped", category: "RecommendationService.Validation")
+        logger.info("🧪 Starting comprehensive validation of three critical fixes")
+        
+        var validationResults: [String] = []
+        var hasErrors = false
+        
+        // Test 1: Benefit Calculation Fix
+        logger.info("🧪 Test 1: Validating benefit calculation fix")
+        
+        let userProfile = UserProfile()
+        let originalStepsMetric = HealthMetric(
+            id: UUID().uuidString,
+            type: .steps,
+            value: 422,
+            date: Date(),
+            source: .healthKit
+        )
+        
+        // Clear any existing targets for clean test
+        dailyTargetManager.clearTargets()
+        
+        // Generate recommendation for 422 steps
+        let originalRecommendation = generateRecommendation(for: originalStepsMetric, selectedPeriod: .day)
+        validationResults.append("✅ Original (422 steps): \(originalRecommendation)")
+        
+        // Simulate user improvement to 2,221 steps
+        let improvedStepsMetric = HealthMetric(
+            id: UUID().uuidString,
+            type: .steps,
+            value: 2221,
+            date: Date(),
+            source: .healthKit
+        )
+        
+        // Generate recommendation for improved steps
+        let improvedRecommendation = generateRecommendation(for: improvedStepsMetric, selectedPeriod: .day)
+        validationResults.append("✅ Improved (2,221 steps): \(improvedRecommendation)")
+        
+        // Validate that benefit text has changed (should be lower)
+        if originalRecommendation == improvedRecommendation {
+            hasErrors = true
+            validationResults.append("❌ ERROR: Recommendation text unchanged after 1,799 step improvement")
+        } else {
+            validationResults.append("✅ PASS: Recommendation text properly updated after improvement")
+        }
+        
+        // Test 2: Cache Invalidation Fix
+        logger.info("🧪 Test 2: Validating cache invalidation fix")
+        
+        // Check that cache invalidation triggers for significant changes
+        if let cachedTarget = dailyTargetManager.getCachedTarget(for: .steps, period: .day) {
+            let invalidationResult = shouldInvalidateCachedTarget(
+                cachedTarget: cachedTarget,
+                currentMetric: improvedStepsMetric,
+                currentImpact: -50.0 // Example impact
+            )
+            
+            if invalidationResult.shouldInvalidate {
+                validationResults.append("✅ PASS: Cache invalidation properly triggered: \(invalidationResult.reason)")
+            } else {
+                hasErrors = true
+                validationResults.append("❌ ERROR: Cache invalidation should trigger for 1,799 step change")
+            }
+        }
+        
+        // Test 3: Metric-Specific Thresholds
+        logger.info("🧪 Test 3: Validating metric-specific thresholds")
+        
+        let stepsThresholds = getInvalidationThresholds(for: .steps)
+        let heartRateThresholds = getInvalidationThresholds(for: .restingHeartRate)
+        
+        if stepsThresholds.absoluteThreshold == 50.0 && heartRateThresholds.absoluteThreshold == 1.0 { // Changed from 3.0 to 1.0
+            validationResults.append("✅ PASS: Metric-specific thresholds correctly configured")
+        } else {
+            hasErrors = true
+            validationResults.append("❌ ERROR: Metric-specific thresholds not properly configured")
+        }
+        
+        // Test 4: Edge Cases
+        logger.info("🧪 Test 4: Validating edge cases")
+        
+        let zeroStepsMetric = HealthMetric(
+            id: UUID().uuidString,
+            type: .steps,
+            value: 0,
+            date: Date(),
+            source: .healthKit
+        )
+        
+        let zeroStepsRecommendation = generateRecommendation(for: zeroStepsMetric, selectedPeriod: .day)
+        if !zeroStepsRecommendation.isEmpty {
+            validationResults.append("✅ PASS: Zero steps edge case handled")
+        } else {
+            hasErrors = true
+            validationResults.append("❌ ERROR: Zero steps edge case failed")
+        }
+        
+        let finalResult = ValidationResult(
+            passed: !hasErrors,
+            details: validationResults,
+            summary: hasErrors ? "❌ Validation FAILED - Issues detected" : "✅ All validations PASSED"
+        )
+        
+        logger.info("🧪 Validation completed: \(finalResult.summary)")
+        return finalResult
+    }
+    #endif
+}
+
+// MARK: - Enhanced Cache Invalidation Supporting Types
+
+/// Result of cache invalidation analysis with severity and reasoning
+struct CacheInvalidationResult {
+    let shouldInvalidate: Bool
+    let reason: String
+    let severity: InvalidationSeverity
+}
+
+/// Severity levels for cache invalidation with progressive clearing strategies
+enum InvalidationSeverity {
+    case low        // No invalidation needed
+    case medium     // Clear specific metric's cache
+    case high       // Clear all caches for comprehensive recalculation
+}
+
+/// Metric-specific thresholds for cache invalidation
+struct InvalidationThresholds {
+    let percentageThreshold: Double  // Percentage change threshold (0.0 to 1.0)
+    let absoluteThreshold: Double    // Absolute value change threshold
+}
+
+/// Validation result for comprehensive testing
+struct ValidationResult {
+    let passed: Bool
+    let details: [String]
+    let summary: String
 }
 
 // MARK: - Supporting Types

@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// Represents a fixed daily target for a health metric
 /// Used to provide consistent recommendations throughout the day
@@ -7,7 +8,7 @@ struct DailyTarget: Codable, Identifiable, Equatable {
     let metricType: HealthMetricType
     let targetValue: Double
     let originalCurrentValue: Double // Value when target was first calculated
-    let benefitMinutes: Double // Life benefit when reaching target
+    let originalBenefitMinutes: Double // ORIGINAL life benefit when reaching target (for reference)
     let calculationDate: Date
     let period: ImpactDataPoint.PeriodType
     
@@ -25,7 +26,7 @@ struct DailyTarget: Codable, Identifiable, Equatable {
         self.metricType = metricType
         self.targetValue = targetValue
         self.originalCurrentValue = originalCurrentValue
-        self.benefitMinutes = benefitMinutes
+        self.originalBenefitMinutes = benefitMinutes
         self.calculationDate = calculationDate
         self.period = period
     }
@@ -40,10 +41,70 @@ struct DailyTarget: Codable, Identifiable, Equatable {
         return max(0, targetValue - currentValue)
     }
     
+    /// ENHANCED: Calculate current benefit dynamically based on actual current progress
+    /// This ensures the benefit text updates in real-time as the user makes progress
+    /// with comprehensive edge case handling and detailed logging for debugging
+    func calculateCurrentBenefit(currentValue: Double, userProfile: UserProfile) -> Double {
+        // Create temporary LifeImpactService to calculate current impact
+        let lifeImpactService = LifeImpactService(userProfile: userProfile)
+        
+        // CRITICAL FIX: Ensure we're using clean, accurate values
+        let cleanCurrentValue = max(0, currentValue) // Prevent negative values
+        let cleanTargetValue = max(cleanCurrentValue, targetValue) // Target can't be below current
+        
+        // Calculate current impact with actual current value
+        let currentMetric = HealthMetric(
+            id: UUID().uuidString,
+            type: metricType,
+            value: cleanCurrentValue,
+            date: Date(),
+            source: .healthKit
+        )
+        let currentImpact = lifeImpactService.calculateImpact(for: currentMetric)
+        
+        // Calculate target impact to see what we'd achieve
+        let targetMetric = HealthMetric(
+            id: UUID().uuidString,
+            type: metricType,
+            value: cleanTargetValue,
+            date: Date(),
+            source: .healthKit
+        )
+        let targetImpact = lifeImpactService.calculateImpact(for: targetMetric)
+        
+        // ENHANCED: Calculate remaining benefit with comprehensive validation
+        let remainingBenefit = targetImpact.lifespanImpactMinutes - currentImpact.lifespanImpactMinutes
+        let clampedBenefit = max(0, remainingBenefit) // Never show negative remaining benefit
+        
+        // COMPREHENSIVE LOGGING: Track benefit calculations for debugging
+        let logger = OSLog(subsystem: "Amped", category: "DailyTarget")
+        os_log("🎯 Benefit Calculation for %{public}@:", log: logger, type: .info, metricType.displayName)
+        os_log("   Current Value: %.1f → Impact: %.2f min/day", log: logger, type: .info, cleanCurrentValue, currentImpact.lifespanImpactMinutes)
+        os_log("   Target Value: %.1f → Impact: %.2f min/day", log: logger, type: .info, cleanTargetValue, targetImpact.lifespanImpactMinutes)
+        os_log("   Remaining Benefit: %.2f minutes", log: logger, type: .info, clampedBenefit)
+        
+        // EDGE CASE HANDLING: If user has exceeded target, show achievement message
+        if cleanCurrentValue >= cleanTargetValue {
+            os_log("🎉 User has reached/exceeded target!", log: logger, type: .info)
+            return 0.0 // No remaining benefit - they've achieved the goal
+        }
+        
+        // VALIDATION: Ensure benefit makes mathematical sense
+        if clampedBenefit < 0.1 {
+            os_log("⚠️ Very small benefit calculated (%.3f min), returning 0", log: logger, type: .debug, clampedBenefit)
+            return 0.0 // Don't show tiny benefits that confuse users
+        }
+        
+        return clampedBenefit
+    }
+    
     /// Generate consistent recommendation text using fixed target
-    func generateRecommendationText(currentValue: Double) -> String {
+    func generateRecommendationText(currentValue: Double, userProfile: UserProfile = UserProfile()) -> String {
         let remaining = remainingAmount(currentValue: currentValue)
-        let benefitText = benefitMinutes.formattedAsTime()
+        
+        // CRITICAL FIX: Calculate benefit dynamically based on current progress
+        let currentBenefit = calculateCurrentBenefit(currentValue: currentValue, userProfile: userProfile)
+        let benefitText = currentBenefit.formattedAsTime()
         
         switch period {
         case .day:
@@ -161,6 +222,26 @@ final class DailyTargetManager {
         var targets: [DailyTarget] = loadTargets()
         targets.removeAll { !$0.isValidForToday }
         cacheManager.saveData(targets, forKey: cacheKey, type: .recommendations)
+    }
+    
+    /// Clear a specific target for a metric type and period (used by enhanced cache invalidation)
+    func clearTarget(for metricType: HealthMetricType, period: ImpactDataPoint.PeriodType) {
+        var targets: [DailyTarget] = loadTargets()
+        
+        // Remove the specific target
+        let originalCount = targets.count
+        targets.removeAll { target in
+            target.metricType == metricType && target.period == period
+        }
+        
+        // Only save if we actually removed something
+        if targets.count != originalCount {
+            cacheManager.saveData(targets, forKey: cacheKey, type: .recommendations)
+            
+            // Log the selective clearing for debugging
+            let logger = OSLog(subsystem: "Amped", category: "DailyTargetManager")
+            os_log("🗑️ Cleared cached target for %{public}@ (%{public}@)", log: logger, type: .info, metricType.displayName, period.rawValue)
+        }
     }
     
     // MARK: - Private Methods

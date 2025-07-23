@@ -14,13 +14,13 @@ struct ImpactMetricChart: View {
     
     // Determine chart color based on overall impact (Rule: Clear visual feedback)
     private var chartColor: Color {
-        let finalImpact = dataPoints.last?.cumulativeImpactMinutes ?? 0
+        let finalImpact = dataPoints.last?.impact ?? 0
         return finalImpact >= 0 ? .ampedGreen : .ampedRed
     }
     
     // Calculate Y-axis range to ensure zero is visible
     private var yAxisRange: ClosedRange<Double> {
-        let values = dataPoints.map { $0.cumulativeImpactMinutes }
+        let values = dataPoints.map { $0.impact }
         let minValue = min(0, values.min() ?? 0)
         let maxValue = max(0, values.max() ?? 0)
         
@@ -37,12 +37,12 @@ struct ImpactMetricChart: View {
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 5]))
                     .foregroundStyle(Color.white.opacity(0.3))
                 
-                ForEach(dataPoints) { point in
+                ForEach(dataPoints, id: \.id) { point in
                     // Area mark from zero to the line value (Rule: Consistent visual language)
                     AreaMark(
                         x: .value("Time", point.date),
                         yStart: .value("Start", 0),
-                        yEnd: .value("Life Impact", point.cumulativeImpactMinutes)
+                        yEnd: .value("Life Impact", point.impact)
                     )
                     .foregroundStyle(
                         LinearGradient(
@@ -58,7 +58,7 @@ struct ImpactMetricChart: View {
                     // Line showing cumulative impact trend
                     LineMark(
                         x: .value("Time", point.date),
-                        y: .value("Life Impact", point.cumulativeImpactMinutes)
+                        y: .value("Life Impact", point.impact)
                     )
                     .foregroundStyle(chartColor)
                     .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
@@ -72,7 +72,7 @@ struct ImpactMetricChart: View {
                     
                     PointMark(
                         x: .value("Time", selected.date),
-                        y: .value("Life Impact", selected.cumulativeImpactMinutes)
+                        y: .value("Life Impact", selected.impact)
                     )
                     .foregroundStyle(Color.white)
                     .symbolSize(80)
@@ -105,11 +105,11 @@ struct ImpactMetricChart: View {
                 // Interactive value display when dragging
                 if isDragging, let selected = selectedDataPoint {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(formatMetricValue(selected.rawValue))
+                        Text(formatMetricValue(selected.value))
                             .style(.caption)
                             .foregroundColor(.secondary)
                         
-                        Text(formatImpactTime(selected.cumulativeImpactMinutes))
+                        Text(formatImpactTime(selected.impact))
                             .style(.bodyMedium)
                             .foregroundColor(.white)
                         

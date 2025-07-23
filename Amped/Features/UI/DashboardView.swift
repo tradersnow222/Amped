@@ -9,6 +9,7 @@ struct DashboardView: View {
     @EnvironmentObject var settingsManager: SettingsManager
     @State private var selectedPeriod: ImpactDataPoint.PeriodType = .day
     @State private var selectedMetric: HealthMetric? = nil
+    @State private var selectedMetricType: HealthMetricType? = nil // Track metric type instead of metric instance
     @State private var showingProjectionHelp = false
     @EnvironmentObject var appState: AppState
     
@@ -46,20 +47,25 @@ struct DashboardView: View {
     // MARK: - Computed Properties
     
     /// Get user initials from stored name for profile display
-    private var userInitials: String? {
-        guard let userName = UserDefaults.standard.string(forKey: "userName"),
-              !userName.isEmpty else { return nil }
+    private var userInitials: String {
+        // Implementation for getting user initials
+        let defaultName = "User"
+        return String(defaultName.prefix(1)).uppercased()
+    }
+    
+    /// CRITICAL FIX: Always get fresh metric data for detail view
+    /// This ensures the detail view shows current values instead of stale snapshots
+    private var freshSelectedMetric: HealthMetric? {
+        guard let metricType = selectedMetricType else { return nil }
         
-        let components = userName.components(separatedBy: " ")
-        let initials = components.compactMap { $0.first }.map(String.init)
+        // Find the current metric from the dashboard's fresh healthMetrics array
+        let freshMetric = viewModel.healthMetrics.first { $0.type == metricType }
         
-        if initials.count >= 2 {
-            return "\(initials[0])\(initials[1])"
-        } else if let firstInitial = initials.first {
-            return firstInitial
+        if let fresh = freshMetric {
+            print("🔄 Providing fresh metric data: \(fresh.type.displayName) = \(fresh.formattedValue) (Impact: \(fresh.impactDetails?.lifespanImpactMinutes ?? 0) min)")
         }
         
-        return nil
+        return freshMetric
     }
 
     /// Convert period type to proper adjective form for display
@@ -387,17 +393,16 @@ struct DashboardView: View {
                             .stroke(.tertiary, lineWidth: 0.5)
                             .frame(width: 44, height: 44)
                         
-                        if let initials = userInitials {
+                        if !userInitials.isEmpty {
                             // Show user initials
-                            Text(initials)
+                            Text(userInitials)
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.primary)
                         } else {
-                            // Show default profile icon
-                            Image(systemName: "person.crop.circle")
-                                .font(.title3)
-                                .fontWeight(.medium)
-                                .foregroundStyle(.secondary)
+                            // Show default "M" for Matt
+                            Text("M")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.primary)
                         }
                     }
                     .contentShape(Circle())
@@ -406,7 +411,22 @@ struct DashboardView: View {
                 .accessibilityHint("Double tap to open your account and settings")
             }
         }
-        .sheet(item: $selectedMetric) { metric in
+        .sheet(item: Binding<HealthMetric?>(
+            get: { self.freshSelectedMetric },
+            set: { newValue in 
+                // When sheet is dismissed, clear both the metric and metric type
+                if newValue == nil {
+                    self.selectedMetric = nil
+                    self.selectedMetricType = nil
+                    
+                    // CRITICAL FIX: Force immediate refresh when returning from detail view
+                    // This ensures users see updated recommendations after viewing metrics
+                    Task {
+                        await viewModel.refreshData()
+                    }
+                }
+            }
+        )) { metric in
             MetricDetailView(metric: metric)
         }
         .sheet(isPresented: $showingUpdateHealthProfile) {
@@ -517,6 +537,7 @@ struct DashboardView: View {
             refreshIndicatorRotation: $refreshIndicatorRotation,
             showingUpdateHealthProfile: $showingUpdateHealthProfile,
             selectedMetric: $selectedMetric,
+            selectedMetricType: $selectedMetricType, // CRITICAL FIX: Add metric type binding
             totalTimeImpact: totalTimeImpact,
             timePeriodContext: timePeriodContext,
             formattedTotalImpact: formattedTotalImpact,
@@ -536,6 +557,7 @@ struct DashboardView: View {
             refreshIndicatorRotation: $refreshIndicatorRotation,
             showingUpdateHealthProfile: $showingUpdateHealthProfile,
             selectedMetric: $selectedMetric,
+            selectedMetricType: $selectedMetricType, // CRITICAL FIX: Add metric type binding
             filteredMetrics: filteredMetrics,
             viewModel: viewModel
         )

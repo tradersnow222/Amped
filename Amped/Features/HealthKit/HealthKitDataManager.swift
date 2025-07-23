@@ -424,6 +424,9 @@ import OSLog
                     await MainActor.run {
                         subject.send(metric)
                         onUpdate(metric)
+                        
+                        // CRITICAL FIX: Post notification for real-time dashboard updates
+                        NotificationCenter.default.post(name: NSNotification.Name("HealthKitDataUpdated"), object: nil)
                     }
                 }
                 

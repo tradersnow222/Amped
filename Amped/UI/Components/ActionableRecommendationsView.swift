@@ -27,12 +27,18 @@ struct ActionableRecommendationsView: View {
     
     // Get the most impactful metric to recommend improvement for
     private var primaryRecommendationMetric: HealthMetric? {
+        // CRITICAL FIX: Always use the latest metrics with current values
+        // This ensures cache invalidation triggers with fresh data
+        
         // PRINCIPLE 1: If there are negative metrics, prioritize the worst one to bring to neutral
         let allNegativeMetrics = metrics
             .filter { ($0.impactDetails?.lifespanImpactMinutes ?? 0) < 0 }
             .sorted { abs($0.impactDetails?.lifespanImpactMinutes ?? 0) > abs($1.impactDetails?.lifespanImpactMinutes ?? 0) }
         
         if let worstNegativeMetric = allNegativeMetrics.first {
+            // Log the metric we're recommending for debugging
+            let currentImpact = worstNegativeMetric.impactDetails?.lifespanImpactMinutes ?? 0
+            print("🎯 Recommending worst negative metric: \(worstNegativeMetric.type.displayName) = \(worstNegativeMetric.formattedValue) (Impact: \(currentImpact) min)")
             return worstNegativeMetric
         }
         
@@ -42,6 +48,8 @@ struct ActionableRecommendationsView: View {
             .sorted { ($0.impactDetails?.lifespanImpactMinutes ?? 0) < ($1.impactDetails?.lifespanImpactMinutes ?? 0) } // LOWEST first
         
         if let lowestPositiveMetric = allPositiveMetrics.first {
+            let currentImpact = lowestPositiveMetric.impactDetails?.lifespanImpactMinutes ?? 0
+            print("🎯 Recommending lowest positive metric: \(lowestPositiveMetric.type.displayName) = \(lowestPositiveMetric.formattedValue) (Impact: \(currentImpact) min)")
             return lowestPositiveMetric
         }
         
@@ -333,13 +341,12 @@ struct ActionableRecommendationsView: View {
         ]
         
         var result = Text("")
-        var remainingText = text
         
         // Find the pattern that splits the action from the benefit
         for pattern in patterns {
-            if let range = remainingText.range(of: pattern) {
-                let beforePattern = String(remainingText[..<range.lowerBound])
-                let afterPattern = String(remainingText[range.upperBound...])
+            if let range = text.range(of: pattern) {
+                let beforePattern = String(text[..<range.lowerBound])
+                let afterPattern = String(text[range.upperBound...])
                 
                 // Add the text before the pattern (action part)
                 result = result + Text(beforePattern).style(.body)
@@ -365,7 +372,6 @@ struct ActionableRecommendationsView: View {
         let timePattern = #"\d+\.?\d*\s+(min|mins|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)\b"#
         
         var result = Text("")
-        var remainingText = benefitText
         var lastProcessedIndex = benefitText.startIndex
         
         do {

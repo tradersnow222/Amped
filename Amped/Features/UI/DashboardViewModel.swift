@@ -1,31 +1,49 @@
 import SwiftUI
 @preconcurrency import Combine
 import OSLog
+import UIKit
 
 @MainActor
-class DashboardViewModel: ObservableObject {
+final class DashboardViewModel: ObservableObject {
+    // MARK: - Dependencies
+    
+    private let healthKitManager: HealthKitManaging
+    private let healthDataService: HealthDataServicing
+    private let lifeImpactService: LifeImpactService
+    private let lifeProjectionService: LifeProjectionService
+    
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.amped.Amped", category: "DashboardViewModel")
+    
+    // MARK: - State Management
+    
     @Published var healthMetrics: [HealthMetric] = []
     @Published var lifeImpactData: LifeImpactData?
     @Published var lifeProjection: LifeProjection?
-    @Published var selectedTimePeriod: TimePeriod = .day
-    @Published var isLoading = false
+    @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var selectedTimePeriod: TimePeriod = .day
+    
+    // User profile for calculations
+    internal let userProfile: UserProfile
     
     /// Computed property to expose user's current age
     var currentUserAge: Double {
         return userProfile.age.map(Double.init) ?? 30.0 // Default to 30 if no age available
     }
     
-    private let healthKitManager: HealthKitManaging
-    private let healthDataService: HealthDataService
-    private let lifeImpactService: LifeImpactService
-    private let lifeProjectionService: LifeProjectionService
-    private let questionnaireManager: QuestionnaireManager
-    private let userProfile: UserProfile
+    // Internal properties for Combine
     private var cancellables = Set<AnyCancellable>()
     
-    // MARK: - Debug Logging
-    private let logger = Logger(subsystem: "com.amped.app", category: "DashboardViewModel")
+    // MARK: - Foreground Auto-Refresh Timer
+    
+    /// Timer for foreground auto-refresh - follows Apple's 10-second pattern used in Fitness and Health apps
+    private var foregroundRefreshTimer: Timer?
+    
+    /// Track if app is in foreground to control timer
+    @Published private(set) var isAppInForeground: Bool = true
+    
+    /// Interval for foreground refresh (5 seconds - reduced for faster user feedback)
+    private let foregroundRefreshInterval: TimeInterval = 5.0
     
     init(
         healthKitManager: HealthKitManaging? = nil,
@@ -36,12 +54,12 @@ class DashboardViewModel: ObservableObject {
         userProfile: UserProfile? = nil
     ) {
         // Initialize QuestionnaireManager first
-        self.questionnaireManager = questionnaireManager ?? QuestionnaireManager()
+        let questionnaireManager = questionnaireManager ?? QuestionnaireManager()
         
         // Use profile from questionnaire if available, otherwise create default
         if let profile = userProfile {
             self.userProfile = profile
-        } else if let savedProfile = self.questionnaireManager.getCurrentUserProfile() {
+        } else if let savedProfile = questionnaireManager.getCurrentUserProfile() {
             self.userProfile = savedProfile
             logger.info("✅ Using saved user profile from questionnaire")
         } else {
@@ -70,13 +88,21 @@ class DashboardViewModel: ObservableObject {
         self.healthDataService = healthDataService ?? HealthDataService(
             healthKitManager: healthKitManager,
             userProfile: self.userProfile,
-            questionnaireManager: self.questionnaireManager
+            questionnaireManager: questionnaireManager
         )
         self.lifeImpactService = lifeImpactService ?? LifeImpactService(userProfile: self.userProfile)
         self.lifeProjectionService = lifeProjectionService ?? LifeProjectionService()
         
         setupSubscriptions()
         loadData()
+        
+        // Start foreground timer if app is currently active
+        // Check app state and start timer if needed
+        Task { @MainActor in
+            if UIApplication.shared.applicationState == .active {
+                self.startForegroundRefreshTimer()
+            }
+        }
     }
     
     private func setupSubscriptions() {
@@ -97,6 +123,16 @@ class DashboardViewModel: ObservableObject {
             }
             .store(in: &cancellables)
         
+        // CRITICAL FIX: Listen for HealthKit data updates to refresh calculations in real-time
+        NotificationCenter.default.publisher(for: NSNotification.Name("HealthKitDataUpdated"))
+            .sink { [weak self] _ in
+                self?.logger.info("📱 HealthKit data updated, refreshing dashboard calculations")
+                Task {
+                    await self?.refreshData()
+                }
+            }
+            .store(in: &cancellables)
+        
         // Rules: Listen for app data reset
         NotificationCenter.default.publisher(for: NSNotification.Name("AppDataReset"))
             .sink { [weak self] _ in
@@ -104,6 +140,28 @@ class DashboardViewModel: ObservableObject {
                 Task {
                     await self?.handleDataReset()
                 }
+            }
+            .store(in: &cancellables)
+        
+        // NEW: Listen for app foreground/background state changes
+        NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                self?.logger.info("📱 App became active - starting foreground refresh timer")
+                self?.startForegroundRefreshTimer()
+                self?.isAppInForeground = true
+                
+                // Immediate refresh when app becomes active
+                Task {
+                    await self?.refreshData()
+                }
+            }
+            .store(in: &cancellables)
+        
+        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+            .sink { [weak self] _ in
+                self?.logger.info("📱 App entered background - stopping foreground refresh timer")
+                self?.stopForegroundRefreshTimer()
+                self?.isAppInForeground = false
             }
             .store(in: &cancellables)
     }
@@ -298,5 +356,110 @@ class DashboardViewModel: ObservableObject {
         
         // Reload fresh data
         loadData()
+    }
+    
+    // MARK: - Foreground Auto-Refresh System
+    
+    /// Start the foreground refresh timer - follows Apple's pattern of regular updates when app is active
+    private func startForegroundRefreshTimer() {
+        // Stop any existing timer first
+        stopForegroundRefreshTimer()
+        
+        logger.info("⏰ Starting foreground refresh timer (every \(Int(self.foregroundRefreshInterval)) seconds)")
+        
+        foregroundRefreshTimer = Timer.scheduledTimer(withTimeInterval: self.foregroundRefreshInterval, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Use Task to handle main actor isolation properly
+            Task { @MainActor in
+                // Only refresh if app is still in foreground and not currently loading
+                guard self.isAppInForeground && !self.isLoading else {
+                    return
+                }
+                
+                self.logger.debug("⏰ Foreground timer triggered - refreshing HealthKit data")
+                await self.performLightweightRefresh()
+            }
+        }
+        
+        // Ensure timer runs in common run loop modes for responsiveness
+        if let timer = foregroundRefreshTimer {
+            RunLoop.main.add(timer, forMode: .common)
+        }
+    }
+    
+    /// Stop the foreground refresh timer
+    private func stopForegroundRefreshTimer() {
+        foregroundRefreshTimer?.invalidate()
+        foregroundRefreshTimer = nil
+        logger.debug("⏸️ Stopped foreground refresh timer")
+    }
+    
+    /// Perform lightweight refresh - optimized for frequent execution
+    private func performLightweightRefresh() async {
+        // Skip if already loading to prevent overlapping refreshes
+        guard !isLoading else {
+            logger.debug("⏸️ Skipping foreground refresh - already loading")
+            return
+        }
+        
+        logger.debug("🔄 Performing lightweight foreground refresh")
+        
+        do {
+            // Quick fetch of current period metrics without showing loading state
+            let freshMetrics = try await healthDataService.fetchHealthMetricsForPeriod(timePeriod: selectedTimePeriod)
+            
+            // Only update if data has actually changed to avoid unnecessary UI updates
+            let countChanged = healthMetrics.count != freshMetrics.count
+            let valuesChanged = !zip(healthMetrics, freshMetrics).allSatisfy { existing, fresh in
+                existing.value == fresh.value && existing.date == fresh.date
+            }
+            let hasChanges = countChanged || valuesChanged
+            
+            if hasChanges {
+                logger.debug("✅ Found updated health data - refreshing calculations")
+                
+                await MainActor.run {
+                    self.healthMetrics = freshMetrics
+                    
+                    // Recalculate life impact with fresh data
+                    self.lifeImpactData = self.lifeImpactService.calculateLifeImpact(
+                        from: freshMetrics,
+                        for: self.selectedTimePeriod.impactDataPointPeriodType,
+                        userProfile: self.userProfile
+                    )
+                    
+                    // Recalculate life projection
+                    self.lifeProjection = self.lifeProjectionService.calculateLifeProjection(
+                        from: freshMetrics,
+                        userProfile: self.userProfile
+                    )
+                }
+            } else {
+                logger.debug("📊 No changes in health data - skipping calculations")
+            }
+            
+        } catch {
+            // Log error but don't show to user since this is background refresh
+            logger.warning("⚠️ Lightweight refresh failed: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Get status of auto-refresh system for debugging
+    var autoRefreshStatus: String {
+        var status = "Auto-Refresh Status:\n"
+        status += "• Foreground Timer: \(foregroundRefreshTimer != nil ? "Active" : "Inactive")\n"
+        status += "• App State: \(isAppInForeground ? "Foreground" : "Background")\n"
+        status += "• Refresh Interval: \(Int(foregroundRefreshInterval))s\n"
+        status += "• Background Health Manager: Available"
+        return status
+    }
+
+    /// Cleanup when view model is deallocated
+    deinit {
+        // Direct timer cleanup is synchronous and safe in deinit
+        foregroundRefreshTimer?.invalidate()
+        foregroundRefreshTimer = nil
+        logger.info("🗑️ DashboardViewModel deallocated - stopped foreground refresh timer")
     }
 } 

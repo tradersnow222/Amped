@@ -1077,6 +1077,10 @@ import OSLog
                     // Dispatch the metric update to the MainActor
                     Task { @MainActor [weak subject] in // Dispatch update to MainActor
                         subject?.send(metric)
+                        
+                        // CRITICAL FIX: Post notification for real-time dashboard updates
+                        NotificationCenter.default.post(name: NSNotification.Name("HealthKitDataUpdated"), object: nil)
+                        
                         completionHandler() // Call completion handler on MainActor after sending
                     }
                 }

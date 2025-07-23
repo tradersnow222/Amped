@@ -349,6 +349,16 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         }
     }
     
+    /// CRITICAL FIX: Determines if this metric type represents cumulative data
+    var isCumulative: Bool {
+        switch self {
+        case .steps, .exerciseMinutes, .activeEnergyBurned:
+            return true
+        default:
+            return false
+        }
+    }
+    
     /// Returns whether this metric type should prioritize sample queries over statistics
     var preferSampleQuery: Bool {
         switch self {

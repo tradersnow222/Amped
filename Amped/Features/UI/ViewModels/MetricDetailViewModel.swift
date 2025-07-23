@@ -39,6 +39,14 @@ final class MetricDetailViewModel: ObservableObject {
     private let healthDataService: HealthDataService
     private var currentDataTask: Task<Void, Never>?
     
+    // MARK: - Real-time Updates Support
+    
+    /// Combine cancellables for real-time subscriptions - following Apple's Combine best practices
+    private var cancellables = Set<AnyCancellable>()
+    
+    /// Track if we're currently refreshing to prevent overlapping operations
+    @Published private var isRefreshing: Bool = false
+    
     // MARK: - Impact Chart Data
     
     /// Chart data points showing cumulative life impact over time
@@ -57,7 +65,7 @@ final class MetricDetailViewModel: ObservableObject {
         let calendar = Calendar.current
         var currentDay = calendar.startOfDay(for: sortedHistory.first?.date ?? Date())
         
-        for (index, dataPoint) in sortedHistory.enumerated() {
+        for (_, dataPoint) in sortedHistory.enumerated() {
             // Check if we've moved to a new day (for daily period view)
             if selectedPeriod == .day {
                 let dataPointDay = calendar.startOfDay(for: dataPoint.date)
@@ -77,39 +85,33 @@ final class MetricDetailViewModel: ObservableObject {
                 source: originalMetric.source
             )
             
-            // Calculate the impact for this specific value
+            // CRITICAL FIX: Always recalculate impact for accurate real-time charts
             let impactDetail = lifeImpactService.calculateImpact(for: tempMetric)
             let impactMinutes = impactDetail.lifespanImpactMinutes
             
             // For cumulative metrics in daily view, calculate incremental impact
-            if selectedPeriod == .day && [.steps, .exerciseMinutes, .activeEnergyBurned].contains(originalMetric.type) {
-                // Calculate incremental impact based on change from previous value
-                let previousValue = index > 0 ? sortedHistory[index - 1].value : 0
-                let incrementalValue = max(0, dataPoint.value - previousValue)
-                
-                // Scale impact based on incremental value to show progressive gains
-                let incrementalImpact = dataPoint.value > 0 ? (incrementalValue / dataPoint.value) * impactMinutes : 0
-                cumulativeImpact += incrementalImpact
-            } else {
-                // For discrete metrics or other periods, accumulate the full impact
-                // This shows how sustained healthy behaviors add up over time
+            if originalMetric.type.isCumulative && selectedPeriod == .day {
+                // For cumulative metrics, show incremental daily impact
                 cumulativeImpact += impactMinutes
+                impactPoints.append(ChartImpactDataPoint(
+                    date: dataPoint.date,
+                    impact: cumulativeImpact,
+                    value: dataPoint.value
+                ))
+            } else {
+                // For discrete metrics or non-daily periods, show direct impact
+                impactPoints.append(ChartImpactDataPoint(
+                    date: dataPoint.date,
+                    impact: impactMinutes,
+                    value: dataPoint.value
+                ))
             }
-            
-            impactPoints.append(ChartImpactDataPoint(
-                date: dataPoint.date,
-                rawValue: dataPoint.value,
-                impactMinutes: impactMinutes,
-                cumulativeImpactMinutes: cumulativeImpact
-            ))
         }
         
         return impactPoints
     }
     
-    // MARK: - Computed Properties for Period-Appropriate Display
-    
-    /// Get the appropriate metric value for the selected period
+    /// Display the current metric value, handling period-specific calculations
     var displayMetricValue: Double {
         // CRITICAL FIX: Always use original daily value for day period
         if selectedPeriod == .day {
@@ -130,6 +132,25 @@ final class MetricDetailViewModel: ObservableObject {
         
         // Final fallback to original metric value
         return originalMetric.value
+    }
+    
+    /// CRITICAL FIX: Calculate current impact dynamically based on displayed value
+    var currentImpactMinutes: Double {
+        let userProfile = UserProfile()
+        let lifeImpactService = LifeImpactService(userProfile: userProfile)
+        
+        // Create a metric with the current displayed value for real-time impact calculation
+        let currentMetric = HealthMetric(
+            id: originalMetric.id,
+            type: originalMetric.type,
+            value: displayMetricValue,
+            date: Date(), // Use current date for real-time calculation
+            source: originalMetric.source
+        )
+        
+        // Calculate fresh impact details
+        let impactDetail = lifeImpactService.calculateImpact(for: currentMetric)
+        return impactDetail.lifespanImpactMinutes
     }
     
     /// Get contextual information about the displayed value
@@ -166,22 +187,18 @@ final class MetricDetailViewModel: ObservableObject {
         )
     }
     
-    // Calculate total impact for the selected period
-    var totalImpactForPeriod: Double {
-        // CRITICAL FIX: Always use original metric's daily impact details
-        guard let baseImpact = originalMetric.impactDetails?.lifespanImpactMinutes else {
-            return 0
-        }
+    // Calculate total impact for the selected period using current displayed value
+    var totalPeriodImpact: Double {
+        // CRITICAL FIX: Use current metric's impact, not original metric's stale impact
+        let dailyImpact = self.metric.impactDetails?.lifespanImpactMinutes ?? currentImpactMinutes
         
-        // Scale the impact based on the selected period
-        // This assumes the base impact is per day
         switch selectedPeriod {
         case .day:
-            return baseImpact
+            return dailyImpact
         case .month:
-            return baseImpact * 30  // Approximate month
+            return dailyImpact * 30.0
         case .year:
-            return baseImpact * 365 // Approximate year
+            return dailyImpact * 365.0
         }
     }
     
@@ -234,11 +251,138 @@ final class MetricDetailViewModel: ObservableObject {
         
         // Initialize the displayed metric with the original
         self.metric = self.originalMetric
+        
+        // ENHANCED: Setup real-time subscriptions for automatic chart updates
+        setupSubscriptions()
+    }
+    
+    /// Setup real-time subscriptions for automatic updates when health data changes
+    /// Follows Apple's Combine best practices with proper error handling and logging
+    private func setupSubscriptions() {
+        logger.info("🔔 Setting up real-time subscriptions for \(self.originalMetric.type.displayName)")
+        
+        // CRITICAL: Listen for HealthKit data updates to refresh charts in real-time
+        NotificationCenter.default.publisher(for: NSNotification.Name("HealthKitDataUpdated"))
+            .debounce(for: .milliseconds(500), scheduler: DispatchQueue.main) // Prevent excessive refreshes
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.logger.info("📱 HealthKit data updated - refreshing chart for \(self.originalMetric.type.displayName)")
+                
+                Task { @MainActor in
+                    await self.handleRealTimeDataUpdate()
+                }
+            }
+            .store(in: &cancellables)
+        
+        // Listen for questionnaire updates that might affect manual metrics
+        NotificationCenter.default.publisher(for: NSNotification.Name("QuestionnaireDataUpdated"))
+            .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                
+                // Only refresh if this is a manual metric that could be affected
+                if self.originalMetric.source == .userInput {
+                    self.logger.info("📝 Questionnaire updated - refreshing manual metric \(self.originalMetric.type.displayName)")
+                    
+                    Task { @MainActor in
+                        await self.handleRealTimeDataUpdate()
+                    }
+                }
+            }
+            .store(in: &cancellables)
+        
+        // Listen for app foreground events to refresh stale data
+        NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.logger.debug("📱 App became active - checking for stale chart data")
+                
+                Task { @MainActor in
+                    await self.handleAppForeground()
+                }
+            }
+            .store(in: &cancellables)
+        
+        logger.info("✅ Real-time subscriptions configured for \(self.originalMetric.type.displayName)")
+    }
+    
+    /// Handle real-time data updates with intelligent refresh logic
+    @MainActor
+    private func handleRealTimeDataUpdate() async {
+        // Prevent overlapping refresh operations
+        guard !isRefreshing else {
+            logger.debug("⏸️ Skipping real-time update - already refreshing")
+            return
+        }
+        
+        isRefreshing = true
+        defer { isRefreshing = false }
+        
+        logger.info("🔄 Processing real-time data update for \(self.originalMetric.type.displayName)")
+        
+        // Check if we have new data for this specific metric
+            let latestMetric = await healthDataService.fetchLatestMetric(for: self.originalMetric.type)
+            
+            // Only refresh if the value has actually changed
+            if let newMetric = latestMetric,
+               abs(newMetric.value - self.metric.value) > 0.001 { // Use small epsilon for floating point comparison
+                
+                logger.info("📊 Value changed from \(self.metric.formattedValue) to \(newMetric.formattedValue) - refreshing chart")
+                
+                // Update the displayed metric with fresh impact calculation
+                let tempLifeImpactService = LifeImpactService(userProfile: UserProfile())
+                let freshImpact = tempLifeImpactService.calculateImpact(for: newMetric)
+                
+                self.metric = HealthMetric(
+                    id: newMetric.id,
+                    type: newMetric.type,
+                    value: newMetric.value,
+                    date: newMetric.date,
+                    source: newMetric.source,
+                    impactDetails: freshImpact
+                )
+                
+                // Refresh historical data and period-specific values
+                await refreshChartData()
+                
+                logger.info("✅ Real-time update completed for \(self.originalMetric.type.displayName)")
+            } else {
+                logger.debug("📊 No significant change in \(self.originalMetric.type.displayName) - skipping refresh")
+            }
+    }
+    
+    /// Handle app foreground with smart refresh logic
+    @MainActor
+    private func handleAppForeground() async {
+        // Only refresh if the data might be stale (older than 30 seconds)
+        let dataAge = Date().timeIntervalSince(self.metric.date)
+        if dataAge > 30 {
+            logger.info("🔄 Data is stale (\(Int(dataAge))s old) - refreshing on app foreground")
+            await handleRealTimeDataUpdate()
+        }
+    }
+    
+    /// Refresh chart data while preserving current period selection
+    @MainActor
+    private func refreshChartData() async {
+        // Cancel any existing data loading task
+        currentDataTask?.cancel()
+        
+        // Reload chart data for current period
+        currentDataTask = Task {
+            await loadRealHistoryData(for: originalMetric)
+            await updatePeriodSpecificValue()
+        }
     }
     
     deinit {
         // Cancel any running tasks to prevent memory leaks
         currentDataTask?.cancel()
+        
+        // Cancel all Combine subscriptions - following Apple's memory management best practices
+        cancellables.removeAll()
+        
+        logger.debug("🗑️ MetricDetailViewModel deinitialized for \(self.originalMetric.type.displayName)")
     }
     
     // MARK: - Methods
@@ -300,6 +444,31 @@ final class MetricDetailViewModel: ObservableObject {
             "feature": "recommendation_action",
             "recommendation_id": recommendation.id
         ])
+    }
+    
+    /// CRITICAL FIX: Update metric data when dashboard provides fresh data
+    /// This ensures the detail view always shows current values instead of stale snapshots
+    func updateMetric(with freshMetric: HealthMetric) {
+        logger.info("🔄 Updating metric data from dashboard: \(freshMetric.type.displayName) = \(freshMetric.formattedValue)")
+        
+        // Update the displayed metric with fresh data
+        self.metric = HealthMetric(
+            id: freshMetric.id,
+            type: freshMetric.type,
+            value: freshMetric.value,
+            date: freshMetric.date,
+            source: freshMetric.source,
+            impactDetails: freshMetric.impactDetails
+        )
+        
+        // Force refresh of chart data with new values
+        currentDataTask?.cancel()
+        currentDataTask = Task {
+            await loadRealHistoryData(for: self.metric)
+            await updatePeriodSpecificValue()
+        }
+        
+        logger.info("✅ Metric updated successfully - new impact: \(freshMetric.impactDetails?.lifespanImpactMinutes ?? 0) minutes")
     }
     
     // MARK: - Private Methods
@@ -831,12 +1000,12 @@ struct MetricRecommendation: Identifiable {
     let actionText: String
 }
 
-/// Data point for impact-based chart visualization showing cumulative life impact
-/// Rule: Clear data models that express intent
-struct ChartImpactDataPoint: Identifiable {
+// MARK: - Supporting Types
+
+/// Data point for impact charts showing cumulative life impact over time
+struct ChartImpactDataPoint: Identifiable, Hashable {
     let id = UUID()
     let date: Date
-    let rawValue: Double  // Original metric value (e.g., steps taken)
-    let impactMinutes: Double  // Life impact for this specific measurement
-    let cumulativeImpactMinutes: Double  // Total cumulative impact up to this point
+    let impact: Double // Cumulative impact up to this point
+    let value: Double  // Original metric value (e.g., steps taken)
 } 

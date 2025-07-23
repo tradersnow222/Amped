@@ -13,6 +13,7 @@ struct ImpactPageView: View {
     @Binding var refreshIndicatorRotation: Double
     @Binding var showingUpdateHealthProfile: Bool
     @Binding var selectedMetric: HealthMetric?
+    @Binding var selectedMetricType: HealthMetricType? // CRITICAL FIX: Add binding for metric type
     
     let totalTimeImpact: Double
     let timePeriodContext: String
@@ -119,6 +120,8 @@ struct ImpactPageView: View {
                                     showingUpdateHealthProfile = true
                                 } else {
                                     // For HealthKit metrics, show detail view
+                                    // CRITICAL FIX: Set both type and metric for fresh data
+                                    selectedMetricType = metric.type
                                     selectedMetric = metric
                                 }
                                 HapticManager.shared.playSelection()
