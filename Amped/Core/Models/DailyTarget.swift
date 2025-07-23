@@ -1,5 +1,4 @@
 import Foundation
-import OSLog
 
 /// Represents a fixed daily target for a health metric
 /// Used to provide consistent recommendations throughout the day
@@ -11,6 +10,10 @@ struct DailyTarget: Codable, Identifiable, Equatable {
     let originalBenefitMinutes: Double // ORIGINAL life benefit when reaching target (for reference)
     let calculationDate: Date
     let period: ImpactDataPoint.PeriodType
+    let calculationVersion: Int // CRITICAL: Version to force recalculation when algorithm changes
+    
+    /// Current calculation version - increment when algorithm changes
+    static let currentCalculationVersion = 2 // Version 2: Binary search with actual formulas
     
     /// Create a new daily target
     init(
@@ -20,7 +23,8 @@ struct DailyTarget: Codable, Identifiable, Equatable {
         originalCurrentValue: Double,
         benefitMinutes: Double,
         calculationDate: Date = Date(),
-        period: ImpactDataPoint.PeriodType
+        period: ImpactDataPoint.PeriodType,
+        calculationVersion: Int = DailyTarget.currentCalculationVersion
     ) {
         self.id = id
         self.metricType = metricType
@@ -29,11 +33,42 @@ struct DailyTarget: Codable, Identifiable, Equatable {
         self.originalBenefitMinutes = benefitMinutes
         self.calculationDate = calculationDate
         self.period = period
+        self.calculationVersion = calculationVersion
     }
     
     /// Check if this target is still valid for today
     var isValidForToday: Bool {
-        Calendar.current.isDate(calculationDate, inSameDayAs: Date())
+        // CRITICAL: Also check calculation version to force recalculation with new algorithm
+        return Calendar.current.isDate(calculationDate, inSameDayAs: Date()) && 
+               calculationVersion == DailyTarget.currentCalculationVersion
+    }
+    
+    // MARK: - Custom Decoding
+    
+    /// Custom decoding to handle old cached targets without calculationVersion
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.metricType = try container.decode(HealthMetricType.self, forKey: .metricType)
+        self.targetValue = try container.decode(Double.self, forKey: .targetValue)
+        self.originalCurrentValue = try container.decode(Double.self, forKey: .originalCurrentValue)
+        self.originalBenefitMinutes = try container.decode(Double.self, forKey: .originalBenefitMinutes)
+        self.calculationDate = try container.decode(Date.self, forKey: .calculationDate)
+        self.period = try container.decode(ImpactDataPoint.PeriodType.self, forKey: .period)
+        
+        // Default to version 1 for old cached targets (they'll be invalidated)
+        self.calculationVersion = try container.decodeIfPresent(Int.self, forKey: .calculationVersion) ?? 1
+    }
+    
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case metricType
+        case targetValue
+        case originalCurrentValue
+        case originalBenefitMinutes
+        case calculationDate
+        case period
+        case calculationVersion
     }
     
     /// Calculate remaining amount needed based on current value
@@ -41,61 +76,53 @@ struct DailyTarget: Codable, Identifiable, Equatable {
         return max(0, targetValue - currentValue)
     }
     
-    /// ENHANCED: Calculate current benefit dynamically based on actual current progress
+    /// CRITICAL FIX: Calculate current benefit dynamically based on actual current progress
     /// This ensures the benefit text updates in real-time as the user makes progress
-    /// with comprehensive edge case handling and detailed logging for debugging
     func calculateCurrentBenefit(currentValue: Double, userProfile: UserProfile) -> Double {
         // Create temporary LifeImpactService to calculate current impact
         let lifeImpactService = LifeImpactService(userProfile: userProfile)
-        
-        // CRITICAL FIX: Ensure we're using clean, accurate values
-        let cleanCurrentValue = max(0, currentValue) // Prevent negative values
-        let cleanTargetValue = max(cleanCurrentValue, targetValue) // Target can't be below current
         
         // Calculate current impact with actual current value
         let currentMetric = HealthMetric(
             id: UUID().uuidString,
             type: metricType,
-            value: cleanCurrentValue,
+            value: currentValue,
             date: Date(),
             source: .healthKit
         )
         let currentImpact = lifeImpactService.calculateImpact(for: currentMetric)
+        let currentImpactMinutes = currentImpact.lifespanImpactMinutes
         
-        // Calculate target impact to see what we'd achieve
-        let targetMetric = HealthMetric(
-            id: UUID().uuidString,
-            type: metricType,
-            value: cleanTargetValue,
-            date: Date(),
-            source: .healthKit
-        )
-        let targetImpact = lifeImpactService.calculateImpact(for: targetMetric)
+        // COMPREHENSIVE DEBUGGING
+        print("🔍 DailyTarget.calculateCurrentBenefit DEBUG:")
+        print("  Metric Type: \(metricType.displayName)")
+        print("  Current Value: \(currentValue)")
+        print("  Current Impact: \(currentImpactMinutes) minutes")
+        print("  Target Value: \(targetValue)")
         
-        // ENHANCED: Calculate remaining benefit with comprehensive validation
-        let remainingBenefit = targetImpact.lifespanImpactMinutes - currentImpact.lifespanImpactMinutes
-        let clampedBenefit = max(0, remainingBenefit) // Never show negative remaining benefit
-        
-        // COMPREHENSIVE LOGGING: Track benefit calculations for debugging
-        let logger = OSLog(subsystem: "Amped", category: "DailyTarget")
-        os_log("🎯 Benefit Calculation for %{public}@:", log: logger, type: .info, metricType.displayName)
-        os_log("   Current Value: %.1f → Impact: %.2f min/day", log: logger, type: .info, cleanCurrentValue, currentImpact.lifespanImpactMinutes)
-        os_log("   Target Value: %.1f → Impact: %.2f min/day", log: logger, type: .info, cleanTargetValue, targetImpact.lifespanImpactMinutes)
-        os_log("   Remaining Benefit: %.2f minutes", log: logger, type: .info, clampedBenefit)
-        
-        // EDGE CASE HANDLING: If user has exceeded target, show achievement message
-        if cleanCurrentValue >= cleanTargetValue {
-            os_log("🎉 User has reached/exceeded target!", log: logger, type: .info)
-            return 0.0 // No remaining benefit - they've achieved the goal
+        // CRITICAL FIX: For negative metrics, benefit is simply reaching neutral (0 impact)
+        // This means the benefit is exactly abs(currentImpact), not the difference to target
+        if currentImpactMinutes < 0 {
+            // Negative impact: benefit is exactly what's needed to reach neutral
+            let benefit = abs(currentImpactMinutes)
+            print("  ✅ NEGATIVE METRIC: Benefit = abs(\(currentImpactMinutes)) = \(benefit) minutes")
+            return benefit
+        } else {
+            // Positive impact: calculate improvement benefit using target
+            let targetMetric = HealthMetric(
+                id: UUID().uuidString,
+                type: metricType,
+                value: targetValue,
+                date: Date(),
+                source: .healthKit
+            )
+            let targetImpact = lifeImpactService.calculateImpact(for: targetMetric)
+            
+            // Return the additional benefit of reaching the target
+            let benefit = max(0, targetImpact.lifespanImpactMinutes - currentImpactMinutes)
+            print("  ✅ POSITIVE METRIC: Benefit = \(targetImpact.lifespanImpactMinutes) - \(currentImpactMinutes) = \(benefit) minutes")
+            return benefit
         }
-        
-        // VALIDATION: Ensure benefit makes mathematical sense
-        if clampedBenefit < 0.1 {
-            os_log("⚠️ Very small benefit calculated (%.3f min), returning 0", log: logger, type: .debug, clampedBenefit)
-            return 0.0 // Don't show tiny benefits that confuse users
-        }
-        
-        return clampedBenefit
     }
     
     /// Generate consistent recommendation text using fixed target
@@ -121,20 +148,89 @@ struct DailyTarget: Codable, Identifiable, Equatable {
             return "Great job! You've reached your daily target."
         }
         
+        // CRITICAL FIX: Check if we're currently in negative impact
+        let currentMetric = HealthMetric(
+            id: UUID().uuidString,
+            type: metricType,
+            value: originalCurrentValue,
+            date: Date(),
+            source: .healthKit
+        )
+        
+        // Simple check for negative impact based on metric type and value
+        let isCurrentlyNegative = isMetricInNegativeImpact(type: metricType, value: originalCurrentValue)
+        
         switch metricType {
         case .steps:
             let formattedSteps = Int(remaining).formatted(.number.grouping(.automatic))
-            return "Walk \(formattedSteps) more steps today to add \(benefitText) to your life"
+            if isCurrentlyNegative {
+                return "Walk \(formattedSteps) more steps today to add \(benefitText)"
+            } else {
+                return "Walk \(formattedSteps) more steps today to add \(benefitText) to your life"
+            }
         case .exerciseMinutes:
             let exerciseTime = remaining.formattedAsTime()
-            return "Exercise \(exerciseTime) more today to add \(benefitText) to your life"
+            if isCurrentlyNegative {
+                return "Exercise \(exerciseTime) more today to add \(benefitText)"
+            } else {
+                return "Exercise \(exerciseTime) more today to add \(benefitText) to your life"
+            }
         case .sleepHours:
             let sleepTime = (remaining * 60).formattedAsTime()
-            return "Sleep \(sleepTime) more tonight to add \(benefitText) to your life"
+            if isCurrentlyNegative {
+                return "Sleep \(sleepTime) more tonight to add \(benefitText)"
+            } else {
+                return "Sleep \(sleepTime) more tonight to add \(benefitText) to your life"
+            }
         case .activeEnergyBurned:
-            return "Burn \(Int(remaining)) more calories today to add \(benefitText) to your life"
+            if isCurrentlyNegative {
+                return "Burn \(Int(remaining)) more calories today to add \(benefitText)"
+            } else {
+                return "Burn \(Int(remaining)) more calories today to add \(benefitText) to your life"
+            }
+        case .socialConnectionsQuality:
+            if isCurrentlyNegative {
+                return "Improve your social connections to add \(benefitText)"
+            } else {
+                return "Strengthen your social connections to add \(benefitText) to your life"
+            }
+        case .nutritionQuality:
+            if isCurrentlyNegative {
+                return "Improve your nutrition to add \(benefitText)"
+            } else {
+                return "Optimize your nutrition to add \(benefitText) to your life"
+            }
+        case .stressLevel:
+            if isCurrentlyNegative {
+                return "Reduce your stress to add \(benefitText)"
+            } else {
+                return "Manage stress better to add \(benefitText) to your life"
+            }
         default:
-            return "Improve your \(metricType.displayName.lowercased()) to add \(benefitText) to your life"
+            if isCurrentlyNegative {
+                return "Improve your \(metricType.displayName.lowercased()) to add \(benefitText)"
+            } else {
+                return "Improve your \(metricType.displayName.lowercased()) to add \(benefitText) to your life"
+            }
+        }
+    }
+    
+    /// Helper to determine if a metric is currently in negative impact territory
+    private func isMetricInNegativeImpact(type: HealthMetricType, value: Double) -> Bool {
+        // Simple heuristics for common metrics
+        switch type {
+        case .steps:
+            return value < 4000 // Below 4000 steps typically negative
+        case .exerciseMinutes:
+            return value < 10 // Less than 10 minutes typically negative
+        case .sleepHours:
+            return value < 6 || value > 9 // Outside 6-9 hour range
+        case .restingHeartRate:
+            return value > 75 // Above 75 bpm typically negative
+        case .heartRateVariability:
+            return value < 30 // Below 30ms typically negative
+        default:
+            return false // Conservative default
         }
     }
     
@@ -151,6 +247,12 @@ struct DailyTarget: Codable, Identifiable, Equatable {
             return "Sleep \(sleepTime) nightly this month to add \(benefitText) to your life"
         case .activeEnergyBurned:
             return "Burn \(Int(targetValue)) calories daily this month to add \(benefitText) to your life"
+        case .socialConnectionsQuality:
+            return "Strengthen social connections daily this month to add \(benefitText) to your life"
+        case .nutritionQuality:
+            return "Improve nutrition quality daily this month to add \(benefitText) to your life"
+        case .stressLevel:
+            return "Practice stress management daily this month to add \(benefitText) to your life"
         default:
             return "Maintain optimal \(metricType.displayName.lowercased()) daily this month to add \(benefitText) to your life"
         }
@@ -169,6 +271,12 @@ struct DailyTarget: Codable, Identifiable, Equatable {
             return "Sleep \(sleepTime) nightly this next year to add \(benefitText) to your life"
         case .activeEnergyBurned:
             return "Burn \(Int(targetValue)) calories daily this next year to add \(benefitText) to your life"
+        case .socialConnectionsQuality:
+            return "Strengthen social connections daily this next year to add \(benefitText) to your life"
+        case .nutritionQuality:
+            return "Improve nutrition quality daily this next year to add \(benefitText) to your life"
+        case .stressLevel:
+            return "Practice stress management daily this next year to add \(benefitText) to your life"
         default:
             return "Maintain optimal \(metricType.displayName.lowercased()) daily this next year to add \(benefitText) to your life"
         }
@@ -217,31 +325,24 @@ final class DailyTargetManager {
         cacheManager.removeData(forKey: cacheKey, type: .recommendations)
     }
     
+    /// Clear a specific target for a metric type and period
+    func clearTarget(for metricType: HealthMetricType, period: ImpactDataPoint.PeriodType) {
+        var targets: [DailyTarget] = loadTargets()
+        
+        // Remove the specific target
+        targets.removeAll { target in
+            target.metricType == metricType && target.period == period
+        }
+        
+        // Save updated targets
+        cacheManager.saveData(targets, forKey: cacheKey, type: .recommendations)
+    }
+    
     /// Clear expired targets
     func clearExpiredTargets() {
         var targets: [DailyTarget] = loadTargets()
         targets.removeAll { !$0.isValidForToday }
         cacheManager.saveData(targets, forKey: cacheKey, type: .recommendations)
-    }
-    
-    /// Clear a specific target for a metric type and period (used by enhanced cache invalidation)
-    func clearTarget(for metricType: HealthMetricType, period: ImpactDataPoint.PeriodType) {
-        var targets: [DailyTarget] = loadTargets()
-        
-        // Remove the specific target
-        let originalCount = targets.count
-        targets.removeAll { target in
-            target.metricType == metricType && target.period == period
-        }
-        
-        // Only save if we actually removed something
-        if targets.count != originalCount {
-            cacheManager.saveData(targets, forKey: cacheKey, type: .recommendations)
-            
-            // Log the selective clearing for debugging
-            let logger = OSLog(subsystem: "Amped", category: "DailyTargetManager")
-            os_log("🗑️ Cleared cached target for %{public}@ (%{public}@)", log: logger, type: .info, metricType.displayName, period.rawValue)
-        }
     }
     
     // MARK: - Private Methods

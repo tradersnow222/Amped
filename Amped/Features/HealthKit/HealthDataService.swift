@@ -350,12 +350,6 @@ struct MetricStatistics {
         
         logger.info("🎉 Total metrics for \(timePeriod.displayName): \(metrics.count) (checked \(totalHealthKitTypes) HealthKit + \(totalManualTypes) manual types, \(failedMetrics) failed)")
         
-        // CRITICAL FIX: Post notification immediately when fresh data is available
-        // This triggers real-time updates across all components for maximum responsiveness
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(name: NSNotification.Name("HealthKitDataUpdated"), object: nil)
-        }
-        
         return metrics
     }
     

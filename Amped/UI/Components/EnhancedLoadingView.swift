@@ -12,6 +12,8 @@ struct EnhancedLoadingView: View {
     @State private var currentStep = 0
     @State private var showValueMessage = false
     @State private var batteryLevel: Double = 0.0
+    @State private var currentMessage = ""
+    @State private var loadingTimer: Timer?
     
     // MARK: - Loading Types
     
@@ -19,22 +21,22 @@ struct EnhancedLoadingView: View {
         case healthImpact
         case lifeProjection
         
-        fileprivate var steps: [LoadingStep] {
+        fileprivate var messages: [String] {
             switch self {
             case .healthImpact:
                 return [
-                    LoadingStep(message: "Analyzing your activity data", duration: 0.8),
-                    LoadingStep(message: "Processing heart health metrics", duration: 0.6),
-                    LoadingStep(message: "Evaluating sleep patterns", duration: 0.6),
-                    LoadingStep(message: "Calculating health impact", duration: 0.8),
-                    LoadingStep(message: "Powering up your results", duration: 0.4)
+                    "Analyzing your activity data",
+                    "Processing heart health metrics",
+                    "Evaluating sleep patterns",
+                    "Calculating health impact",
+                    "Powering up your results"
                 ]
             case .lifeProjection:
                 return [
-                    LoadingStep(message: "Analyzing your health profile", duration: 0.6),
-                    LoadingStep(message: "Comparing to research data", duration: 0.8),
-                    LoadingStep(message: "Calculating life projection", duration: 0.8),
-                    LoadingStep(message: "Finalizing your results", duration: 0.6)
+                    "Analyzing your health profile",
+                    "Comparing to research data",
+                    "Calculating life projection",
+                    "Finalizing your results"
                 ]
             }
         }
@@ -54,6 +56,15 @@ struct EnhancedLoadingView: View {
                 return "See how your daily habits are affecting your energy levels"
             case .lifeProjection:
                 return "Discover your personalized life expectancy based on your health data"
+            }
+        }
+        
+        var totalDuration: Double {
+            switch self {
+            case .healthImpact:
+                return 3.2 // Total loading time in seconds
+            case .lifeProjection:
+                return 2.8
             }
         }
     }
@@ -77,35 +88,16 @@ struct EnhancedLoadingView: View {
                 isCharging: progress < 1.0
             )
             
-            // Progress steps
+            // Progress steps with smooth text transitions
             VStack(spacing: 16) {
-                if currentStep < loadingType.steps.count {
-                    HStack(spacing: 12) {
-                        // Animated checkmark or loading indicator
-                        if progress >= stepProgress(for: currentStep) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.ampedGreen)
-                                .font(.system(size: 16, weight: .medium))
-                                .transition(.scale.combined(with: .opacity))
-                        } else {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .ampedGreen))
-                                .scaleEffect(0.8)
-                        }
-                        
-                        Text(loadingType.steps[currentStep].message)
-                            .font(.system(size: 16, weight: .medium, design: .rounded))
-                            .foregroundColor(.white.opacity(0.8))
-                        
-                        Spacer()
-                    }
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .leading).combined(with: .opacity),
-                        removal: .move(edge: .trailing).combined(with: .opacity)
-                    ))
-                }
+                // Current step message with smooth transitions
+                Text(currentMessage)
+                    .font(.body)
+                    .foregroundColor(.white.opacity(0.8))
+                    .frame(height: 22)
+                    .animation(.easeInOut(duration: 0.4), value: currentMessage)
                 
-                // Progress bar
+                // Smooth progress bar
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         // Background
@@ -113,7 +105,7 @@ struct EnhancedLoadingView: View {
                             .fill(Color.white.opacity(0.2))
                             .frame(height: 8)
                         
-                        // Progress
+                        // Progress with continuous animation
                         RoundedRectangle(cornerRadius: 4)
                             .fill(
                                 LinearGradient(
@@ -123,7 +115,7 @@ struct EnhancedLoadingView: View {
                                 )
                             )
                             .frame(width: geometry.size.width * progress, height: 8)
-                            .animation(.easeInOut(duration: 0.3), value: progress)
+                            .animation(.easeOut(duration: 0.1), value: progress)
                     }
                 }
                 .frame(height: 8)
@@ -145,48 +137,85 @@ struct EnhancedLoadingView: View {
             }
         }
         .onAppear {
-            startLoadingAnimation()
+            startSmoothLoadingAnimation()
+        }
+        .onDisappear {
+            stopLoadingAnimation()
         }
     }
     
-    // MARK: - Helper Methods
+    // MARK: - Smooth Loading Animation
     
-    private func stepProgress(for step: Int) -> Double {
-        let totalSteps = Double(loadingType.steps.count)
-        return Double(step + 1) / totalSteps
-    }
-    
-    private func startLoadingAnimation() {
+    private func startSmoothLoadingAnimation() {
         // Show value message immediately
         withAnimation(.easeInOut(duration: 0.5)) {
             showValueMessage = true
         }
         
-        // Start the loading sequence
-        var cumulativeDuration: Double = 0.4
+        // Set initial message
+        currentMessage = loadingType.messages.first ?? ""
         
-        for (index, step) in loadingType.steps.enumerated() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + cumulativeDuration) {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    currentStep = index
-                    progress = stepProgress(for: index)
-                    batteryLevel = progress
-                }
-            }
-            cumulativeDuration += step.duration
+        let totalDuration = loadingType.totalDuration
+        let messages = loadingType.messages
+        let updateInterval: TimeInterval = 0.016 // 60 FPS for ultra-smooth animation
+        let totalSteps = Int(totalDuration / updateInterval)
+        let progressIncrement = 1.0 / Double(totalSteps)
+        
+        var currentStepIndex = 0
+        var accumulatedProgress: Double = 0
+        
+        // Calculate when to transition messages (evenly distributed)
+        let messageTransitionPoints = messages.enumerated().map { index, _ in
+            Double(index + 1) / Double(messages.count)
         }
         
-        // Complete the loading
-        DispatchQueue.main.asyncAfter(deadline: .now() + cumulativeDuration + 0.6) {
-            withAnimation(.easeInOut(duration: 0.4)) {
-                progress = 1.0
-                batteryLevel = 1.0
+        loadingTimer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { timer in
+            accumulatedProgress += progressIncrement
+            
+            // Use a gentler easing function for smoother progress
+            let easedProgress = easeInOutQuad(accumulatedProgress)
+            
+            // Update progress and battery level WITHOUT animation wrapper
+            // Let SwiftUI handle implicit animations for smoother experience
+            progress = min(easedProgress, 1.0)
+            batteryLevel = min(easedProgress, 1.0)
+            
+            // Check if we should transition to next message
+            let nextTransitionIndex = currentStepIndex + 1
+            if nextTransitionIndex < messageTransitionPoints.count {
+                let nextTransitionPoint = messageTransitionPoints[nextTransitionIndex]
+                if easedProgress >= nextTransitionPoint {
+                    currentStepIndex = nextTransitionIndex
+                    withAnimation(.easeInOut(duration: 0.4)) {
+                        currentMessage = messages[min(currentStepIndex, messages.count - 1)]
+                    }
+                }
             }
             
-            // Call completion after animation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                onComplete()
+            // Complete loading when progress reaches 100%
+            if accumulatedProgress >= 1.0 {
+                timer.invalidate()
+                loadingTimer = nil
+                
+                // Brief pause before completion
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    onComplete()
+                }
             }
+        }
+    }
+    
+    private func stopLoadingAnimation() {
+        loadingTimer?.invalidate()
+        loadingTimer = nil
+    }
+    
+    // Gentler quadratic easing function for smoother, more consistent progress
+    private func easeInOutQuad(_ t: Double) -> Double {
+        if t < 0.5 {
+            return 2 * t * t
+        } else {
+            return 1 - 2 * (1 - t) * (1 - t)
         }
     }
 }
@@ -215,7 +244,7 @@ private struct ChargingBatteryView: View {
                     .frame(width: 4, height: 20)
                     .offset(x: 44, y: 0)
                 
-                // Battery fill
+                // Battery fill with smooth continuous animation
                 RoundedRectangle(cornerRadius: 6)
                     .fill(
                         LinearGradient(
@@ -226,23 +255,24 @@ private struct ChargingBatteryView: View {
                     )
                     .frame(width: max(4, 72 * batteryLevel), height: 37)
                     .offset(x: -36 + (36 * batteryLevel), y: 0)
-                    .animation(.easeInOut(duration: 0.6), value: batteryLevel)
+                    .animation(.easeOut(duration: 0.1), value: batteryLevel)
                 
-                // Charging effect
+                // Charging effect with subtle animation
                 if isCharging {
                     Image(systemName: "bolt.fill")
                         .foregroundColor(.white)
                         .font(.system(size: 16, weight: .bold))
-                        .scaleEffect(chargingPulse ? 1.2 : 1.0)
-                        .opacity(chargingPulse ? 0.8 : 1.0)
-                        .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: chargingPulse)
+                        .scaleEffect(chargingPulse ? 1.1 : 1.0)
+                        .opacity(chargingPulse ? 0.9 : 1.0)
+                        .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: chargingPulse)
                 }
             }
             
-            // Battery percentage
+            // Battery percentage with smooth updates
             Text("\(Int(batteryLevel * 100))%")
                 .font(.system(size: 18, weight: .semibold, design: .rounded))
                 .foregroundColor(.white)
+                .modifier(NumericTextTransitionModifier(value: batteryLevel * 100))
         }
         .onAppear {
             if isCharging {
@@ -277,24 +307,17 @@ private struct SkeletonMetricCard: View {
             
             // Title placeholder
             RoundedRectangle(cornerRadius: 4)
-                .fill(
-                    isLoaded ? 
-                    .white.opacity(0.2) : 
-                    .white.opacity(0.1)
-                )
+                .fill(isLoaded ? .ampedGreen.opacity(0.2) : .white.opacity(0.1))
                 .frame(height: 12)
-                .frame(maxWidth: .infinity)
             
-            // Value placeholder
+            // Subtitle placeholder
             RoundedRectangle(cornerRadius: 4)
-                .fill(
-                    isLoaded ? 
-                    .ampedGreen.opacity(0.3) : 
-                    .white.opacity(0.1)
-                )
-                .frame(height: 16)
-                .frame(maxWidth: .infinity)
+                .fill(isLoaded ? .ampedGreen.opacity(0.1) : .white.opacity(0.05))
+                .frame(width: 80, height: 10)
+            
+            Spacer()
         }
+        .frame(height: 120)
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12)
@@ -327,11 +350,20 @@ private struct SkeletonMetricCard: View {
     }
 }
 
-// MARK: - Supporting Models
-
-fileprivate struct LoadingStep {
-    let message: String
-    let duration: Double // Duration in seconds
+/// iOS version-compatible numeric text transition modifier
+/// Using iOS 17+ numericText transition when available, graceful fallback for iOS 16
+private struct NumericTextTransitionModifier: ViewModifier {
+    let value: Double
+    
+    func body(content: Content) -> some View {
+        if #available(iOS 17.0, *) {
+            content
+                .contentTransition(.numericText(value: value))
+        } else {
+            content
+                .animation(.easeInOut(duration: 0.3), value: value)
+        }
+    }
 }
 
 // MARK: - Preview

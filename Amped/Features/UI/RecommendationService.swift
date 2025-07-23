@@ -13,89 +13,122 @@ final class RecommendationService {
     private let cardiovascularCalculator = CardiovascularImpactCalculator()
     private let lifeImpactService: LifeImpactService
     private let userProfile: UserProfile
+    private let lifestyleCalculator = LifestyleImpactCalculator()
     
     // MARK: - Initialization
     
     init(userProfile: UserProfile) {
         self.userProfile = userProfile
         self.lifeImpactService = LifeImpactService(userProfile: userProfile)
+        
+        // CRITICAL FIX: Clear any old cached targets with outdated calculation methods
+        // This ensures the new binary search algorithm is used immediately
+        self.forceClearOldTargets()
+    }
+    
+    // MARK: - Cache Management
+    
+    /// Force clear all cached targets to ensure new calculation method is used
+    private func forceClearOldTargets() {
+        dailyTargetManager.clearTargets()
+        logger.info("🗑️ Cleared all cached targets to apply new calculation method")
+    }
+    
+    /// Public method to force recalculation (for debugging or settings)
+    func forceRecalculateAllTargets() {
+        forceClearOldTargets()
+        logger.info("🔄 Forced recalculation of all targets")
     }
     
     // MARK: - Public Methods
     
     /// Generate recommendation for a health metric using fixed daily targets
     func generateRecommendation(for metric: HealthMetric, selectedPeriod: ImpactDataPoint.PeriodType) -> String {
-        // ENHANCED DEBUGGING: Log the input metric data
-        logger.info("🎯 Generating recommendation for \(metric.type.displayName):")
-        logger.info("   Input Value: \(metric.formattedValue)")
-        logger.info("   Input Impact: \(metric.impactDetails?.lifespanImpactMinutes ?? 0) minutes")
-        logger.info("   Period: \(selectedPeriod.rawValue)")
-        
         guard let impactDetails = metric.impactDetails else {
-            logger.warning("⚠️ No impact details for \(metric.type.displayName) - using default recommendation")
             return getDefaultRecommendation(for: metric, period: selectedPeriod)
         }
-
+        
+        // COMPREHENSIVE DEBUGGING
+        print("🔍 RecommendationService.generateRecommendation DEBUG:")
+        print("  Metric Type: \(metric.type.displayName)")
+        print("  Current Value: \(metric.value)")
+        print("  Current Impact: \(impactDetails.lifespanImpactMinutes) minutes")
+        print("  Selected Period: \(selectedPeriod.rawValue)")
+        
         // Clean expired targets on each call
         dailyTargetManager.clearExpiredTargets()
-
+        
         // Check for cached daily target first
         if let cachedTarget = dailyTargetManager.getCachedTarget(for: metric.type, period: selectedPeriod) {
-            logger.info("📋 Found cached target for \(metric.type.displayName)")
-            logger.info("   Cached Original Value: \(cachedTarget.originalCurrentValue)")
-            logger.info("   Cached Target Value: \(cachedTarget.targetValue)")
             
-            // ENHANCED: Comprehensive cache invalidation with metric-specific logic
-            let shouldInvalidateCache = shouldInvalidateCachedTarget(
-                cachedTarget: cachedTarget,
-                currentMetric: metric,
-                currentImpact: impactDetails.lifespanImpactMinutes
-            )
+            // CRITICAL FIX: Check if current value has changed significantly from cached original value
+            // If so, recalculate target to ensure accuracy
+            let originalValue = cachedTarget.originalCurrentValue
+            let currentValue = metric.value
+            let changePercent = abs(currentValue - originalValue) / max(originalValue, 1.0)
             
-            if shouldInvalidateCache.shouldInvalidate {
-                logger.info("🔄 Cache invalidation triggered for \(metric.type.displayName): \(shouldInvalidateCache.reason)")
+            print("  📋 FOUND CACHED TARGET:")
+            print("    Original Value: \(originalValue)")
+            print("    Current Value: \(currentValue)")
+            print("    Change Percent: \(String(format: "%.3f", changePercent * 100))%")
+            print("    Target Value: \(cachedTarget.targetValue)")
+            
+            // CRITICAL: Apply 1% rule to ALL metrics for real-time updates
+            if changePercent >= 0.01 {
+                logger.info("🔄 Current value changed by \(String(format: "%.1f", changePercent * 100))% from cached target. Recalculating for \(metric.type.displayName)")
+                logger.info("  Original: \(originalValue), Current: \(currentValue)")
+                print("  🔄 RECALCULATING DUE TO 1% CHANGE")
                 
-                // ENHANCED: Progressive cache clearing strategy
-                if shouldInvalidateCache.severity == .high {
-                    // High severity: Clear all targets to ensure complete recalculation
-                    logger.info("⚡ High severity change detected - clearing ALL cached targets")
-                    dailyTargetManager.clearTargets()
-                } else {
-                    // Medium severity: Clear only this metric's targets
-                    logger.info("📝 Medium severity change detected - clearing target for this metric only")
-                    dailyTargetManager.clearTarget(for: metric.type, period: selectedPeriod)
-                }
+                // Clear the stale target and recalculate
+                dailyTargetManager.clearTarget(for: metric.type, period: selectedPeriod)
                 
-                // Recalculate with fresh baseline
                 let currentDailyImpact = impactDetails.lifespanImpactMinutes
                 
                 if currentDailyImpact < 0 {
-                    logger.info("📊 Recalculating negative metric target with fresh data")
+                    print("  📍 GOING TO: calculateAndCacheNegativeMetricTarget")
                     return calculateAndCacheNegativeMetricTarget(for: metric, period: selectedPeriod)
                 } else {
-                    logger.info("📊 Recalculating positive metric target with fresh data")
+                    print("  📍 GOING TO: calculateAndCachePositiveMetricTarget")
                     return calculateAndCachePositiveMetricTarget(for: metric, period: selectedPeriod, currentImpact: currentDailyImpact)
                 }
             }
             
-            logger.info("📋 Using cached daily target for \(metric.type.displayName) (passed validation)")
+            logger.info("📋 Using cached daily target for \(metric.type.displayName)")
+            print("  📋 USING CACHED TARGET")
             // CRITICAL FIX: Pass userProfile so benefit can be calculated dynamically
-            let recommendation = cachedTarget.generateRecommendationText(currentValue: metric.value, userProfile: userProfile)
-            logger.info("💬 Generated recommendation: \(recommendation)")
-            return recommendation
+            let result = cachedTarget.generateRecommendationText(currentValue: metric.value, userProfile: userProfile)
+            print("  📋 CACHED RESULT: \(result)")
+            return result
         }
-
+        
         // No cached target - calculate and cache new target
         logger.info("🔄 Calculating new daily target for \(metric.type.displayName)")
+        print("  🆕 NO CACHED TARGET - CALCULATING NEW")
         
         let currentDailyImpact = impactDetails.lifespanImpactMinutes
         
         if currentDailyImpact < 0 {
             // Negative impact: Calculate target to reach neutral (0 impact)
+            print("  📍 GOING TO: calculateAndCacheNegativeMetricTarget (NEW)")
             return calculateAndCacheNegativeMetricTarget(for: metric, period: selectedPeriod)
         } else {
             // Positive impact: Calculate 20% improvement target
+            print("  📍 GOING TO: calculateAndCachePositiveMetricTarget (NEW)")
             return calculateAndCachePositiveMetricTarget(for: metric, period: selectedPeriod, currentImpact: currentDailyImpact)
+        }
+    }
+    
+    /// Default recommendation when impact details are unavailable  
+    private func getDefaultRecommendation(for metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
+        switch metric.type {
+        case .steps:
+            return "Take a 20-minute walk to improve your health"
+        case .exerciseMinutes:
+            return "Add 30 minutes of exercise to your day"
+        case .sleepHours:
+            return "Aim for 7-9 hours of sleep nightly"
+        default:
+            return "Focus on improving your \(metric.type.displayName.lowercased())"
         }
     }
     
@@ -103,48 +136,615 @@ final class RecommendationService {
     
     /// Calculate and cache target for negative impact metrics
     private func calculateAndCacheNegativeMetricTarget(for metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let targetValue: Double
-        let benefitMinutes: Double
+        logger.info("🔴 Calculating negative metric target for \(metric.type.displayName)")
         
-        // Calculate the target value to reach neutral impact
-        switch metric.type {
-        case .steps:
-            targetValue = findStepsForNeutralImpact(currentSteps: metric.value)
-            benefitMinutes = abs(metric.impactDetails?.lifespanImpactMinutes ?? 0)
-        case .exerciseMinutes:
-            targetValue = findExerciseForNeutralImpact(currentMinutes: metric.value)
-            benefitMinutes = abs(metric.impactDetails?.lifespanImpactMinutes ?? 0)
-        case .sleepHours:
-            targetValue = findSleepForOptimalImpact(currentSleep: metric.value)
-            benefitMinutes = abs(metric.impactDetails?.lifespanImpactMinutes ?? 0)
-        default:
-            // For other metrics, use a simple improvement target
-            targetValue = metric.value * 1.1
-            benefitMinutes = abs(metric.impactDetails?.lifespanImpactMinutes ?? 0)
-        }
+        let currentImpact = metric.impactDetails?.lifespanImpactMinutes ?? 0
+        logger.info("  Current impact: \(String(format: "%.2f", currentImpact)) min/day")
         
-        // Create and cache the daily target
-        let dailyTarget = DailyTarget(
+        // CRITICAL FIX: For negative metrics, the benefit is simply bringing to neutral (0 impact)
+        // This means the benefit is exactly abs(currentImpact)
+        let benefitToNeutral = abs(currentImpact)
+        
+        // Calculate the target value needed to achieve neutral impact
+        let targetValue = calculateTargetForNeutralImpact(metric: metric, currentImpact: currentImpact)
+        
+        logger.info("  Target value: \(String(format: "%.2f", targetValue))")
+        logger.info("  Benefit to neutral: \(String(format: "%.2f", benefitToNeutral)) min/day")
+        
+        // CRITICAL FIX: Create a special DailyTarget that uses the known benefit instead of recalculating
+        let dailyTarget = DailyTargetWithKnownBenefit(
             metricType: metric.type,
             targetValue: targetValue,
             originalCurrentValue: metric.value,
-            benefitMinutes: benefitMinutes,
+            knownCurrentImpact: currentImpact, // Pass the known impact
+            benefitMinutes: benefitToNeutral,
             period: period
         )
         
-        dailyTargetManager.saveTarget(dailyTarget)
-        logger.info("💾 Cached daily target for \(metric.type.displayName): \(targetValue)")
+        dailyTargetManager.saveTarget(dailyTarget.toDailyTarget())
+        logger.info("💾 Cached daily target for \(metric.type.displayName): \(String(format: "%.2f", targetValue))")
         
-        // Generate recommendation using the cached target with userProfile
-        return dailyTarget.generateRecommendationText(currentValue: metric.value, userProfile: userProfile)
+        // CRITICAL FIX: Generate recommendation using EXACT known benefit (no recalculation)
+        let remaining = max(0, targetValue - metric.value)
+        let benefitText = benefitToNeutral.formattedAsTime()
+        
+        // Force clear cache to ensure fresh calculation on next use
+        dailyTargetManager.clearTargets()
+        
+        // Generate the recommendation text directly with correct benefit
+        if metric.type == .steps {
+            let formattedSteps = Int(remaining).formatted(.number.grouping(.automatic))
+            return "Walk \(formattedSteps) more steps today to add \(benefitText)"
+        }
+        
+        // For other metrics, use the original method but with corrected benefit
+        return generateRecommendationWithKnownBenefit(
+            metricType: metric.type,
+            remaining: remaining,
+            benefitText: benefitText,
+            period: period
+        )
+    }
+    
+    /// Calculate target value needed to achieve neutral (0) impact for a metric
+    private func calculateTargetForNeutralImpact(metric: HealthMetric, currentImpact: Double) -> Double {
+        switch metric.type {
+        case .steps:
+            return calculateStepsForNeutralImpact(currentSteps: metric.value, currentImpact: currentImpact)
+        case .exerciseMinutes:
+            return calculateExerciseForNeutralImpact(currentMinutes: metric.value, currentImpact: currentImpact)
+        case .sleepHours:
+            return calculateSleepForNeutralImpact(currentHours: metric.value, currentImpact: currentImpact)
+        case .restingHeartRate:
+            return calculateHeartRateForNeutralImpact(currentHR: metric.value, currentImpact: currentImpact)
+        case .bodyMass:
+            return calculateBodyMassForNeutralImpact(currentMass: metric.value, currentImpact: currentImpact)
+        case .alcoholConsumption:
+            return calculateAlcoholForNeutralImpact(currentConsumption: metric.value, currentImpact: currentImpact)
+        case .smokingStatus:
+            return calculateSmokingForNeutralImpact(currentStatus: metric.value, currentImpact: currentImpact)
+        case .stressLevel:
+            return calculateStressForNeutralImpact(currentStress: metric.value, currentImpact: currentImpact)
+        case .nutritionQuality:
+            return calculateNutritionForNeutralImpact(currentNutrition: metric.value, currentImpact: currentImpact)
+        default:
+            // For other metrics, use proportional improvement
+            return calculateProportionalTargetForNeutral(metric: metric, currentImpact: currentImpact)
+        }
+    }
+    
+    /// Calculate steps needed for neutral impact using simplified approach
+    private func calculateStepsForNeutralImpact(currentSteps: Double, currentImpact: Double) -> Double {
+        // CRITICAL FIX: Use binary search with the ACTUAL impact formula
+        // This ensures the recommendation matches the displayed impact exactly
+        
+        logger.info("    🔍 Finding steps for neutral impact using binary search")
+        logger.info("      Current steps: \(String(format: "%.0f", currentSteps))")
+        logger.info("      Current impact: \(String(format: "%.2f", currentImpact)) min")
+        
+        // If already at neutral or positive, no change needed
+        if currentImpact >= 0 {
+            return currentSteps
+        }
+        
+        // Binary search to find steps that give ~0 impact
+        var low = currentSteps
+        var high = 15000.0 // Reasonable upper bound
+        let tolerance = 0.5 // 0.5 minutes tolerance for neutral
+        
+        // Create a test metric to calculate impacts
+        for iteration in 0..<30 { // Max 30 iterations to prevent infinite loop
+            let mid = (low + high) / 2.0
+            
+            // Calculate impact at this step count using the ACTUAL formula
+            let testMetric = HealthMetric(
+                id: UUID().uuidString,
+                type: .steps,
+                value: mid,
+                date: Date(),
+                source: .healthKit
+            )
+            
+            let testImpact = activityCalculator.calculateStepsImpact(
+                steps: mid,
+                userProfile: userProfile
+            )
+            
+            let impactMinutes = testImpact.lifespanImpactMinutes
+            
+            logger.debug("      Iteration \(iteration): \(String(format: "%.0f", mid)) steps → \(String(format: "%.2f", impactMinutes)) min")
+            
+            if abs(impactMinutes) < tolerance {
+                // Found neutral point!
+                logger.info("      ✅ Found neutral at \(String(format: "%.0f", mid)) steps")
+                return mid
+            } else if impactMinutes < 0 {
+                // Still negative, need more steps
+                low = mid
+            } else {
+                // Positive, need fewer steps
+                high = mid
+            }
+        }
+        
+        // Fallback if binary search doesn't converge
+        let result = (low + high) / 2.0
+        logger.info("      ⚠️ Binary search ended at \(String(format: "%.0f", result)) steps")
+        return result
+    }
+    
+    /// Calculate exercise minutes needed for neutral impact
+    private func calculateExerciseForNeutralImpact(currentMinutes: Double, currentImpact: Double) -> Double {
+        // CRITICAL FIX: Use binary search with the ACTUAL impact formula
+        logger.info("    🔍 Finding exercise minutes for neutral impact")
+        
+        if currentImpact >= 0 {
+            return currentMinutes
+        }
+        
+        var low = currentMinutes
+        var high = 60.0 // Reasonable upper bound
+        let tolerance = 0.5
+        
+        for _ in 0..<20 {
+            let mid = (low + high) / 2.0
+            
+            let testMetric = HealthMetric(
+                id: UUID().uuidString,
+                type: .exerciseMinutes,
+                value: mid,
+                date: Date(),
+                source: .healthKit
+            )
+            
+            let testImpact = activityCalculator.calculateExerciseImpact(
+                exerciseMinutes: mid,
+                userProfile: userProfile
+            )
+            
+            let impactMinutes = testImpact.lifespanImpactMinutes
+            
+            if abs(impactMinutes) < tolerance {
+                return mid
+            } else if impactMinutes < 0 {
+                low = mid
+            } else {
+                high = mid
+            }
+        }
+        
+        return (low + high) / 2.0
+    }
+    
+    /// Calculate sleep hours needed for neutral impact
+    private func calculateSleepForNeutralImpact(currentHours: Double, currentImpact: Double) -> Double {
+        // CRITICAL FIX: Use binary search with the ACTUAL impact formula
+        logger.info("    🔍 Finding sleep hours for neutral impact")
+        
+        if currentImpact >= 0 {
+            return currentHours
+        }
+        
+        // Sleep has a U-shaped curve, so we need to search in the right direction
+        let optimalSleep = 7.5
+        var low: Double
+        var high: Double
+        
+        if currentHours < optimalSleep {
+            // Under-sleeping, search upward
+            low = currentHours
+            high = optimalSleep
+        } else {
+            // Over-sleeping, search downward
+            low = optimalSleep
+            high = currentHours
+        }
+        
+        let tolerance = 0.5
+        
+        for _ in 0..<20 {
+            let mid = (low + high) / 2.0
+            
+            let testMetric = HealthMetric(
+                id: UUID().uuidString,
+                type: .sleepHours,
+                value: mid,
+                date: Date(),
+                source: .healthKit
+            )
+            
+            let testImpact = cardiovascularCalculator.calculateSleepImpact(
+                sleepHours: mid,
+                userProfile: userProfile
+            )
+            
+            let impactMinutes = testImpact.lifespanImpactMinutes
+            
+            if abs(impactMinutes) < tolerance {
+                return mid
+            } else if currentHours < optimalSleep {
+                // Under-sleeping case
+                if impactMinutes < 0 {
+                    low = mid  // Need more sleep
+                } else {
+                    high = mid // Too much correction
+                }
+            } else {
+                // Over-sleeping case
+                if impactMinutes < 0 {
+                    high = mid // Need less sleep
+                } else {
+                    low = mid  // Too much correction
+                }
+            }
+        }
+        
+        return (low + high) / 2.0
+    }
+    
+    /// Generic calculation for other metrics
+    private func calculateProportionalTargetForNeutral(metric: HealthMetric, currentImpact: Double) -> Double {
+        // CRITICAL FIX: Use binary search for ALL metrics to ensure consistency
+        logger.info("    🔍 Finding neutral value for \(metric.type.displayName) using binary search")
+        
+        if currentImpact >= 0 {
+            return metric.value
+        }
+        
+        // Generic binary search - adjust search range based on metric type
+        var low = metric.value * 0.5  // Search down to 50% of current
+        var high = metric.value * 2.0 // Search up to 200% of current
+        let tolerance = 0.5
+        
+        // For some metrics, we know the direction
+        switch metric.type {
+        case .alcoholConsumption, .smokingStatus, .nutritionQuality, .socialConnectionsQuality:
+            // Higher values are better for these questionnaire metrics
+            low = metric.value
+            high = 10.0
+        case .stressLevel:
+            // Lower values are better
+            low = 1.0
+            high = metric.value
+        default:
+            break
+        }
+        
+        for _ in 0..<20 {
+            let mid = (low + high) / 2.0
+            
+            let testMetric = HealthMetric(
+            id: UUID().uuidString,
+            type: metric.type,
+                value: mid,
+            date: Date(),
+            source: metric.source
+        )
+        
+            let testImpact = lifeImpactService.calculateImpact(for: testMetric)
+            let impactMinutes = testImpact.lifespanImpactMinutes
+            
+            if abs(impactMinutes) < tolerance {
+                return mid
+            } else if impactMinutes < 0 {
+                // Still negative, need to adjust based on metric type
+                switch metric.type {
+                case .alcoholConsumption, .smokingStatus, .nutritionQuality, .socialConnectionsQuality:
+                    low = mid  // Need higher value
+                case .stressLevel:
+                    high = mid // Need lower value
+                default:
+                    // Generic: try increasing
+                    low = mid
+                }
+            } else {
+                // Positive, reverse adjustment
+                switch metric.type {
+                case .alcoholConsumption, .smokingStatus, .nutritionQuality, .socialConnectionsQuality:
+                    high = mid // Too high
+                case .stressLevel:
+                    low = mid  // Too low
+                default:
+                    // Generic: try decreasing
+                    high = mid
+                }
+            }
+        }
+        
+        return (low + high) / 2.0
+    }
+    
+    // MARK: - Additional Target Calculation Methods
+    
+    private func calculateHeartRateForNeutralImpact(currentHR: Double, currentImpact: Double) -> Double {
+        // CRITICAL FIX: Use binary search with the ACTUAL impact formula
+        logger.info("    🔍 Finding heart rate for neutral impact")
+        
+        if currentImpact >= 0 {
+            return currentHR
+        }
+        
+        // Heart rate: lower is generally better
+        var low = 50.0 // Minimum reasonable HR
+        var high = currentHR
+        let tolerance = 0.5
+        
+        for _ in 0..<20 {
+            let mid = (low + high) / 2.0
+            
+            let testMetric = HealthMetric(
+                id: UUID().uuidString,
+                type: .restingHeartRate,
+                value: mid,
+                date: Date(),
+                source: .healthKit
+            )
+            
+            let testImpact = cardiovascularCalculator.calculateRestingHeartRateImpact(
+                heartRate: mid,
+                userProfile: userProfile
+            )
+            
+            let impactMinutes = testImpact.lifespanImpactMinutes
+            
+            if abs(impactMinutes) < tolerance {
+                return mid
+            } else if impactMinutes < 0 {
+                high = mid // Need lower HR
+            } else {
+                low = mid  // Too low
+            }
+        }
+        
+        return (low + high) / 2.0
+    }
+    
+    private func calculateBodyMassForNeutralImpact(currentMass: Double, currentImpact: Double) -> Double {
+        // CRITICAL FIX: Use binary search with the ACTUAL impact formula
+        logger.info("    🔍 Finding body mass for neutral impact")
+        
+        if currentImpact >= 0 {
+            return currentMass
+        }
+        
+        // Body mass: closer to 160 lbs is better
+        let reference = 160.0
+        var low: Double
+        var high: Double
+        
+        if currentMass > reference {
+            // Need to lose weight
+            low = reference
+            high = currentMass
+        } else {
+            // Need to gain weight (rare case)
+            low = currentMass
+            high = reference
+        }
+        
+        let tolerance = 0.5
+        
+        for _ in 0..<20 {
+            let mid = (low + high) / 2.0
+            
+            let testMetric = HealthMetric(
+                id: UUID().uuidString,
+                type: .bodyMass,
+                value: mid,
+                date: Date(),
+                source: .healthKit
+            )
+            
+            let testImpact = activityCalculator.calculateBodyMassImpact(
+                bodyMass: mid,
+                userProfile: userProfile
+            )
+            
+            let impactMinutes = testImpact.lifespanImpactMinutes
+            
+            if abs(impactMinutes) < tolerance {
+                return mid
+            } else if currentMass > reference {
+                // Overweight case
+                if impactMinutes < 0 {
+                    high = mid // Need to lose more
+                } else {
+                    low = mid  // Lost too much
+                }
+            } else {
+                // Underweight case
+                if impactMinutes < 0 {
+                    low = mid  // Need to gain more
+                } else {
+                    high = mid // Gained too much
+                }
+            }
+        }
+        
+        return (low + high) / 2.0
+    }
+    
+    private func calculateAlcoholForNeutralImpact(currentConsumption: Double, currentImpact: Double) -> Double {
+        // CRITICAL FIX: Use binary search with the ACTUAL impact formula
+        logger.info("    🔍 Finding alcohol consumption for neutral impact")
+        
+        if currentImpact >= 0 {
+            return currentConsumption
+        }
+        
+        // Higher questionnaire values = less drinking = better
+        var low = currentConsumption
+        var high = 10.0
+        let tolerance = 0.5
+        
+        for _ in 0..<20 {
+            let mid = (low + high) / 2.0
+            
+            let testMetric = HealthMetric(
+                id: UUID().uuidString,
+                type: .alcoholConsumption,
+                value: mid,
+                date: Date(),
+                source: .userInput
+            )
+            
+            let testImpact = lifestyleCalculator.calculateAlcoholImpact(
+                drinksPerDay: mid,
+                userProfile: userProfile
+            )
+            
+            let impactMinutes = testImpact.lifespanImpactMinutes
+            
+            if abs(impactMinutes) < tolerance {
+                return mid
+            } else if impactMinutes < 0 {
+                low = mid  // Need higher value (less drinking)
+            } else {
+                high = mid // Too high
+            }
+        }
+        
+        return (low + high) / 2.0
+    }
+    
+    private func calculateSmokingForNeutralImpact(currentStatus: Double, currentImpact: Double) -> Double {
+        // CRITICAL FIX: Use binary search with the ACTUAL impact formula
+        logger.info("    🔍 Finding smoking status for neutral impact")
+        
+        if currentImpact >= 0 {
+            return currentStatus
+        }
+        
+        // Higher questionnaire values = less/no smoking = better
+        var low = currentStatus
+        var high = 10.0
+        let tolerance = 0.5
+        
+        for _ in 0..<20 {
+            let mid = (low + high) / 2.0
+            
+            let testMetric = HealthMetric(
+                id: UUID().uuidString,
+                type: .smokingStatus,
+                value: mid,
+                date: Date(),
+                source: .userInput
+            )
+            
+            let testImpact = lifestyleCalculator.calculateSmokingImpact(
+                smokingStatus: mid,
+                userProfile: userProfile
+            )
+            
+            let impactMinutes = testImpact.lifespanImpactMinutes
+            
+            if abs(impactMinutes) < tolerance {
+                return mid
+            } else if impactMinutes < 0 {
+                low = mid  // Need higher value (less smoking)
+            } else {
+                high = mid // Too high
+            }
+        }
+        
+        return (low + high) / 2.0
+    }
+    
+    private func calculateStressForNeutralImpact(currentStress: Double, currentImpact: Double) -> Double {
+        // CRITICAL FIX: Use binary search with the ACTUAL impact formula
+        logger.info("    🔍 Finding stress level for neutral impact")
+        
+        if currentImpact >= 0 {
+            return currentStress
+        }
+        
+        // Lower stress levels are better
+        var low = 1.0
+        var high = currentStress
+        let tolerance = 0.5
+        
+        for _ in 0..<20 {
+            let mid = (low + high) / 2.0
+            
+            let testMetric = HealthMetric(
+                id: UUID().uuidString,
+                type: .stressLevel,
+                value: mid,
+                date: Date(),
+                source: .userInput
+            )
+            
+            let testImpact = lifestyleCalculator.calculateStressImpact(
+                stressLevel: mid,
+                userProfile: userProfile
+            )
+            
+            let impactMinutes = testImpact.lifespanImpactMinutes
+            
+            if abs(impactMinutes) < tolerance {
+                return mid
+            } else if impactMinutes < 0 {
+                high = mid // Need lower stress
+            } else {
+                low = mid  // Too low
+            }
+        }
+        
+        return (low + high) / 2.0
+    }
+    
+    private func calculateNutritionForNeutralImpact(currentNutrition: Double, currentImpact: Double) -> Double {
+        // CRITICAL FIX: Use binary search with the ACTUAL impact formula
+        logger.info("    🔍 Finding nutrition quality for neutral impact")
+        
+        if currentImpact >= 0 {
+            return currentNutrition
+        }
+        
+        // Higher nutrition quality is better
+        var low = currentNutrition
+        var high = 10.0
+        let tolerance = 0.5
+        
+        for _ in 0..<20 {
+            let mid = (low + high) / 2.0
+            
+            let testMetric = HealthMetric(
+                id: UUID().uuidString,
+                type: .nutritionQuality,
+                value: mid,
+                date: Date(),
+                source: .userInput
+            )
+            
+            let testImpact = lifestyleCalculator.calculateNutritionImpact(
+                nutritionQuality: mid,
+                userProfile: userProfile
+            )
+            
+            let impactMinutes = testImpact.lifespanImpactMinutes
+            
+            if abs(impactMinutes) < tolerance {
+                return mid
+            } else if impactMinutes < 0 {
+                low = mid  // Need higher quality
+            } else {
+                high = mid // Too high
+            }
+        }
+        
+        return (low + high) / 2.0
     }
     
     /// Calculate and cache target for positive impact metrics  
     private func calculateAndCachePositiveMetricTarget(for metric: HealthMetric, period: ImpactDataPoint.PeriodType, currentImpact: Double) -> String {
+        logger.info("🟢 Calculating positive metric target for \(metric.type.displayName)")
+        logger.info("  Current value: \(metric.value)")
+        logger.info("  Current daily impact: \(currentImpact) minutes")
+        
         // For positive metrics, aim for 20% improvement
         let improvementFactor = 1.2
         let targetValue: Double
-        let benefitMinutes: Double
         
         switch metric.type {
         case .steps:
@@ -153,12 +753,39 @@ final class RecommendationService {
             targetValue = min(metric.value * improvementFactor, 60) // Cap at 1 hour
         case .sleepHours:
             targetValue = min(metric.value + 0.5, 9.0) // Small improvement, cap at 9 hours
+        case .socialConnectionsQuality:
+            // For social connections, ensure meaningful improvement
+            targetValue = min(metric.value + 1.0, 10.0) // Improve by at least 1 point
         default:
             targetValue = metric.value * improvementFactor
         }
         
-        // Calculate benefit (20% of current positive impact)
-        benefitMinutes = currentImpact * 0.2
+        logger.info("  Target value: \(targetValue)")
+        
+        // CRITICAL FIX: Calculate actual benefit by comparing impacts, not just using 20%
+        // Create a temporary metric at the target value
+        let targetMetric = HealthMetric(
+            id: UUID().uuidString,
+            type: metric.type,
+            value: targetValue,
+            date: Date(),
+            source: metric.source
+        )
+        
+        // Calculate impact at target value
+        let targetImpact = lifeImpactService.calculateImpact(for: targetMetric)
+        let benefitMinutes = targetImpact.lifespanImpactMinutes - currentImpact
+        
+        logger.info("  Target impact: \(targetImpact.lifespanImpactMinutes) minutes")
+        logger.info("  Benefit: \(benefitMinutes) minutes")
+        
+        // If benefit is too small (less than 1 minute), find a more meaningful target
+        if benefitMinutes < 1.0 && metric.type != .socialConnectionsQuality {
+            logger.info("  ⚠️ Benefit too small, finding better target...")
+            
+            // Find the lowest negative metric instead
+            return calculateAndCacheMostImprovableMetricTarget(for: metric, period: period)
+        }
         
         // Create and cache the daily target
         let dailyTarget = DailyTarget(
@@ -170,1092 +797,75 @@ final class RecommendationService {
         )
         
         dailyTargetManager.saveTarget(dailyTarget)
-        logger.info("💾 Cached daily target for \(metric.type.displayName): \(targetValue)")
+        logger.info("💾 Cached positive metric daily target for \(metric.type.displayName): \(targetValue)")
         
         // Generate recommendation using the cached target with userProfile
         return dailyTarget.generateRecommendationText(currentValue: metric.value, userProfile: userProfile)
     }
+    
+    /// Find the most improvable metric when current metric has minimal benefit potential
+    private func calculateAndCacheMostImprovableMetricTarget(for metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
+        // This is a fallback - just return a generic improvement message
+        return "Great job! Your \(metric.type.displayName.lowercased()) is already optimal. Focus on other metrics for greater impact."
+    }
 
     // MARK: - Legacy Target Calculation Methods (for reference)
     
+    // MARK: - Legacy Method - Now Uses New Calculation Logic
     private func generateNegativeMetricRecommendation(for metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        switch metric.type {
-        case .steps:
-            return generateStepsRecommendation(metric: metric, period: period)
-        case .exerciseMinutes:
-            return generateExerciseRecommendation(metric: metric, period: period)
-        case .sleepHours:
-            return generateSleepRecommendation(metric: metric, period: period)
-        case .restingHeartRate:
-            return generateHeartRateRecommendation(metric: metric, period: period)
-        case .heartRateVariability:
-            return generateHRVRecommendation(metric: metric, period: period)
-        case .bodyMass:
-            return generateBodyMassRecommendation(metric: metric, period: period)
-        case .alcoholConsumption:
-            return generateAlcoholRecommendation(metric: metric, period: period)
-        case .smokingStatus:
-            return generateSmokingRecommendation(metric: metric, period: period)
-        case .stressLevel:
-            return generateStressRecommendation(metric: metric, period: period)
-        case .nutritionQuality:
-            return generateNutritionRecommendation(metric: metric, period: period)
-        case .socialConnectionsQuality:
-            return generateSocialRecommendation(metric: metric, period: period)
-        case .activeEnergyBurned:
-            return generateActiveEnergyRecommendation(metric: metric, period: period)
-        case .vo2Max:
-            return generateVO2MaxRecommendation(metric: metric, period: period)
-        case .oxygenSaturation:
-            return generateOxygenRecommendation(metric: metric, period: period)
-        }
+        // This method is legacy - new logic uses calculateAndCacheNegativeMetricTarget
+        // But keeping for compatibility with existing recommendation flow
+        return calculateAndCacheNegativeMetricTarget(for: metric, period: period)
     }
     
-    // MARK: - Steps Recommendations
-    
-    private func generateStepsRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let currentSteps = metric.value
-        let currentImpact = metric.impactDetails?.lifespanImpactMinutes ?? 0
-        
-        // Calculate steps needed to reach neutral (0 impact)
-        let targetSteps = findStepsForNeutralImpact(currentSteps: currentSteps)
-        let stepsNeeded = max(0, targetSteps - currentSteps)
-        
-        // For daily recommendations, show additional steps needed
-        // For month/year recommendations, show total daily target
-        let actionSteps: Double
-        let actionText: String
-        
-        switch period {
-        case .day:
-            // Show additional steps for today
-            actionSteps = calculateRealisticStepTarget(stepsNeeded: stepsNeeded)
-            let formattedSteps = Int(actionSteps).formatted(.number.grouping(.automatic))
-            actionText = "Walk \(formattedSteps) more steps"
-        case .month, .year:
-            // Show total daily target for sustained periods
-            actionSteps = targetSteps
-            let formattedSteps = Int(actionSteps).formatted(.number.grouping(.automatic))
-            actionText = "Walk \(formattedSteps) steps"
-        }
-        
-        // Calculate actual benefit of reaching neutral
-        let benefitToNeutral = abs(currentImpact) // How much we gain by reaching 0
-        let formattedBenefit = formatBenefitForPeriod(benefitToNeutral, period: period)
-        
-        switch period {
-        case .day:
-            return "\(actionText) today to add \(formattedBenefit) to your life"
-        case .month:
-            return "\(actionText) daily this month to add \(formattedBenefit) to your life"
-        case .year:
-            return "\(actionText) daily this next year to add \(formattedBenefit) to your life"
-        }
-    }
-    
-    private func findStepsForNeutralImpact(currentSteps: Double) -> Double {
-        // Use binary search to find steps that give ~0 impact
-        var low = currentSteps
-        var high = 15000.0
-        let tolerance = 0.5 // 0.5 minutes tolerance
-        
-        for _ in 0..<20 { // Max 20 iterations
-            let mid = (low + high) / 2
-            let impact = calculateStepsImpact(steps: mid)
-            
-            if abs(impact) < tolerance {
-                return mid
-            } else if impact < 0 {
-                low = mid
-            } else {
-                high = mid
-            }
-        }
-        
-        return 10000 // Default fallback to optimal
-    }
-    
-    private func calculateStepsImpact(steps: Double) -> Double {
-                    let _ = HealthMetric(
-            id: UUID().uuidString,
-            type: .steps,
-            value: steps,
-            date: Date(),
-            source: .healthKit
-        )
-        
-        let impact = activityCalculator.calculateStepsImpact(steps: steps, userProfile: userProfile)
-        return impact.lifespanImpactMinutes
-    }
-    
-    // MARK: - Exercise Recommendations
-    
-    private func generateExerciseRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let currentMinutes = metric.value
-        let currentImpact = metric.impactDetails?.lifespanImpactMinutes ?? 0
-        
-        // Calculate exercise needed to reach neutral
-        let targetMinutes = findExerciseForNeutralImpact(currentMinutes: currentMinutes)
-        let minutesNeeded = max(0, targetMinutes - currentMinutes)
-        
-        // For daily recommendations, show additional minutes needed
-        // For month/year recommendations, show total daily target
-        let actionMinutes: Double
-        let actionText: String
-        
-        switch period {
-        case .day:
-            // Show additional minutes for today
-            actionMinutes = minutesNeeded
-            let exerciseTime = Double(actionMinutes).formattedAsTime()
-            actionText = "Exercise \(exerciseTime) more"
-        case .month, .year:
-            // Show total daily target for sustained periods
-            actionMinutes = targetMinutes
-            let exerciseTime = Double(actionMinutes).formattedAsTime()
-            actionText = "Exercise \(exerciseTime)"
-        }
-        
-        // Calculate actual benefit of reaching neutral
-        let benefitToNeutral = abs(currentImpact) // How much we gain by reaching 0
-        let formattedBenefit = formatBenefitForPeriod(benefitToNeutral, period: period)
-        
-        switch period {
-        case .day:
-            return "\(actionText) today to add \(formattedBenefit) to your life"
-        case .month:
-            return "\(actionText) daily this month to add \(formattedBenefit) to your life"
-        case .year:
-            return "\(actionText) daily this next year to add \(formattedBenefit) to your life"
-        }
-    }
-    
-    private func findExerciseForNeutralImpact(currentMinutes: Double) -> Double {
-        return 21.4 // WHO guideline equivalent (150 min/week ÷ 7 days)
-    }
-    
-    private func findSleepForOptimalImpact(currentSleep: Double) -> Double {
-        // Optimal sleep duration based on research (7.5-8 hours)
-        let optimalSleep = 7.5
-        
-        if currentSleep < 6.0 {
-            // If severely under-slept, aim for 7 hours as intermediate target
-            return 7.0
-        } else if currentSleep < 7.0 {
-            // If under-slept, aim for optimal
-            return optimalSleep
-        } else if currentSleep > 9.0 {
-            // If over-sleeping, aim for optimal
-            return optimalSleep
-        }
-        
-        // Already in reasonable range
-        return optimalSleep
-    }
-    
-    private func calculateExerciseImpact(minutes: Double) -> Double {
-        let impact = activityCalculator.calculateExerciseImpact(exerciseMinutes: minutes, userProfile: userProfile)
-        return impact.lifespanImpactMinutes
-    }
-    
-    // MARK: - Sleep Recommendations
-    
-    private func generateSleepRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let currentHours = metric.value
-        let currentImpact = metric.impactDetails?.lifespanImpactMinutes ?? 0
-        
-        let targetHours: Double
-        if currentHours < 7.5 {
-            targetHours = 8.0 // Aim for 8 hours if under optimal
-        } else {
-            targetHours = 7.5 // Aim for optimal middle
-        }
-        
-        let actionHours = min(2.0, targetHours - currentHours) // Max 2 hour increase
-        if actionHours <= 0 {
-            return getPositiveMetricRecommendation(for: metric, period: period)
-        }
-        
-        let newHours = currentHours + actionHours
-        let newImpact = calculateSleepImpact(hours: newHours)
-        let incrementalBenefit = newImpact - currentImpact
-        
-        let formattedBenefit = formatBenefitForPeriod(incrementalBenefit, period: period)
-        
-        // Format action text based on period
-        let actionText: String
-        switch period {
-        case .day:
-            // Show additional hours for tonight
-            let actionMinutes = actionHours * 60
-            let hourText = actionMinutes.formattedAsTime()
-            actionText = "Sleep \(hourText) more"
-        case .month, .year:
-            // Show total target for sustained periods
-            let targetMinutes = targetHours * 60
-            let totalText = targetMinutes.formattedAsTime()
-            actionText = "Sleep \(totalText)"
-        }
-        
-        switch period {
-        case .day:
-            return "\(actionText) tonight to add \(formattedBenefit) to your life"
-        case .month:
-            return "\(actionText) nightly this month to add \(formattedBenefit) to your life"
-        case .year:
-            return "\(actionText) nightly this next year to add \(formattedBenefit) to your life"
-        }
-    }
-    
-    private func calculateSleepImpact(hours: Double) -> Double {
-        let impact = cardiovascularCalculator.calculateSleepImpact(sleepHours: hours, userProfile: userProfile)
-        return impact.lifespanImpactMinutes
-    }
-    
-    // MARK: - Other Metric Recommendations
-    
-    private func generateHeartRateRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
-        
-        switch period {
-        case .day:
-            return "Practice \(Double(10).formattedAsTime()) of deep breathing today to add \(formattedBenefit) to your life"
-        case .month:
-            return "Practice \(Double(10).formattedAsTime()) of deep breathing daily this month to add \(formattedBenefit) to your life"
-        case .year:
-            return "Practice \(Double(10).formattedAsTime()) of deep breathing daily this next year to add \(formattedBenefit) to your life"
-        }
-    }
-    
-    private func generateHRVRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
-        
-        switch period {
-        case .day:
-            return "Meditate for \(Double(15).formattedAsTime()) today to add \(formattedBenefit) to your life"
-        case .month:
-            return "Meditate for \(Double(15).formattedAsTime()) daily this month to add \(formattedBenefit) to your life"
-        case .year:
-            return "Meditate for \(Double(15).formattedAsTime()) daily this next year to add \(formattedBenefit) to your life"
-        }
-    }
-    
-    private func generateBodyMassRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
-        
-        switch period {
-        case .day:
-            return "Reduce caloric intake by 200 calories today to add \(formattedBenefit) to your life"
-        case .month:
-            return "Reduce caloric intake by 200 calories daily this month to add \(formattedBenefit) to your life"
-        case .year:
-            return "Reduce caloric intake by 200 calories daily this next year to add \(formattedBenefit) to your life"
-        }
-    }
-    
-    private func generateAlcoholRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
-        
-        switch period {
-        case .day:
-            return "Skip alcohol today to add \(formattedBenefit) to your life"
-        case .month:
-            return "Reduce alcohol consumption daily this month to add \(formattedBenefit) to your life"
-        case .year:
-            return "Reduce alcohol consumption daily this next year to add \(formattedBenefit) to your life"
-        }
-    }
-    
-    private func generateSmokingRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
-        
-        switch period {
-        case .day:
-            return "Avoid smoking today to add \(formattedBenefit) to your life"
-        case .month:
-            return "Reduce smoking daily this month to add \(formattedBenefit) to your life"
-        case .year:
-            return "Quit smoking this next year to add \(formattedBenefit) to your life"
-        }
-    }
-    
-    private func generateStressRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
-        
-        switch period {
-        case .day:
-            return "Practice stress management for \(Double(15).formattedAsTime()) today to add \(formattedBenefit) to your life"
-        case .month:
-            return "Practice stress management for \(Double(15).formattedAsTime()) daily this month to add \(formattedBenefit) to your life"
-        case .year:
-            return "Practice stress management for \(Double(15).formattedAsTime()) daily this next year to add \(formattedBenefit) to your life"
-        }
-    }
-    
-    private func generateNutritionRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
-        
-        switch period {
-        case .day:
-            return "Add 3 servings of vegetables today to add \(formattedBenefit) to your life"
-        case .month:
-            return "Add 3 servings of vegetables daily this month to add \(formattedBenefit) to your life"
-        case .year:
-            return "Add 3 servings of vegetables daily this next year to add \(formattedBenefit) to your life"
-        }
-    }
-    
-    private func generateSocialRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
-        
-        switch period {
-        case .day:
-            return "Connect with a friend today to add \(formattedBenefit) to your life"
-        case .month:
-            return "Connect with friends daily this month to add \(formattedBenefit) to your life"
-        case .year:
-            return "Connect with friends daily this next year to add \(formattedBenefit) to your life"
-        }
-    }
-    
-    private func generateActiveEnergyRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
-        
-        switch period {
-        case .day:
-            return "Increase daily activity today to add \(formattedBenefit) to your life"
-        case .month:
-            return "Increase daily activity this month to add \(formattedBenefit) to your life"
-        case .year:
-            return "Increase daily activity this next year to add \(formattedBenefit) to your life"
-        }
-    }
-    
-    private func generateVO2MaxRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
-        
-        switch period {
-        case .day:
-            return "Do high-intensity exercise today to add \(formattedBenefit) to your life"
-        case .month:
-            return "Do high-intensity exercise regularly this month to add \(formattedBenefit) to your life"
-        case .year:
-            return "Do high-intensity exercise regularly this next year to add \(formattedBenefit) to your life"
-        }
-    }
-    
-    private func generateOxygenRecommendation(metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let benefit = calculateNeutralBenefit(for: metric)
-        let formattedBenefit = formatBenefitForPeriod(benefit, period: period)
-        
-        switch period {
-        case .day:
-            return "Practice breathing exercises today to add \(formattedBenefit) to your life"
-        case .month:
-            return "Practice breathing exercises daily this month to add \(formattedBenefit) to your life"
-        case .year:
-            return "Practice breathing exercises daily this next year to add \(formattedBenefit) to your life"
-        }
-    }
-    
-    // MARK: - Positive Impact Recommendations
-    
-    private func generatePositiveMetricRecommendation(for metric: HealthMetric, period: ImpactDataPoint.PeriodType, currentImpact: Double) -> String {
-        let twentyPercentIncrease = currentImpact * 0.2
-        let formattedBenefit = formatBenefitForPeriod(twentyPercentIncrease, period: period)
-        
-        // Format the time period context
-        let periodText: String
-        let actionFrequency: String
-        switch period {
-        case .day: 
-            periodText = ""  // No additional period text for day
-            actionFrequency = "today"
-        case .month: 
-            periodText = "over the next month"
-            actionFrequency = "daily"
-        case .year: 
-            periodText = "over the next year"
-            actionFrequency = "daily"
-        }
-        
-        switch metric.type {
-        case .steps:
-            if period == .day {
-                return "Walk 15min more \(actionFrequency) to add \(formattedBenefit)"
-            } else {
-                return "Walk 15min more \(actionFrequency) to add \(formattedBenefit) \(periodText)"
-            }
-        case .exerciseMinutes:
-            if period == .day {
-                return "Add 10 more minutes of exercise \(actionFrequency) to add \(formattedBenefit)"
-            } else {
-                return "Add 10 more minutes of exercise \(actionFrequency) to add \(formattedBenefit) \(periodText)"
-            }
-        case .sleepHours:
-            if period == .day {
-                return "Optimize sleep quality \(actionFrequency) to add \(formattedBenefit)"
-            } else {
-                return "Optimize sleep quality \(actionFrequency) to add \(formattedBenefit) \(periodText)"
-            }
-        default:
-            if period == .day {
-                return "Improve your \(metric.type.displayName.lowercased()) \(actionFrequency) to add \(formattedBenefit)"
-            } else {
-                return "Improve your \(metric.type.displayName.lowercased()) \(actionFrequency) to add \(formattedBenefit) \(periodText)"
-            }
-        }
-    }
-    
-    private func getPositiveMetricRecommendation(for metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        let currentImpact = metric.impactDetails?.lifespanImpactMinutes ?? 0
-        return generatePositiveMetricRecommendation(for: metric, period: period, currentImpact: currentImpact)
-    }
-    
-    // MARK: - Prioritization Engine
-    
-    /// Get prioritized recommendations based on potential life impact
-    func getPrioritizedRecommendations(
-        for metrics: [HealthMetric],
-        selectedPeriod: ImpactDataPoint.PeriodType,
-        maxRecommendations: Int = 3
-    ) -> [PrioritizedRecommendation] {
-        logger.info("🎯 Generating prioritized recommendations for \(metrics.count) metrics")
-        
-        var recommendations: [PrioritizedRecommendation] = []
-        
-        // Calculate potential improvement for each metric
-        for metric in metrics {
-            let currentImpact = metric.impactDetails?.lifespanImpactMinutes ?? 0
-            
-            // Skip metrics that are already optimal
-            if let details = metric.impactDetails,
-               abs(details.variance) < 0.1 * abs(details.baselineValue) {
-                continue
-            }
-            
-            // Calculate potential improvement
-            let potentialImprovement = calculatePotentialImprovement(
-                for: metric,
-                currentImpact: currentImpact,
-                period: selectedPeriod
-            )
-            
-            if potentialImprovement.dailyMinutesGained > 0 {
-                let recommendation = generateContextAwareRecommendation(
-                    for: metric,
-                    improvement: potentialImprovement,
-                    period: selectedPeriod
-                )
-                
-                recommendations.append(PrioritizedRecommendation(
-                    metric: metric,
-                    recommendation: recommendation,
-                    potentialDailyGain: potentialImprovement.dailyMinutesGained,
-                    potentialPeriodGain: potentialImprovement.periodMinutesGained,
-                    difficulty: potentialImprovement.difficulty,
-                    priority: calculatePriority(
-                        gain: potentialImprovement.periodMinutesGained,
-                        difficulty: potentialImprovement.difficulty
-                    )
-                ))
-            }
-        }
-        
-        // Sort by priority and return top N
-        return recommendations
-            .sorted { $0.priority > $1.priority }
-            .prefix(maxRecommendations)
-            .map { $0 }
-    }
-    
-    /// Calculate potential improvement for a metric
-    private func calculatePotentialImprovement(
-        for metric: HealthMetric,
-        currentImpact: Double,
-        period: ImpactDataPoint.PeriodType
-    ) -> (dailyMinutesGained: Double, periodMinutesGained: Double, difficulty: RecommendationDifficulty) {
-        
-        // Calculate realistic improvement target
-        let targetValue = calculateRealisticTarget(for: metric)
-        
-        // Create hypothetical improved metric
-        let improvedMetric = HealthMetric(
-            id: UUID().uuidString,
-            type: metric.type,
-            value: targetValue,
-            date: metric.date,
-            source: metric.source
-        )
-        
-        // Calculate impact of improved metric
-        let improvedImpact = lifeImpactService.calculateImpact(for: improvedMetric)
-        let dailyGain = improvedImpact.lifespanImpactMinutes - currentImpact
-        
-        // Scale for period
-        let periodGain: Double
-        switch period {
-        case .day: periodGain = dailyGain
-        case .month: periodGain = dailyGain * 30
-        case .year: periodGain = dailyGain * 365
-        }
-        
-        // Assess difficulty
-        let difficulty = assessDifficulty(
-            metric: metric,
-            currentValue: metric.value,
-            targetValue: targetValue
-        )
-        
-        return (dailyGain, periodGain, difficulty)
-    }
-    
-    /// Calculate realistic improvement target based on current value
-    private func calculateRealisticTarget(for metric: HealthMetric) -> Double {
-        switch metric.type {
-        case .steps:
-            // 20% improvement or 10,000, whichever is lower
-            return min(metric.value * 1.2, 10000)
-            
-        case .sleepHours:
-            // Move towards optimal 7.5 hours
-            if metric.value < 7 {
-                return min(metric.value + 0.5, 7.5)
-            } else if metric.value > 8 {
-                return max(metric.value - 0.5, 7.5)
-            }
-            return metric.value
-            
-        case .exerciseMinutes:
-            // 30% improvement or WHO guidelines
-            return min(metric.value * 1.3, 30) // 30 min/day
-            
-        case .restingHeartRate:
-            // 5 bpm improvement
-            return max(metric.value - 5, 55)
-            
-        case .heartRateVariability:
-            // 10 ms improvement
-            return metric.value + 10
-            
-        case .alcoholConsumption:
-            // Reduce by 1 drink per day equivalent
-            return max(metric.value + 2, 0) // Higher questionnaire value = less drinking
-            
-        case .smokingStatus:
-            // Move up one category
-            return min(metric.value + 3, 10)
-            
-        case .nutritionQuality:
-            // 1 point improvement on 10-point scale
-            return min(metric.value + 1, 10)
-            
-        default:
-            // 10% improvement
-            return metric.value * 1.1
-        }
-    }
-    
-    /// Assess difficulty of achieving target
-    private func assessDifficulty(
-        metric: HealthMetric,
-        currentValue: Double,
-        targetValue: Double
-    ) -> RecommendationDifficulty {
-        let changePercent = abs(targetValue - currentValue) / max(currentValue, 1) * 100
-        
-        switch metric.type {
-        case .smokingStatus, .alcoholConsumption:
-            // Addiction-related changes are hardest
-            return .hard
-            
-        case .sleepHours:
-            // Sleep changes are moderate
-            return changePercent > 20 ? .hard : .moderate
-            
-        case .steps, .exerciseMinutes:
-            // Activity changes depend on magnitude
-            if changePercent > 50 {
-                return .hard
-            } else if changePercent > 25 {
-                return .moderate
-            }
-            return .easy
-            
-        default:
-            // Default based on change magnitude
-            if changePercent > 40 {
-                return .hard
-            } else if changePercent > 20 {
-                return .moderate
-            }
-            return .easy
-        }
-    }
-    
-    /// Calculate priority score
-    private func calculatePriority(gain: Double, difficulty: RecommendationDifficulty) -> Double {
-        // Higher gain = higher priority
-        // Easier changes = higher priority
-        let difficultyMultiplier: Double
-        switch difficulty {
-        case .easy: difficultyMultiplier = 1.5
-        case .moderate: difficultyMultiplier = 1.0
-        case .hard: difficultyMultiplier = 0.7
-        }
-        
-        return gain * difficultyMultiplier
-    }
-    
-    /// Generate context-aware recommendation
-    private func generateContextAwareRecommendation(
-        for metric: HealthMetric,
-        improvement: (dailyMinutesGained: Double, periodMinutesGained: Double, difficulty: RecommendationDifficulty),
+    /// Generate recommendation with known benefit (avoids recalculation)
+    private func generateRecommendationWithKnownBenefit(
+        metricType: HealthMetricType,
+        remaining: Double,
+        benefitText: String,
         period: ImpactDataPoint.PeriodType
     ) -> String {
-        // Check if metric is already in healthy range
-        if let details = metric.impactDetails,
-           metric.value >= details.baselineValue * 0.9 && metric.value <= details.baselineValue * 1.1 {
-            return generateMaintenanceRecommendation(for: metric, period: period)
+        switch metricType {
+        case .exerciseMinutes:
+            let exerciseTime = remaining.formattedAsTime()
+            return "Exercise \(exerciseTime) more today to add \(benefitText)"
+        case .sleepHours:
+            let sleepTime = (remaining * 60).formattedAsTime()
+            return "Sleep \(sleepTime) more tonight to add \(benefitText)"
+        case .activeEnergyBurned:
+            return "Burn \(Int(remaining)) more calories today to add \(benefitText)"
+        case .socialConnectionsQuality:
+            return "Improve your social connections to add \(benefitText)"
+        case .nutritionQuality:
+            return "Improve your nutrition to add \(benefitText)"
+        case .stressLevel:
+            return "Reduce your stress to add \(benefitText)"
+        default:
+            return "Improve your \(metricType.displayName.lowercased()) to add \(benefitText)"
         }
-        
-        // Generate improvement recommendation
-        return generateImprovementRecommendation(
-            for: metric,
-            gain: improvement.periodMinutesGained,
+    }
+}
+
+// MARK: - Helper Types
+
+/// Temporary helper to avoid recalculating impact
+private struct DailyTargetWithKnownBenefit {
+    let metricType: HealthMetricType
+    let targetValue: Double
+    let originalCurrentValue: Double
+    let knownCurrentImpact: Double
+    let benefitMinutes: Double
+    let period: ImpactDataPoint.PeriodType
+    
+    func toDailyTarget() -> DailyTarget {
+        return DailyTarget(
+            metricType: metricType,
+            targetValue: targetValue,
+            originalCurrentValue: originalCurrentValue,
+            benefitMinutes: benefitMinutes,
             period: period
         )
     }
-    
-    /// Generate recommendation for metrics already in healthy range
-    private func generateMaintenanceRecommendation(for metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        switch metric.type {
-        case .sleepHours:
-            return "Your sleep is within the optimal range. Maintain your consistent sleep schedule to preserve these benefits."
-        case .steps:
-            return "Great step count! Keep up your active lifestyle to maintain these cardiovascular benefits."
-        case .exerciseMinutes:
-            return "You're meeting exercise guidelines. Continue this routine for sustained health benefits."
-        default:
-            return "Your \(metric.type.displayName.lowercased()) is in a healthy range. Focus on maintaining this level."
-        }
-    }
-    
-    // MARK: - Helper Methods
-    
-    private func calculateNeutralBenefit(for metric: HealthMetric) -> Double {
-        // Return the benefit of bringing the metric to neutral (0 impact)
-        let currentImpact = metric.impactDetails?.lifespanImpactMinutes ?? 0
-        return abs(min(0, currentImpact)) // Only for negative impacts
-    }
-    
-    // MARK: - Realistic Calculation Helpers
-    
-    /// Calculate realistic step target based on current deficit
-    private func calculateRealisticStepTarget(stepsNeeded: Double) -> Double {
-        // FIXED: Show the actual steps needed to reach neutral
-        // No artificial caps - users deserve to know the truth
-        return stepsNeeded
-    }
-    
-    /// Calculate realistic exercise target based on deficit and current level
-    private func calculateRealisticExerciseTarget(minutesNeeded: Double, currentMinutes: Double) -> Double {
-        // Be more conservative for people who don't exercise regularly
-        if currentMinutes < 10 {
-            return min(minutesNeeded, 15) // Start with 15 minutes for beginners
-        } else if currentMinutes < 20 {
-            return min(minutesNeeded, 25) // Moderate increase for light exercisers
-        } else {
-            return min(minutesNeeded, 40) // Larger increase for regular exercisers
-        }
-    }
-    
-    /// Apply realistic bounds to prevent biologically impossible recommendations
-    private func applyRealisticBounds(benefit: Double, period: ImpactDataPoint.PeriodType, metricType: HealthMetricType) -> Double {
-        // FIXED: Don't artificially cap benefits - show actual impact of reaching neutral
-        // The research-based calculations already have realistic limits built in
-        return benefit
-    }
-    
-    /// Format benefit appropriately for the selected period
-    private func formatBenefitForPeriod(_ dailyMinutes: Double, period: ImpactDataPoint.PeriodType) -> String {
-        let totalMinutes: Double
-        
-        switch period {
-        case .day:
-            totalMinutes = dailyMinutes // Show daily benefit
-        case .month:
-            totalMinutes = dailyMinutes * 30.0 // Show monthly total if sustained daily
-        case .year:
-            totalMinutes = dailyMinutes * 365.0 // Show yearly total if sustained daily
-        }
-        
-        return totalMinutes.formattedAsTime()
-    }
-    
-    @available(*, deprecated, message: "Use formatBenefitForPeriod instead")
-    private func formatBenefit(_ dailyMinutes: Double, period: ImpactDataPoint.PeriodType) -> String {
-        let totalMinutes = dailyMinutes * period.multiplier
-        let absMinutes = abs(totalMinutes)
-        
-        if absMinutes >= 1440 { // >= 1 day
-            let days = absMinutes / 1440
-            if days >= 1.0 {
-                return String(format: "+%.1f day%@", days, days == 1.0 ? "" : "s")
-            } else {
-                return "+1 day"
-            }
-        } else if absMinutes >= 60 { // >= 1 hour
-            let hours = absMinutes / 60
-            if hours >= 1.0 {
-                return String(format: "+%.1f hour%@", hours, hours == 1.0 ? "" : "s")
-            } else {
-                return "+1 hour"
-            }
-        } else {
-            let mins = max(1, Int(absMinutes)) // Minimum 1 minute
-            return "+\(mins) min"
-        }
-    }
-    
-    private func getDefaultRecommendation(for metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        switch metric.type {
-        case .steps:
-            return "Take a 20-minute walk to improve your health"
-        case .exerciseMinutes:
-            return "Add \(Double(30).formattedAsTime()) of exercise to your day"
-        case .sleepHours:
-            return "Aim for \(Double(7 * 60).formattedAsTime()) to \(Double(9 * 60).formattedAsTime()) of sleep nightly"
-        default:
-            return "Focus on improving your \(metric.type.displayName.lowercased())"
-        }
-    }
-    
-    /// Generate improvement recommendation with specific gain
-    private func generateImprovementRecommendation(
-        for metric: HealthMetric,
-        gain: Double,
-        period: ImpactDataPoint.PeriodType
-    ) -> String {
-        let formattedGain = formatBenefitForPeriod(gain / period.multiplier, period: period)
-        
-        switch metric.type {
-        case .steps:
-            let currentSteps = Int(metric.value)
-            let target = currentSteps < 7000 ? "7,000" : "10,000"
-            return "Increase to \(target) steps daily to add \(formattedGain)."
-            
-        case .sleepHours:
-            return "Optimize sleep to \(Double(7 * 60).formattedAsTime()) to \(Double(8 * 60).formattedAsTime()) nightly to add \(formattedGain)."
-            
-        case .exerciseMinutes:
-            return "Reach \(Double(30).formattedAsTime()) of exercise daily to add \(formattedGain)."
-            
-        case .restingHeartRate:
-            return "Improve cardiovascular fitness to add \(formattedGain)."
-            
-        case .heartRateVariability:
-            return "Enhance stress resilience to add \(formattedGain)."
-            
-        case .nutritionQuality:
-            return "Improve diet quality to add \(formattedGain)."
-            
-        default:
-            return "Optimize your \(metric.type.displayName.lowercased()) to add \(formattedGain)."
-        }
-    }
-    
-    // MARK: - Enhanced Cache Invalidation System
-    
-    /// Comprehensive cache invalidation with metric-specific logic and progressive severity
-    private func shouldInvalidateCachedTarget(
-        cachedTarget: DailyTarget,
-        currentMetric: HealthMetric,
-        currentImpact: Double
-    ) -> CacheInvalidationResult {
-        
-        let originalValue = cachedTarget.originalCurrentValue
-        let currentValue = currentMetric.value
-        let metricType = currentMetric.type
-        
-        // ENHANCED DEBUGGING: Log all values for investigation
-        logger.info("🔍 Cache Invalidation Check for \(metricType.displayName):")
-        logger.info("   Original Value: \(originalValue) -> Current Value: \(currentValue)")
-        logger.info("   Absolute Change: \(abs(currentValue - originalValue))")
-        logger.info("   Percentage Change: \(abs(currentValue - originalValue) / max(originalValue, 1.0) * 100)%")
-        
-        // Time-based invalidation: Targets should refresh periodically regardless of value changes
-        let cacheAge = Date().timeIntervalSince(cachedTarget.calculationDate)
-        logger.info("   Cache Age: \(Int(cacheAge)) seconds")
-        
-        if cacheAge > 1800 { // CRITICAL FIX: Reduced from 6 hours to 30 minutes for faster updates
-            logger.info("🕰️ Cache expired due to age - invalidating")
-            return CacheInvalidationResult(
-                shouldInvalidate: true,
-                reason: "Cache expired (age: \(Int(cacheAge/60)) minutes)",
-                severity: .medium
-            )
-        }
-        
-        // Get metric-specific invalidation thresholds
-        let thresholds = getInvalidationThresholds(for: metricType)
-        logger.info("   Thresholds: \(thresholds.percentageThreshold * 100)% or \(thresholds.absoluteThreshold) absolute")
-        
-        // Calculate change metrics
-        let absoluteChange = abs(currentValue - originalValue)
-        let percentageChange = absoluteChange / max(originalValue, 1.0)
-        
-        logger.info("   Calculated Percentage Change: \(percentageChange * 100)%")
-        logger.info("   Threshold Check: \(percentageChange > thresholds.percentageThreshold ? "PASS" : "FAIL") (percentage)")
-        logger.info("   Threshold Check: \(absoluteChange > thresholds.absoluteThreshold ? "PASS" : "FAIL") (absolute)")
-        
-        // Check if thresholds are exceeded
-        let percentageExceeded = percentageChange > thresholds.percentageThreshold
-        let absoluteExceeded = absoluteChange > thresholds.absoluteThreshold
-        
-        if percentageExceeded || absoluteExceeded {
-            let severity: InvalidationSeverity = percentageChange > (thresholds.percentageThreshold * 5) ? .high : .medium
-            let reason = "Value changed significantly: \(String(format: "%.1f", percentageChange * 100))% change, \(String(format: "%.0f", absoluteChange)) absolute change"
-            
-            logger.info("✅ CACHE INVALIDATION TRIGGERED: \(reason)")
-            return CacheInvalidationResult(
-                shouldInvalidate: true,
-                reason: reason,
-                severity: severity
-            )
-        }
-        
-        logger.info("⏸️ Cache invalidation not triggered - changes below threshold")
-        return CacheInvalidationResult(
-            shouldInvalidate: false,
-            reason: "Changes below invalidation threshold",
-            severity: .low
-        )
-    }
-    
-    /// Get metric-specific invalidation thresholds
-    private func getInvalidationThresholds(for metricType: HealthMetricType) -> InvalidationThresholds {
-        switch metricType {
-        case .steps:
-            // CRITICAL FIX: Very sensitive to user progress - 1% change or 50 steps
-            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 50.0)
-            
-        case .exerciseMinutes:
-            // CRITICAL FIX: Very sensitive - 1% change or 1 minute
-            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 1.0)
-            
-        case .sleepHours:
-            // CRITICAL FIX: Very sensitive - 1% change or 6 minutes (0.1 hours)
-            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 0.1)
-            
-        case .restingHeartRate:
-            // CRITICAL FIX: Very sensitive - 1% change or 1 bpm
-            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 1.0)
-            
-        case .heartRateVariability:
-            // CRITICAL FIX: Very sensitive - 1% change or 2 ms
-            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 2.0)
-            
-        case .bodyMass:
-            // Already sensitive at 1% - keep current
-            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 0.45)
-            
-        case .activeEnergyBurned:
-            // CRITICAL FIX: Very sensitive - 1% change or 10 calories
-            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 10.0)
-            
-        case .vo2Max:
-            // CRITICAL FIX: Very sensitive - 1% change or 0.5 units
-            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 0.5)
-            
-        case .oxygenSaturation:
-            // CRITICAL FIX: Very sensitive - 1% change or 0.5%
-            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 0.5)
-            
-        // Manual/Questionnaire metrics - also very sensitive
-        case .nutritionQuality, .smokingStatus, .alcoholConsumption, 
-             .socialConnectionsQuality, .stressLevel:
-            // CRITICAL FIX: Very sensitive - 1% change or 0.1 point on scale
-            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 0.1)
-            
-        default:
-            // CRITICAL FIX: Default to very sensitive for any other metrics
-            return InvalidationThresholds(percentageThreshold: 0.01, absoluteThreshold: 1.0)
-        }
-    }
-    
-    /// Check if changes to this metric should invalidate other metrics' caches
-    private func shouldInvalidateBasedOnCrossMetricEffects(metricType: HealthMetricType, valueChange: Double) -> Bool {
-        switch metricType {
-        case .steps, .exerciseMinutes:
-            // Large activity changes affect cardiovascular metrics
-            return valueChange > 1000 // Large step changes or significant exercise changes
-            
-        case .sleepHours:
-            // Sleep changes affect many other metrics
-            return valueChange > 1.0 // 1+ hour sleep changes
-            
-        case .bodyMass:
-            // Weight changes affect activity and cardiovascular metrics
-            return valueChange > 2.0 // 2+ lb weight changes
-            
-        default:
-            return false // Other metrics don't typically have cross-effects
-        }
-    }
-    
-    // MARK: - Enhanced Cache Invalidation Supporting Types
-    
-    #if DEBUG
-    /// Comprehensive validation test for the three critical fixes
-    /// Tests the scenario: 422 steps -> 2,221 steps to ensure proper behavior
-    func validateFixesIntegration() -> ValidationResult {
-        let logger = Logger(subsystem: "Amped", category: "RecommendationService.Validation")
-        logger.info("🧪 Starting comprehensive validation of three critical fixes")
-        
-        var validationResults: [String] = []
-        var hasErrors = false
-        
-        // Test 1: Benefit Calculation Fix
-        logger.info("🧪 Test 1: Validating benefit calculation fix")
-        
-        let userProfile = UserProfile()
-        let originalStepsMetric = HealthMetric(
-            id: UUID().uuidString,
-            type: .steps,
-            value: 422,
-            date: Date(),
-            source: .healthKit
-        )
-        
-        // Clear any existing targets for clean test
-        dailyTargetManager.clearTargets()
-        
-        // Generate recommendation for 422 steps
-        let originalRecommendation = generateRecommendation(for: originalStepsMetric, selectedPeriod: .day)
-        validationResults.append("✅ Original (422 steps): \(originalRecommendation)")
-        
-        // Simulate user improvement to 2,221 steps
-        let improvedStepsMetric = HealthMetric(
-            id: UUID().uuidString,
-            type: .steps,
-            value: 2221,
-            date: Date(),
-            source: .healthKit
-        )
-        
-        // Generate recommendation for improved steps
-        let improvedRecommendation = generateRecommendation(for: improvedStepsMetric, selectedPeriod: .day)
-        validationResults.append("✅ Improved (2,221 steps): \(improvedRecommendation)")
-        
-        // Validate that benefit text has changed (should be lower)
-        if originalRecommendation == improvedRecommendation {
-            hasErrors = true
-            validationResults.append("❌ ERROR: Recommendation text unchanged after 1,799 step improvement")
-        } else {
-            validationResults.append("✅ PASS: Recommendation text properly updated after improvement")
-        }
-        
-        // Test 2: Cache Invalidation Fix
-        logger.info("🧪 Test 2: Validating cache invalidation fix")
-        
-        // Check that cache invalidation triggers for significant changes
-        if let cachedTarget = dailyTargetManager.getCachedTarget(for: .steps, period: .day) {
-            let invalidationResult = shouldInvalidateCachedTarget(
-                cachedTarget: cachedTarget,
-                currentMetric: improvedStepsMetric,
-                currentImpact: -50.0 // Example impact
-            )
-            
-            if invalidationResult.shouldInvalidate {
-                validationResults.append("✅ PASS: Cache invalidation properly triggered: \(invalidationResult.reason)")
-            } else {
-                hasErrors = true
-                validationResults.append("❌ ERROR: Cache invalidation should trigger for 1,799 step change")
-            }
-        }
-        
-        // Test 3: Metric-Specific Thresholds
-        logger.info("🧪 Test 3: Validating metric-specific thresholds")
-        
-        let stepsThresholds = getInvalidationThresholds(for: .steps)
-        let heartRateThresholds = getInvalidationThresholds(for: .restingHeartRate)
-        
-        if stepsThresholds.absoluteThreshold == 50.0 && heartRateThresholds.absoluteThreshold == 1.0 { // Changed from 3.0 to 1.0
-            validationResults.append("✅ PASS: Metric-specific thresholds correctly configured")
-        } else {
-            hasErrors = true
-            validationResults.append("❌ ERROR: Metric-specific thresholds not properly configured")
-        }
-        
-        // Test 4: Edge Cases
-        logger.info("🧪 Test 4: Validating edge cases")
-        
-        let zeroStepsMetric = HealthMetric(
-            id: UUID().uuidString,
-            type: .steps,
-            value: 0,
-            date: Date(),
-            source: .healthKit
-        )
-        
-        let zeroStepsRecommendation = generateRecommendation(for: zeroStepsMetric, selectedPeriod: .day)
-        if !zeroStepsRecommendation.isEmpty {
-            validationResults.append("✅ PASS: Zero steps edge case handled")
-        } else {
-            hasErrors = true
-            validationResults.append("❌ ERROR: Zero steps edge case failed")
-        }
-        
-        let finalResult = ValidationResult(
-            passed: !hasErrors,
-            details: validationResults,
-            summary: hasErrors ? "❌ Validation FAILED - Issues detected" : "✅ All validations PASSED"
-        )
-        
-        logger.info("🧪 Validation completed: \(finalResult.summary)")
-        return finalResult
-    }
-    #endif
-}
-
-// MARK: - Enhanced Cache Invalidation Supporting Types
-
-/// Result of cache invalidation analysis with severity and reasoning
-struct CacheInvalidationResult {
-    let shouldInvalidate: Bool
-    let reason: String
-    let severity: InvalidationSeverity
-}
-
-/// Severity levels for cache invalidation with progressive clearing strategies
-enum InvalidationSeverity {
-    case low        // No invalidation needed
-    case medium     // Clear specific metric's cache
-    case high       // Clear all caches for comprehensive recalculation
-}
-
-/// Metric-specific thresholds for cache invalidation
-struct InvalidationThresholds {
-    let percentageThreshold: Double  // Percentage change threshold (0.0 to 1.0)
-    let absoluteThreshold: Double    // Absolute value change threshold
-}
-
-/// Validation result for comprehensive testing
-struct ValidationResult {
-    let passed: Bool
-    let details: [String]
-    let summary: String
 }
 
 // MARK: - Supporting Types

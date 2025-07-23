@@ -111,6 +111,8 @@ class LifeImpactService {
     
     /// Calculate total aggregated impact with proper evidence weighting and interaction effects
     func calculateTotalImpact(from metrics: [HealthMetric], for periodType: ImpactDataPoint.PeriodType) -> ImpactDataPoint {
+        logger.info("🔢 Starting total impact calculation for \(periodType.rawValue) period with \(metrics.count) metrics")
+        
         var impacts = calculateImpacts(for: metrics)
         
         // Apply interaction effects
@@ -144,6 +146,9 @@ class LifeImpactService {
         var impactsByType: [HealthMetricType: Double] = [:]
         var evidenceQualityScore: Double = 0
         
+        // COMPREHENSIVE LOGGING: Log each metric's contribution
+        logger.info("📊 Individual metric contributions (daily impacts):")
+        
         // First, calculate the total DAILY impact (no scaling yet)
         for impact in impacts {
             // Weight impact by evidence strength and reliability
@@ -153,6 +158,9 @@ class LifeImpactService {
             impactsByType[impact.metricType] = weightedDailyImpact
             totalDailyImpactMinutes += weightedDailyImpact
             evidenceQualityScore += evidenceWeight
+            
+            // Log each metric's contribution
+            logger.info("  \(impact.metricType.displayName): \(String(format: "%.2f", impact.lifespanImpactMinutes)) min/day (weighted: \(String(format: "%.2f", weightedDailyImpact)), evidence: \(String(format: "%.1f", evidenceWeight * 100))%)")
         }
         
         // Calculate average evidence quality
@@ -160,22 +168,28 @@ class LifeImpactService {
         
         // NOW apply period scaling to the TOTAL daily impact
         let scaledTotalImpact: Double
+        let scalingFactor: Double
         switch periodType {
         case .day:
+            scalingFactor = 1.0
             scaledTotalImpact = totalDailyImpactMinutes
         case .month:
             // For monthly view, show cumulative impact if behavior sustained for 30 days
+            scalingFactor = 30.0
             scaledTotalImpact = totalDailyImpactMinutes * 30.0
         case .year:
             // For yearly view, show cumulative impact if behavior sustained for 365 days
+            scalingFactor = 365.0
             scaledTotalImpact = totalDailyImpactMinutes * 365.0
         }
         
-        logger.info("📈 Total impact calculated:")
-        logger.info("  - Daily impact: \(String(format: "%.1f", totalDailyImpactMinutes)) minutes")
-        logger.info("  - Period: \(periodType.rawValue)")
-        logger.info("  - Scaled total: \(String(format: "%.1f", scaledTotalImpact)) minutes")
-        logger.info("  - Evidence quality: \(String(format: "%.1f", evidenceQualityScore * 100))%")
+        // COMPREHENSIVE LOGGING: Log calculation summary
+        logger.info("📈 Total impact calculation summary:")
+        logger.info("  📊 Total daily impact: \(String(format: "%.2f", totalDailyImpactMinutes)) minutes")
+        logger.info("  📅 Period: \(periodType.rawValue) (scaling factor: \(String(format: "%.0f", scalingFactor)))")
+        logger.info("  🎯 Scaled total impact: \(String(format: "%.2f", scaledTotalImpact)) minutes")
+        logger.info("  🔬 Evidence quality: \(String(format: "%.1f", evidenceQualityScore * 100))%")
+        logger.info("  📋 Contributing metrics: \(impacts.count)")
         
         return ImpactDataPoint(
             date: Date(),

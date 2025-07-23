@@ -23,6 +23,16 @@ final class DashboardViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var selectedTimePeriod: TimePeriod = .day
     
+    // MARK: - Real-time Update Notification
+    
+    /// Published property to notify when metrics have been refreshed
+    @Published var lastMetricUpdateTime: Date = Date()
+    
+    /// Get the latest value for a specific metric type
+    func getLatestMetricValue(for type: HealthMetricType) -> HealthMetric? {
+        return healthMetrics.first { $0.type == type }
+    }
+    
     // User profile for calculations
     internal let userProfile: UserProfile
     
@@ -42,8 +52,8 @@ final class DashboardViewModel: ObservableObject {
     /// Track if app is in foreground to control timer
     @Published private(set) var isAppInForeground: Bool = true
     
-    /// Interval for foreground refresh (5 seconds - reduced for faster user feedback)
-    private let foregroundRefreshInterval: TimeInterval = 5.0
+    /// Interval for foreground refresh (10 seconds - matches Apple Fitness app)
+    private let foregroundRefreshInterval: TimeInterval = 10.0
     
     init(
         healthKitManager: HealthKitManaging? = nil,
@@ -181,6 +191,9 @@ final class DashboardViewModel: ObservableObject {
                     // CRITICAL FIX: Update the displayed health metrics with period-appropriate data
                     self.healthMetrics = periodMetrics
                     
+                    // CRITICAL: Notify that metrics have been updated
+                    self.lastMetricUpdateTime = Date()
+                    
                     // Log each metric in detail
                     for (index, metric) in periodMetrics.enumerated() {
                         if let impact = metric.impactDetails {
@@ -316,6 +329,9 @@ final class DashboardViewModel: ObservableObject {
                 // Update the displayed health metrics
                 self.healthMetrics = periodMetrics
                 
+                // CRITICAL: Notify that metrics have been updated
+                self.lastMetricUpdateTime = Date()
+                
                 // Calculate life impact
                 lifeImpactData = lifeImpactService.calculateLifeImpact(
                     from: periodMetrics,
@@ -421,6 +437,9 @@ final class DashboardViewModel: ObservableObject {
                 
                 await MainActor.run {
                     self.healthMetrics = freshMetrics
+                    
+                    // CRITICAL: Notify that metrics have been updated
+                    self.lastMetricUpdateTime = Date()
                     
                     // Recalculate life impact with fresh data
                     self.lifeImpactData = self.lifeImpactService.calculateLifeImpact(
