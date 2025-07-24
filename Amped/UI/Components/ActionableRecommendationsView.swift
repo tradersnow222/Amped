@@ -2,12 +2,13 @@ import SwiftUI
 import CoreHaptics
 import OSLog
 
-/// Actionable Recommendations View - Redesigned for Apple-level sophistication
+/// Actionable Recommendations View - Redesigned for instant comprehension
 struct ActionableRecommendationsView: View {
     let metrics: [HealthMetric]
     let selectedPeriod: ImpactDataPoint.PeriodType
     let onMetricTap: (HealthMetric) -> Void
     @State private var showContent = false
+    @GestureState private var isPressed = false
     @Environment(\.glassTheme) private var glassTheme
     
     // MARK: - Logging
@@ -95,34 +96,20 @@ struct ActionableRecommendationsView: View {
     
     private func recommendationCard(for metric: HealthMetric) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header
-            Text("Today's Focus")
+            // Dynamic Header based on selected period
+            Text(focusHeaderText())
                 .style(.headlineBold)
-                .padding(.bottom, 16)
+                .padding(.bottom, 20)
             
-            // Content section
-            VStack(alignment: .leading, spacing: 12) {
-                // First line: Icon + Metric Name + Impact
-                HStack(spacing: 12) {
-                    Image(systemName: iconName(for: metric.type))
-                        .foregroundColor(iconColor(for: metric))
-                        .font(.system(size: 20))
-                        .frame(width: 24, height: 24)
-                    
-                    Text(metric.type.displayName)
-                        .style(.bodyMedium)
-                    
-                    Text(timeImpactText(for: metric))
-                        .style(.bodyMedium, color: timeImpactColor(for: metric))
-                    
-                    Spacer()
+            // Main content with clear visual separation
+            VStack(alignment: .leading, spacing: 16) {
+                // Top section: Current status (if negative impact)
+                if let impact = metric.impactDetails?.lifespanImpactMinutes, impact < 0 {
+                    currentStatusSection(for: metric, impact: impact)
                 }
                 
-                // Second line: Complete action sentence
-                HStack {
-                    buildActionSentence(for: metric)
-                    Spacer()
-                }
+                // Bottom section: Action recommendation
+                actionRecommendationSection(for: metric)
             }
         }
         .padding(20)
@@ -135,20 +122,238 @@ struct ActionableRecommendationsView: View {
                 )
         )
         .opacity(showContent ? 1.0 : 0.0)
-        .scaleEffect(showContent ? 1.0 : 0.95, anchor: .top)
+        .scaleEffect(
+            showContent ? (isPressed ? 0.95 : 1.0) : 0.95, 
+            anchor: .top
+        )
         .animation(.easeOut(duration: 0.6), value: showContent)
+        .animation(.easeInOut(duration: 0.1), value: isPressed)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 showContent = true
             }
         }
-        .onTapGesture {
-            onMetricTap(metric)
-            HapticManager.shared.playSelection()
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .updating($isPressed) { _, state, _ in
+                    state = true
+                }
+                .onEnded { _ in
+                    onMetricTap(metric)
+                    HapticManager.shared.playSelection()
+                }
+        )
+    }
+    
+    /// Current status section (only shown for negative impact metrics)
+    private func currentStatusSection(for metric: HealthMetric, impact: Double) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                // Icon with warning color
+                Image(systemName: iconName(for: metric.type))
+                    .foregroundColor(.ampedRed)
+                    .font(.system(size: 20))
+                    .frame(width: 24, height: 24)
+                
+                // Specific problem statement
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(getSpecificProblemTitle(for: metric))
+                        .style(.body)
+                        .foregroundColor(.white)
+                    
+                    Text("Costing you \(formatImpactWithUnit(abs(impact)))")
+                        .style(.body, color: .ampedRed)
+                }
+                
+                Spacer()
+            }
+            .padding(.bottom, 4)
+            
+            // Subtle divider
+            Rectangle()
+                .fill(.white.opacity(0.1))
+                .frame(height: 1)
+        }
+    }
+    
+    /// Action recommendation section
+    private func actionRecommendationSection(for metric: HealthMetric) -> some View {
+        HStack(spacing: 12) {
+            // Icon with positive color
+            Image(systemName: "arrow.up.circle.fill")
+                .foregroundColor(.ampedGreen)
+                .font(.system(size: 20))
+                .frame(width: 24, height: 24)
+            
+            // Action text
+            buildActionText(for: metric)
+            
+            Spacer()
         }
     }
     
     // MARK: - Helper Functions
+    
+    /// Generate dynamic header text based on selected time period
+    private func focusHeaderText() -> String {
+        switch selectedPeriod {
+        case .day:
+            return "Today's Focus"
+        case .month:
+            return "This Month's Focus"
+        case .year:
+            return "This Year's Focus"
+        }
+    }
+    
+    /// Get specific problem title that's instantly understandable
+    private func getSpecificProblemTitle(for metric: HealthMetric) -> String {
+        switch metric.type {
+        case .steps:
+            if metric.value < 3000 {
+                return "Very Low Step Count"
+            } else if metric.value < 5000 {
+                return "Low Step Count"
+            } else {
+                return "Need More Steps"
+            }
+            
+        case .exerciseMinutes:
+            if metric.value < 10 {
+                return "Minimal Exercise"
+            } else if metric.value < 20 {
+                return "Low Exercise"
+            } else {
+                return "Need More Exercise"
+            }
+            
+        case .sleepHours:
+            if metric.value < 6 {
+                return "Poor Sleep Duration"
+            } else if metric.value > 9 {
+                return "Excessive Sleep"
+            } else {
+                return "Suboptimal Sleep"
+            }
+            
+        case .restingHeartRate:
+            return "Elevated Heart Rate"
+            
+        case .heartRateVariability:
+            return "Low Heart Variability"
+            
+        case .bodyMass:
+            return "Weight Impact"
+            
+        case .nutritionQuality:
+            return "Poor Nutrition Quality"
+            
+        case .stressLevel:
+            return "High Stress Level"
+            
+        case .socialConnectionsQuality:
+            return "Weak Social Connections"
+            
+        case .smokingStatus:
+            return "Smoking Impact"
+            
+        case .alcoholConsumption:
+            return "Excessive Drinking"
+            
+        default:
+            return "Poor \(metric.type.displayName)"
+        }
+    }
+    
+    /// Build clear, specific action text
+    private func buildActionText(for metric: HealthMetric) -> Text {
+        let recommendationText = actionText(for: metric)
+        return parseAndColorBenefitText(recommendationText)
+    }
+    
+    /// Parse recommendation text and highlight positive benefits in green
+    private func parseAndColorBenefitText(_ text: String) -> Text {
+        // Pattern to find all benefit numbers (time units, steps, calories, etc.)
+        let benefitPattern = #"\d+(?:,\d{3})*(?:\.\d+)?\s+(?:min|mins|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years|steps|calories|points?)\b"#
+        
+        var result = Text("")
+        var lastIndex = text.startIndex
+        
+        do {
+            let regex = try NSRegularExpression(pattern: benefitPattern, options: [.caseInsensitive])
+            let range = NSRange(text.startIndex..., in: text)
+            let matches = regex.matches(in: text, options: [], range: range)
+            
+            for match in matches {
+                guard let matchRange = Range(match.range, in: text) else { continue }
+                
+                // Add text before the match
+                let beforeMatch = String(text[lastIndex..<matchRange.lowerBound])
+                if !beforeMatch.isEmpty {
+                    result = result + Text(beforeMatch).style(.body)
+                }
+                
+                // Add the benefit value in green with non-breaking spaces
+                let benefitValue = String(text[matchRange])
+                let nonBreakingBenefit = benefitValue.replacingOccurrences(of: " ", with: "\u{00A0}")
+                result = result + Text(nonBreakingBenefit).style(.body, color: .ampedGreen)
+                
+                lastIndex = matchRange.upperBound
+            }
+            
+            // Add remaining text
+            let remaining = String(text[lastIndex...])
+            if !remaining.isEmpty {
+                result = result + Text(remaining).style(.body)
+            }
+            
+            return result
+            
+        } catch {
+            // Fallback to original text
+            return Text(text).style(.body)
+        }
+    }
+    
+    /// Format impact time with appropriate units
+    private func formatImpactWithUnit(_ minutes: Double) -> String {
+        let result: String
+        
+        if minutes < 60 {
+            result = "\(Int(minutes)) min"
+        } else if minutes < 1440 { // Less than 24 hours
+            let hours = minutes / 60
+            if hours < 2 {
+                result = String(format: "%.0f hr", hours)
+            } else {
+                result = String(format: "%.0f hrs", hours)
+            }
+        } else if minutes < 43200 { // Less than 30 days
+            let days = minutes / 1440
+            if days < 2 {
+                result = String(format: "%.0f day", days)
+            } else {
+                result = String(format: "%.0f days", days)
+            }
+        } else if minutes < 525600 { // Less than 365 days  
+            let months = minutes / 43200
+            if months < 2 {
+                result = String(format: "%.0f month", months)
+            } else {
+                result = String(format: "%.0f months", months)
+            }
+        } else {
+            let years = minutes / 525600
+            if years < 2 {
+                result = String(format: "%.1f year", years)
+            } else {
+                result = String(format: "%.1f years", years)
+            }
+        }
+        
+        // Replace spaces with non-breaking spaces to prevent line breaks
+        return result.replacingOccurrences(of: " ", with: "\u{00A0}")
+    }
     
     private func iconName(for type: HealthMetricType) -> String {
         switch type {
@@ -167,270 +372,8 @@ struct ActionableRecommendationsView: View {
         }
     }
     
-    private func iconColor(for metric: HealthMetric) -> Color {
-        let impact = metric.impactDetails?.lifespanImpactMinutes ?? 0
-        return impact >= 0 ? .ampedGreen : .ampedRed
-    }
-    
-    private func timeImpactColor(for metric: HealthMetric) -> Color {
-        let impact = metric.impactDetails?.lifespanImpactMinutes ?? 0
-        return impact >= 0 ? .ampedGreen : .ampedRed
-    }
-    
-    private func benefitColor(for metric: HealthMetric) -> Color {
-        // For the benefit text, we want to show green if there's a potential positive impact
-        return .ampedGreen
-    }
-    
     private func actionText(for metric: HealthMetric) -> String {
         // Use the RecommendationService for accurate, contextual recommendations
         return recommendationService.generateRecommendation(for: metric, selectedPeriod: selectedPeriod)
-    }
-    
-    private func timeImpactText(for metric: HealthMetric) -> String {
-        guard let impact = metric.impactDetails?.lifespanImpactMinutes else { return "" }
-        
-        let sign = impact >= 0 ? "+" : "-"
-        return "\(sign)\(abs(impact).formattedAsTimeShort())"
-    }
-    
-    private func benefitText(for metric: HealthMetric) -> String {
-        // Since actionText now includes the benefit, return empty string
-        // The RecommendationService handles all the calculation and formatting
-        return ""
-    }
-    
-    /// Calculate potential DAILY benefit for specific improvements using research-based models
-    /// CRITICAL: Returns daily benefit only - no period scaling should be applied to non-linear models
-    private func calculatePotentialBenefit(for metric: HealthMetric) -> Double {
-        let currentImpact = lifeImpactService.calculateImpact(for: metric)
-        
-        // Create improved metric based on specific, achievable improvements
-        let improvedMetric: HealthMetric
-        
-        switch metric.type {
-        case .steps:
-            // Calculate benefit of adding realistic step improvement (20-minute walk)
-            let currentSteps = metric.value
-            // 20-minute walk = ~2000-2500 steps. Use conservative 2000 for realistic calculation
-            let stepImprovement: Double = 2000 
-            improvedMetric = HealthMetric(
-                id: UUID().uuidString,
-                type: .steps,
-                value: currentSteps + stepImprovement,
-                date: metric.date,
-                source: metric.source
-            )
-            
-        case .exerciseMinutes:
-            // Calculate benefit of adding 30 minutes of exercise weekly
-            // Convert to daily equivalent: 30 min/week = ~4.3 min/day
-            improvedMetric = HealthMetric(
-                id: UUID().uuidString,
-                type: .exerciseMinutes,
-                value: metric.value + (30.0 / 7.0), // Weekly 30 min as daily average
-                date: metric.date,
-                source: metric.source
-            )
-            
-        case .sleepHours:
-            // Calculate benefit of improving sleep by realistic amount
-            let currentSleep = metric.value
-            let improvementAmount: Double
-            if currentSleep < 6 {
-                improvementAmount = 1.0 // Bigger improvement for very poor sleep
-            } else if currentSleep < 7.5 {
-                improvementAmount = 0.5 // Moderate improvement
-            } else {
-                improvementAmount = 0.25 // Small optimization for already good sleep
-            }
-            
-            improvedMetric = HealthMetric(
-                id: UUID().uuidString,
-                type: .sleepHours,
-                value: min(9.0, currentSleep + improvementAmount), // Cap at 9 hours
-                date: metric.date,
-                source: metric.source
-            )
-            
-        case .restingHeartRate:
-            // Calculate benefit of reducing RHR by achievable amount
-            let currentRHR = metric.value
-            let reduction: Double
-            if currentRHR > 80 {
-                reduction = 10.0 // Larger reduction for high RHR
-            } else if currentRHR > 70 {
-                reduction = 5.0 // Moderate reduction
-            } else {
-                reduction = 2.0 // Small improvement for already good RHR
-            }
-            
-            improvedMetric = HealthMetric(
-                id: UUID().uuidString,
-                type: .restingHeartRate,
-                value: max(50, currentRHR - reduction), // Don't go below 50 bpm
-                date: metric.date,
-                source: metric.source
-            )
-            
-        case .nutritionQuality:
-            // Calculate benefit of improving nutrition score by 1 point
-            improvedMetric = HealthMetric(
-                id: UUID().uuidString,
-                type: .nutritionQuality,
-                value: min(10, metric.value + 1),
-                date: metric.date,
-                source: metric.source
-            )
-            
-        case .stressLevel:
-            // Calculate benefit of reducing stress by 1 point  
-            improvedMetric = HealthMetric(
-                id: UUID().uuidString,
-                type: .stressLevel,
-                value: max(1, metric.value - 1),
-                date: metric.date,
-                source: metric.source
-            )
-            
-        case .alcoholConsumption:
-            // Calculate benefit of reducing alcohol by 0.5 drinks/day
-            improvedMetric = HealthMetric(
-                id: UUID().uuidString,
-                type: .alcoholConsumption,
-                value: max(0, metric.value - 0.5),
-                date: metric.date,
-                source: metric.source
-            )
-            
-        case .socialConnectionsQuality:
-            // Calculate benefit of improving social connections by 0.5 points
-            improvedMetric = HealthMetric(
-                id: UUID().uuidString,
-                type: .socialConnectionsQuality,
-                value: min(10, metric.value + 0.5),
-                date: metric.date,
-                source: metric.source
-            )
-            
-        case .smokingStatus:
-            // Calculate benefit of quitting smoking (if currently smoking)
-            let quitValue: Double = metric.value > 5 ? 1 : metric.value // 1 = non-smoker
-            improvedMetric = HealthMetric(
-                id: UUID().uuidString,
-                type: .smokingStatus,
-                value: quitValue,
-                date: metric.date,
-                source: metric.source
-            )
-            
-        default:
-            // Generic 5% improvement for other metrics (more conservative)
-            improvedMetric = HealthMetric(
-                id: UUID().uuidString,
-                type: metric.type,
-                value: metric.value * 1.05,
-                date: metric.date,
-                source: metric.source
-            )
-        }
-        
-        // Calculate impact difference using the research-based formulas
-        let improvedImpact = lifeImpactService.calculateImpact(for: improvedMetric)
-        let benefitMinutes = improvedImpact.lifespanImpactMinutes - currentImpact.lifespanImpactMinutes
-        
-        // CRITICAL: This returns DAILY benefit only - never scale for non-linear models
-        return max(0.0, benefitMinutes)
-    }
-    
-    /// Format time impact for display
-    private func formatTimeImpact(_ minutes: Double) -> String {
-        return minutes.formattedAsTimeShort()
-    }
-    
-    /// Build one elegant sentence using the RecommendationService with colored benefit text
-    private func buildActionSentence(for metric: HealthMetric) -> Text {
-        let recommendationText = actionText(for: metric)
-        
-        // Parse the recommendation text to identify and color the benefit portion
-        return parseAndColorRecommendationText(recommendationText)
-    }
-    
-    /// Parse recommendation text and apply green color to positive benefit portions
-    private func parseAndColorRecommendationText(_ text: String) -> Text {
-        // Pattern: "Action to add X time" where X time should be green
-        let patterns = [
-            " to add ", " to gain ", " benefit of "
-        ]
-        
-        var result = Text("")
-        var remainingText = text
-        
-        // Find the pattern that splits the action from the benefit
-        for pattern in patterns {
-            if let range = remainingText.range(of: pattern) {
-                let beforePattern = String(remainingText[..<range.lowerBound])
-                let afterPattern = String(remainingText[range.upperBound...])
-                
-                // Add the text before the pattern (action part)
-                result = result + Text(beforePattern).style(.body)
-                
-                // Add the pattern itself
-                result = result + Text(pattern).style(.body)
-                
-                // Parse the benefit part and color positive values green
-                let benefitText = parseBenefitText(afterPattern)
-                result = result + benefitText
-                
-                return result
-            }
-        }
-        
-        // If no pattern found, return the original text
-        return Text(text).style(.body)
-    }
-    
-    /// Parse benefit text and apply green color to positive time values
-    private func parseBenefitText(_ benefitText: String) -> Text {
-        // Combined pattern to match all time values in one regex
-        let timePattern = #"\d+\.?\d*\s+(min|mins|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)\b"#
-        
-        var result = Text("")
-        var remainingText = benefitText
-        var lastProcessedIndex = benefitText.startIndex
-        
-        do {
-            let regex = try NSRegularExpression(pattern: timePattern, options: [.caseInsensitive])
-            let range = NSRange(benefitText.startIndex..., in: benefitText)
-            let matches = regex.matches(in: benefitText, options: [], range: range)
-            
-            for match in matches {
-                guard let matchRange = Range(match.range, in: benefitText) else { continue }
-                
-                // Add text before the match (in default color)
-                let beforeMatch = String(benefitText[lastProcessedIndex..<matchRange.lowerBound])
-                if !beforeMatch.isEmpty {
-                    result = result + Text(beforeMatch).style(.body)
-                }
-                
-                // Add the matched time value in green
-                let timeValue = String(benefitText[matchRange])
-                result = result + Text(timeValue).style(.body, color: .ampedGreen)
-                
-                lastProcessedIndex = matchRange.upperBound
-            }
-            
-            // Add any remaining text after the last match
-            let remainingAfterLastMatch = String(benefitText[lastProcessedIndex...])
-            if !remainingAfterLastMatch.isEmpty {
-                result = result + Text(remainingAfterLastMatch).style(.body)
-            }
-            
-            return result
-            
-        } catch {
-            // If regex fails, return original text
-            return Text(benefitText).style(.body)
-        }
     }
 }

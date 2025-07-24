@@ -23,8 +23,8 @@ struct MetricDetailView: View {
     
     // MARK: - Initialization
     
-    init(metric: HealthMetric) {
-        _viewModel = StateObject(wrappedValue: MetricDetailViewModel(metric: metric))
+    init(metric: HealthMetric, initialPeriod: ImpactDataPoint.PeriodType? = nil) {
+        _viewModel = StateObject(wrappedValue: MetricDetailViewModel(metric: metric, initialPeriod: initialPeriod))
     }
     
     // MARK: - Body

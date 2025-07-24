@@ -18,10 +18,10 @@ extension Double {
             let days = absMinutes / 1440
             if days.truncatingRemainder(dividingBy: 1.0) == 0 {
                 // Whole days
-                return "\(Int(days)) day\(Int(days) == 1 ? "" : "s")"
+                return "\(Int(days))\u{00A0}day\(Int(days) == 1 ? "" : "s")"
             } else {
                 // Decimal days
-                return String(format: "%.1f days", days)
+                return String(format: "%.1f\u{00A0}days", days)
             }
         }
         
@@ -31,15 +31,15 @@ extension Double {
             let minutes = Int(absMinutes.truncatingRemainder(dividingBy: 60))
             
             if minutes == 0 {
-                return "\(hours) hour\(hours == 1 ? "" : "s")"
+                return "\(hours)\u{00A0}hour\(hours == 1 ? "" : "s")"
             } else {
-                return "\(hours) hour\(hours == 1 ? "" : "s") \(minutes) minute\(minutes == 1 ? "" : "s")"
+                return "\(hours)\u{00A0}hour\(hours == 1 ? "" : "s")\u{00A0}\(minutes)\u{00A0}minute\(minutes == 1 ? "" : "s")"
             }
         }
         
         // Handle just minutes
         let roundedMinutes = Int(absMinutes.rounded())
-        return "\(roundedMinutes) minute\(roundedMinutes == 1 ? "" : "s")"
+        return "\(roundedMinutes)\u{00A0}minute\(roundedMinutes == 1 ? "" : "s")"
     }
     
     /// Formats minutes into a shorter time string for compact display
@@ -50,7 +50,7 @@ extension Double {
         // Handle days (24+ hours)
         if absMinutes >= 1440 { // 24 hours = 1440 minutes
             let days = absMinutes / 1440
-            return String(format: "%.1fd", days)
+            return String(format: "%.1f\u{00A0}d", days)
         }
         
         // Handle hours and minutes (60+ minutes)
@@ -61,7 +61,7 @@ extension Double {
             if minutes == 0 {
                 return "\(hours)h"
             } else {
-                return "\(hours)h \(minutes)m"
+                return "\(hours)h\u{00A0}\(minutes)m"
             }
         }
         

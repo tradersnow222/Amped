@@ -76,11 +76,13 @@ struct HealthMetricRow: View {
                     // This ensures consistent display regardless of selected time period
                     let displayImpact: Double = impact.lifespanImpactMinutes
                     
-                    // Show "No impact data" for zero/negligible impacts (< 1 minute)
+                    // CRITICAL FIX: Distinguish between "no data" and "no material change"
+                    // Show "No change" for metrics with data but negligible impacts (< 1 minute)
+                    // This should be visible even when "Show unavailable metrics" toggle is disabled
                     if abs(displayImpact) < 1.0 {
-                        Text("No impact data")
+                        Text("No change")
                             .font(.system(size: 14))
-                            .foregroundColor(.gray)
+                            .foregroundColor(impactColor) // Use impactColor instead of .gray
                     } else {
                         Text(formattedImpact(minutes: displayImpact))
                             .font(.system(size: 13, weight: .medium))
@@ -90,6 +92,7 @@ struct HealthMetricRow: View {
                             .accessibilityLabel(accessibilityImpactValue)
                     }
                 } else {
+                    // Only show "No impact data" when there's truly no data available
                     Text("No impact data")
                         .font(.system(size: 14))
                         .foregroundColor(.gray)
@@ -173,8 +176,9 @@ struct HealthMetricRow: View {
     
     /// Icon foreground color based on source and impact
     private var iconForegroundColor: Color {
-        // Grey out icons for metrics with no meaningful impact (< 1 minute)
-        guard let impact = metric.impactDetails, abs(impact.lifespanImpactMinutes) >= 1.0 else {
+        // CRITICAL FIX: Only grey out icons for metrics with no data (impactDetails is nil)
+        // Metrics with data but minimal impact should still show normal colors
+        guard metric.impactDetails != nil else {
             return .gray.opacity(0.5)
         }
         
@@ -216,10 +220,13 @@ struct HealthMetricRow: View {
     private var impactColor: Color {
         guard let impact = metric.impactDetails else { return .gray }
         
-        // Grey out for negligible impacts (< 1 minute)
-        guard abs(impact.lifespanImpactMinutes) >= 1.0 else { return .gray }
+        // CRITICAL FIX: Show green for minimal impacts (< 1 minute) since "No change" is positive
+        // Only grey out when there's truly no data (handled by guard above)
+        if abs(impact.lifespanImpactMinutes) < 1.0 {
+            return .ampedGreen // "No change" should be green
+        }
         
-        // Always show proper color based on direction - following rule: ACCURATE DATA DISPLAYED TO THE USER IS KING
+        // Always show proper color based on direction for meaningful impacts
         return impact.lifespanImpactMinutes >= 0 ? .ampedGreen : .ampedRed
     }
     
@@ -311,9 +318,10 @@ struct HealthMetricRow: View {
     private var accessibilityImpactValue: String {
         guard let impact = metric.impactDetails else { return "No impact data" }
         
-        // Show "No impact data" for zero/negligible impacts (< 1 minute)
+        // CRITICAL FIX: Update accessibility to match visual changes
+        // Show "No change" for metrics with data but negligible impacts (< 1 minute)
         if abs(impact.lifespanImpactMinutes) < 1.0 {
-            return "No impact data"
+            return "No change"
         }
         
         let direction = impact.lifespanImpactMinutes >= 0 ? "Gaining" : "Losing"
@@ -376,7 +384,7 @@ struct HealthMetricRow: View {
             )
         )
         
-        // Very small positive impact (seconds)
+        // Minimal impact metric - following rule: show "No change" for metrics with data but minimal impact
         HealthMetricRow(
             metric: HealthMetric(
                 id: UUID().uuidString,
@@ -396,7 +404,7 @@ struct HealthMetricRow: View {
             )
         )
         
-        // No data metric - following rule: show "No impact data" for unavailable metrics
+        // No data metric - following rule: show "No impact data" for truly unavailable metrics
         HealthMetricRow(
             metric: HealthMetric(
                 id: UUID().uuidString,

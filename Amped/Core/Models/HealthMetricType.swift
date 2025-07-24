@@ -39,7 +39,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .alcoholConsumption: return "Alcohol"
         case .socialConnectionsQuality: return "Social Connections"
         case .activeEnergyBurned: return "Active Energy"
-        case .vo2Max: return "Cardio Fitness"
+        case .vo2Max: return "Cardio Fitness (VO2 Max)"
         case .oxygenSaturation: return "Blood Oxygen"
         case .stressLevel: return "Stress Level"
         }

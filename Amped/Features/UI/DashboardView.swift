@@ -102,16 +102,16 @@ struct DashboardView: View {
         } else {
             // Filter out unavailable metrics if showUnavailable is false
             let filtered = metrics.filter { metric in
-                // A metric is considered available ONLY if it has meaningful impact (>= 1 minute)
-                // This ensures consistency with the "No impact data" display logic
-                let hasMeaningfulImpact = metric.impactDetails != nil && abs(metric.impactDetails!.lifespanImpactMinutes) >= 1.0
-                return hasMeaningfulImpact
+                // CRITICAL FIX: Distinguish between "no data" and "no material change"
+                // Always show metrics that have impact details (even if impact is < 1 minute)
+                // Only hide metrics that truly have no data (impactDetails is nil)
+                return metric.impactDetails != nil
             }
             metrics = filtered
         }
         
         // Sort metrics by impact (highest to lowest)
-        // Since we now only include metrics with meaningful impact, we can simplify the sorting
+        // Since we now include all metrics with impact details (even minimal impact), sort by absolute impact
         return metrics.sorted { lhs, rhs in
             let lhsImpact = abs(lhs.impactDetails?.lifespanImpactMinutes ?? 0)
             let rhsImpact = abs(rhs.impactDetails?.lifespanImpactMinutes ?? 0)
@@ -407,7 +407,7 @@ struct DashboardView: View {
             }
         }
         .sheet(item: $selectedMetric) { metric in
-            MetricDetailView(metric: metric)
+            MetricDetailView(metric: metric, initialPeriod: selectedPeriod)
         }
         .sheet(isPresented: $showingUpdateHealthProfile) {
             UpdateHealthProfileView()

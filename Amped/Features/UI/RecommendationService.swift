@@ -164,24 +164,25 @@ final class RecommendationService {
         dailyTargetManager.saveTarget(dailyTarget.toDailyTarget())
         logger.info("💾 Cached daily target for \(metric.type.displayName): \(String(format: "%.2f", targetValue))")
         
-        // CRITICAL FIX: Generate recommendation using EXACT known benefit (no recalculation)
-        let remaining = max(0, targetValue - metric.value)
-        let benefitText = benefitToNeutral.formattedAsTime()
-        
         // Force clear cache to ensure fresh calculation on next use
         dailyTargetManager.clearTargets()
         
-        // Generate the recommendation text directly with correct benefit
-        if metric.type == .steps {
-            let formattedSteps = Int(remaining).formatted(.number.grouping(.automatic))
-            return "Walk \(formattedSteps) more steps today to add \(benefitText)"
+        // For other metrics, use the original method but with corrected benefit
+        // CRITICAL FIX: Pass correct value based on period type
+        let parameterValue: Double
+        switch period {
+        case .day:
+            // Daily expects additional amount ("Walk X more steps today")
+            parameterValue = max(0, targetValue - metric.value)
+        case .month, .year:
+            // Monthly/Yearly expect absolute target ("Aim for X steps daily")
+            parameterValue = targetValue
         }
         
-        // For other metrics, use the original method but with corrected benefit
-        return generateRecommendationWithKnownBenefit(
+        return generateRecommendationWithKnownBenefitMinutes(
             metricType: metric.type,
-            remaining: remaining,
-            benefitText: benefitText,
+            remaining: parameterValue,
+            benefitMinutes: benefitToNeutral,
             period: period
         )
     }
@@ -812,36 +813,109 @@ final class RecommendationService {
     // MARK: - Legacy Target Calculation Methods (for reference)
     
     // MARK: - Legacy Method - Now Uses New Calculation Logic
-    private func generateNegativeMetricRecommendation(for metric: HealthMetric, period: ImpactDataPoint.PeriodType) -> String {
-        // This method is legacy - new logic uses calculateAndCacheNegativeMetricTarget
-        // But keeping for compatibility with existing recommendation flow
-        return calculateAndCacheNegativeMetricTarget(for: metric, period: period)
-    }
-    
-    /// Generate recommendation with known benefit (avoids recalculation)
-    private func generateRecommendationWithKnownBenefit(
+    private func generateRecommendationWithKnownBenefitMinutes(
         metricType: HealthMetricType,
         remaining: Double,
-        benefitText: String,
+        benefitMinutes: Double,
         period: ImpactDataPoint.PeriodType
     ) -> String {
+        // Scale benefit for time period (same logic as DailyTarget)
+        let scaledBenefitText: String
+        switch period {
+        case .day:
+            scaledBenefitText = benefitMinutes.formattedAsTime()
+        case .month:
+            // For month period, show cumulative benefit over 30 days
+            let scaledBenefitMinutes = benefitMinutes * 30.0
+            scaledBenefitText = scaledBenefitMinutes.formattedAsTime()
+        case .year:
+            // For year period, show cumulative benefit over 365 days
+            let scaledBenefitMinutes = benefitMinutes * 365.0
+            scaledBenefitText = scaledBenefitMinutes.formattedAsTime()
+        }
+        
+        switch period {
+        case .day:
+            return generateDailyRecommendationText(metricType: metricType, remaining: remaining, benefitText: scaledBenefitText)
+        case .month:
+            return generateMonthlyRecommendationText(metricType: metricType, targetValue: remaining, benefitText: scaledBenefitText)
+        case .year:
+            return generateYearlyRecommendationText(metricType: metricType, targetValue: remaining, benefitText: scaledBenefitText)
+        }
+    }
+    
+    /// Generate daily recommendation text
+    private func generateDailyRecommendationText(metricType: HealthMetricType, remaining: Double, benefitText: String) -> String {
         switch metricType {
+        case .steps:
+            let formattedSteps = Int(remaining).formatted(.number.grouping(.automatic)).replacingOccurrences(of: " ", with: "\u{00A0}")
+            return "Walk \(formattedSteps)\u{00A0}more\u{00A0}steps today to add \(benefitText) to your lifespan"
         case .exerciseMinutes:
             let exerciseTime = remaining.formattedAsTime()
-            return "Exercise \(exerciseTime) more today to add \(benefitText)"
+            return "Exercise \(exerciseTime) more today to add \(benefitText) to your lifespan"
         case .sleepHours:
             let sleepTime = (remaining * 60).formattedAsTime()
-            return "Sleep \(sleepTime) more tonight to add \(benefitText)"
+            return "Sleep \(sleepTime) more tonight to add \(benefitText) to your lifespan"
         case .activeEnergyBurned:
-            return "Burn \(Int(remaining)) more calories today to add \(benefitText)"
+            return "Burn \(Int(remaining))\u{00A0}more\u{00A0}calories today to add \(benefitText) to your lifespan"
         case .socialConnectionsQuality:
-            return "Improve your social connections to add \(benefitText)"
+            return "Improve your social connections to add \(benefitText) to your lifespan"
         case .nutritionQuality:
-            return "Improve your nutrition to add \(benefitText)"
+            return "Improve your nutrition to add \(benefitText) to your lifespan"
         case .stressLevel:
-            return "Reduce your stress to add \(benefitText)"
+            return "Reduce your stress to add \(benefitText) to your lifespan"
         default:
-            return "Improve your \(metricType.displayName.lowercased()) to add \(benefitText)"
+            return "Improve your \(metricType.displayName.lowercased()) to add \(benefitText) to your lifespan"
+        }
+    }
+    
+    /// Generate monthly recommendation text
+    private func generateMonthlyRecommendationText(metricType: HealthMetricType, targetValue: Double, benefitText: String) -> String {
+        switch metricType {
+        case .steps:
+            let formattedSteps = Int(targetValue).formatted(.number.grouping(.automatic)).replacingOccurrences(of: " ", with: "\u{00A0}")
+            return "Aim for walking \(formattedSteps)\u{00A0}steps daily over the next month to add \(benefitText) to your life"
+        case .exerciseMinutes:
+            let exerciseTime = targetValue.formattedAsTime()
+            return "Aim for exercising \(exerciseTime) daily over the next month to add \(benefitText) to your life"
+        case .sleepHours:
+            let sleepTime = (targetValue * 60).formattedAsTime()
+            return "Aim for sleeping \(sleepTime) nightly over the next month to add \(benefitText) to your life"
+        case .activeEnergyBurned:
+            return "Aim for burning \(Int(targetValue))\u{00A0}calories daily over the next month to add \(benefitText) to your life"
+        case .socialConnectionsQuality:
+            return "Aim for strengthening social connections daily over the next month to add \(benefitText) to your life"
+        case .nutritionQuality:
+            return "Aim for improving nutrition quality daily over the next month to add \(benefitText) to your life"
+        case .stressLevel:
+            return "Aim for practicing stress management daily over the next month to add \(benefitText) to your life"
+        default:
+            return "Aim for maintaining optimal \(metricType.displayName.lowercased()) daily over the next month to add \(benefitText) to your life"
+        }
+    }
+    
+    /// Generate yearly recommendation text
+    private func generateYearlyRecommendationText(metricType: HealthMetricType, targetValue: Double, benefitText: String) -> String {
+        switch metricType {
+        case .steps:
+            let formattedSteps = Int(targetValue).formatted(.number.grouping(.automatic)).replacingOccurrences(of: " ", with: "\u{00A0}")
+            return "Aim for walking \(formattedSteps)\u{00A0}steps daily over the next year to add \(benefitText) to your life"
+        case .exerciseMinutes:
+            let exerciseTime = targetValue.formattedAsTime()
+            return "Aim for exercising \(exerciseTime) daily over the next year to add \(benefitText) to your life"
+        case .sleepHours:
+            let sleepTime = (targetValue * 60).formattedAsTime()
+            return "Aim for sleeping \(sleepTime) nightly over the next year to add \(benefitText) to your life"
+        case .activeEnergyBurned:
+            return "Aim for burning \(Int(targetValue))\u{00A0}calories daily over the next year to add \(benefitText) to your life"
+        case .socialConnectionsQuality:
+            return "Aim for strengthening social connections daily over the next year to add \(benefitText) to your life"
+        case .nutritionQuality:
+            return "Aim for improving nutrition quality daily over the next year to add \(benefitText) to your life"
+        case .stressLevel:
+            return "Aim for practicing stress management daily over the next year to add \(benefitText) to your life"
+        default:
+            return "Aim for maintaining optimal \(metricType.displayName.lowercased()) daily over the next year to add \(benefitText) to your life"
         }
     }
 }

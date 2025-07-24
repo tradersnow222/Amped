@@ -1,1123 +1,896 @@
-# Lifespan Calculations Rules
+# Lifespan Calculations Documentation
 
-This file documents all calculation logic related to health metrics, lifespan impact, and projections in the Amped iOS app.
+This file documents ALL calculation logic currently implemented in the Amped iOS app as of the current codebase state. Every formula, constant, and algorithm is documented exactly as implemented.
 
-## Recent Fixes (2024)
+## Overview of Calculation Services
 
-### Phase 5: Fixed Daily Targets Implementation (MAJOR UPDATE)
+The app uses a modular calculation architecture with these core services:
 
-**Problem Solved:**
-- ❌ **Dynamic Target Shifting** → ✅ Fixed daily targets that remain consistent throughout the day
-- ❌ **User Confusion** ("Why did my target change?") → ✅ Predictable arithmetic users can trust
-- ❌ **Mathematical Precision Over User Psychology** → ✅ User-friendly targets that encourage adherence
+1. **LifeImpactService** - Main coordinator for all impact calculations
+2. **ActivityImpactCalculator** - Physical activity metrics (steps, exercise, body mass, VO2 max, active energy, oxygen saturation)
+3. **CardiovascularImpactCalculator** - Cardiovascular metrics (heart rate, HRV, sleep)
+4. **LifestyleImpactCalculator** - Lifestyle metrics (alcohol, smoking, stress, nutrition, social connections)
+5. **LifeProjectionService** - Life expectancy projections
+6. **BaselineMortalityAdjuster** - Mortality and life expectancy tables
+7. **InteractionEffectEngine** - Metric interaction effects
+8. **HealthDataService** - HealthKit data processing and aggregation
+9. **StudyReferenceProvider** - Research references and evidence grading
 
-**Core Change:**
-**Fixed Daily Targets**: Calculate targets once per day, cache them, and use simple arithmetic for remaining amounts throughout the day.
+## Global Constants
 
-**Examples of the Fix:**
-- **Before (Dynamic)**: At 2,037 steps → "Walk 7,920 more steps"; At 2,350 steps → "Walk 6,684 more steps" (target shifted by 923 steps)
-- **After (Fixed)**: At 2,037 steps → "Walk 7,920 more steps"; At 2,350 steps → "Walk 7,607 more steps" (consistent 9,957 total target)
+All calculations use these baseline constants:
 
-**Implementation Details:**
-- **Daily Target Caching**: Targets calculated once and cached for the entire day
-- **Simple Arithmetic**: Remaining = Fixed Target - Current Value
-- **All Metrics**: Applied to steps, exercise, sleep, and all other recommendation types
-- **Period Support**: Separate fixed targets for Day, Month, and Year periods
-- **Automatic Cleanup**: Expired targets cleared automatically
+```swift
+// From all calculators - Global baseline
+private let baselineLifeMinutes = 78.0 * 365.25 * 24 * 60  // 40,996,800 minutes (78 years)
 
-**Files Created:**
-- `Amped/Core/Models/DailyTarget.swift`: New model for fixed daily targets with caching support
+// Battery visualization normalization
+private let batteryNormalization = 120.0  // ±120 minutes/day for 0-100% battery range
 
-**Files Modified:**
-- `Amped/Features/UI/RecommendationService.swift`: Complete overhaul to use fixed targets
-- `.cursor/rules/lifespan-calculations.mdc`: Updated documentation
-- `.clinerules/lifespan-calculations.md`: Updated documentation
-
-**Benefits Achieved:**
-- ✅ **User Trust**: Consistent targets that behave predictably
-- ✅ **Better Adherence**: Users can track progress against fixed goals
-- ✅ **Reduced Confusion**: No more unexplained target changes
-- ✅ **Scientific Accuracy**: Initial targets still based on J-curve research
-- ✅ **Performance**: Cached targets reduce complex recalculations
-
-### Phase 4: Recommendation Text & Logic Consistency Fix
-
-**Issues Fixed:**
-- ❌ **Inconsistent Text Formatting** → ✅ All recommendations now end with "to add X to your life"
-- ❌ **Confusing Period Logic** → ✅ Daily shows additional needed, Month/Year shows total daily targets
-- ❌ **Mixed Recommendation Patterns** → ✅ Consistent format across all metric types
-
-**Text Improvements:**
-- **Year Recommendations**: Changed from "this year" to "this next year to add X to your life"
-- **Month Recommendations**: Changed from "this month" to "this month to add X to your life" 
-- **Consistent Endings**: All recommendations now clearly state the life benefit
-
-**Logic Improvements:**
-- **Daily Period**: Shows additional amount needed (e.g., "Walk 4,143 more steps today")
-- **Month/Year Period**: Shows total daily target (e.g., "Walk 8,743 steps daily this next year")
-- **Steps Logic**: For sustained periods, users get total daily step target instead of additional steps
-- **Exercise Logic**: Same pattern - additional for daily, total target for month/year
-- **Sleep Logic**: Additional hours for daily, total sleep target for sustained periods
-
-**Examples of Fixed Recommendations:**
-- Before: "Walk 4,859 steps daily to add 15.0 days this year"
-- After: "Walk 8,743 steps daily this next year to add 15.0 days to your life"
-
-**Files Modified:**
-- `Amped/Features/UI/RecommendationService.swift`: Updated all recommendation functions for consistency
-
-### Phase 3: Recommendation System Truth Fix
-
-**Issues Fixed:**
-- ❌ **Artificial Caps on Recommendations** → ✅ Show actual action needed to reach neutral
-- ❌ **Misleading Benefits** → ✅ Show true benefit of reaching 0 impact
-- ❌ **Hardcoded Limits** → ✅ Dynamic calculations based on actual deficit
-
-**Root Cause:**
-- `calculateRealisticStepTarget` was capping recommendations at 5000 steps (50 min walk)
-- `applyRealisticBounds` was limiting benefits to 15 min/day max
-- This created confusing recommendations like "Walk 50 min to add 15 min" when user needed more
-
-**Solution:**
-- Remove all artificial caps - show the truth
-- Calculate exact action needed to reach neutral (0 impact)
-- Show the actual benefit of reaching neutral
-- Format large walking times appropriately (e.g., "Walk 1h 45min")
-
-**Example Fix:**
-- Before: "Walk 50 minutes to add 15 min" (capped and misleading)
-- After: "Walk 7,900 steps to add 1 hour 42 minutes" (truthful and motivating with actual step count needed)
-
-**New Recommendation Principles:**
-1. **Negative Metrics Priority**: The recommendation should always show the user how much they need to change their metric in order to achieve neutral time (0 impact)
-2. **Positive Metrics Enhancement**: If there are no negative metrics to bring up to neutral, then the recommendation should take the lowest positive metric and tell the user how to add 20% to it
-
-**Files Modified:**
-- `Amped/Features/UI/RecommendationService.swift`: Removed caps, show true values
-
-### Phase 2: Collective Impact Scaling Fix
-
-**Issues Fixed:**
-- ❌ **Backwards Scaling** → ✅ Monthly/yearly impacts now properly scale UP from daily impacts
-- ❌ **Complex Effect-Type Scaling** → ✅ Simple linear scaling for collective impacts
-- ❌ **Metrics Averaged for All Periods** → ✅ Properly handled: metrics are daily averages, scaling applied to total
-
-**Root Cause:**
-- Health metrics are always shown as daily averages regardless of period (Apple HealthKit standard)
-- The impact calculation was applying complex effect-type scaling to already-averaged values
-- This caused monthly/yearly impacts to be smaller than daily impacts
-
-**Solution:**
-- Calculate total daily impact first (sum of all weighted metric impacts)
-- Apply simple linear scaling to the total: Day × 1, Month × 30, Year × 365
-- Individual metrics always show daily impact, only the collective total is scaled
-
-**Mathematical Fix:**
-- Before: Day: -96 min, Month: -25 min (wrong!), Year: -55 min (wrong!)
-- After: Day: -96 min, Month: -2,880 min, Year: -35,040 min (correct progression!)
-
-**Files Modified:**
-- `Amped/Features/LifeImpact/LifeImpactService.swift`: Simplified calculateTotalImpact, removed complex scaling
-
-### Phase 1: Life Impact Scaling Logic Overhaul
-
-**Issues Fixed:**
-- ❌ **U-Shaped Compounding Bug** → ✅ Removed artificial amplification for daily periods in sleep calculations
-- ❌ **Logarithmic Scaling Underestimation** → ✅ Fixed diminishing returns formula to maintain logical progression
-- ❌ **Inconsistent Daily vs Monthly/Yearly Values** → ✅ Daily impacts no longer artificially inflated beyond true values
-- ❌ **Missing Debug Visibility** → ✅ Comprehensive logging for all scaling calculations
-
-**Technical Corrections:**
-- **Sleep U-Shaped Effects**: Daily periods now return unmodified daily impact (no 25% amplification)
-- **Exercise/Steps Logarithmic**: Monthly uses 85% of linear scaling, Yearly uses 65% (realistic diminishing returns)
-- **Threshold Effects**: Daily periods get 30% of full effect (minimal but non-zero single-day impact)
-- **Validation**: Added bounds checking and warnings for illogical scaling results
-
-**Mathematical Progression Fixed:**
-- Before: Day: -50 min, Month: -1,275 min, Year: -11,850 min (logical progression)
-- After: Day: -50 min, Month: -1,275 min, Year: -11,850 min (logical progression)
-
-**Files Modified:**
-- `Amped/Features/LifeImpact/LifeImpactService.swift`: Core scaling logic fixes
-- `.cursor/rules/lifespan-calculations.mdc`: Documentation updates
-
-### "Today's Focus" Recommendations System Overhaul
-
-**Issues Fixed:**
-- ❌ **Hardcoded 20-minute walk recommendations** → ✅ Dynamic action sizing based on actual deficit
-- ❌ **Mathematically impossible benefits** (20min walk → 36min life gain) → ✅ Realistic bounds checking (max 15min daily benefit from walking)
-- ❌ **Inconsistent period scaling** (daily vs monthly vs yearly) → ✅ Proper period-appropriate calculations
-- ❌ **Single action size for all users** → ✅ Personalized recommendations based on current fitness level
-
-**Mathematical Corrections:**
-- Daily view: Shows actual daily benefit achievable
-- Monthly view: Shows monthly total if action sustained daily (dailyBenefit × 30)
-- Yearly view: Shows yearly total if action sustained daily (dailyBenefit × 365)
-- Bounds: Steps max 15min/day, Exercise max 20min/day, Sleep max 10min/day
-
-**Files Modified:**
-- `Amped/Features/UI/RecommendationService.swift`: Core recommendation logic
-- `Amped/UI/Components/ActionableRecommendationsView.swift`: UI integration
-- `.cursor/rules/lifespan-calculations.mdc`: Documentation updates
-
-## Time Formatting Guidelines
-
-### Display Rules
-1. **Minutes (< 60)**: Display as "X minutes" (e.g., "45 minutes")
-   - Singular: "1 minute"
-   - Plural: "45 minutes"
-
-2. **Hours (60+ minutes)**: Display as "X hours Y minutes" (e.g., "1 hour 19 minutes")
-   - If exactly whole hours, display as "X hours" (e.g., "2 hours")
-   - Singular hour: "1 hour 15 minutes"
-   - Plural hours: "2 hours 30 minutes"
-
-3. **Days (24+ hours)**: Display as "X.X days" with one decimal place (e.g., "2.5 days")
-   - If exactly whole days, display as "X days" (e.g., "3 days")
-   - Always use decimal notation for partial days
-
-### Implementation
-- Use the `formattedAsTime()` extension for full text display (e.g., "1 hour 19 minutes")
-- Use the `formattedAsTimeShort()` extension for compact display (e.g., "1h 19m", "2.5d")
-- This formatting applies to ALL time displays throughout the app
-- Located in: `Amped/Core/Extensions/TimeFormattingExtensions.swift`
-
-### Examples
-- 79 minutes → "1 hour 19 minutes" (full) or "1h 19m" (short)
-- 120 minutes → "2 hours" (full) or "2h" (short)
-- 1500 minutes → "1 day 1 hour" (full) or "1.0d" (short)
-- 3660 minutes → "2.5 days" (full) or "2.5d" (short)
-
-### Special Case: Steps Recommendations
-- **Steps metrics**: Show actual step count needed (e.g., "Walk 7,900 steps") instead of time
-- **Other metrics**: Continue using time formatting (e.g., "Exercise 1 hour 30 minutes")
-- **Benefits**: Always show time format for the benefit portion (e.g., "to add 1 hour 42 minutes")
-
-### Recommendation Ending Format (Updated Phase 4)
-- **All recommendations**: End with "to add X to your life" for clear benefit messaging
-- **Daily recommendations**: Show additional amount needed (e.g., "Walk 4,143 more steps today to add 1 hour 42 minutes to your life")
-- **Sleep daily recommendations**: Use "tonight" instead of "today" (e.g., "Sleep 1 hour more tonight to add 30 minutes to your life")
-- **Month recommendations**: Show total daily target (e.g., "Walk 8,743 steps daily this month to add 30 hours to your life")
-- **Year recommendations**: Show total daily target (e.g., "Walk 8,743 steps daily this next year to add 15.0 days to your life")
-
-## Core Recommendation Logic
-
-### Fixed Daily Target System (Updated Phase 5)
-
-```json
-{
-  "rule_id": "recommendations.fixed.targets",
-  "file": "Amped/Features/UI/RecommendationService.swift",
-  "description": "Fixed daily target system for consistent user experience",
-  "core_principle": "Calculate targets once per day, cache them, use simple arithmetic for remaining amounts",
-  "workflow": [
-    "1. Check for cached daily target for metric type and period",
-    "2. If cached target exists and valid, use simple arithmetic: Remaining = Target - Current",
-    "3. If no cached target, calculate once using J-curve science, cache it, then use",
-    "4. Targets remain fixed throughout the day for predictable user experience"
-  ],
-  "benefits": [
-    "User trust: Consistent targets that behave predictably",
-    "Better adherence: Users can track progress against fixed goals", 
-    "Reduced confusion: No more unexplained target changes",
-    "Scientific accuracy: Initial targets still based on research",
-    "Performance: Cached targets reduce complex recalculations"
-  ]
-}
+// Life expectancy bounds
+private let maximumProjectedLifespan = 120.0  // Maximum projection in years
+private let minimumRemainingYears = 1.0      // Minimum remaining life projection
 ```
 
-### Recommendation Principles (Updated Phase 5)
+## Individual Metric Calculation Formulas
 
-```json
-{
-  "rule_id": "recommendations.core.principles.fixed",
-  "file": "Amped/Features/UI/RecommendationService.swift",
-  "description": "Core principles governing fixed target recommendation logic",
-  "principles": [
-    {
-      "priority": 1,
-      "rule": "Calculate fixed daily targets once, use simple arithmetic thereafter",
-      "applies_to": "All metrics",
-      "example": "At 2,037 steps: Calculate target 9,957 once. At 2,350 steps: Show 9,957 - 2,350 = 7,607 remaining"
-    },
-    {
-      "priority": 2,
-      "rule": "For negative impact metrics, target reaches neutral (0 impact)",
-      "applies_to": "All negative impact metrics", 
-      "example": "Steps -1.7h → Fixed target: 9,957 steps to add 1 hour 42 minutes"
-    },
-    {
-      "priority": 3,
-      "rule": "For positive metrics, target achieves 20% improvement",
-      "applies_to": "All positive or zero impact metrics",
-      "example": "Good steps +30min → Fixed target: 20% improvement for additional 6min benefit"
-    },
-    {
-      "priority": 4,
-      "rule": "Targets expire at midnight and recalculate fresh each day",
-      "applies_to": "All metrics",
-      "rationale": "Daily recalibration maintains scientific accuracy while providing day-level consistency"
+### Steps Impact (ActivityImpactCalculator)
+
+**SUMMARY RULE**: J-shaped curve with optimal at 10,000 steps. High mortality risk below 2,700 steps (RR=1.6), decreasing logarithmically to 0.90 RR at 12,000 steps, then slight increase above 25,000. Use exact thresholds: <2700, 2700-4000, 4000-10000 (logarithmic), 10000-12000, 12000-20000, 20000-25000, >25000. Convert RR to daily minutes using: (1-RR) × 0.082 × baselineLifeMinutes ÷ (remainingYears × 365.25)
+
+**Research Basis**: Saint-Maurice et al. (2020) JAMA, Paluch et al. (2022) Lancet Public Health
+
+**Formula**: J-shaped logarithmic model with exact thresholds
+
+```swift
+func calculateStepsLifeImpact(currentSteps: Double, userProfile: UserProfile) -> Double {
+    let steps = max(0, currentSteps)
+    let relativeRisk: Double
+    
+    if steps < 2700 {
+        relativeRisk = 1.6 - 0.2 * (steps / 2700)
+    } else if steps < 4000 {
+        relativeRisk = 1.4 - 0.1 * ((steps - 2700) / (4000 - 2700))
+    } else if steps <= 10000 {
+        let ratio = (steps - 4000) / (10000 - 4000)
+        relativeRisk = 1.3 - 0.35 * log(1 + ratio * (exp(1) - 1))
+    } else if steps <= 12000 {
+        relativeRisk = 0.95 - 0.05 * ((steps - 10000) / 2000)
+    } else if steps <= 20000 {
+        relativeRisk = 0.90 + 0.03 * ((steps - 12000) / 8000)
+    } else if steps <= 25000 {
+        relativeRisk = 0.93 + 0.07 * ((steps - 20000) / 5000)
+    } else {
+        relativeRisk = 1.00 + 0.15 * min((steps - 25000) / 10000, 1)
     }
-  ]
+    
+    // Convert to daily impact
+    let riskReduction = 1.0 - relativeRisk
+    let impactScaling = 0.082  // From research (3.2 year gain for 50% RR reduction)
+    let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
+    let remainingYears = max(1.0, 78.0 - Double(userProfile.age ?? 40))
+    let dailyImpact = totalLifeMinChange / (remainingYears * 365.25)
+    
+    return dailyImpact
 }
 ```
 
-### Daily Target Caching Logic (New Phase 5)
+**Key Thresholds**:
+- Optimal: 10,000 steps (baseline value)
+- High risk: < 2,700 steps
+- Diminishing returns: > 12,000 steps
+- Maximum tracked: 25,000 steps
 
-```json
-{
-  "rule_id": "recommendations.target.caching",
-  "file": "Amped/Core/Models/DailyTarget.swift",
-  "description": "Caching system for fixed daily targets",
-  "model": "DailyTarget",
-  "fields": [
-    "metricType: HealthMetricType",
-    "targetValue: Double (fixed target to reach)",
-    "originalCurrentValue: Double (value when target calculated)",
-    "benefitMinutes: Double (life benefit when target reached)", 
-    "calculationDate: Date (when target was calculated)",
-    "period: ImpactDataPoint.PeriodType (Day/Month/Year)"
-  ],
-  "cache_logic": {
-    "storage": "CacheManager with 24-hour expiration",
-    "validation": "isValidForToday checks if target calculated today",
-    "cleanup": "clearExpiredTargets() removes old targets automatically",
-    "uniqueness": "One target per (metricType, period) combination"
-  }
+### Exercise Minutes Impact (ActivityImpactCalculator)
+
+**SUMMARY RULE**: Logarithmic benefits based on weekly minutes. 0 min/week = RR 1.0. 0-150 min/week: logarithmic decrease to RR 0.77 (23% mortality reduction). 150-300 min/week: linear decrease to RR 0.65. >300 min/week: minimal additional benefit (RR 0.60). Convert weekly to daily input. Use scaling factor 0.126 for RR-to-daily-minutes conversion.
+
+**Research Basis**: Zhao et al. (2020) Circulation Research meta-analysis, WHO guidelines
+
+**Formula**: Logarithmic model based on weekly minutes
+
+```swift
+func calculateExerciseLifeImpact(weeklyMinutes: Double, optimalWeekly: Double, userProfile: UserProfile) -> Double {
+    let wkMin = max(0, weeklyMinutes)
+    let relativeRisk: Double
+    
+    if wkMin <= 0 {
+        relativeRisk = 1.0
+    } else if wkMin <= 150 {
+        relativeRisk = 1 - 0.23 * log(1 + wkMin/150 * (exp(1) - 1))
+    } else if wkMin <= 300 {
+        relativeRisk = 0.77 - 0.12 * ((wkMin - 150) / 150)
+    } else {
+        relativeRisk = 0.65 - 0.05 * min((wkMin - 300) / 300, 1)
+    }
+    
+    // Convert to daily impact
+    let riskReduction = 1.0 - relativeRisk
+    let impactScaling = 0.126  // From research (3.4 year gain for 35% RR reduction)
+    let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
+    let remainingYears = max(1.0, 78.0 - Double(userProfile.age ?? 40))
+    let dailyImpact = totalLifeMinChange / (remainingYears * 365.25)
+    
+    return dailyImpact
 }
 ```
 
-### Recommendation Generation Logic (Updated Phase 5)
+**Key Values**:
+- Optimal: 150 minutes/week (WHO guidelines)
+- Maximum benefit: 300 minutes/week
+- Impact scaling: 0.126 (23% mortality reduction at 150 min/week)
 
-```json
-{
-  "rule_id": "recommendations.generate.fixed.targets",
-  "file": "Amped/Features/UI/RecommendationService.swift",
-  "function": "generateRecommendation",
-  "description": "Generates consistent recommendations using fixed daily targets",
-  "inputs": ["metric", "selectedPeriod"],
-  "outputs": ["consistentRecommendation"],
-  "workflow": {
-    "step_1": "Clear expired targets from previous days",
-    "step_2": "Check cache for existing valid target (metricType + period)",
-    "step_3": "If cached: Use target.generateRecommendationText(currentValue)",
-    "step_4": "If not cached: Calculate target, cache it, then use it",
-    "step_5": "Return recommendation with simple arithmetic (Target - Current)"
-  },
-  "improvements": [
-    "Consistent targets throughout the day",
-    "Simple arithmetic users can verify",
-    "Cached calculations improve performance", 
-    "Scientific accuracy preserved at target calculation time",
-    "User psychology prioritized over mathematical precision"
-  ]
+### Sleep Hours Impact (CardiovascularImpactCalculator)
+
+**SUMMARY RULE**: U-shaped curve with optimal 7-8 hours (RR=1.0). Penalties: <6h = +8% RR per hour deficit, 6-7h = +6% RR per hour, 8-9h = +6% RR per hour excess, >9h = +10% RR per hour. Within optimal band (7-8h): +2% RR per 0.5h deviation from 7.5h center. Use scaling factor 0.05 for RR-to-daily-minutes conversion.
+
+**Research Basis**: Jike et al. (2018) Sleep Medicine meta-analysis
+
+**Formula**: U-shaped curve with penalties for deviation from 7-8 hours
+
+```swift
+func calculateSleepLifeImpact(currentSleep: Double, userProfile: UserProfile) -> Double {
+    let sleepH = max(3, min(currentSleep, 12))
+    let relativeRisk: Double
+    
+    if sleepH >= 7.0 && sleepH <= 8.0 {
+        // Optimal band 7–8 h: +2% RR / 0.5 h deviation
+        let deviation = min(abs(sleepH - 7.5), 0.5)
+        relativeRisk = 1.0 + (deviation / 0.5) * 0.02
+    } else if sleepH < 6.0 {
+        // Short <6 h: +8% RR per hr deficit
+        let deficit = 6.0 - sleepH
+        relativeRisk = 1.0 + deficit * 0.08
+    } else if sleepH < 7.0 {
+        // Borderline 6–7 h: +6% RR / hr
+        let deficit = 7.0 - sleepH
+        relativeRisk = 1.0 + deficit * 0.06
+    } else if sleepH <= 9.0 {
+        // Borderline 8–9 h: +6% RR / hr excess
+        let excess = sleepH - 8.0
+        relativeRisk = 1.0 + excess * 0.06
+    } else {
+        // Excess >9 h: +10% RR / hr
+        let excess = sleepH - 9.0
+        relativeRisk = 1.0 + excess * 0.10
+    }
+    
+    // Convert to daily impact
+    let riskReduction = 1.0 - relativeRisk
+    let impactScaling = 0.05  // From research
+    let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
+    let remainingYears = max(1.0, 78.0 - Double(userProfile.age ?? 40))
+    let dailyImpact = totalLifeMinChange / (remainingYears * 365.25)
+    
+    return dailyImpact
 }
 ```
 
-## Individual Metric Impact Calculations
+**Key Values**:
+- Optimal range: 7.0-8.0 hours (baseline: 7.5)
+- Moderate penalties: 6-7h and 8-9h (+6% RR per hour)
+- Severe penalties: <6h (+8% RR per hour), >9h (+10% RR per hour)
 
-### Steps Impact
+### Resting Heart Rate Impact (CardiovascularImpactCalculator)
 
-```json
-{
-  "rule_id": "lifeImpact.steps.daily",
-  "file": "Amped/Features/LifeImpact/ActivityImpactCalculator.swift",
-  "function": "calculateStepsLifeImpact",
-  "description": "Calculates daily lifespan impact from steps using J-shaped logarithmic model based on Saint-Maurice et al. (2020) JAMA and Paluch et al. (2022) Lancet Public Health.",
-  "inputs": ["currentSteps", "userProfile"],
-  "outputs": ["dailyImpactMinutes"],
-  "dependencies": ["StudyReferenceProvider"],
-  "formula": "J-shaped model: <2700 steps: RR=1.6-0.2*(steps/2700); 2700-4000: RR=1.4-0.1*((steps-2700)/1300); 4000-10000: RR=1.3-0.35*log(1+ratio*(e-1)); >10000: diminishing returns"
+**SUMMARY RULE**: Linear relationship with 60 bpm optimal. +16% mortality risk per 10 bpm above 60. Formula: RR = 1.0 + (bpm-60)/10 × 0.16. Bounds: 40-120 bpm. Use scaling factor 0.05 for RR-to-daily-minutes conversion.
+
+**Research Basis**: Aune et al. (2013) CMAJ meta-analysis
+
+**Formula**: Linear increase in mortality risk
+
+```swift
+func calculateRHRLifeImpact(currentRHR: Double, userProfile: UserProfile) -> Double {
+    let bpm = max(40, min(currentRHR, 120))
+    let reference = 60.0  // Optimal RHR
+    
+    // Linear risk: +16% per 10 bpm > 60
+    let bpmDifference = bpm - reference
+    let relativeRisk = 1.0 + (bpmDifference / 10.0) * 0.16
+    
+    // Convert to daily impact
+    let riskReduction = 1.0 - relativeRisk
+    let impactScaling = 0.05  // From research
+    let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
+    let remainingYears = max(1.0, 78.0 - Double(userProfile.age ?? 40))
+    let dailyImpact = totalLifeMinChange / (remainingYears * 365.25)
+    
+    return dailyImpact
 }
 ```
 
-### Exercise Minutes Impact
+**Key Values**:
+- Optimal: 60 bpm (reference point)
+- Linear penalty: +16% mortality risk per 10 bpm above 60
+- Bounds: 40-120 bpm
 
-```json
-{
-  "rule_id": "lifeImpact.exercise.daily",
-  "file": "Amped/Features/LifeImpact/ActivityImpactCalculator.swift",
-  "function": "calculateExerciseLifeImpact",
-  "description": "Calculates exercise impact based on WHO guidelines showing 23% mortality reduction for meeting 150 min/week.",
-  "inputs": ["weeklyMinutes", "optimalWeekly", "userProfile"],
-  "outputs": ["dailyImpactMinutes"],
-  "dependencies": ["StudyReferenceProvider"],
-  "formula": "0-150 min/week: RR=1-0.23*log(1+min/150*(e-1)); 150-300: RR=0.77-0.12*((min-150)/150); >300: RR=0.65-0.05*min((min-300)/300,1)"
+### Heart Rate Variability Impact (CardiovascularImpactCalculator)
+
+**SUMMARY RULE**: Linear relationship with 40ms reference point. ±17.4 minutes daily impact per 10ms deviation. Plateau at ±30ms (±52.2 minutes max). Bounds: 10-100ms. Direct minutes calculation, no RR conversion needed.
+
+**Research Basis**: Expert consensus model
+
+**Formula**: Linear with plateau effects
+
+```swift
+func calculateHRVLifeImpact(currentHRV: Double, userProfile: UserProfile) -> Double {
+    let hrv = max(10, min(currentHRV, 100))
+    let reference = 40.0  // Reference HRV
+    
+    // Calculate deviation from reference
+    let hrvDifference = hrv - reference
+    
+    // Clamp to ±70 ms plateau
+    let clampedDifference = max(-30.0, min(hrvDifference, 30.0))
+    
+    // ±17.4 min per 10 ms deviation
+    let dailyImpact = (clampedDifference / 10.0) * 17.4
+    
+    return dailyImpact
 }
 ```
 
-### Sleep Hours Impact
+**Key Values**:
+- Reference: 40 ms
+- Linear rate: ±17.4 minutes per 10 ms
+- Plateau: ±30 ms (±52.2 minutes max impact)
 
-```json
-{
-  "rule_id": "lifeImpact.sleep.daily",
-  "file": "Amped/Features/LifeImpact/CardiovascularImpactCalculator.swift",
-  "function": "calculateSleepLifeImpact",
-  "description": "Calculates sleep impact using U-shaped curve model from Jike et al. (2018) Sleep Medicine meta-analysis.",
-  "inputs": ["currentSleep", "userProfile"],
-  "outputs": ["dailyImpactMinutes"],
-  "dependencies": ["StudyReferenceProvider"],
-  "formula": "U-shaped: 7-8h optimal (RR=1.0+2%/0.5h deviation); <6h: +8% RR/hr deficit; 6-7h: +6% RR/hr; 8-9h: +6% RR/hr excess; >9h: +10% RR/hr"
+### Alcohol Consumption Impact (LifestyleImpactCalculator)
+
+**SUMMARY RULE**: Convert questionnaire scale (1-10) to actual drinks/day: 10=0, 8=0.25, 6=0.5, 4=1.0, 2=2.5, 0=4.0 drinks. Linear RR: ≤1 drink = +5% RR per drink, >1 drink = 1.05 + (excess×0.15). Clamp 0-5 drinks. Use scaling factor 0.08 for RR-to-daily-minutes conversion.
+
+**Research Basis**: Wood et al. (2018) Lancet meta-analysis
+
+**Formula**: Linear relationship with questionnaire scale conversion
+
+```swift
+func calculateAlcoholLifeImpact(drinksPerDay: Double, userProfile: UserProfile) -> Double {
+    let drinks = max(0, min(drinksPerDay, 5)) // Clamp to reasonable range
+    let relativeRisk: Double
+    
+    if drinks <= 1.0 {
+        // +5% RR per drink up to 1/day
+        relativeRisk = 1.0 + (drinks * 0.05)
+    } else {
+        // Steeper increase above 1 drink/day
+        let excessDrinks = drinks - 1.0
+        relativeRisk = 1.05 + (excessDrinks * 0.15) // Steeper penalty
+    }
+    
+    // Convert to daily impact
+    let riskReduction = 1.0 - relativeRisk
+    let impactScaling = 0.08  // From research
+    let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
+    let remainingYears = max(1.0, 78.0 - Double(userProfile.age ?? 40))
+    let dailyImpact = totalLifeMinChange / (remainingYears * 365.25)
+    
+    return dailyImpact
+}
+
+// Questionnaire conversion (scale 1-10 to actual drinks)
+func convertQuestionnaireScaleToActualDrinks(questionnaireValue: Double) -> Double {
+    switch questionnaireValue {
+    case 9...10: return 0.0      // Never drink
+    case 7..<9: return 0.25      // Rarely (1 drink/month)
+    case 5..<7: return 0.5       // Occasionally (1 drink/week)
+    case 3..<5: return 1.0       // Moderate (1 drink/day)
+    case 1..<3: return 2.5       // Regular (2-3 drinks/day)
+    case 0..<1: return 4.0       // Heavy (4+ drinks/day)
+    default: return 0.0
+    }
 }
 ```
 
-### Resting Heart Rate Impact
+### Smoking Status Impact (LifestyleImpactCalculator)
 
-```json
-{
-  "rule_id": "lifeImpact.rhr.daily",
-  "file": "Amped/Features/LifeImpact/CardiovascularImpactCalculator.swift",
-  "function": "calculateRHRLifeImpact",
-  "description": "Calculates resting heart rate impact using linear model from Aune et al. (2013) CMAJ meta-analysis.",
-  "inputs": ["currentRHR", "userProfile"],
-  "outputs": ["dailyImpactMinutes"],
-  "dependencies": ["StudyReferenceProvider"],
-  "formula": "Linear: +16% mortality risk per 10 bpm above 60. Daily impact = (RHR-60)/10 * riskFactor * scalingFactor"
+**SUMMARY RULE**: Convert questionnaire scale (1-10) to smoking status: 10-9=Never (0), 8-6=Former (1), 5-2=Light (2), 1-0=Heavy (3). Fixed daily penalties: Never=0 min, Former=-116.1 min, Light=-232.2 min, Heavy=-348.3 min. Direct minutes, no RR conversion.
+
+**Research Basis**: Extensive epidemiological studies
+
+**Formula**: Fixed daily penalties by smoking status
+
+```swift
+func calculateSmokingLifeImpact(smokingStatus: Double) -> Double {
+    let dailyImpact: Double
+    
+    switch Int(smokingStatus) {
+    case 0: dailyImpact = 0.0      // Never smoker
+    case 1: dailyImpact = -116.1   // Former smoker
+    case 2: dailyImpact = -232.2   // Light smoker (<1 pack/day)
+    case 3: dailyImpact = -348.3   // Heavy smoker (≥1 pack/day)
+    default: dailyImpact = 0.0
+    }
+    
+    return dailyImpact
+}
+
+// Questionnaire conversion (scale 1-10 to smoking status 0-3)
+func convertQuestionnaireScaleToSmokingStatus(questionnaireValue: Double) -> Double {
+    switch questionnaireValue {
+    case 9...10: return 0.0  // Never smoker
+    case 6..<9: return 1.0   // Former smoker
+    case 2..<6: return 2.0   // Occasionally
+    case 0..<2: return 3.0   // Daily heavy
+    default: return 0.0
+    }
 }
 ```
 
-### Heart Rate Variability Impact
+### Stress Level Impact (LifestyleImpactCalculator)
 
-```json
-{
-  "rule_id": "lifeImpact.hrv.daily",
-  "file": "Amped/Features/LifeImpact/CardiovascularImpactCalculator.swift",
-  "function": "calculateHRVLifeImpact",
-  "description": "Calculates HRV impact using expert consensus model with plateau effects.",
-  "inputs": ["currentHRV", "userProfile"],
-  "outputs": ["dailyImpactMinutes"],
-  "dependencies": ["StudyReferenceProvider"],
-  "formula": "Reference 40ms = 0 impact. +17.4 min per 10ms above, -17.4 min per 10ms below, plateau at ±70ms"
+**SUMMARY RULE**: Graduated risk by stress level (1-10 scale). ≤3=baseline RR 1.0. 3-6: +3% RR per level. 6-8: +5% RR per level. 8-10: +8% RR per level. Use scaling factor 0.04 for RR-to-daily-minutes conversion.
+
+**Research Basis**: Chronic stress mortality research
+
+**Formula**: Graduated risk increases by stress level
+
+```swift
+func calculateStressLifeImpact(stressLevel: Double, userProfile: UserProfile) -> Double {
+    let level = max(1, min(stressLevel, 10))
+    let relativeRisk: Double
+    
+    if level <= 3.0 {
+        // Below optimal: baseline
+        relativeRisk = 1.0
+    } else if level <= 6.0 {
+        // 3-6: Linear RR = 1 + 0.03*(level-3)
+        relativeRisk = 1.0 + 0.03 * (level - 3.0)
+    } else if level <= 8.0 {
+        // 6-8: +0.05 per level
+        let baseRisk = 1.0 + 0.03 * 3.0  // Risk at level 6
+        relativeRisk = baseRisk + 0.05 * (level - 6.0)
+    } else {
+        // 8-10: +0.08 per level
+        let baseRisk = 1.0 + 0.03 * 3.0 + 0.05 * 2.0  // Risk at level 8
+        relativeRisk = baseRisk + 0.08 * (level - 8.0)
+    }
+    
+    // Convert to daily impact
+    let riskReduction = 1.0 - relativeRisk
+    let impactScaling = 0.04  // From research
+    let totalLifeMinChange = baselineLifeMinutes * riskReduction * impactScaling
+    let remainingYears = max(1.0, 78.0 - Double(userProfile.age ?? 40))
+    let dailyImpact = totalLifeMinChange / (remainingYears * 365.25)
+    
+    return dailyImpact
 }
 ```
 
-### Alcohol Consumption Impact
+### Nutrition Quality Impact (LifestyleImpactCalculator)
 
-```json
-{
-  "rule_id": "lifeImpact.alcohol.daily",
-  "file": "Amped/Features/LifeImpact/LifestyleImpactCalculator.swift",
-  "function": "calculateAlcoholLifeImpact",
-  "description": "Calculates alcohol impact based on Wood et al. (2018) Lancet meta-analysis of 599,912 current drinkers.",
-  "inputs": ["drinksPerDay", "userProfile"],
-  "outputs": ["dailyImpactMinutes"],
-  "dependencies": ["StudyReferenceProvider"],
-  "formula": "Linear: -17.4 min per drink/day (14g alcohol). Questionnaire scale 1-10 converted to actual drinks"
+**SUMMARY RULE**: Quality scale 1-10. <7: linear negative impact from 0 at score 7 to -6.9 min at score 1. 7-8: 0 minutes. 8-10: linear positive impact to +3.3 min at score 10. Direct minutes calculation, no RR conversion.
+
+**Research Basis**: Dietary pattern research and Mediterranean diet studies
+
+**Formula**: Corrected realistic nutrition impact values
+
+```swift
+func calculateNutritionLifeImpact(nutritionQuality: Double, userProfile: UserProfile) -> Double {
+    let quality = max(1, min(nutritionQuality, 10))
+    let dailyImpact: Double
+    
+    if quality < 7.0 {
+        // Linear interpolation: score 7 = 0 min, score 1 = -6.9 min
+        dailyImpact = (quality - 7.0) * (6.9 / 6.0) // Reduced by factor of 20 from original
+    } else if quality <= 10.0 {
+        // Score 7-8 stays at 0, score 8-10 gains benefit
+        if quality < 8.0 {
+            dailyImpact = 0.0
+        } else {
+            dailyImpact = (quality - 8.0) * (3.3 / 2.0) // Reduced by factor of 20 from original
+        }
+    } else {
+        dailyImpact = 0.0
+    }
+    
+    return dailyImpact
 }
 ```
 
-### Smoking Status Impact
+### Social Connections Impact (LifestyleImpactCalculator)
 
-```json
-{
-  "rule_id": "lifeImpact.smoking.daily",
-  "file": "Amped/Features/LifeImpact/LifestyleImpactCalculator.swift",
-  "function": "calculateSmokingLifeImpact",
-  "description": "Calculates smoking impact based on extensive mortality research.",
-  "inputs": ["smokingStatus", "userProfile"],
-  "outputs": ["dailyImpactMinutes"],
-  "dependencies": ["StudyReferenceProvider"],
-  "formula": "Scale 1-10: 10=never (-0 min), 8=quit >5y (-3.5 min), 6=quit 1-5y (-17.4 min), 4=occasional (-43.5 min), 1=heavy (-139.2 min)"
+**SUMMARY RULE**: Quality scale 1-10. Linear relationship: score 1 = -43.5 min (isolated), score 5 = 0 min (neutral), score 10 = +3.3 min (highly connected). Direct minutes calculation, no RR conversion.
+
+**Research Basis**: Loneliness mortality research
+
+**Formula**: Linear relationship with social connection quality
+
+```swift
+func calculateSocialConnectionsLifeImpact(socialConnectionsQuality: Double, userProfile: UserProfile) -> Double {
+    let quality = max(1, min(socialConnectionsQuality, 10))
+    
+    // Linear: -43.5 min at quality 1 (isolated), 0 min at quality 5, +3.3 min at quality 10
+    let dailyImpact: Double
+    if quality <= 5.0 {
+        // Linear from -43.5 at 1 to 0 at 5
+        dailyImpact = -43.5 + (quality - 1.0) * (43.5 / 4.0)
+    } else {
+        // Linear from 0 at 5 to +3.3 at 10
+        dailyImpact = (quality - 5.0) * (3.3 / 5.0)
+    }
+    
+    return dailyImpact
 }
 ```
 
-### Stress Level Impact
+### Body Mass Impact (ActivityImpactCalculator)
 
-```json
-{
-  "rule_id": "lifeImpact.stress.daily",
-  "file": "Amped/Features/LifeImpact/LifestyleImpactCalculator.swift",
-  "function": "calculateStressLifeImpact",
-  "description": "Calculates stress impact based on chronic stress mortality research.",
-  "inputs": ["stressLevel", "userProfile"],
-  "outputs": ["dailyImpactMinutes"],
-  "dependencies": ["StudyReferenceProvider"],
-  "formula": "Linear: 0 impact at level 1, -34.8 min at level 10. Impact = -3.87 * (stressLevel - 1)"
+**SUMMARY RULE**: Linear relationship with 160 lbs reference (≈24.5 BMI). ±17.4 minutes daily impact per ±20 lbs deviation. Bounds: 80-400 lbs. Direct minutes calculation, no RR conversion.
+
+**Research Basis**: BMI mortality studies
+
+**Formula**: Linear impact per weight deviation
+
+```swift
+func calculateBodyMassLifeImpact(bodyMass: Double, userProfile: UserProfile) -> Double {
+    let mass = max(80, min(bodyMass, 400))  // Bounds: 80-400 lbs
+    let reference = 160.0  // Reference weight (≈24.5 BMI)
+    
+    // Calculate deviation from reference
+    let massDifference = mass - reference
+    
+    // ±17.4 min impact every ±20 lbs (linear)
+    let dailyImpact = (massDifference / 20.0) * 17.4
+    
+    return dailyImpact
 }
 ```
 
-### Nutrition Quality Impact
+### VO2 Max Impact (ActivityImpactCalculator)
 
-```json
-{
-  "rule_id": "lifeImpact.nutrition.daily",
-  "file": "Amped/Features/LifeImpact/LifestyleImpactCalculator.swift",
-  "function": "calculateNutritionLifeImpact",
-  "description": "Calculates nutrition impact based on diet quality research.",
-  "inputs": ["nutritionQuality", "userProfile"],
-  "outputs": ["dailyImpactMinutes"],
-  "dependencies": ["StudyReferenceProvider"],
-  "formula": "Score <7: linear negative impact up to -6.9 min at score 1; Score 8-10: positive impact up to +3.3 min at score 10"
+**SUMMARY RULE**: Age/gender-adjusted reference: base 40 ml·kg⁻¹·min⁻¹, -0.4 per year after age 30, females ×0.88. ±21.8 minutes daily impact per ±5 ml deviation. Plateau at ±20 ml (±87 min max). Bounds: 15-80 ml·kg⁻¹·min⁻¹. Direct minutes calculation.
+
+**Research Basis**: Cardiovascular fitness research with age/gender adjustments
+
+**Formula**: Linear with age and gender adjustments
+
+```swift
+func calculateVO2MaxLifeImpact(vo2Max: Double, userProfile: UserProfile) -> Double {
+    let vo2 = max(15, min(vo2Max, 80))  // Bounds: 15-80 ml·kg⁻¹·min⁻¹
+    
+    // Age and gender adjusted reference
+    let age = Double(userProfile.age ?? 30)
+    let gender = userProfile.gender ?? .male
+    
+    // VO2 max declines ~1% per year after age 30
+    let ageDecline = max(0, (age - 30) * 0.4) // 0.4 mL/kg/min per year
+    var reference = 40.0 - ageDecline
+    
+    // Gender adjustment (females typically 10-15% lower)
+    if gender == .female {
+        reference *= 0.88
+    }
+    
+    // Calculate deviation from reference
+    let vo2Difference = vo2 - reference
+    
+    // Clamp to ±20 (gives ±87 min)
+    let clampedDifference = max(-20.0, min(vo2Difference, 20.0))
+    
+    // ±21.8 min per ±5 ml difference
+    let dailyImpact = (clampedDifference / 5.0) * 21.8
+    
+    return dailyImpact
 }
 ```
 
-### Social Connections Impact
+### Active Energy Burned Impact (ActivityImpactCalculator)
 
-```json
-{
-  "rule_id": "lifeImpact.socialConnections.daily",
-  "file": "Amped/Features/LifeImpact/LifestyleImpactCalculator.swift",
-  "function": "calculateSocialConnectionsLifeImpact",
-  "description": "Calculates social connections impact based on loneliness mortality research.",
-  "inputs": ["socialConnectionsQuality", "userProfile"],
-  "outputs": ["dailyImpactMinutes"],
-  "dependencies": ["StudyReferenceProvider"],
-  "formula": "Linear: -43.5 min at quality 1 (isolated), 0 min at quality 5, +3.3 min at quality 10"
+**SUMMARY RULE**: Linear relationship with 400 kcal reference. ±17.4 minutes daily impact per ±100 kcal deviation. Clamp deviation to ±900 kcal. Bounds: 0-1300 kcal. Direct minutes calculation, no RR conversion.
+
+**Research Basis**: Calorie expenditure research
+
+**Formula**: Linear impact per calorie deviation
+
+```swift
+func calculateActiveEnergyLifeImpact(activeEnergy: Double, userProfile: UserProfile) -> Double {
+    let energy = max(0, min(activeEnergy, 1300))  // Bounds: 0-1300 kcal
+    let reference = 400.0  // Reference calories
+    
+    // Calculate deviation from reference
+    let energyDifference = energy - reference
+    
+    // Clamp to ±900 kcal
+    let clampedDifference = max(-900.0, min(energyDifference, 900.0))
+    
+    // ±17.4 min per 100 kcal deviation
+    let dailyImpact = (clampedDifference / 100.0) * 17.4
+    
+    return dailyImpact
 }
 ```
 
-### Body Mass Impact
+### Oxygen Saturation Impact (ActivityImpactCalculator)
 
-```json
-{
-  "rule_id": "lifeImpact.bodyMass.daily",
-  "file": "Amped/Features/LifeImpact/ActivityImpactCalculator.swift",
-  "function": "calculateBodyMassLifeImpact",
-  "description": "Calculates body mass impact using linear model.",
-  "inputs": ["bodyMass", "userProfile"],
-  "outputs": ["dailyImpactMinutes"],
-  "dependencies": ["StudyReferenceProvider"],
-  "formula": "Reference 160 lbs. ±17.4 min impact every ±20 lbs (linear)"
-}
-```
+**SUMMARY RULE**: Linear relationship with 98% reference. ±8.7 minutes daily impact per ±2% deviation. Bounds: 80-100%. Direct minutes calculation, no RR conversion.
 
-### VO2 Max Impact
+**Research Basis**: Expert consensus
 
-```json
-{
-  "rule_id": "lifeImpact.vo2Max.daily",
-  "file": "Amped/Features/LifeImpact/ActivityImpactCalculator.swift",
-  "function": "calculateVO2MaxLifeImpact",
-  "description": "Calculates VO2 Max impact based on cardiovascular fitness research.",
-  "inputs": ["vo2Max", "userProfile"],
-  "outputs": ["dailyImpactMinutes"],
-  "dependencies": ["StudyReferenceProvider"],
-  "formula": "Reference 40. ±21.8 min per ±5 ml difference, capped at ±87 min"
-}
-```
+**Formula**: Linear impact per saturation deviation
 
-### Active Energy Burned Impact
-
-```json
-{
-  "rule_id": "lifeImpact.activeEnergy.daily",
-  "file": "Amped/Features/LifeImpact/ActivityImpactCalculator.swift",
-  "function": "calculateActiveEnergyLifeImpact",
-  "description": "Calculates active energy impact based on calorie burn.",
-  "inputs": ["activeEnergy", "userProfile"],
-  "outputs": ["dailyImpactMinutes"],
-  "dependencies": ["StudyReferenceProvider"],
-  "formula": "Reference 400 kcal = 0 impact. ±17.4 min per 100 kcal deviation, clamped ±900 kcal"
-}
-```
-
-### Oxygen Saturation Impact
-
-```json
-{
-  "rule_id": "lifeImpact.oxygenSaturation.daily",
-  "file": "Amped/Features/LifeImpact/ActivityImpactCalculator.swift",
-  "function": "calculateOxygenSaturationLifeImpact",
-  "description": "Calculates oxygen saturation impact.",
-  "inputs": ["oxygenSaturation", "userProfile"],
-  "outputs": ["dailyImpactMinutes"],
-  "dependencies": ["StudyReferenceProvider"],
-  "formula": "Reference 98%. ±8.7 min per ±2% deviation"
+```swift
+func calculateOxygenSaturationLifeImpact(oxygenSaturation: Double, userProfile: UserProfile) -> Double {
+    let saturation = max(80, min(oxygenSaturation, 100))  // Bounds: 80-100%
+    let reference = 98.0  // Reference saturation
+    
+    // Calculate deviation from reference
+    let saturationDifference = saturation - reference
+    
+    // ±8.7 min per ±2% deviation
+    let dailyImpact = (saturationDifference / 2.0) * 8.7
+    
+    return dailyImpact
 }
 ```
 
 ## Aggregated Impact Calculations
 
-### Total Daily Impact
+### Total Impact Calculation (LifeImpactService)
 
-```json
-{
-  "rule_id": "lifeImpact.total.daily",
-  "file": "Amped/Features/LifeImpact/LifeImpactService.swift",
-  "function": "calculateTotalImpact",
-  "description": "Aggregates individual metric impacts with interaction effects and mortality adjustments.",
-  "inputs": ["metrics", "periodType", "userProfile"],
-  "outputs": ["ImpactDataPoint"],
-  "dependencies": ["InteractionEffectEngine", "BaselineMortalityAdjuster"],
-  "steps": [
-    "Calculate individual impacts",
-    "Apply interaction effects",
-    "Apply mortality adjustments",
-    "Apply advanced scaling",
-    "Weight by evidence quality"
-  ]
+**SUMMARY RULE**: 5-step process: (1) Calculate individual daily impacts for each metric, (2) Apply interaction effects (synergies/antagonisms), (3) Apply mortality adjustments (sqrt(baseRate/mortalityRate)), (4) Weight by evidence quality (High=1.0x, Moderate=0.8x, Low=0.6x), (5) Apply simple linear period scaling (Day×1, Month×30, Year×365). Individual metrics are ALWAYS daily averages regardless of period.
+
+The total impact calculation follows this process:
+
+1. **Calculate Individual Impacts**: Each metric gets its daily impact calculated
+2. **Apply Interaction Effects**: Synergies and antagonisms between metrics
+3. **Apply Mortality Adjustments**: Age and gender-specific adjustments
+4. **Weight by Evidence Quality**: Impacts weighted by research reliability
+5. **Apply Period Scaling**: Simple linear scaling for time periods
+
+```swift
+func calculateTotalImpact(from metrics: [HealthMetric], for periodType: ImpactDataPoint.PeriodType) -> ImpactDataPoint {
+    // Step 1: Calculate individual impacts
+    var impacts = calculateImpacts(for: metrics)
+    
+    // Step 2: Apply interaction effects
+    impacts = interactionEngine.calculateAdjustedImpacts(impacts: impacts, metrics: metrics)
+    
+    // Step 3: Apply mortality adjustments
+    let age = userProfile.age ?? 30
+    let gender = userProfile.gender ?? .male
+    impacts = impacts.map { impact in
+        let adjustedDailyImpact = mortalityAdjuster.adjustImpactForMortality(
+            dailyImpact: impact.lifespanImpactMinutes,
+            age: age,
+            gender: gender
+        )
+        // Return new MetricImpactDetail with adjusted impact...
+    }
+    
+    // Step 4: Sum daily impacts with evidence weighting
+    var totalDailyImpactMinutes: Double = 0
+    var evidenceQualityScore: Double = 0
+    
+    for impact in impacts {
+        let evidenceWeight = impact.reliabilityScore
+        let weightedDailyImpact = impact.lifespanImpactMinutes * evidenceWeight
+        totalDailyImpactMinutes += weightedDailyImpact
+        evidenceQualityScore += evidenceWeight
+    }
+    
+    evidenceQualityScore = impacts.isEmpty ? 0 : evidenceQualityScore / Double(impacts.count)
+    
+    // Step 5: Apply period scaling (SIMPLE LINEAR)
+    let scaledTotalImpact: Double
+    switch periodType {
+    case .day:
+        scaledTotalImpact = totalDailyImpactMinutes
+    case .month:
+        scaledTotalImpact = totalDailyImpactMinutes * 30.0
+    case .year:
+        scaledTotalImpact = totalDailyImpactMinutes * 365.0
+    }
+    
+    return ImpactDataPoint(
+        date: Date(),
+        periodType: periodType,
+        totalImpactMinutes: scaledTotalImpact,
+        metricImpacts: impactsByType,
+        evidenceQualityScore: evidenceQualityScore
+    )
 }
 ```
 
-### Period Scaling (Updated Phase 1)
+### Battery Level Calculation (LifeImpactService)
 
-```json
-{
-  "rule_id": "lifeImpact.scaling.period",
-  "file": "Amped/Features/LifeImpact/LifeImpactService.swift",
-  "function": "applyAdvancedScaling",
-  "description": "Scales daily impacts to monthly/yearly based on effect type and behavior patterns with comprehensive debug logging and validation.",
-  "inputs": ["impact", "periodType", "metrics"],
-  "outputs": ["scaledImpact"],
-  "dependencies": ["EffectType"],
-  "debug_features": [
-    "Logs effect type and daily impact for each metric",
-    "Shows scaling calculations step-by-step",
-    "Validates logical progression (yearly > monthly > daily)",
-    "Warns when scaling seems illogical"
-  ],
-  "scaling_rules": {
-    "linearCumulative": "Simple multiplication (day*30, day*365) - no changes",
-    "logarithmic": "FIXED: Diminishing returns with 85% monthly, 65% yearly scaling (was broken log formula)",
-    "diminishingReturns": "Same as logarithmic - proper multiplication with diminishing factors",
-    "uShapedCurve": "FIXED: Daily periods return unmodified impact (was artificially amplified), monthly/yearly use moderate compounding",
-    "thresholdBased": "FIXED: Daily gets 30% effect (was 0%), full scaling after 21-day threshold",
-    "exponential": "FIXED: Added 50% bounds checking, 0.1% daily compound with realistic caps",
-    "plateau": "FIXED: Daily returns full effect, 20% continuation after 30-day plateau (was 10%)"
-  },
-  "validation": {
-    "expected_minimum_scaling": "Monthly ≥20x daily, Yearly ≥180x daily",
-    "warning_threshold": "Logs warning when scaling falls below expected minimums",
-    "bounds_checking": "Exponential effects capped at 150% of linear scaling"
-  }
+**SUMMARY RULE**: Normalize impact to ±1.0 range using ±120 minutes/day. Battery = 50% + (normalizedImpact × 50%). 0 impact = 50% battery, +120 min/day = 100% battery, -120 min/day = 0% battery. Clamp to 0-100% range.
+
+```swift
+func calculateBatteryLevel(from impactMinutes: Double) -> Double {
+    // Battery level calculation:
+    // 50% = baseline (0 impact)
+    // 100% = very positive impact (+120 minutes/day)
+    // 0% = very negative impact (-120 minutes/day)
+    
+    let normalizedImpact = impactMinutes / 120.0 // Normalize to ±1.0 range
+    let batteryLevel = 50.0 + (normalizedImpact * 50.0) // Convert to 0-100 range
+    
+    return max(0.0, min(100.0, batteryLevel))
 }
 ```
 
-## Interaction Effects
+## Interaction Effects (InteractionEffectEngine)
+
+**SUMMARY RULE**: Apply multiplicative factors to adjust individual metric impacts. Positive synergies >1.0x: Sleep+Exercise (1.15x), Exercise+HRV (1.10x), Nutrition+Exercise (1.12x). Negative antagonisms <1.0x: Alcohol+HRV (0.75x), Alcohol+Sleep (0.80x), Stress+Sleep (0.85x). Body mass reduces activity benefits by 0.90x per 20 lbs over 200 lbs.
 
 ### Sleep-Exercise Synergy
 
-```json
-{
-  "rule_id": "interaction.sleepExercise",
-  "file": "Amped/Features/LifeImpact/InteractionEffectEngine.swift",
-  "function": "calculateSleepExerciseSynergy",
-  "description": "Calculates synergistic effects between sleep and exercise.",
-  "inputs": ["sleepImpact", "exerciseImpact", "metrics"],
-  "outputs": ["synergyMultiplier"],
-  "dependencies": [],
-  "formula": "15% boost (1.15x) when both sleep (7-8h) and exercise (>150min/week) are optimal"
-}
+```swift
+// 15% boost (1.15x) when both sleep (7-8h) and exercise (>150min/week) are optimal
+static let sleepExerciseSynergy = 1.15
 ```
 
 ### Alcohol-HRV Antagonism
 
-```json
-{
-  "rule_id": "interaction.alcoholHRV",
-  "file": "Amped/Features/LifeImpact/InteractionEffectEngine.swift",
-  "function": "calculateAlcoholHRVAntagonism",
-  "description": "Calculates negative interaction between alcohol and HRV benefits.",
-  "inputs": ["alcoholImpact", "hrvImpact", "metrics"],
-  "outputs": ["antagonismMultiplier"],
-  "dependencies": [],
-  "formula": "25% reduction (0.75x) in HRV benefits when alcohol consumption >2 drinks/day"
-}
+```swift
+// 25% reduction (0.75x) in HRV benefits when alcohol consumption >2 drinks/day
+static let alcoholHRVAntagonism = 0.75
 ```
 
-### Body Mass-Activity Interaction
+### Alcohol-Sleep Antagonism
 
-```json
-{
-  "rule_id": "interaction.bodyMassActivity",
-  "file": "Amped/Features/LifeImpact/InteractionEffectEngine.swift",
-  "function": "calculateBodyMassActivityInteraction",
-  "description": "Adjusts activity benefits based on body mass.",
-  "inputs": ["bodyMassImpact", "activityImpact", "metrics"],
-  "outputs": ["adjustmentMultiplier"],
-  "dependencies": [],
-  "formula": "10% reduction (0.90x) in activity benefits per 20 lbs over 200 lbs threshold"
-}
+```swift
+// 20% reduction (0.80x) in sleep benefits
+static let alcoholSleepAntagonism = 0.80
 ```
 
 ### Stress-Sleep Antagonism
 
-```json
-{
-  "rule_id": "interaction.stressSleep",
-  "file": "Amped/Features/LifeImpact/InteractionEffectEngine.swift",
-  "function": "calculateStressSleepAntagonism",
-  "description": "Calculates negative interaction between stress and sleep benefits.",
-  "inputs": ["stressImpact", "sleepImpact", "metrics"],
-  "outputs": ["antagonismMultiplier"],
-  "dependencies": [],
-  "formula": "15% reduction (0.85x) in sleep benefits when stress level >7"
+```swift
+// 15% reduction (0.85x) in sleep benefits when stress level >7
+static let stressSleepAntagonism = 0.85
+```
+
+### Body Mass-Activity Interaction
+
+```swift
+// 10% reduction (0.90x) in activity benefits per 20 lbs over 200 lbs threshold
+static let bodyMassActivityThreshold = 200.0 // lbs
+static let bodyMassActivityReduction = 0.90   // per 20 lbs over threshold
+```
+
+## Life Projection Calculations (LifeProjectionService)
+
+**SUMMARY RULE**: Use WHO 2023 life tables for baseline expectancy by age/gender. Apply behavior decay in 5-year segments using exponential decay (Exercise/Steps=15%, Smoking/Alcohol=5%, Sleep/Nutrition=10%, Default=12% annual). Calculate total impact over remaining years, convert to years (÷525,600 min/year), apply evidence weighting, add to baseline. Bound between age+1 and 120 years.
+
+### Baseline Life Expectancy Tables (BaselineMortalityAdjuster)
+
+**WHO Global 2023 Life Tables**:
+
+```swift
+// Life expectancy by age and gender (remaining years)
+private struct LifeExpectancyTable {
+    static let male: [Int: Double] = [
+        0: 71.4, 10: 62.1, 20: 52.3, 30: 42.8, 40: 33.5,
+        50: 24.7, 60: 16.8, 70: 10.1, 80: 5.5, 90: 3.0
+    ]
+    
+    static let female: [Int: Double] = [
+        0: 76.8, 10: 67.4, 20: 57.5, 30: 47.7, 40: 38.1,
+        50: 28.8, 60: 20.1, 70: 12.5, 80: 6.8, 90: 3.5
+    ]
+}
+
+// Mortality rates per 100,000
+private struct MortalityTable {
+    static let maleRates: [Int: Double] = [
+        0: 4.5, 10: 0.15, 20: 0.75, 30: 1.2, 40: 2.0,
+        50: 4.5, 60: 11.0, 70: 25.0, 80: 60.0, 90: 150.0
+    ]
+    
+    static let femaleRates: [Int: Double] = [
+        0: 3.8, 10: 0.12, 20: 0.35, 30: 0.7, 40: 1.4,
+        50: 3.0, 60: 7.0, 70: 17.0, 80: 45.0, 90: 130.0
+    ]
 }
 ```
 
-## Life Projection Calculations
+### Mortality Adjustment Formula
 
-### Baseline Life Expectancy
-
-```json
-{
-  "rule_id": "projectionModel.baseline",
-  "file": "Amped/Features/LifeProjection/BaselineMortalityAdjuster.swift",
-  "function": "getBaselineLifeExpectancy",
-  "description": "Calculates baseline life expectancy using WHO Global 2023 life tables.",
-  "inputs": ["userProfile"],
-  "outputs": ["baselineYears"],
-  "dependencies": ["LifeExpectancyTable"],
-  "data": {
-    "male": "71.4 years at birth, decreasing with age",
-    "female": "76.8 years at birth, decreasing with age"
-  }
+```swift
+func adjustImpactForMortality(dailyImpact: Double, age: Int, gender: UserProfile.Gender) -> Double {
+    let mortalityRate = getAnnualMortalityRate(age: age, gender: gender)
+    
+    // Calculate adjustment factor
+    let baseRate = 0.001 // 0.1% baseline
+    let adjustmentFactor = baseRate / max(mortalityRate, baseRate)
+    
+    // Apply non-linear adjustment (sqrt for more realistic curve)
+    let adjustedImpact = dailyImpact * sqrt(adjustmentFactor)
+    
+    return adjustedImpact
 }
 ```
 
-### Mortality-Adjusted Impact
+### Behavior Decay Rates
 
-```json
-{
-  "rule_id": "projectionModel.mortalityAdjustment",
-  "file": "Amped/Features/LifeProjection/BaselineMortalityAdjuster.swift",
-  "function": "adjustImpactForMortality",
-  "description": "Adjusts daily impact based on age-specific mortality rates.",
-  "inputs": ["dailyImpact", "age", "gender"],
-  "outputs": ["adjustedDailyImpact"],
-  "dependencies": ["MortalityTable"],
-  "formula": "adjustedImpact = dailyImpact * sqrt(baseRate / mortalityRate)"
+```swift
+func applyBehaviorDecay(impact: Double, yearsInFuture: Double, behaviorType: HealthMetricType) -> Double {
+    let decayRate: Double
+    switch behaviorType {
+    case .exerciseMinutes, .steps:
+        decayRate = 0.15 // 15% annual decay (harder to maintain)
+    case .smokingStatus, .alcoholConsumption:
+        decayRate = 0.05 // 5% annual decay (addiction patterns)
+    case .sleepHours, .nutritionQuality:
+        decayRate = 0.10 // 10% annual decay
+    default:
+        decayRate = 0.12 // 12% default decay
+    }
+    
+    // Exponential decay model
+    let decayFactor = exp(-decayRate * yearsInFuture)
+    return impact * decayFactor
 }
 ```
 
-### Behavior Decay
+### Life Projection Formula
 
-```json
-{
-  "rule_id": "projectionModel.behaviorDecay",
-  "file": "Amped/Features/LifeProjection/BaselineMortalityAdjuster.swift",
-  "function": "applyBehaviorDecay",
-  "description": "Models realistic behavior decay over time for projections.",
-  "inputs": ["impact", "yearsInFuture", "behaviorType"],
-  "outputs": ["decayedImpact"],
-  "dependencies": [],
-  "decay_rates": {
-    "exercise/steps": "15% annual decay",
-    "smoking/alcohol": "5% annual decay",
-    "sleep/nutrition": "10% annual decay",
-    "default": "12% annual decay"
-  }
+```swift
+func generateLifeProjection(for userProfile: UserProfile, dailyImpactMinutes: Double, evidenceQuality: Double) -> LifeProjection {
+    // Get baseline life expectancy
+    let baselineLifeExpectancy = mortalityAdjuster.getBaselineLifeExpectancy(for: userProfile)
+    let userAge = Double(userProfile.age ?? 30)
+    let remainingYears = max(1.0, baselineLifeExpectancy - userAge)
+    
+    // Apply behavior decay over time in 5-year segments
+    var totalLifespanImpactMinutes = 0.0
+    let yearsPerSegment = 5.0
+    var currentYear = 0.0
+    
+    while currentYear < remainingYears {
+        let segmentYears = min(yearsPerSegment, remainingYears - currentYear)
+        let segmentDays = segmentYears * 365.25
+        
+        // Apply decay for this segment using midpoint
+        let decayedDailyImpact = applyBehaviorDecayToAggregate(
+            dailyImpact: dailyImpactMinutes,
+            yearsInFuture: currentYear + segmentYears / 2.0
+        )
+        
+        totalLifespanImpactMinutes += decayedDailyImpact * segmentDays
+        currentYear += segmentYears
+    }
+    
+    // Convert total impact minutes to years
+    let lifespanImpactYears = totalLifespanImpactMinutes / (365.25 * 24 * 60)
+    
+    // Apply evidence quality weighting
+    let evidenceAdjustedImpact = lifespanImpactYears * evidenceQuality
+    
+    // Calculate projected lifespan
+    let projectedLifespan = baselineLifeExpectancy + evidenceAdjustedImpact
+    
+    // Bound between age+1 and 120 years
+    let boundedProjection = max(userAge + 1, min(120.0, projectedLifespan))
+    
+    return LifeProjection(
+        id: UUID(),
+        calculationDate: Date(),
+        baselineLifeExpectancyYears: baselineLifeExpectancy,
+        adjustedLifeExpectancyYears: boundedProjection,
+        confidencePercentage: evidenceQuality,
+        confidenceIntervalYears: 2.0
+    )
 }
 ```
 
-### Total Life Projection
+## HealthKit Data Processing (HealthDataService)
 
-```json
-{
-  "rule_id": "projectionModel.total",
-  "file": "Amped/Features/LifeProjection/LifeProjectionService.swift",
-  "function": "generateLifeProjection",
-  "description": "Projects total life expectancy based on daily impacts with behavior decay.",
-  "inputs": ["userProfile", "dailyImpactMinutes", "evidenceQuality"],
-  "outputs": ["LifeProjection"],
-  "dependencies": ["BaselineMortalityAdjuster"],
-  "steps": [
-    "Get baseline life expectancy",
-    "Calculate remaining years",
-    "Apply behavior decay in 5-year segments",
-    "Weight by evidence quality",
-    "Bound between age+1 and 120 years"
-  ]
+**SUMMARY RULE**: Use HKStatisticsCollectionQuery with proper options. Cumulative metrics (steps, exercise, energy): cumulativeSum, calculate daily totals then average. Status metrics (heart rate, HRV, weight): averageQuantity, extract daily averages then overall average. Include zero days for accurate averages. For daily view: use HKStatisticsQuery with today only. For periods: enumerate statistics over date range matching Apple Health methodology.
+
+### Cumulative Metrics (Steps, Exercise, Active Energy)
+
+Uses `HKStatisticsCollectionQuery` with `cumulativeSum` option:
+
+```swift
+// For monthly period: Calculate daily totals and average
+collection.enumerateStatistics(from: startDate, to: endDate) { statistics, _ in
+    if let sumQuantity = statistics.sumQuantity() {
+        let dailyValue = sumQuantity.doubleValue(for: unit)
+        dailyValues.append(dailyValue)
+        totalSum += dailyValue
+    } else {
+        dailyValues.append(0.0) // Include zero days for accurate averages
+    }
 }
+
+// Calculate average daily value exactly like Apple Health
+let averageDailyValue = totalSum / Double(totalDays)
 ```
 
-## Recommendations Engine
+### Status Metrics (Heart Rate, HRV, Weight)
 
-### Recommendation Generation
+Uses `HKStatisticsCollectionQuery` with `averageQuantity`:
 
-```json
-{
-  "rule_id": "recommendations.generate",
-  "file": "Amped/Features/UI/RecommendationService.swift",
-  "function": "generateRecommendation",
-  "description": "Generates actionable recommendations based on metric impact with realistic bounds and dynamic action sizing.",
-  "inputs": ["metric", "selectedPeriod"],
-  "outputs": ["recommendation"],
-  "dependencies": ["ActivityImpactCalculator", "CardiovascularImpactCalculator", "LifestyleImpactCalculator"],
-  "logic": "For negative impacts: calculate action to reach neutral. For positive: suggest 20% improvement",
-  "improvements": [
-    "Dynamic action sizing based on actual deficit",
-    "Realistic bounds checking to prevent biologically impossible recommendations",
-    "Period-appropriate benefit calculations",
-    "Personalized recommendations based on current fitness level"
-  ]
+```swift
+// Extract daily averages and calculate overall average
+collection.enumerateStatistics(from: startDate, to: endDate) { statistics, _ in
+    if let averageQuantity = statistics.averageQuantity() {
+        let dailyAverage = averageQuantity.doubleValue(for: unit)
+        dailyAverages.append(dailyAverage)
+    }
 }
+
+// Calculate overall average
+let overallAverage = dailyAverages.reduce(0, +) / Double(dailyAverages.count)
 ```
 
-### Steps Recommendations (Fixed Phase 4)
+### Sleep Processing (HealthKitSleepManager)
 
-```json
-{
-  "rule_id": "recommendations.steps.fixed.phase4",
-  "file": "Amped/Features/UI/RecommendationService.swift",
-  "function": "generateStepsRecommendation",
-  "description": "Generates realistic walking recommendations with period-appropriate logic.",
-  "inputs": ["metric", "period"],
-  "outputs": ["dynamicRecommendation"],
-  "dependencies": ["findStepsForNeutralImpact", "calculateRealisticStepTarget"],
-  "logic": {
-    "daily_period": "Show additional steps needed (e.g., 'Walk 4,143 more steps today')",
-    "monthly_yearly": "Show total daily target (e.g., 'Walk 8,743 steps daily this next year')",
-    "benefit_calculation": "Show actual benefit of reaching neutral (0 impact)",
-    "text_format": "All end with 'to add X to your life' for clear messaging"
-  },
-  "examples": {
-    "day": "Walk 4,143 more steps today to add 1 hour 42 minutes to your life",
-    "month": "Walk 8,743 steps daily this month to add 30 hours to your life",
-    "year": "Walk 8,743 steps daily this next year to add 15.0 days to your life"
-  }
-}
+Special handling for sleep data using category samples:
+
+```swift
+// Query HKCategoryValueSleepAnalysis samples
+// Sum all sleep stages for total sleep duration
+// Convert to hours for impact calculation
 ```
 
-### Exercise Recommendations (Fixed Phase 4)
-
-```json
-{
-  "rule_id": "recommendations.exercise.fixed.phase4",
-  "file": "Amped/Features/UI/RecommendationService.swift",
-  "function": "generateExerciseRecommendation",
-  "description": "Generates realistic exercise recommendations with period-appropriate logic.",
-  "inputs": ["metric", "period"],
-  "outputs": ["personalizedRecommendation"],
-  "dependencies": ["findExerciseForNeutralImpact"],
-  "logic": {
-    "daily_period": "Show additional minutes needed (e.g., 'Exercise 15 minutes more today')",
-    "monthly_yearly": "Show total daily target (e.g., 'Exercise 21 minutes daily this next year')",
-    "benefit_calculation": "Show actual benefit of reaching neutral (WHO guidelines)",
-    "text_format": "All end with 'to add X to your life' for clear messaging"
-  },
-  "examples": {
-    "day": "Exercise 15 minutes more today to add 45 minutes to your life",
-    "month": "Exercise 21 minutes daily this month to add 22 hours to your life",
-    "year": "Exercise 21 minutes daily this next year to add 11.2 days to your life"
-  }
-}
-```
-
-### Realistic Bounds System
-
-```json
-{
-  "rule_id": "recommendations.bounds",
-  "file": "Amped/Features/UI/RecommendationService.swift",
-  "function": "applyRealisticBounds",
-  "description": "Prevents biologically impossible recommendation benefits.",
-  "inputs": ["benefit", "period", "metricType"],
-  "outputs": ["clampedBenefit"],
-  "dependencies": [],
-  "bounds": {
-    "steps": "15 minutes max daily benefit",
-    "exerciseMinutes": "20 minutes max daily benefit",
-    "sleepHours": "10 minutes max daily benefit",
-    "nutritionQuality": "8 minutes max daily benefit",
-    "default": "12 minutes max daily benefit"
-  }
-}
-```
-
-### Period-Appropriate Formatting
-
-```json
-{
-  "rule_id": "recommendations.periodFormatting",
-  "file": "Amped/Features/UI/RecommendationService.swift",
-  "function": "formatBenefitForPeriod",
-  "description": "Formats benefits correctly for each time period.",
-  "inputs": ["dailyMinutes", "period"],
-  "outputs": ["formattedBenefit"],
-  "dependencies": [],
-  "logic": {
-    "day": "Shows daily benefit directly",
-    "month": "dailyBenefit * 30 days",
-    "year": "dailyBenefit * 365 days"
-  },
-  "replaced": "Old formatBenefit method that incorrectly used period.multiplier"
-}
-```
-
-### ActionableRecommendationsView Integration
-
-```json
-{
-  "rule_id": "recommendations.uiIntegration",
-  "file": "Amped/UI/Components/ActionableRecommendationsView.swift",
-  "function": "actionText",
-  "description": "UI now uses RecommendationService directly instead of hardcoded text.",
-  "inputs": ["metric"],
-  "outputs": ["recommendation"],
-  "dependencies": ["RecommendationService"],
-  "improvements": [
-    "Removed hardcoded '20-minute walk' text",
-    "Removed separate benefit calculation logic",
-    "Single source of truth for recommendations",
-    "Consistent formatting across all UI components"
-  ]
-}
-```
-
-### Recommendation Prioritization
-
-```json
-{
-  "rule_id": "recommendations.prioritize",
-  "file": "Amped/Features/UI/RecommendationService.swift",
-  "function": "getPrioritizedRecommendations",
-  "description": "Prioritizes recommendations based on potential gain and difficulty.",
-  "inputs": ["metrics", "selectedPeriod", "maxRecommendations"],
-  "outputs": ["PrioritizedRecommendation[]"],
-  "dependencies": ["LifeImpactService"],
-  "formula": "priority = potentialGain * difficultyMultiplier (easy=1.5, moderate=1.0, hard=0.7)"
-}
-```
-
-## Debug Logging & Validation (Phase 1)
-
-### Scaling Debug Logging
-
-```json
-{
-  "rule_id": "debug.scalingLogs",
-  "file": "Amped/Features/LifeImpact/LifeImpactService.swift",
-  "function": "applyAdvancedScaling",
-  "description": "Comprehensive debug logging for all scaling calculations to identify issues.",
-  "log_categories": [
-    "🔍 Advanced Scaling Debug: [MetricName]",
-    "📈 Diminishing returns scaling: [Details]", 
-    "🌙 Sleep U-shaped scaling: [Sleep-specific]",
-    "🎯 Threshold scaling: [Threshold details]",
-    "📈 Exponential scaling: [Growth details]",
-    "🏔️ Plateau scaling: [Plateau details]"
-  ],
-  "logged_data": [
-    "Effect type applied",
-    "Daily impact value",
-    "Selected period",
-    "Scaling calculations step-by-step",
-    "Final scaled result",
-    "Scaling factor multiplier"
-  ]
-}
-```
-
-### Scaling Validation
-
-```json
-{
-  "rule_id": "debug.scalingValidation",
-  "file": "Amped/Features/LifeImpact/LifeImpactService.swift",
-  "function": "applyAdvancedScaling",
-  "description": "Validates logical progression and warns about scaling issues.",
-  "validation_rules": [
-    "Monthly scaling should be ≥20x daily impact",
-    "Yearly scaling should be ≥180x daily impact", 
-    "Exponential effects bounded at 150% of linear scaling",
-    "Daily periods never artificially amplified beyond true value"
-  ],
-  "warning_triggers": [
-    "Scaled impact smaller than expected minimum",
-    "Effect type producing counterintuitive results",
-    "Bounds checking activated for exponential effects"
-  ]
-}
-```
-
-### Individual Scaling Function Logging
-
-```json
-{
-  "rule_id": "debug.individualScaling",
-  "file": "Amped/Features/LifeImpact/LifeImpactService.swift",
-  "functions": ["scaleDiminishingEffect", "scaleUShapedEffect", "scaleThresholdEffect", "scaleExponentialEffect", "scalePlateauEffect"],
-  "description": "Each scaling function now logs its specific calculations and parameters.",
-  "logged_parameters": [
-    "Diminishing factor applied",
-    "Compounding factor for sleep",
-    "Threshold days and progression", 
-    "Exponential growth rate and bounds",
-    "Plateau days and continuation rate"
-  ]
-}
-```
-
-## Battery UI Calculations
-
-### Impact Battery Level
-
-```json
-{
-  "rule_id": "batteryUI.impactLevel",
-  "file": "Amped/Features/LifeImpact/LifeImpactService.swift",
-  "function": "calculateBatteryLevel",
-  "description": "Converts impact minutes to battery charge level (0-100%).",
-  "inputs": ["impactMinutes"],
-  "outputs": ["batteryLevel"],
-  "dependencies": [],
-  "formula": "50% baseline + (impact/120) * 50%. Range: 0-100%"
-}
-```
-
-### Projection Battery Display
-
-```json
-{
-  "rule_id": "batteryUI.projectionDisplay",
-  "file": "Amped/Features/LifeProjection/LifeProjectionService.swift",
-  "function": "formatForBatteryDisplay",
-  "description": "Formats life projection for battery visualization.",
-  "inputs": ["projection", "userAge"],
-  "outputs": ["percentage", "displayText"],
-  "dependencies": [],
-  "formula": "percentage = (remainingYears / 60) * 100, capped at 100%"
-}
-```
-
-### Realtime Countdown
-
-```json
-{
-  "rule_id": "batteryUI.realtimeCountdown",
-  "file": "Amped/UI/Components/BatteryIndicatorView.swift",
-  "function": "displayNumericValue",
-  "description": "Shows precise remaining years with 8 decimal places, updating every second.",
-  "inputs": ["lifeProjection", "currentUserAge", "currentTime"],
-  "outputs": ["preciseRemainingYears"],
-  "dependencies": ["SettingsManager"],
-  "formula": "baseRemaining - (timeElapsedThisYear / secondsPerYear)"
-}
-```
-
-## Chart Data Processing
-
-### Outlier Detection
-
-```json
-{
-  "rule_id": "chartData.outlierDetection",
-  "file": "Amped/UI/MetricComponents/ChartDataProcessor.swift",
-  "function": "clipOutliers",
-  "description": "Detects and clips outliers using Interquartile Range (IQR) method.",
-  "inputs": ["dataPoints", "metricType"],
-  "outputs": ["clippedDataPoints"],
-  "dependencies": [],
-  "formula": "Bounds = Q1 - 1.5*IQR to Q3 + 1.5*IQR"
-}
-```
-
-### Data Smoothing
-
-```json
-{
-  "rule_id": "chartData.smoothing",
-  "file": "Amped/UI/MetricComponents/ChartDataProcessor.swift",
-  "function": "applySmoothing",
-  "description": "Applies weighted moving average smoothing to reduce noise.",
-  "inputs": ["dataPoints", "smoothingLevel"],
-  "outputs": ["smoothedDataPoints"],
-  "dependencies": [],
-  "window_sizes": {
-    "light": 3,
-    "moderate": 5,
-    "heavy": 7
-  }
-}
-```
-
-### Period Aggregation
-
-```json
-{
-  "rule_id": "chartData.aggregation",
-  "file": "Amped/UI/MetricComponents/ChartDataProcessor.swift",
-  "function": "aggregateDataPoints",
-  "description": "Aggregates data points for different time periods.",
-  "inputs": ["dataPoints", "metricType", "period"],
-  "outputs": ["aggregatedDataPoints"],
-  "dependencies": [],
-  "methods": {
-    "cumulative": "Sum per period (steps, exercise, energy)",
-    "discrete": "Average per period (heart rate, HRV, weight)",
-    "sleep": "Special handling for sleep patterns"
-  }
-}
-```
-
-## Dashboard Calculations
-
-### Period-Specific Metrics
-
-```json
-{
-  "rule_id": "dashboard.periodMetrics",
-  "file": "Amped/Features/UI/DashboardViewModel.swift",
-  "function": "loadDataForPeriod",
-  "description": "Loads and calculates metrics for selected time period.",
-  "inputs": ["timePeriod"],
-  "outputs": ["healthMetrics", "lifeImpactData", "lifeProjection"],
-  "dependencies": ["HealthDataService", "LifeImpactService", "LifeProjectionService"],
-  "process": "Fetch period data → Calculate impacts → Update projections"
-}
-```
-
-### Total Time Impact
-
-```json
-{
-  "rule_id": "dashboard.totalImpact",
-  "file": "Amped/Features/UI/DashboardView.swift",
-  "function": "totalTimeImpact",
-  "description": "Calculates total time impact from all filtered metrics.",
-  "inputs": ["filteredMetrics"],
-  "outputs": ["totalImpactMinutes"],
-  "dependencies": [],
-  "formula": "Sum of all metric.impactDetails.lifespanImpactMinutes"
-}
-```
-
-## Evidence Quality Weighting
+## Evidence Quality and Study References
 
 ### Study Reference Provider
 
-```json
-{
-  "rule_id": "evidence.studyProvider",
-  "file": "Amped/Features/LifeImpact/StudyReferenceProvider.swift",
-  "function": "getApplicableStudies",
-  "description": "Provides peer-reviewed research references for impact calculations.",
-  "inputs": ["metricType", "userProfile"],
-  "outputs": ["StudyReference[]"],
-  "dependencies": [],
-  "quality_scores": {
-    "high": "Meta-analyses, large cohorts",
-    "moderate": "Smaller studies, limited follow-up",
-    "low": "Expert consensus, extrapolated data"
-  }
+The app uses real peer-reviewed research with proper citations:
+
+**Steps Research**:
+- Saint-Maurice et al. (2020) JAMA - 4,840 participants, 10.1 year follow-up
+- Paluch et al. (2022) Lancet Public Health - 47,471 participants, meta-analysis
+
+**Sleep Research**:
+- Jike et al. (2018) Sleep Medicine - 3,995,848 participants, meta-analysis
+
+**Exercise Research**:
+- Zhao et al. (2020) Circulation Research - 1,737,844 participants, meta-analysis
+
+**Cardiovascular Research**:
+- Aune et al. (2013) CMAJ - 463,520 participants, meta-analysis (heart rate)
+
+**Alcohol Research**:
+- Wood et al. (2018) Lancet - 599,912 participants, individual-participant data
+
+### Evidence Quality Scoring
+
+```swift
+enum EvidenceStrength: String {
+    case high = "High" // Meta-analyses, large cohorts
+    case moderate = "Moderate" // Smaller studies, limited follow-up  
+    case low = "Low" // Expert consensus, extrapolated data
+}
+
+// Reliability scores used for weighting
+extension MetricImpactDetail {
+    var reliabilityScore: Double {
+        switch evidenceStrength {
+        case .high: return 1.0
+        case .moderate: return 0.8
+        case .low: return 0.6
+        }
+    }
 }
 ```
 
-### Evidence-Based Weighting
+## Configuration and Constants Summary
 
-```json
-{
-  "rule_id": "evidence.weighting",
-  "file": "Amped/Features/LifeImpact/LifeImpactService.swift",
-  "function": "calculateTotalImpact",
-  "description": "Weights impacts by evidence quality and reliability scores.",
-  "inputs": ["impacts"],
-  "outputs": ["weightedImpacts"],
-  "dependencies": ["MetricImpactDetail.reliabilityScore"],
-  "formula": "weightedImpact = scaledImpact * evidenceWeight"
-}
-```
+**Global Settings**:
+- Baseline life expectancy: 78 years
+- Battery normalization: ±120 minutes/day
+- Maximum projection: 120 years
+- Confidence interval: ±2 years
 
-## Configuration
+**Period Scaling**:
+- Day: 1x (no scaling)
+- Month: 30x (simple linear)
+- Year: 365x (simple linear)
 
-All calculations use these base constants:
-- Baseline life expectancy: 78 years (WHO global average)
-- Impact normalization: ±120 minutes/day for battery visualization
-- Confidence intervals: Based on study-specific data
-- Maximum projected lifespan: 120 years
-- Behavior decay rates: Metric-specific (5-15% annually)
-description:
-globs:
-alwaysApply: false
----
+**Evidence Weighting**:
+- High quality: 1.0x
+- Moderate quality: 0.8x  
+- Low quality: 0.6x
+
+**Behavior Decay Rates**:
+- Exercise/Steps: 15% annual
+- Smoking/Alcohol: 5% annual
+- Sleep/Nutrition: 10% annual
+- Default: 12% annual
+
+This documentation reflects the exact current state of all calculations in the Amped iOS app as implemented in the codebase.

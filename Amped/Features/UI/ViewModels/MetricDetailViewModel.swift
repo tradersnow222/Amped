@@ -325,7 +325,7 @@ final class MetricDetailViewModel: ObservableObject {
     
     // MARK: - Initialization
     
-    init(metric: HealthMetric) {
+    init(metric: HealthMetric, initialPeriod: ImpactDataPoint.PeriodType? = nil) {
         // CRITICAL FIX: Use the pre-calculated impact from the dashboard metric to ensure consistency
         let userProfile = UserProfile() // Using default initialization
         
@@ -352,6 +352,11 @@ final class MetricDetailViewModel: ObservableObject {
         
         // Initialize last known value
         self.lastKnownValue = self.originalMetric.value
+        
+        // UX FIX: Set initial period if provided to maintain period selection from dashboard
+        if let initialPeriod = initialPeriod {
+            self.selectedPeriod = initialPeriod
+        }
     }
     
     deinit {

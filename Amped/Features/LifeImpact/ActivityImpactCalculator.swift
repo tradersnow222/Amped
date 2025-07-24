@@ -129,13 +129,22 @@ class ActivityImpactCalculator {
     ) -> Double {
         let wkMin = max(0, weeklyMinutes)
         
-        // Exact formula from playbook
+        // CRITICAL FIX: Adjust baseline so 0 exercise has negative impact
+        // The original formula treated 0 minutes as baseline (RR = 1.0)
+        // But 0 exercise should be worse than average population baseline
         let relativeRisk: Double
         
         if wkMin <= 0 {
-            relativeRisk = 1.0
+            // FIXED: 0 exercise should have higher risk than baseline (negative impact)
+            // Set RR = 1.15 (15% higher risk than population baseline)
+            relativeRisk = 1.15
         } else if wkMin <= 150 {
-            relativeRisk = 1 - 0.23 * log(1 + wkMin/150 * (exp(1) - 1))
+            // Adjust the logarithmic curve to start from the new baseline
+            // Original: RR went from 1.0 → 0.77 (23% reduction)
+            // New: RR goes from 1.15 → 0.77 (33% total reduction from sedentary to optimal)
+            let progressRatio = wkMin / 150.0
+            // Logarithmic interpolation from 1.15 to 0.77
+            relativeRisk = 1.15 - 0.38 * log(1 + progressRatio * (exp(1) - 1))
         } else if wkMin <= 300 {
             relativeRisk = 0.77 - 0.12 * ((wkMin - 150) / 150)
         } else {

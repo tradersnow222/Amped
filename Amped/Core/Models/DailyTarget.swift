@@ -129,9 +129,23 @@ struct DailyTarget: Codable, Identifiable, Equatable {
     func generateRecommendationText(currentValue: Double, userProfile: UserProfile = UserProfile()) -> String {
         let remaining = remainingAmount(currentValue: currentValue)
         
-        // CRITICAL FIX: Calculate benefit dynamically based on current progress
-        let currentBenefit = calculateCurrentBenefit(currentValue: currentValue, userProfile: userProfile)
-        let benefitText = currentBenefit.formattedAsTime()
+        // CRITICAL FIX: Calculate benefit dynamically based on current progress and scale for time period
+        let dailyBenefit = calculateCurrentBenefit(currentValue: currentValue, userProfile: userProfile)
+        
+        // Scale benefit by time period duration for month and year periods
+        let scaledBenefit: Double
+        switch period {
+        case .day:
+            scaledBenefit = dailyBenefit
+        case .month:
+            // For month period, show the cumulative benefit over 30 days
+            scaledBenefit = dailyBenefit * 30.0
+        case .year:
+            // For year period, show the cumulative benefit over 365 days
+            scaledBenefit = dailyBenefit * 365.0
+        }
+        
+        let benefitText = scaledBenefit.formattedAsTime()
         
         switch period {
         case .day:
@@ -164,53 +178,53 @@ struct DailyTarget: Codable, Identifiable, Equatable {
         case .steps:
             let formattedSteps = Int(remaining).formatted(.number.grouping(.automatic))
             if isCurrentlyNegative {
-                return "Walk \(formattedSteps) more steps today to add \(benefitText)"
+                return "Walk \(formattedSteps) more steps today to add \(benefitText) to your lifespan"
             } else {
-                return "Walk \(formattedSteps) more steps today to add \(benefitText) to your life"
+                return "Walk \(formattedSteps) more steps today to add \(benefitText) to your lifespan"
             }
         case .exerciseMinutes:
             let exerciseTime = remaining.formattedAsTime()
             if isCurrentlyNegative {
-                return "Exercise \(exerciseTime) more today to add \(benefitText)"
+                return "Exercise \(exerciseTime) more today to add \(benefitText) to your lifespan"
             } else {
-                return "Exercise \(exerciseTime) more today to add \(benefitText) to your life"
+                return "Exercise \(exerciseTime) more today to add \(benefitText) to your lifespan"
             }
         case .sleepHours:
             let sleepTime = (remaining * 60).formattedAsTime()
             if isCurrentlyNegative {
-                return "Sleep \(sleepTime) more tonight to add \(benefitText)"
+                return "Sleep \(sleepTime) more tonight to add \(benefitText) to your lifespan"
             } else {
-                return "Sleep \(sleepTime) more tonight to add \(benefitText) to your life"
+                return "Sleep \(sleepTime) more tonight to add \(benefitText) to your lifespan"
             }
         case .activeEnergyBurned:
             if isCurrentlyNegative {
-                return "Burn \(Int(remaining)) more calories today to add \(benefitText)"
+                return "Burn \(Int(remaining)) more calories today to add \(benefitText) to your lifespan"
             } else {
-                return "Burn \(Int(remaining)) more calories today to add \(benefitText) to your life"
+                return "Burn \(Int(remaining)) more calories today to add \(benefitText) to your lifespan"
             }
         case .socialConnectionsQuality:
             if isCurrentlyNegative {
-                return "Improve your social connections to add \(benefitText)"
+                return "Improve your social connections to add \(benefitText) to your lifespan"
             } else {
-                return "Strengthen your social connections to add \(benefitText) to your life"
+                return "Strengthen your social connections to add \(benefitText) to your lifespan"
             }
         case .nutritionQuality:
             if isCurrentlyNegative {
-                return "Improve your nutrition to add \(benefitText)"
+                return "Improve your nutrition to add \(benefitText) to your lifespan"
             } else {
-                return "Optimize your nutrition to add \(benefitText) to your life"
+                return "Optimize your nutrition to add \(benefitText) to your lifespan"
             }
         case .stressLevel:
             if isCurrentlyNegative {
-                return "Reduce your stress to add \(benefitText)"
+                return "Reduce your stress to add \(benefitText) to your lifespan"
             } else {
-                return "Manage stress better to add \(benefitText) to your life"
+                return "Manage stress better to add \(benefitText) to your lifespan"
             }
         default:
             if isCurrentlyNegative {
-                return "Improve your \(metricType.displayName.lowercased()) to add \(benefitText)"
+                return "Improve your \(metricType.displayName.lowercased()) to add \(benefitText) to your lifespan"
             } else {
-                return "Improve your \(metricType.displayName.lowercased()) to add \(benefitText) to your life"
+                return "Improve your \(metricType.displayName.lowercased()) to add \(benefitText) to your lifespan"
             }
         }
     }
@@ -238,23 +252,23 @@ struct DailyTarget: Codable, Identifiable, Equatable {
         switch metricType {
         case .steps:
             let formattedSteps = Int(targetValue).formatted(.number.grouping(.automatic))
-            return "Walk \(formattedSteps) steps daily this month to add \(benefitText) to your life"
+            return "Aim for walking \(formattedSteps) steps daily over the next month to add \(benefitText) to your life"
         case .exerciseMinutes:
             let exerciseTime = targetValue.formattedAsTime()
-            return "Exercise \(exerciseTime) daily this month to add \(benefitText) to your life"
+            return "Aim for exercising \(exerciseTime) daily over the next month to add \(benefitText) to your life"
         case .sleepHours:
             let sleepTime = (targetValue * 60).formattedAsTime()
-            return "Sleep \(sleepTime) nightly this month to add \(benefitText) to your life"
+            return "Aim for sleeping \(sleepTime) nightly over the next month to add \(benefitText) to your life"
         case .activeEnergyBurned:
-            return "Burn \(Int(targetValue)) calories daily this month to add \(benefitText) to your life"
+            return "Aim for burning \(Int(targetValue)) calories daily over the next month to add \(benefitText) to your life"
         case .socialConnectionsQuality:
-            return "Strengthen social connections daily this month to add \(benefitText) to your life"
+            return "Aim for strengthening social connections daily over the next month to add \(benefitText) to your life"
         case .nutritionQuality:
-            return "Improve nutrition quality daily this month to add \(benefitText) to your life"
+            return "Aim for improving nutrition quality daily over the next month to add \(benefitText) to your life"
         case .stressLevel:
-            return "Practice stress management daily this month to add \(benefitText) to your life"
+            return "Aim for practicing stress management daily over the next month to add \(benefitText) to your life"
         default:
-            return "Maintain optimal \(metricType.displayName.lowercased()) daily this month to add \(benefitText) to your life"
+            return "Aim for maintaining optimal \(metricType.displayName.lowercased()) daily over the next month to add \(benefitText) to your life"
         }
     }
     
@@ -262,23 +276,23 @@ struct DailyTarget: Codable, Identifiable, Equatable {
         switch metricType {
         case .steps:
             let formattedSteps = Int(targetValue).formatted(.number.grouping(.automatic))
-            return "Walk \(formattedSteps) steps daily this next year to add \(benefitText) to your life"
+            return "Aim for walking \(formattedSteps) steps daily over the next year to add \(benefitText) to your life"
         case .exerciseMinutes:
             let exerciseTime = targetValue.formattedAsTime()
-            return "Exercise \(exerciseTime) daily this next year to add \(benefitText) to your life"
+            return "Aim for exercising \(exerciseTime) daily over the next year to add \(benefitText) to your life"
         case .sleepHours:
             let sleepTime = (targetValue * 60).formattedAsTime()
-            return "Sleep \(sleepTime) nightly this next year to add \(benefitText) to your life"
+            return "Aim for sleeping \(sleepTime) nightly over the next year to add \(benefitText) to your life"
         case .activeEnergyBurned:
-            return "Burn \(Int(targetValue)) calories daily this next year to add \(benefitText) to your life"
+            return "Aim for burning \(Int(targetValue)) calories daily over the next year to add \(benefitText) to your life"
         case .socialConnectionsQuality:
-            return "Strengthen social connections daily this next year to add \(benefitText) to your life"
+            return "Aim for strengthening social connections daily over the next year to add \(benefitText) to your life"
         case .nutritionQuality:
-            return "Improve nutrition quality daily this next year to add \(benefitText) to your life"
+            return "Aim for improving nutrition quality daily over the next year to add \(benefitText) to your life"
         case .stressLevel:
-            return "Practice stress management daily this next year to add \(benefitText) to your life"
+            return "Aim for practicing stress management daily over the next year to add \(benefitText) to your life"
         default:
-            return "Maintain optimal \(metricType.displayName.lowercased()) daily this next year to add \(benefitText) to your life"
+            return "Aim for maintaining optimal \(metricType.displayName.lowercased()) daily over the next year to add \(benefitText) to your life"
         }
     }
 }
