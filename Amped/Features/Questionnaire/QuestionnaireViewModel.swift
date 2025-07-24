@@ -204,39 +204,49 @@ final class QuestionnaireViewModel: ObservableObject {
     // Form data
     @Published var currentQuestion: Question {
         didSet {
-            // Only persist to UserDefaults if the question actually changed and after a brief delay
-            // This prevents excessive I/O during rapid transitions
+            // OPTIMIZED: Move UserDefaults to background queue to prevent main thread blocking
             if currentQuestion != oldValue {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                    guard let self = self else { return }
-                    UserDefaults.standard.set(self.currentQuestion.rawValue, forKey: "questionnaire_current_question")
+                Task {
+                    await persistCurrentQuestion()
                 }
             }
         }
     }
-    
-    // Birthdate (replacing age)
-    @Published var birthdate: Date = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date() // Default to 30 years ago
-    
-    // Separate month and year selection for improved UX
-    @Published var selectedBirthMonth: Int = Calendar.current.component(.month, from: Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date())
-    @Published var selectedBirthYear: Int = Calendar.current.component(.year, from: Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date())
-    
-    // PERFORMANCE: Cache expensive computations to avoid recalculating on every access
-    private let calendar = Calendar.current
-    private lazy var cachedMonthNames: [String] = {
-        let formatter = DateFormatter()
-        return formatter.monthSymbols
-    }()
-    
-    private lazy var cachedAvailableYears: [Int] = {
-        let currentYear = calendar.component(.year, from: Date())
+
+    // OPTIMIZED: Pre-computed static values to eliminate repeated calculations
+    private static let staticAvailableYears: [Int] = {
+        let currentYear = Calendar.current.component(.year, from: Date())
         let minYear = currentYear - 120
         let maxYear = currentYear
         return Array(minYear...maxYear)
     }()
-    
-    // Update birthdate when month or year changes
+
+    private static let staticMonthNames: [String] = {
+        let formatter = DateFormatter()
+        return formatter.monthSymbols
+    }()
+
+    private static let staticCurrentYear = Calendar.current.component(.year, from: Date())
+    private static let staticCurrentMonth = Calendar.current.component(.month, from: Date())
+
+    // Birthdate (replacing age)
+    @Published var birthdate: Date = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date() // Default to 30 years ago
+
+    // Separate month and year selection for improved UX
+    @Published var selectedBirthMonth: Int = Calendar.current.component(.month, from: Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date())
+    @Published var selectedBirthYear: Int = Calendar.current.component(.year, from: Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date())
+
+    // PERFORMANCE: Use pre-computed static values
+    private let calendar = Calendar.current
+
+    // OPTIMIZED: Async UserDefaults persistence
+    private func persistCurrentQuestion() async {
+        await Task.detached(priority: .utility) {
+            UserDefaults.standard.set(self.currentQuestion.rawValue, forKey: "questionnaire_current_question")
+        }.value
+    }
+
+    // Update birthdate when month or year changes - OPTIMIZED
     private func updateBirthdateFromMonthYear() {
         var components = DateComponents()
         components.year = selectedBirthYear
@@ -247,56 +257,61 @@ final class QuestionnaireViewModel: ObservableObject {
             birthdate = newDate
         }
     }
-    
-    // Available months for picker - limit to current month if current year is selected
+
+    // OPTIMIZED: Use static pre-computed values for maximum performance
     var availableMonths: [Int] {
-        let currentYear = calendar.component(.year, from: Date())
-        let currentMonth = calendar.component(.month, from: Date())
-        
-        if selectedBirthYear == currentYear {
+        if selectedBirthYear == Self.staticCurrentYear {
             // If current year is selected, only show months up to current month
-            return Array(1...currentMonth)
+            return Array(1...Self.staticCurrentMonth)
         } else {
             // For other years, show all months
             return Array(1...12)
         }
     }
-    
-    // Available years for picker (18-120 years ago from current year) - CACHED
+
+    // OPTIMIZED: Use pre-computed static array - no recalculation needed
     var availableYears: [Int] {
-        return cachedAvailableYears
+        return Self.staticAvailableYears
     }
-    
-    // Month name for display - OPTIMIZED
+
+    // STEVE JOBS OPTIMIZATION: Practical year range for faster picker cleanup
+    var optimizedYearRange: [Int] {
+        let currentYear = Self.staticCurrentYear
+        let minYear = currentYear - 110  // 110 years old max
+        let maxYear = currentYear - 5    // 5 years old min
+        return Array(minYear...maxYear) // Original direction: oldest to newest
+    }
+
+    // OPTIMIZED: Use pre-computed month names
     func monthName(for month: Int) -> String {
         guard month >= 1 && month <= 12 else { return "" }
-        return cachedMonthNames[month - 1]
+        return Self.staticMonthNames[month - 1]
     }
-    
+
     // Update month selection
     func updateSelectedMonth(_ month: Int) {
         selectedBirthMonth = month
         updateBirthdateFromMonthYear()
     }
-    
+
     // Update year selection  
     func updateSelectedYear(_ year: Int) {
         selectedBirthYear = year
         updateBirthdateFromMonthYear()
     }
-    
-    // Birthdate range calculation - CACHED
-    private lazy var cachedBirthdateRange: ClosedRange<Date> = {
+
+    // OPTIMIZED: Pre-computed birthdate range
+    private static let staticBirthdateRange: ClosedRange<Date> = {
         let maxDate = Date() // Today (no future dates)
-        let minDate = calendar.date(byAdding: .year, value: -120, to: Date()) ?? Date() // Max 120 years ago
+        let minDate = Calendar.current.date(byAdding: .year, value: -120, to: Date()) ?? Date() // Max 120 years ago
         return minDate...maxDate
     }()
-    
+
     var birthdateRange: ClosedRange<Date> {
-        return cachedBirthdateRange
+        return Self.staticBirthdateRange
     }
-    
-    // Calculate age from birthdate - OPTIMIZED
+
+    // Calculate age from birthdate - OPTIMIZED with cached calendar
     var age: Int {
         let ageComponents = calendar.dateComponents([.year], from: birthdate, to: Date())
         return ageComponents.year ?? 0

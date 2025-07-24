@@ -28,17 +28,53 @@ final class QuestionnaireManager: ObservableObject {
     // MARK: - Initialization
     
     init() {
-        // Defer loading to avoid main thread I/O during launch
+        // OPTIMIZED: Initialize with minimal main thread work - defer heavy I/O
+        // Load critical data first, then async load the rest
+        loadUserProfileSync()
+        
+        // Defer non-critical loading to avoid blocking main thread
         Task { @MainActor in
             await loadDataAsync()
         }
     }
     
-    /// Load all data asynchronously
+    /// Load critical data synchronously for immediate availability
+    private func loadUserProfileSync() {
+        // Only load the most essential data for immediate use
+        if let data = UserDefaults.standard.data(forKey: "userProfile"),
+           let profile = try? JSONDecoder().decode(UserProfile.self, from: data) {
+            self.currentUserProfile = profile
+            self.hasCompletedQuestionnaire = profile.hasCompletedQuestionnaire
+        }
+    }
+    
+    /// Load all remaining data asynchronously
     private func loadDataAsync() async {
-        loadUserProfile()
-        loadManualMetrics()
-        loadQuestionnaireDataFromDefaults()
+        // These can be loaded in background without blocking UI
+        await Task.detached(priority: .utility) {
+            await self.loadManualMetricsAsync()
+            await self.loadQuestionnaireDataAsync()
+        }.value
+    }
+    
+    /// Async manual metrics loading
+    private func loadManualMetricsAsync() async {
+        if let data = UserDefaults.standard.data(forKey: "manualMetrics"),
+           let metrics = try? JSONDecoder().decode([ManualMetricInput].self, from: data) {
+            await MainActor.run {
+                self.manualMetrics = metrics
+            }
+        }
+    }
+    
+    /// Async questionnaire data loading
+    private func loadQuestionnaireDataAsync() async {
+        if let data = UserDefaults.standard.data(forKey: "questionnaireData"),
+           let questionnaire = try? JSONDecoder().decode(QuestionnaireData.self, from: data) {
+            await MainActor.run {
+                self.questionnaireData = questionnaire
+            }
+        }
     }
     
     // MARK: - Public Methods

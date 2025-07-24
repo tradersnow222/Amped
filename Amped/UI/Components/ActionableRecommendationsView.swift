@@ -104,8 +104,9 @@ struct ActionableRecommendationsView: View {
             // Main content with clear visual separation
             VStack(alignment: .leading, spacing: 16) {
                 // Top section: Current status (if negative impact)
-                if let impact = metric.impactDetails?.lifespanImpactMinutes, impact < 0 {
-                    currentStatusSection(for: metric, impact: impact)
+                if let dailyImpact = metric.impactDetails?.lifespanImpactMinutes, dailyImpact < 0 {
+                    // SCIENTIFIC ACCURACY FIX: Apply period scaling to match recommendation calculation
+                    currentStatusSection(for: metric, impact: calculateScaledImpact(dailyImpact: dailyImpact))
                 }
                 
                 // Bottom section: Action recommendation
@@ -315,44 +316,11 @@ struct ActionableRecommendationsView: View {
         }
     }
     
-    /// Format impact time with appropriate units
+    /// Format impact time with appropriate units  
     private func formatImpactWithUnit(_ minutes: Double) -> String {
-        let result: String
-        
-        if minutes < 60 {
-            result = "\(Int(minutes)) min"
-        } else if minutes < 1440 { // Less than 24 hours
-            let hours = minutes / 60
-            if hours < 2 {
-                result = String(format: "%.0f hr", hours)
-            } else {
-                result = String(format: "%.0f hrs", hours)
-            }
-        } else if minutes < 43200 { // Less than 30 days
-            let days = minutes / 1440
-            if days < 2 {
-                result = String(format: "%.0f day", days)
-            } else {
-                result = String(format: "%.0f days", days)
-            }
-        } else if minutes < 525600 { // Less than 365 days  
-            let months = minutes / 43200
-            if months < 2 {
-                result = String(format: "%.0f month", months)
-            } else {
-                result = String(format: "%.0f months", months)
-            }
-        } else {
-            let years = minutes / 525600
-            if years < 2 {
-                result = String(format: "%.1f year", years)
-            } else {
-                result = String(format: "%.1f years", years)
-            }
-        }
-        
-        // Replace spaces with non-breaking spaces to prevent line breaks
-        return result.replacingOccurrences(of: " ", with: "\u{00A0}")
+        // CONSISTENCY FIX: Use the same formattedAsTime() function as recommendations
+        // This ensures "Costing you X" matches "add Y to your lifespan" when they represent the same value
+        return minutes.formattedAsTime()
     }
     
     private func iconName(for type: HealthMetricType) -> String {
@@ -375,5 +343,16 @@ struct ActionableRecommendationsView: View {
     private func actionText(for metric: HealthMetric) -> String {
         // Use the RecommendationService for accurate, contextual recommendations
         return recommendationService.generateRecommendation(for: metric, selectedPeriod: selectedPeriod)
+    }
+
+    private func calculateScaledImpact(dailyImpact: Double) -> Double {
+        switch selectedPeriod {
+        case .day:
+            return dailyImpact
+        case .month:
+            return dailyImpact * 30.0 // Scale for 30 days
+        case .year:
+            return dailyImpact * 365.0 // Scale for 365 days
+        }
     }
 }

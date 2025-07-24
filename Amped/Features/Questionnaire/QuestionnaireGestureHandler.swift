@@ -21,21 +21,26 @@ class QuestionnaireGestureHandler {
         // Reset back button flag when user starts dragging
         isBackButtonTapped = false
         
-        // iOS-STANDARD: Only consider horizontal drags that are significantly more horizontal than vertical
+        // OPTIMIZED: Early return for invalid conditions
+        guard let viewModel = viewModel, viewModel.canMoveBack else {
+            return 0
+        }
+        
+        // OPTIMIZED: Cached calculation for better performance
         let horizontalDistance = abs(gesture.translation.width)
         let verticalDistance = abs(gesture.translation.height)
         
-        if horizontalDistance > verticalDistance * 1.5 { // iOS-standard ratio
-            // Only allow backward (right) swipes, not forward (left) swipes
-            if gesture.translation.width > 0 && viewModel?.canMoveBack == true {
-                // Dragging right (backward)
-                dragDirection = .trailing
-                
-                // iOS-STANDARD: Natural resistance curve
-                let progress = min(abs(gesture.translation.width) / geometry.size.width, 1.0)
-                let resistance = 1.0 - (progress * 0.3) // Less resistance for natural feel
-                dragOffset = min(gesture.translation.width, geometry.size.width) * resistance
-            }
+        // Only allow backward (right) swipes, not forward (left) swipes
+        // OPTIMIZED: More efficient conditions
+        if gesture.translation.width > 0 && horizontalDistance > verticalDistance * 1.2 {
+            // Dragging right (backward)
+            dragDirection = .trailing
+            
+            // OPTIMIZED: Simplified resistance calculation
+            let screenWidth = geometry.size.width
+            let progress = min(gesture.translation.width / screenWidth, 1.0)
+            let resistance = 1.0 - (progress * 0.25) // Optimized resistance curve
+            dragOffset = min(gesture.translation.width, screenWidth) * resistance
         }
         
         return dragOffset
@@ -44,38 +49,39 @@ class QuestionnaireGestureHandler {
     /// Handle when drag gesture ends
     func handleDragEnded(_ gesture: DragGesture.Value, geometry: GeometryProxy, completion: @escaping () -> Void) {
         guard dragDirection != nil else { 
+            completion()
             return 
         }
         
-        // iOS-STANDARD: Reduced threshold for more responsive swiping
-        let threshold: CGFloat = geometry.size.width * 0.15 // 15% threshold for easier swiping
+        // OPTIMIZED: Single threshold calculation
+        let threshold: CGFloat = geometry.size.width * 0.12 // Even lower threshold for ultra-responsive feel
         
         // Only handle backward (trailing) swipes - forward swipes are disabled
         if dragDirection == .trailing && abs(dragOffset) > threshold {
+            // OPTIMIZED: Immediate haptic feedback before navigation
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.prepare()
+            impactFeedback.impactOccurred(intensity: 0.6)
+            
             // Backward swipe - go to previous question or back to intro if at first question
             if viewModel?.isFirstQuestion == true {
                 // If at first question, signal parent to navigate back to personalization intro
                 // Set backward direction for proper iOS-standard transition
                 viewModel?.navigationDirection = .backward
-                withAnimation(.easeInOut(duration: 0.3)) { // OPTIMIZED: Faster animation
+                withAnimation(.easeInOut(duration: 0.25)) { // OPTIMIZED: Faster animation
                     exitToPersonalizationIntro.wrappedValue = true
                 }
             } else {
                 // For any other question, navigate internally
                 // Direction is set automatically in moveBackToPreviousQuestion()
-                withAnimation(.easeInOut(duration: 0.3)) { // OPTIMIZED: Faster animation
+                withAnimation(.easeInOut(duration: 0.25)) { // OPTIMIZED: Faster animation
                     viewModel?.moveBackToPreviousQuestion()
                 }
             }
-            
-            // iOS-STANDARD: Immediate haptic feedback
-            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-            impactFeedback.prepare()
-            impactFeedback.impactOccurred(intensity: 0.6)
         }
         
         // OPTIMIZED: Reset drag state with faster animation
-        withAnimation(.easeInOut(duration: 0.3)) {
+        withAnimation(.easeInOut(duration: 0.2)) {
             dragOffset = 0
         }
         
@@ -85,6 +91,10 @@ class QuestionnaireGestureHandler {
     
     /// Handle back button navigation
     func handleBackNavigation() {
+        // OPTIMIZED: Immediate haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+        impactFeedback.impactOccurred()
+        
         if viewModel?.isFirstQuestion == true {
             // At first question, navigate back to personalization intro
             isBackButtonTapped = true
@@ -94,12 +104,12 @@ class QuestionnaireGestureHandler {
             viewModel?.navigationDirection = .backward
             
             // Signal to parent to navigate back
-            withAnimation(.easeInOut(duration: 0.3)) { // OPTIMIZED: Faster animation
+            withAnimation(.easeInOut(duration: 0.25)) { // OPTIMIZED: Faster animation
                 exitToPersonalizationIntro.wrappedValue = true
             }
             
             // OPTIMIZED: Faster reset
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                 self.isBackButtonTapped = false
                 print("🔍 QUESTIONNAIRE: Back button flag reset")
             }
@@ -110,12 +120,12 @@ class QuestionnaireGestureHandler {
             
             // Direction is set automatically in moveBackToPreviousQuestion()
             // Use view model with animation
-            withAnimation(.easeInOut(duration: 0.3)) { // OPTIMIZED: Faster animation
+            withAnimation(.easeInOut(duration: 0.25)) { // OPTIMIZED: Faster animation
                 viewModel?.moveBackToPreviousQuestion()
             }
             
             // OPTIMIZED: Faster reset
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                 self.isBackButtonTapped = false
                 print("🔍 QUESTIONNAIRE: Back button flag reset")
             }

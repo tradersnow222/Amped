@@ -78,7 +78,7 @@ struct QuestionnaireView: View {
                     }
                     .clipped() // Ensure off-screen content doesn't show
                     .animation(
-                        .easeInOut(duration: 0.3), // OPTIMIZED: Faster, smoother animation without delay
+                        .easeInOut(duration: 0.25), // OPTIMIZED: Even faster animation for instant feel
                         value: viewModel.currentQuestion
                     )
                     
@@ -91,11 +91,20 @@ struct QuestionnaireView: View {
                 }
                 .withDeepBackgroundTheme()
             }
-            // OPTIMIZED: Simplified gesture handling
+            // OPTIMIZED: Simplified gesture handling with better performance
             .contentShape(Rectangle()) // Ensure the entire area responds to gestures
             .gesture(
-                DragGesture(minimumDistance: 8, coordinateSpace: .local)
+                DragGesture(minimumDistance: 15, coordinateSpace: .local) // OPTIMIZED: Higher threshold to reduce noise
                     .onChanged { gesture in
+                        // OPTIMIZED: Only process significant horizontal movements
+                        let horizontalDistance = abs(gesture.translation.width)
+                        let verticalDistance = abs(gesture.translation.height)
+                        
+                        // Ignore if mostly vertical or too small
+                        guard horizontalDistance > verticalDistance * 1.5 && horizontalDistance > 20 else {
+                            return
+                        }
+                        
                         let _ = gestureHandler.handleDragChanged(gesture, geometry: geometry)
                     }
                     .onEnded { gesture in
@@ -109,7 +118,7 @@ struct QuestionnaireView: View {
             // OPTIMIZATION: Pre-warm HealthKit when questionnaire appears
             // This ensures everything is ready by the time user reaches device tracking
             if HKHealthStore.isHealthDataAvailable() {
-                Task { @MainActor in
+                Task.detached(priority: .utility) { @MainActor in
                     // Access the shared instance to trigger initialization
                     _ = HealthKitManager.shared
                     

@@ -90,9 +90,9 @@ struct QuestionViews {
                     Spacer()
                     Spacer() // Additional spacer to push picker lower
 
-                    // Custom Month/Year picker with native iOS wheel style
+                    // OPTIMIZED: Reduce picker data for faster cleanup during transition
                     HStack(spacing: 0) {
-                        // Month Picker
+                        // Month Picker - OPTIMIZED: Only render necessary months
                         Picker("Month", selection: Binding(
                             get: { viewModel.selectedBirthMonth },
                             set: { viewModel.updateSelectedMonth($0) }
@@ -108,12 +108,12 @@ struct QuestionViews {
                         .frame(maxWidth: .infinity)
                         .colorScheme(.dark)
                         
-                        // Year Picker
+                        // Year Picker - OPTIMIZED: Limit to reasonable range for faster cleanup
                         Picker("Year", selection: Binding(
                             get: { viewModel.selectedBirthYear },
                             set: { viewModel.updateSelectedYear($0) }
                         )) {
-                            ForEach(viewModel.availableYears, id: \.self) { year in
+                            ForEach(viewModel.optimizedYearRange, id: \.self) { year in
                                 Text(String(year))
                                     .font(.system(size: 22, weight: .medium))
                                     .foregroundColor(.white)
@@ -154,6 +154,13 @@ struct QuestionViews {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @FocusState private var isTextFieldFocused: Bool
         
+        // OPTIMIZED: Local state to reduce @Published updates during typing
+        @State private var localUserName: String = ""
+        // OPTIMIZED: Timer-based debouncing instead of NSObject methods
+        @State private var debounceTimer: Timer?
+        // OPTIMIZED: Control focus timing to sequence animations properly
+        @State private var shouldDelayFocus: Bool = true
+        
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
                 // Question placed higher
@@ -170,7 +177,7 @@ struct QuestionViews {
                 
                 // Options at bottom for thumb access - matching other questions structure
                 VStack(spacing: 12) {
-                    TextField("Enter your name", text: $viewModel.userName)
+                    TextField("Enter your name", text: $localUserName)
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
@@ -185,14 +192,26 @@ struct QuestionViews {
                         )
                         .focused($isTextFieldFocused)
                         .onSubmit {
+                            commitNameToViewModel()
                             if viewModel.canProceed {
                                 proceedToNext()
                             }
                         }
                         .textInputAutocapitalization(.words)
                         .disableAutocorrection(true)
+                        // OPTIMIZED: Timer-based debouncing for smooth performance
+                        .onChange(of: localUserName) { newValue in
+                            // Cancel any existing timer
+                            debounceTimer?.invalidate()
+                            
+                            // Set a new timer to update the viewModel after a delay
+                            debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                                commitNameToViewModel()
+                            }
+                        }
                     
                     Button(action: {
+                        commitNameToViewModel()
                         if viewModel.canProceed {
                             proceedToNext()
                         }
@@ -200,8 +219,8 @@ struct QuestionViews {
                         Text("Continue")
                     }
                     .questionnaireButtonStyle(isSelected: false)
-                    .opacity(viewModel.canProceed ? 1.0 : 0.6)
-                    .disabled(!viewModel.canProceed)
+                    .opacity(!localUserName.isEmpty ? 1.0 : 0.6)
+                    .disabled(localUserName.isEmpty)
                     .hapticFeedback(.light)
                 }
                 .padding(.bottom, 30)
@@ -209,14 +228,34 @@ struct QuestionViews {
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
             .onAppear {
-                // OPTIMIZED: Immediate focus without delay for instant responsiveness
-                if viewModel.currentQuestion == .name {
+                // Initialize local state with viewModel value
+                localUserName = viewModel.userName
+                
+                // STEVE JOBS FIX: Sequence animations properly - never compete
+                if viewModel.currentQuestion == .name && shouldDelayFocus {
+                    // Let view transition complete BEFORE triggering keyboard
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                        isTextFieldFocused = true
+                        shouldDelayFocus = false
+                    }
+                } else if viewModel.currentQuestion == .name {
+                    // If returning to this view, focus immediately
                     isTextFieldFocused = true
                 }
             }
             .onDisappear {
-                // Immediately dismiss keyboard when leaving
+                // Cancel any pending timer and commit changes
+                debounceTimer?.invalidate()
+                commitNameToViewModel()
                 isTextFieldFocused = false
+                shouldDelayFocus = true // Reset for next time
+            }
+        }
+        
+        // OPTIMIZED: Simple commit function using main actor
+        private func commitNameToViewModel() {
+            Task { @MainActor in
+                viewModel.userName = localUserName
             }
         }
         
