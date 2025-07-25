@@ -18,6 +18,9 @@ struct DashboardView: View {
     // Rules: Add state for sign-in popup
     @State private var showSignInPopup = false
     
+    // Settings presentation
+    @State private var showingSettings = false
+    
     // Pull-to-refresh state - Enhanced for Apple iOS UX standards
     @State private var pullDistance: CGFloat = 0
     @State private var isRefreshing = false
@@ -372,10 +375,9 @@ struct DashboardView: View {
 
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                NavigationLink(destination: 
-                    SettingsView()
-                        .environmentObject(settingsManager)
-                ) {
+                Button {
+                    showingSettings = true
+                } label: {
                     // Profile icon - show initials if available, otherwise default icon
                     ZStack {
                         Circle()
@@ -411,6 +413,10 @@ struct DashboardView: View {
         }
         .sheet(isPresented: $showingUpdateHealthProfile) {
             UpdateHealthProfileView()
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+                .environmentObject(settingsManager)
         }
         .onAppear {
             // Configure navigation bar appearance to match dark theme

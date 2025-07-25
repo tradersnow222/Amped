@@ -149,15 +149,12 @@ final class BaselineMortalityAdjuster {
         
         // Find bracketing ages
         guard let lowerAge = ages.last(where: { $0 <= age }) else {
-            return table[ages.first!]!
+            let result = table[ages.first!]!
+            return result
         }
         guard let upperAge = ages.first(where: { $0 > age }) else {
-            return table[ages.last!]!
-        }
-        
-        // If exact age exists, return it
-        if let exact = table[age] {
-            return exact
+            let result = table[ages.last!]!
+            return result
         }
         
         // Linear interpolation
@@ -165,7 +162,9 @@ final class BaselineMortalityAdjuster {
         let upperValue = table[upperAge]!
         let fraction = Double(age - lowerAge) / Double(upperAge - lowerAge)
         
-        return lowerValue - (lowerValue - upperValue) * fraction
+        let result = lowerValue - (lowerValue - upperValue) * fraction
+        
+        return result
     }
     
     /// Get country-specific adjustment factor (future enhancement)

@@ -64,44 +64,32 @@ class LifeProjectionService {
         let userAge = Double(userProfile.age ?? 30) // Default age if not provided
         let remainingYears = max(1.0, baselineLifeExpectancy - userAge)
         
+        logger.info("📊 Baseline calculation: \(String(format: "%.1f", baselineLifeExpectancy)) years total, \(String(format: "%.1f", remainingYears)) years remaining")
+        
         // Apply behavior decay over time instead of assuming static behavior
-        var totalLifespanImpactMinutes = 0.0
-        let yearsPerSegment = 5.0 // Calculate in 5-year segments
-        var currentYear = 0.0
+        let behaviorDecayRate = 0.02 // 2% decay per year
+        let timeHorizon = remainingYears
+        let decayFactor = exp(-behaviorDecayRate * timeHorizon / 2.0) // Use half-life for conservative estimate
         
-        while currentYear < remainingYears {
-            let segmentYears = min(yearsPerSegment, remainingYears - currentYear)
-            let segmentDays = segmentYears * 365.25
-            
-            // Apply decay for this segment
-            let decayedDailyImpact = applyBehaviorDecayToAggregate(
-                dailyImpact: dailyImpactMinutes,
-                yearsInFuture: currentYear + segmentYears / 2.0 // Use midpoint
-            )
-            
-            totalLifespanImpactMinutes += decayedDailyImpact * segmentDays
-            currentYear += segmentYears
-        }
+        // Convert daily impact to lifespan impact
+        let dailyImpactYears = dailyImpactMinutes / (24 * 60) // Convert minutes to years
+        let lifespanImpactYears = dailyImpactYears * 365.25 * timeHorizon * decayFactor
         
-        // Convert total impact minutes to years
-        let lifespanImpactYears = totalLifespanImpactMinutes / (365.25 * 24 * 60)
-        
-        // Apply evidence quality weighting (lower quality = more conservative projection)
+        // Apply evidence quality weighting
         let evidenceAdjustedImpact = lifespanImpactYears * evidenceQuality
         
-        // Calculate projected lifespan with impact
+        // Calculate projected lifespan
         let projectedLifespan = baselineLifeExpectancy + evidenceAdjustedImpact
         
         // Ensure reasonable bounds (don't project beyond 120 years or below current age)
         let boundedProjection = max(userAge + 1, min(120.0, projectedLifespan))
-        
-        logger.info("📈 Projection details: baseline=\(String(format: "%.1f", baselineLifeExpectancy))y, daily_impact=\(String(format: "%.2f", dailyImpactMinutes))min, total_impact=\(String(format: "%.1f", lifespanImpactYears))y, projected=\(String(format: "%.1f", boundedProjection))y")
         
         return LifeProjection(
             id: UUID(),
             calculationDate: Date(),
             baselineLifeExpectancyYears: baselineLifeExpectancy,
             adjustedLifeExpectancyYears: boundedProjection,
+            currentAge: userAge,
             confidencePercentage: evidenceQuality,
             confidenceIntervalYears: 2.0 // Conservative confidence interval
         )

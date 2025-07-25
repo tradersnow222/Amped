@@ -1,5 +1,6 @@
 import SwiftUI
 import OSLog
+import Combine // Added for CombineLatest
 
 /// View for updating questionnaire responses - Rules: User profile update best practices
 struct UpdateHealthProfileView: View {
@@ -29,7 +30,7 @@ struct UpdateHealthProfileView: View {
                 }
                 .padding()
             }
-            .background(Color.black.ignoresSafeArea())
+            .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .navigationTitle("Update Health Profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -259,6 +260,442 @@ struct UpdateHealthProfileView: View {
             .cornerRadius(12)
         }
         .disabled(!hasChanges || viewModel.isUpdating)
+    }
+}
+
+/// Complete profile editor that allows editing ALL questionnaire data
+struct CompleteProfileEditorView: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var viewModel = CompleteProfileEditorViewModel()
+    
+    var body: some View {
+        NavigationView {
+            List {
+                Section("Personal Information") {
+                    // Name
+                    HStack {
+                        Label("Name", systemImage: "person.fill")
+                        Spacer()
+                        TextField("Enter your name", text: $viewModel.userName)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    
+                    // Age (Birthdate)
+                    VStack(alignment: .leading) {
+                        HStack {
+                            Label("Age", systemImage: "calendar")
+                            Spacer()
+                            Text("\(viewModel.currentAge) years old")
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        DatePicker("Birth Date", 
+                                 selection: $viewModel.birthDate, 
+                                 in: viewModel.validDateRange,
+                                 displayedComponents: [.date])
+                            .datePickerStyle(.compact)
+                    }
+                    
+                    // Gender
+                    VStack(alignment: .leading) {
+                        Label("Gender", systemImage: "person.2.fill")
+                        
+                        Picker("Gender", selection: $viewModel.selectedGender) {
+                            Text("Select Gender").tag(nil as UserProfile.Gender?)
+                            ForEach(UserProfile.Gender.allCases, id: \.self) { gender in
+                                Text(gender.displayName).tag(gender as UserProfile.Gender?)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                }
+                
+                Section("Health Factors") {
+                    // Stress Level
+                    Picker("Stress Level", selection: $viewModel.selectedStressLevel) {
+                        Text("Select Level").tag(nil as QuestionnaireViewModel.StressLevel?)
+                        ForEach(QuestionnaireViewModel.StressLevel.allCases, id: \.self) { level in
+                            Text(level.displayName).tag(level as QuestionnaireViewModel.StressLevel?)
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                    
+                    // Nutrition Quality
+                    Picker("Nutrition Quality", selection: $viewModel.selectedNutritionQuality) {
+                        Text("Select Quality").tag(nil as QuestionnaireViewModel.NutritionQuality?)
+                        ForEach(QuestionnaireViewModel.NutritionQuality.allCases, id: \.self) { nutrition in
+                            Text(nutrition.displayName).tag(nutrition as QuestionnaireViewModel.NutritionQuality?)
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                    
+                    // Smoking Status
+                    Picker("Smoking Status", selection: $viewModel.selectedSmokingStatus) {
+                        Text("Select Status").tag(nil as QuestionnaireViewModel.SmokingStatus?)
+                        ForEach(QuestionnaireViewModel.SmokingStatus.allCases, id: \.self) { smoking in
+                            Text(smoking.displayName).tag(smoking as QuestionnaireViewModel.SmokingStatus?)
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                    
+                    // Alcohol Consumption
+                    Picker("Alcohol Consumption", selection: $viewModel.selectedAlcoholFrequency) {
+                        Text("Select Frequency").tag(nil as QuestionnaireViewModel.AlcoholFrequency?)
+                        ForEach(QuestionnaireViewModel.AlcoholFrequency.allCases, id: \.self) { alcohol in
+                            Text(alcohol.displayName).tag(alcohol as QuestionnaireViewModel.AlcoholFrequency?)
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                    
+                    // Social Connections
+                    Picker("Social Connections", selection: $viewModel.selectedSocialConnectionsQuality) {
+                        Text("Select Quality").tag(nil as QuestionnaireViewModel.SocialConnectionsQuality?)
+                        ForEach(QuestionnaireViewModel.SocialConnectionsQuality.allCases, id: \.self) { social in
+                            Text(social.displayName).tag(social as QuestionnaireViewModel.SocialConnectionsQuality?)
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                }
+                
+                Section("Preferences") {
+                    // Device Tracking Status
+                    Picker("Device Tracking", selection: $viewModel.selectedDeviceTrackingStatus) {
+                        Text("Select Option").tag(nil as QuestionnaireViewModel.DeviceTrackingStatus?)
+                        ForEach(QuestionnaireViewModel.DeviceTrackingStatus.allCases, id: \.self) { device in
+                            Text(device.displayName).tag(device as QuestionnaireViewModel.DeviceTrackingStatus?)
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                    
+                    // Life Motivation
+                    Picker("Life Motivation", selection: $viewModel.selectedLifeMotivation) {
+                        Text("Select Motivation").tag(nil as QuestionnaireViewModel.LifeMotivation?)
+                        ForEach(QuestionnaireViewModel.LifeMotivation.allCases, id: \.self) { motivation in
+                            Text(motivation.displayName).tag(motivation as QuestionnaireViewModel.LifeMotivation?)
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                }
+                
+                Section {
+                    if viewModel.hasChanges {
+                        Button {
+                            Task {
+                                await viewModel.saveChanges()
+                                dismiss()
+                            }
+                        } label: {
+                            HStack {
+                                if viewModel.isSaving {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                        .padding(.trailing, 8)
+                                }
+                                Text(viewModel.isSaving ? "Saving..." : "Save Changes")
+                                    .foregroundColor(viewModel.isSaving ? .secondary : .accentColor)
+                            }
+                        }
+                        .disabled(viewModel.isSaving)
+                    }
+                } footer: {
+                    if viewModel.hasChanges {
+                        Text("Your health calculations will be updated automatically after saving.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Edit Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                viewModel.loadCurrentData()
+            }
+        }
+    }
+}
+
+
+
+/// ViewModel for complete profile editor
+@MainActor
+class CompleteProfileEditorViewModel: ObservableObject {
+    // Personal Info
+    @Published var userName: String = ""
+    @Published var birthDate: Date = Date()
+    @Published var selectedGender: UserProfile.Gender?
+    
+    // Health Factors
+    @Published var selectedStressLevel: QuestionnaireViewModel.StressLevel?
+    @Published var selectedNutritionQuality: QuestionnaireViewModel.NutritionQuality?
+    @Published var selectedSmokingStatus: QuestionnaireViewModel.SmokingStatus?
+    @Published var selectedAlcoholFrequency: QuestionnaireViewModel.AlcoholFrequency?
+    @Published var selectedSocialConnectionsQuality: QuestionnaireViewModel.SocialConnectionsQuality?
+    
+    // Preferences
+    @Published var selectedDeviceTrackingStatus: QuestionnaireViewModel.DeviceTrackingStatus?
+    @Published var selectedLifeMotivation: QuestionnaireViewModel.LifeMotivation?
+    
+    // State
+    @Published var isSaving = false
+    @Published var hasChanges = false
+    
+    private let questionnaireManager = QuestionnaireManager()
+    private let logger = Logger(subsystem: "com.amped.Amped", category: "CompleteProfileEditorViewModel")
+    
+    // Original values for change detection
+    private var originalValues: (
+        userName: String,
+        birthDate: Date,
+        gender: UserProfile.Gender?,
+        stressLevel: QuestionnaireViewModel.StressLevel?,
+        nutritionQuality: QuestionnaireViewModel.NutritionQuality?,
+        smokingStatus: QuestionnaireViewModel.SmokingStatus?,
+        alcoholFrequency: QuestionnaireViewModel.AlcoholFrequency?,
+        socialConnectionsQuality: QuestionnaireViewModel.SocialConnectionsQuality?,
+        deviceTrackingStatus: QuestionnaireViewModel.DeviceTrackingStatus?,
+        lifeMotivation: QuestionnaireViewModel.LifeMotivation?
+    )?
+    
+    init() {
+        // Set up change detection
+        setupChangeDetection()
+    }
+    
+    var currentAge: Int {
+        let calendar = Calendar.current
+        let ageComponents = calendar.dateComponents([.year], from: birthDate, to: Date())
+        return ageComponents.year ?? 0
+    }
+    
+    var validDateRange: ClosedRange<Date> {
+        let calendar = Calendar.current
+        let minDate = calendar.date(byAdding: .year, value: -120, to: Date()) ?? Date()
+        let maxDate = calendar.date(byAdding: .year, value: -5, to: Date()) ?? Date()
+        return minDate...maxDate
+    }
+    
+    func loadCurrentData() {
+        logger.info("📱 Loading complete profile data for editing")
+        
+        // Load name
+        userName = UserDefaults.standard.string(forKey: "userName") ?? ""
+        
+        // Load profile data
+        if let profile = questionnaireManager.getCurrentUserProfile() {
+            selectedGender = profile.gender
+            
+            // Convert birth year back to date
+            if let birthYear = profile.birthYear {
+                var components = DateComponents()
+                components.year = birthYear
+                components.month = 1
+                components.day = 1
+                birthDate = Calendar.current.date(from: components) ?? Date()
+            }
+        }
+        
+        // Load questionnaire data
+        if let data = questionnaireManager.loadQuestionnaireData() {
+            selectedStressLevel = mapValueToStressLevel(data.stressLevel)
+            selectedDeviceTrackingStatus = data.deviceTrackingStatus
+            selectedLifeMotivation = data.lifeMotivation
+        }
+        
+        // Load health factors from manual metrics
+        let currentMetrics = questionnaireManager.getCurrentManualMetrics()
+        for metric in currentMetrics {
+            switch metric.type {
+            case .nutritionQuality:
+                selectedNutritionQuality = mapValueToNutrition(metric.value)
+            case .smokingStatus:
+                selectedSmokingStatus = mapValueToSmoking(metric.value)
+            case .alcoholConsumption:
+                selectedAlcoholFrequency = mapValueToAlcohol(metric.value)
+            case .socialConnectionsQuality:
+                selectedSocialConnectionsQuality = mapValueToSocial(metric.value)
+            case .stressLevel:
+                if selectedStressLevel == nil {
+                    selectedStressLevel = mapValueToStressLevel(metric.value)
+                }
+            default:
+                break
+            }
+        }
+        
+        // Store original values for change detection
+        originalValues = (
+            userName: userName,
+            birthDate: birthDate,
+            gender: selectedGender,
+            stressLevel: selectedStressLevel,
+            nutritionQuality: selectedNutritionQuality,
+            smokingStatus: selectedSmokingStatus,
+            alcoholFrequency: selectedAlcoholFrequency,
+            socialConnectionsQuality: selectedSocialConnectionsQuality,
+            deviceTrackingStatus: selectedDeviceTrackingStatus,
+            lifeMotivation: selectedLifeMotivation
+        )
+        
+        // Reset change flag
+        hasChanges = false
+    }
+    
+    func saveChanges() async {
+        isSaving = true
+        defer { isSaving = false }
+        
+        logger.info("💾 Saving complete profile changes")
+        
+        // Create a temporary questionnaire view model
+        let tempViewModel = QuestionnaireViewModel()
+        
+        // Set all the data
+        tempViewModel.userName = userName
+        tempViewModel.birthdate = birthDate
+        tempViewModel.selectedGender = selectedGender
+        tempViewModel.selectedStressLevel = selectedStressLevel
+        tempViewModel.selectedNutritionQuality = selectedNutritionQuality
+        tempViewModel.selectedSmokingStatus = selectedSmokingStatus
+        tempViewModel.selectedAlcoholFrequency = selectedAlcoholFrequency
+        tempViewModel.selectedSocialConnectionsQuality = selectedSocialConnectionsQuality
+        tempViewModel.selectedDeviceTrackingStatus = selectedDeviceTrackingStatus
+        tempViewModel.selectedLifeMotivation = selectedLifeMotivation
+        
+        // Save through the manager
+        questionnaireManager.saveQuestionnaireData(from: tempViewModel)
+        
+        // Post notification for dashboard to refresh
+        NotificationCenter.default.post(
+            name: NSNotification.Name("QuestionnaireDataUpdated"),
+            object: nil
+        )
+        
+        logger.info("✅ Complete profile updated successfully")
+        
+        // Update original values
+        originalValues = (
+            userName: userName,
+            birthDate: birthDate,
+            gender: selectedGender,
+            stressLevel: selectedStressLevel,
+            nutritionQuality: selectedNutritionQuality,
+            smokingStatus: selectedSmokingStatus,
+            alcoholFrequency: selectedAlcoholFrequency,
+            socialConnectionsQuality: selectedSocialConnectionsQuality,
+            deviceTrackingStatus: selectedDeviceTrackingStatus,
+            lifeMotivation: selectedLifeMotivation
+        )
+        
+        hasChanges = false
+    }
+    
+    private func setupChangeDetection() {
+        // Monitor all published properties for changes
+        Publishers.CombineLatest4(
+            $userName,
+            $birthDate,
+            $selectedGender,
+            $selectedStressLevel
+        )
+        .combineLatest(
+            Publishers.CombineLatest4(
+                $selectedNutritionQuality,
+                $selectedSmokingStatus,
+                $selectedAlcoholFrequency,
+                $selectedSocialConnectionsQuality
+            )
+        )
+        .combineLatest(
+            Publishers.CombineLatest(
+                $selectedDeviceTrackingStatus,
+                $selectedLifeMotivation
+            )
+        )
+        .sink { [weak self] combinedOutput in
+            self?.checkForChanges()
+        }
+        .store(in: &cancellables)
+    }
+    
+    private var cancellables = Set<AnyCancellable>()
+    
+    private func checkForChanges() {
+        guard let original = originalValues else {
+            hasChanges = false
+            return
+        }
+        
+        hasChanges = userName != original.userName ||
+                    birthDate != original.birthDate ||
+                    selectedGender != original.gender ||
+                    selectedStressLevel != original.stressLevel ||
+                    selectedNutritionQuality != original.nutritionQuality ||
+                    selectedSmokingStatus != original.smokingStatus ||
+                    selectedAlcoholFrequency != original.alcoholFrequency ||
+                    selectedSocialConnectionsQuality != original.socialConnectionsQuality ||
+                    selectedDeviceTrackingStatus != original.deviceTrackingStatus ||
+                    selectedLifeMotivation != original.lifeMotivation
+    }
+    
+    // MARK: - Mapping helpers (reuse from UpdateHealthProfileViewModel)
+    
+    private func mapValueToStressLevel(_ value: Double?) -> QuestionnaireViewModel.StressLevel? {
+        guard let value = value else { return nil }
+        switch value {
+        case 0..<2.5: return .veryLow
+        case 2.5..<4.5: return .low
+        case 4.5..<7.5: return .moderateToHigh
+        case 7.5...10: return .veryHigh
+        default: return nil
+        }
+    }
+    
+    private func mapValueToNutrition(_ value: Double) -> QuestionnaireViewModel.NutritionQuality? {
+        switch value {
+        case 9...10: return .veryHealthy
+        case 7..<9: return .mostlyHealthy
+        case 2..<7: return .mixedToUnhealthy
+        case 0..<2: return .veryUnhealthy
+        default: return nil
+        }
+    }
+    
+    private func mapValueToSmoking(_ value: Double) -> QuestionnaireViewModel.SmokingStatus? {
+        switch value {
+        case 9...10: return .never
+        case 7..<9: return .former
+        case 4..<7: return .occasionally
+        case 0..<4: return .daily
+        default: return nil
+        }
+    }
+    
+    private func mapValueToAlcohol(_ value: Double) -> QuestionnaireViewModel.AlcoholFrequency? {
+        switch value {
+        case 8...10: return .never
+        case 6..<8: return .occasionally
+        case 4..<6: return .severalTimesWeek
+        case 0..<4: return .dailyOrHeavy
+        default: return nil
+        }
+    }
+    
+    private func mapValueToSocial(_ value: Double) -> QuestionnaireViewModel.SocialConnectionsQuality? {
+        switch value {
+        case 8...10: return .veryStrong
+        case 6..<8: return .moderateToGood
+        case 4..<6: return .limited
+        case 0..<4: return .isolated
+        default: return nil
+        }
     }
 }
 

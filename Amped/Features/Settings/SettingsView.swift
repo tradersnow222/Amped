@@ -2,11 +2,11 @@ import SwiftUI
 import StoreKit
 import OSLog
 
-/// View for managing app settings and user preferences
+/// View for managing app settings and user preferences - styled to match Apple Health design
 struct SettingsView: View {
     @EnvironmentObject private var settingsManager: SettingsManager
     @State private var showResetConfirmation = false
-    @State private var showingUpdateHealthProfile = false
+    @State private var showingCompleteProfileEditor = false
     @Environment(\.dismiss) private var dismiss
     
     private let logger = Logger(subsystem: "ai.ampedlife.amped", category: "SettingsView")
@@ -14,20 +14,24 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             List {
-                ProfileSection(showingUpdateHealthProfile: $showingUpdateHealthProfile)
+                ProfileSection(showingCompleteProfileEditor: $showingCompleteProfileEditor)
+                
                 DisplaySection()
                     .environmentObject(settingsManager)
+                
                 PrivacySection(showResetConfirmation: $showResetConfirmation)
+                
                 AboutSection()
             }
-            .listStyle(InsetGroupedListStyle())
+            .listStyle(.insetGrouped)
             .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
+                    .foregroundColor(.accentColor)
                 }
             }
             .alert("Reset All Data?", isPresented: $showResetConfirmation) {
@@ -39,12 +43,10 @@ struct SettingsView: View {
                 Text("This action cannot be undone. All your health data, settings, and preferences will be permanently deleted.")
             }
         }
-        .sheet(isPresented: $showingUpdateHealthProfile) {
-            UpdateHealthProfileView()
+        .sheet(isPresented: $showingCompleteProfileEditor) {
+            CompleteProfileEditorView()
         }
     }
-    
-    // MARK: - Helper Methods
     
     private func resetAllData() {
         // Reset settings
@@ -66,76 +68,33 @@ struct SettingsView: View {
 // MARK: - Profile Section
 
 struct ProfileSection: View {
-    @Binding var showingUpdateHealthProfile: Bool
+    @Binding var showingCompleteProfileEditor: Bool
     
     var body: some View {
         Section {
-            HStack {
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(.ampedGreen)
-                    .frame(width: 40)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Your Profile")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    
-                    Text("Manage your health factors")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-            }
-            .padding(.vertical, 8)
-            
-            Button {
-                showingUpdateHealthProfile = true
-            } label: {
-                HStack {
-                    Image(systemName: "square.and.pencil")
-                        .font(.body)
-                        .foregroundColor(.ampedGreen)
-                        .frame(width: 30)
-                    
-                    Text("Update Health Profile")
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                }
-            }
+                         // Complete Profile Editor
+             SettingsRow(
+                 icon: "person.text.rectangle",
+                 title: "Health Details",
+                 subtitle: "Name, age, gender, and health factors",
+                 hasChevron: true
+             ) {
+                 showingCompleteProfileEditor = true
+             }
             
             NavigationLink {
                 BackgroundRefreshSettingsView()
             } label: {
-                HStack {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.body)
-                        .foregroundColor(.ampedGreen)
-                        .frame(width: 30)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Background App Refresh")
-                            .foregroundColor(.primary)
-                        Text("Automatic data updates")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                }
+                SettingsRowContent(
+                    icon: "arrow.clockwise",
+                    title: "Background App Refresh",
+                    subtitle: "Automatic data updates",
+                    hasChevron: true
+                )
             }
-        } header: {
-            Text("Profile")
+        }
+        .sheet(isPresented: $showingCompleteProfileEditor) {
+            CompleteProfileEditorView()
         }
     }
 }
@@ -146,62 +105,27 @@ struct DisplaySection: View {
     @EnvironmentObject var settingsManager: SettingsManager
     
     var body: some View {
-        Section {
-            Toggle(isOn: $settingsManager.showLifeProjectionAsPercentage) {
-                HStack {
-                    Image(systemName: "percent")
-                        .font(.body)
-                        .foregroundColor(.ampedGreen)
-                        .frame(width: 30)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Show Life as Percentage")
-                            .font(.body)
-                        Text("Display remaining life as %")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-            .tint(.ampedGreen)
+        Section(header: Text("Features")) {
+            SettingsToggleRow(
+                icon: "percent",
+                title: "Show Life as Percentage",
+                subtitle: "Display remaining life as %",
+                isOn: $settingsManager.showLifeProjectionAsPercentage
+            )
             
-            Toggle(isOn: $settingsManager.showUnavailableMetrics) {
-                HStack {
-                    Image(systemName: "eye.slash")
-                        .font(.body)
-                        .foregroundColor(.ampedGreen)
-                        .frame(width: 30)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Show Unavailable Metrics")
-                            .font(.body)
-                        Text("Display metrics with no data")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-            .tint(.ampedGreen)
+            SettingsToggleRow(
+                icon: "eye.slash",
+                title: "Show Unavailable Metrics",
+                subtitle: "Display metrics with no data",
+                isOn: $settingsManager.showUnavailableMetrics
+            )
             
-            Toggle(isOn: $settingsManager.useMetricSystem) {
-                HStack {
-                    Image(systemName: "scalemass")
-                        .font(.body)
-                        .foregroundColor(.ampedGreen)
-                        .frame(width: 30)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Use Metric Units")
-                            .font(.body)
-                        Text("kg, cm instead of lbs, ft")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-            .tint(.ampedGreen)
-        } header: {
-            Text("Display")
+            SettingsToggleRow(
+                icon: "scalemass",
+                title: "Use Metric Units",
+                subtitle: "kg, cm instead of lbs, ft",
+                isOn: $settingsManager.useMetricSystem
+            )
         }
     }
 }
@@ -212,26 +136,37 @@ struct PrivacySection: View {
     @Binding var showResetConfirmation: Bool
     
     var body: some View {
-        Section {
-            Button(role: .destructive) {
-                showResetConfirmation = true
+        Section(header: Text("Privacy"), footer: Text("Your data is encrypted on your device and can only be shared with your permission.").font(.footnote)) {
+            NavigationLink {
+                PrivacyPolicyView()
             } label: {
-                HStack {
-                    Image(systemName: "trash")
-                        .font(.body)
-                        .foregroundColor(.red)
-                        .frame(width: 30)
-                    
-                    Text("Reset All Data")
-                        .foregroundColor(.red)
-                }
+                SettingsRowContent(
+                    icon: "hand.raised",
+                    title: "Privacy Policy",
+                    subtitle: nil,
+                    hasChevron: true
+                )
             }
-        } header: {
-            Text("Data & Privacy")
-        } footer: {
-            Text("This will delete all your health data and reset the app to its initial state.")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            
+            NavigationLink {
+                TermsOfServiceView()
+            } label: {
+                SettingsRowContent(
+                    icon: "doc.text",
+                    title: "Terms of Service", 
+                    subtitle: nil,
+                    hasChevron: true
+                )
+            }
+            
+            SettingsRow(
+                icon: "trash",
+                title: "Reset All Data",
+                subtitle: nil,
+                isDestructive: true
+            ) {
+                showResetConfirmation = true
+            }
         }
     }
 }
@@ -240,21 +175,173 @@ struct PrivacySection: View {
 
 struct AboutSection: View {
     var body: some View {
-        Section {
+        Section(header: Text("About")) {
             HStack {
-                Image(systemName: "info.circle")
-                    .font(.body)
-                    .foregroundColor(.ampedGreen)
-                    .frame(width: 30)
+                SettingsRowContent(
+                    icon: "info.circle",
+                    title: "Version",
+                    subtitle: nil,
+                    hasChevron: false
+                )
                 
-                Text("Version")
                 Spacer()
+                
                 Text("1.0.0")
                     .foregroundColor(.secondary)
+                    .font(.body)
             }
-        } header: {
-            Text("About")
         }
+    }
+}
+
+// MARK: - Reusable Components
+
+struct SettingsRow<Content: View>: View {
+    let icon: String
+    let title: String
+    let subtitle: String?
+    let hasChevron: Bool
+    let isDestructive: Bool
+    let action: () -> Void
+    
+    init(
+        icon: String,
+        title: String,
+        subtitle: String? = nil,
+        hasChevron: Bool = false,
+        isDestructive: Bool = false,
+        @ViewBuilder content: @escaping () -> Content = { EmptyView() },
+        action: @escaping () -> Void
+    ) {
+        self.icon = icon
+        self.title = title
+        self.subtitle = subtitle
+        self.hasChevron = hasChevron
+        self.isDestructive = isDestructive
+        self.action = action
+    }
+    
+    var body: some View {
+        Button(action: action) {
+            SettingsRowContent(
+                icon: icon,
+                title: title,
+                subtitle: subtitle,
+                hasChevron: hasChevron,
+                isDestructive: isDestructive
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+extension SettingsRow where Content == EmptyView {
+    init(
+        icon: String,
+        title: String,
+        subtitle: String? = nil,
+        hasChevron: Bool = false,
+        isDestructive: Bool = false,
+        action: @escaping () -> Void
+    ) {
+        self.icon = icon
+        self.title = title
+        self.subtitle = subtitle
+        self.hasChevron = hasChevron
+        self.isDestructive = isDestructive
+        self.action = action
+    }
+}
+
+struct SettingsRowContent: View {
+    let icon: String
+    let title: String
+    let subtitle: String?
+    let hasChevron: Bool
+    let isDestructive: Bool
+    
+    init(
+        icon: String,
+        title: String,
+        subtitle: String? = nil,
+        hasChevron: Bool = false,
+        isDestructive: Bool = false
+    ) {
+        self.icon = icon
+        self.title = title
+        self.subtitle = subtitle
+        self.hasChevron = hasChevron
+        self.isDestructive = isDestructive
+    }
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Icon
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundColor(isDestructive ? .red : .accentColor)
+                .frame(width: 24, height: 24)
+            
+            // Content
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body)
+                    .foregroundColor(isDestructive ? .red : .primary)
+                
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            // Chevron
+            if hasChevron {
+                                 Image(systemName: "chevron.right")
+                     .font(.footnote)
+                     .foregroundColor(Color.secondary)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+struct SettingsToggleRow: View {
+    let icon: String
+    let title: String
+    let subtitle: String?
+    @Binding var isOn: Bool
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Icon
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundColor(.accentColor)
+                .frame(width: 24, height: 24)
+            
+            // Content
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body)
+                    .foregroundColor(.primary)
+                
+                if let subtitle = subtitle {
+                    Text(subtitle)
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+            
+            // Toggle
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+        }
+        .padding(.vertical, 2)
     }
 }
 
@@ -295,6 +382,7 @@ struct PrivacyPolicyView: View {
         }
         .navigationTitle("Privacy Policy")
         .navigationBarTitleDisplayMode(.inline)
+        .background(Color(.systemGroupedBackground))
     }
 }
 
@@ -332,6 +420,7 @@ struct TermsOfServiceView: View {
         }
         .navigationTitle("Terms of Service")
         .navigationBarTitleDisplayMode(.inline)
+        .background(Color(.systemGroupedBackground))
     }
 }
 

@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreHaptics
+import OSLog
 
 /// Helper functions and utilities for the Dashboard view
 struct DashboardHelpers {
@@ -211,6 +212,7 @@ struct BatterySystemView: View {
 /// Enhanced view for the life projection battery indicator with countdown display - Jobs-inspired simplicity
 struct EnhancedBatterySystemView: View {
     let lifeProjection: LifeProjection?
+    let optimalProjection: LifeProjection?
     let currentUserAge: Double
     let selectedTab: Int // 0 = Current lifestyle, 1 = Better habits
     let onProjectionHelpTapped: () -> Void
@@ -271,9 +273,14 @@ struct EnhancedBatterySystemView: View {
             // Current lifestyle - use actual projection
             return lifeProjection.projectionPercentage(currentUserAge: currentUserAge)
         } else {
-            // Better habits - simulate 10-20% improvement
-            let currentCharge = lifeProjection.projectionPercentage(currentUserAge: currentUserAge)
-            return min(1.0, currentCharge * 1.25) // 25% improvement for more visual impact
+            // Better habits - use optimal projection if available, otherwise simulate improvement
+            if let optimal = optimalProjection {
+                return optimal.projectionPercentage(currentUserAge: currentUserAge)
+            } else {
+                // Fallback to simulated improvement if optimal projection not available
+                let currentCharge = lifeProjection.projectionPercentage(currentUserAge: currentUserAge)
+                return min(1.0, currentCharge * 1.25) // 25% improvement for visual impact
+            }
         }
     }
     
@@ -380,7 +387,7 @@ struct EnhancedBatterySystemView: View {
     
     /// Countdown display showing years, days, hours, minutes, seconds - Jobs-inspired design
     private func countdownDisplay(lifeProjection: LifeProjection) -> some View {
-        let remainingTime = calculateRemainingTime(lifeProjection: lifeProjection)
+        let remainingTime = calculateRemainingTime(lifeProjection: lifeProjection, optimalProjection: optimalProjection)
         
         return VStack(spacing: 16) { // Reduced from 32
             // Main countdown message
@@ -475,7 +482,7 @@ struct EnhancedBatterySystemView: View {
             VStack(spacing: 8) { // Removed Spacer, using VStack with controlled spacing
                 // Better tab - gain message (only on Better tab)
                 if selectedTab == 1 {
-                    let extraYears = calculateExtraYears(lifeProjection: lifeProjection)
+                    let extraYears = calculateExtraYears(lifeProjection: lifeProjection, optimalProjection: optimalProjection)
                     let yearsText = extraYears.years > 0 ? "\(extraYears.years) years" : ""
                     let monthsText = extraYears.months > 0 ? "\(extraYears.months) months" : ""
                     let separator = !yearsText.isEmpty && !monthsText.isEmpty ? " and " : ""
@@ -517,12 +524,12 @@ struct EnhancedBatterySystemView: View {
     }
     
     /// Calculate remaining time components with science-based improvements
-    private func calculateRemainingTime(lifeProjection: LifeProjection) -> (years: Int, days: Int, hours: Int, minutes: Int, seconds: Int) {
+    private func calculateRemainingTime(lifeProjection: LifeProjection, optimalProjection: LifeProjection?) -> (years: Int, days: Int, hours: Int, minutes: Int, seconds: Int) {
         var adjustedYears = lifeProjection.adjustedLifeExpectancyYears
         
         // Apply science-based improvement for better habits tab
-        if selectedTab == 1 {
-            adjustedYears = calculateImprovedLifeExpectancy(lifeProjection: lifeProjection)
+        if selectedTab == 1, let optimal = optimalProjection {
+            adjustedYears = optimal.adjustedLifeExpectancyYears
         }
         
         let remainingYears = adjustedYears - currentUserAge
@@ -531,10 +538,10 @@ struct EnhancedBatterySystemView: View {
         let calendar = Calendar.current
         let now = currentTime
         
-        // Convert remaining time to components
-        let years = Int(remainingYears)
+        // FIXED: Round remaining years instead of truncating
+        let years = Int(round(remainingYears))
         let fractionalYear = remainingYears - Double(years)
-        let daysFromFraction = Int(fractionalYear * 365.25)
+        let daysFromFraction = Int(abs(fractionalYear) * 365.25) // Use abs to handle rounding edge cases
         
         // Calculate current time components
         let currentHour = calendar.component(.hour, from: now)
@@ -547,7 +554,7 @@ struct EnhancedBatterySystemView: View {
         let secondsLeft = 59 - currentSecond
         
         return (
-            years: years,
+            years: max(0, years), // Ensure non-negative
             days: daysFromFraction,
             hours: hoursLeft,
             minutes: minutesLeft,
@@ -556,33 +563,27 @@ struct EnhancedBatterySystemView: View {
     }
     
     /// Calculate extra years gained with better habits using science-based approach
-    private func calculateExtraYears(lifeProjection: LifeProjection) -> (years: Int, months: Int) {
-        let currentYears = lifeProjection.adjustedLifeExpectancyYears
-        let improvedYears = calculateImprovedLifeExpectancy(lifeProjection: lifeProjection)
-        let totalGain = improvedYears - currentYears
-        
-        let years = Int(totalGain)
-        let months = Int((totalGain - Double(years)) * 12)
-        
-        return (years: years, months: months)
-    }
-    
-    /// Calculate improved life expectancy with optimal habits
-    private func calculateImprovedLifeExpectancy(lifeProjection: LifeProjection) -> Double {
+    private func calculateExtraYears(lifeProjection: LifeProjection, optimalProjection: LifeProjection?) -> (years: Int, months: Int) {
         let currentYears = lifeProjection.adjustedLifeExpectancyYears
         
-        // Estimate current health score based on projection
-        let projectionPercentage = lifeProjection.projectionPercentage(currentUserAge: currentUserAge)
-        
-        // Base improvement: 8-14 years gain from optimal habits
-        // Younger people and those with poorer health can gain more
-        let ageMultiplier = max(0.5, min(1.0, (80 - currentUserAge) / 60))
-        let healthMultiplier = 1.0 - projectionPercentage
-        
-        // Calculate years gained (8-14 years range based on AHA research)
-        let yearsGained = 8.0 + (6.0 * healthMultiplier * ageMultiplier)
-        
-        return currentYears + yearsGained
+        if let optimal = optimalProjection {
+            let improvedYears = optimal.adjustedLifeExpectancyYears
+            let totalGain = improvedYears - currentYears
+            
+            let years = Int(totalGain)
+            let months = Int((totalGain - Double(years)) * 12)
+            
+            return (years: years, months: months)
+        } else {
+            // Fallback to research-based estimate if no optimal projection available
+            let ageMultiplier = max(0.5, min(1.0, (80 - currentUserAge) / 60))
+            let yearsGained = 8.0 + (6.0 * ageMultiplier) // 8-14 years based on age
+            
+            let years = Int(yearsGained)
+            let months = Int((yearsGained - Double(years)) * 12)
+            
+            return (years: years, months: months)
+        }
     }
 }
 

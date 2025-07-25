@@ -417,6 +417,7 @@ struct BatteryLifeProjectionCard_Previews: PreviewProvider {
         let sampleProjection = LifeProjection(
             baselineLifeExpectancyYears: 78.0,
             adjustedLifeExpectancyYears: 82.5,
+            currentAge: 35.0,
             confidencePercentage: 0.85
         )
         

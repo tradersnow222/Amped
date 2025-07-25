@@ -29,6 +29,7 @@ struct BatteryPageContentView: View {
                 // Main content - focused on the key message
                 EnhancedBatterySystemView(
                     lifeProjection: viewModel.lifeProjection,
+                    optimalProjection: viewModel.optimalHabitsProjection,
                     currentUserAge: viewModel.currentUserAge,
                     selectedTab: selectedLifestyleTab,
                     onProjectionHelpTapped: { 

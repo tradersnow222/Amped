@@ -19,6 +19,7 @@ final class DashboardViewModel: ObservableObject {
     @Published var healthMetrics: [HealthMetric] = []
     @Published var lifeImpactData: LifeImpactData?
     @Published var lifeProjection: LifeProjection?
+    @Published var optimalHabitsProjection: LifeProjection?
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var selectedTimePeriod: TimePeriod = .day
@@ -69,9 +70,10 @@ final class DashboardViewModel: ObservableObject {
         // Use profile from questionnaire if available, otherwise create default
         if let profile = userProfile {
             self.userProfile = profile
+            logger.info("✅ Using provided user profile: Age \(profile.age ?? 0), Gender: \(profile.gender?.rawValue ?? "none")")
         } else if let savedProfile = questionnaireManager.getCurrentUserProfile() {
             self.userProfile = savedProfile
-            logger.info("✅ Using saved user profile from questionnaire")
+            logger.info("✅ Using saved user profile from questionnaire: Age \(savedProfile.age ?? 0), Gender: \(savedProfile.gender?.rawValue ?? "none")")
         } else {
             // CRITICAL FIX: Create a temporary profile with sensible defaults for impact calculations
             // This ensures health metrics can still show impact data even before onboarding completion
@@ -89,7 +91,7 @@ final class DashboardViewModel: ObservableObject {
                 createdAt: Date(),
                 lastActive: Date()
             )
-            logger.info("⚠️ Using default user profile")
+            logger.info("⚠️ Using default user profile: Age \(self.userProfile.age ?? 0)")
         }
         
         // Create default health kit manager and services if none provided
@@ -272,13 +274,18 @@ final class DashboardViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Life Projection Calculations
+    
     private func calculateLifeProjection() {
-        logger.info("🔮 Calculating life projection...")
+        logger.info("🔮 Calculating life projection for user age: \(self.userProfile.age ?? 0)")
         
         lifeProjection = lifeProjectionService.calculateLifeProjection(
             from: self.healthMetrics,
             userProfile: userProfile
         )
+        
+        // Also calculate optimal habits projection using scientific pipeline
+        optimalHabitsProjection = calculateOptimalHabitsProjection()
         
         if let projection = lifeProjection {
             logger.info("📊 Life projection calculated:")
@@ -291,6 +298,132 @@ final class DashboardViewModel: ObservableObject {
         } else {
             logger.warning("⚠️ No life projection calculated")
         }
+    }
+    
+    /// Calculate personalized better habits lifespan projection using user's actual data
+    /// This starts with real metrics and only improves suboptimal ones, keeping good metrics unchanged
+    func calculateOptimalHabitsProjection() -> LifeProjection? {
+        logger.info("🎯 Calculating personalized better habits projection using user's actual metrics")
+        
+        // Create personalized improved metrics based on user's current data
+        let improvedMetrics = createPersonalizedImprovedMetrics()
+        
+        // Use the same scientific pipeline as current habits calculation
+        let improvedProjection = lifeProjectionService.calculateLifeProjection(
+            from: improvedMetrics,
+            userProfile: userProfile
+        )
+        
+        if let projection = improvedProjection {
+            logger.info("✅ Personalized better habits projection calculated:")
+            logger.info("  - Baseline expectancy: \(String(format: "%.1f", projection.baselineLifeExpectancy)) years")
+            logger.info("  - Improved projected expectancy: \(String(format: "%.1f", projection.adjustedLifeExpectancyYears)) years")
+            logger.info("  - Personal improvement potential: \(String(format: "%.1f", projection.adjustedLifeExpectancyYears - (self.lifeProjection?.adjustedLifeExpectancyYears ?? projection.baselineLifeExpectancyYears))) years")
+            
+            return projection
+        } else {
+            logger.warning("⚠️ Failed to calculate personalized better habits projection")
+            return nil
+        }
+    }
+    
+    /// Create personalized improved health metrics by starting with user's actual data
+    /// and only improving metrics that are currently suboptimal
+    private func createPersonalizedImprovedMetrics() -> [HealthMetric] {
+        logger.info("🔄 Creating personalized improved metrics from user's actual data")
+        
+        var improvedMetrics: [HealthMetric] = []
+        
+        // Start with current user metrics and improve only suboptimal ones
+        for currentMetric in self.healthMetrics {
+            let improvedMetric = improveMetricIfSuboptimal(currentMetric)
+            improvedMetrics.append(improvedMetric)
+            
+            if improvedMetric.value != currentMetric.value {
+                logger.info("📈 Improved \(currentMetric.type.displayName): \(String(format: "%.1f", currentMetric.value)) → \(String(format: "%.1f", improvedMetric.value))")
+            } else {
+                logger.info("✅ Kept optimal \(currentMetric.type.displayName): \(String(format: "%.1f", currentMetric.value))")
+            }
+        }
+        
+        logger.info("🎯 Created \(improvedMetrics.count) personalized improved metrics")
+        return improvedMetrics
+    }
+    
+    /// Improve a metric only if it's currently suboptimal, otherwise keep it unchanged
+    private func improveMetricIfSuboptimal(_ metric: HealthMetric) -> HealthMetric {
+        let improvedValue: Double
+        
+        switch metric.type {
+        // Physical Activity Metrics
+        case .steps:
+            // Optimal: 10,000 steps (Saint-Maurice et al. 2020 JAMA)
+            improvedValue = metric.value < 10000 ? min(10000, metric.value * 1.5) : metric.value
+            
+        case .exerciseMinutes:
+            // Optimal: 30 minutes daily (WHO/AHA guidelines)
+            improvedValue = metric.value < 30 ? min(30, metric.value * 2.0) : metric.value
+            
+        // Cardiovascular Metrics
+        case .sleepHours:
+            // Optimal: 7-8 hours (Jike et al. 2018 meta-analysis)
+            if metric.value < 7.0 {
+                improvedValue = min(7.5, metric.value + 1.5)
+            } else if metric.value > 8.5 {
+                improvedValue = max(7.5, metric.value - 1.0)
+            } else {
+                improvedValue = metric.value // Already optimal
+            }
+            
+        case .restingHeartRate:
+            // Optimal: 50-70 bpm for adults
+            if metric.value > 70 {
+                improvedValue = max(65, metric.value - 10)
+            } else if metric.value < 50 {
+                improvedValue = min(60, metric.value + 5)
+            } else {
+                improvedValue = metric.value // Already optimal
+            }
+            
+        case .heartRateVariability:
+            // Optimal: Higher is better, age-adjusted
+            improvedValue = metric.value < 40 ? min(50, metric.value * 1.3) : metric.value
+            
+        // Lifestyle Metrics (questionnaire data)
+        case .smokingStatus:
+            // Scale 1-10 where 10 = never smoked, improve if below 8
+            improvedValue = metric.value < 8 ? min(10, metric.value + 3) : metric.value
+            
+        case .alcoholConsumption:
+            // Scale 1-10 where 10 = no alcohol, improve if below 7
+            improvedValue = metric.value < 7 ? min(9, metric.value + 2) : metric.value
+            
+        case .stressLevel:
+            // Scale 1-10 where lower is better, improve if above 4
+            improvedValue = metric.value > 4 ? max(2, metric.value - 2) : metric.value
+            
+        case .nutritionQuality:
+            // Scale 1-10 where higher is better, improve if below 7
+            improvedValue = metric.value < 7 ? min(9, metric.value + 2) : metric.value
+            
+        case .socialConnectionsQuality:
+            // Scale 1-10 where higher is better, improve if below 6
+            improvedValue = metric.value < 6 ? min(8, metric.value + 2) : metric.value
+            
+        default:
+            // For other metrics, keep unchanged
+            improvedValue = metric.value
+        }
+        
+        // Create new metric with improved value but same other properties
+        return HealthMetric(
+            id: "improved_\(metric.id)",
+            type: metric.type,
+            value: improvedValue,
+            date: metric.date,
+            source: metric.source,
+            impactDetails: metric.impactDetails // Keep original impact details for now
+        )
     }
     
     func refreshData() async {
@@ -344,6 +477,9 @@ final class DashboardViewModel: ObservableObject {
                     from: periodMetrics,
                     userProfile: self.userProfile
                 )
+                
+                // Also recalculate optimal habits projection
+                optimalHabitsProjection = calculateOptimalHabitsProjection()
                 
                 self.isLoading = false
                 

@@ -8,6 +8,7 @@ struct LifeProjection: Identifiable, Codable, Equatable {
     let adjustedLifeExpectancyYears: Double
     let confidencePercentage: Double
     let confidenceIntervalYears: Double
+    let currentAge: Double // FIXED: Store actual user age instead of calculating it
     
     /// Impact factor for UI compatibility
     struct ImpactFactor: Identifiable, Codable, Equatable {
@@ -28,6 +29,7 @@ struct LifeProjection: Identifiable, Codable, Equatable {
         calculationDate: Date = Date(),
         baselineLifeExpectancyYears: Double,
         adjustedLifeExpectancyYears: Double,
+        currentAge: Double,
         confidencePercentage: Double = 0.95,
         confidenceIntervalYears: Double = 2.0
     ) {
@@ -35,6 +37,7 @@ struct LifeProjection: Identifiable, Codable, Equatable {
         self.calculationDate = calculationDate
         self.baselineLifeExpectancyYears = baselineLifeExpectancyYears
         self.adjustedLifeExpectancyYears = adjustedLifeExpectancyYears
+        self.currentAge = currentAge
         self.confidencePercentage = confidencePercentage
         self.confidenceIntervalYears = confidenceIntervalYears
     }
@@ -151,15 +154,7 @@ struct LifeProjection: Identifiable, Codable, Equatable {
         adjustedLifeExpectancyYears
     }
     
-    /// Current age in years (calculated from current date and baseline)
-    var currentAge: Double {
-        let calendar = Calendar.current
-        let currentYear = Double(calendar.component(.year, from: Date()))
-        // Estimate birth year from baseline expectancy and current year
-        // This is approximate since we don't have the actual birth year here
-        let estimatedBirthYear = currentYear - (baselineLifeExpectancyYears * 0.5) // Rough estimation
-        return currentYear - estimatedBirthYear
-    }
+    // FIXED: currentAge is now a stored property with the actual user age
     
     /// Health adjustment in years (alias for netImpactYears)
     var healthAdjustment: Double {
@@ -168,7 +163,6 @@ struct LifeProjection: Identifiable, Codable, Equatable {
     
     /// Years remaining based on adjusted life expectancy
     var yearsRemaining: Double {
-        let currentAge = self.currentAge
         return max(adjustedLifeExpectancyYears - currentAge, 0)
     }
     

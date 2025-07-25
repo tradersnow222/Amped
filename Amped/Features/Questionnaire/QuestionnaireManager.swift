@@ -41,10 +41,13 @@ final class QuestionnaireManager: ObservableObject {
     /// Load critical data synchronously for immediate availability
     private func loadUserProfileSync() {
         // Only load the most essential data for immediate use
-        if let data = UserDefaults.standard.data(forKey: "userProfile"),
+        if let data = UserDefaults.standard.data(forKey: "user_profile"),
            let profile = try? JSONDecoder().decode(UserProfile.self, from: data) {
             self.currentUserProfile = profile
             self.hasCompletedQuestionnaire = profile.hasCompletedQuestionnaire
+            logger.info("✅ Loaded user profile: Age \(profile.age ?? 0), Gender: \(profile.gender?.rawValue ?? "none")")
+        } else {
+            logger.warning("⚠️ No user profile found in UserDefaults with key 'user_profile'")
         }
     }
     
@@ -59,7 +62,7 @@ final class QuestionnaireManager: ObservableObject {
     
     /// Async manual metrics loading
     private func loadManualMetricsAsync() async {
-        if let data = UserDefaults.standard.data(forKey: "manualMetrics"),
+        if let data = UserDefaults.standard.data(forKey: "manual_metrics"),
            let metrics = try? JSONDecoder().decode([ManualMetricInput].self, from: data) {
             await MainActor.run {
                 self.manualMetrics = metrics
@@ -69,7 +72,7 @@ final class QuestionnaireManager: ObservableObject {
     
     /// Async questionnaire data loading
     private func loadQuestionnaireDataAsync() async {
-        if let data = UserDefaults.standard.data(forKey: "questionnaireData"),
+        if let data = UserDefaults.standard.data(forKey: "questionnaire_data"),
            let questionnaire = try? JSONDecoder().decode(QuestionnaireData.self, from: data) {
             await MainActor.run {
                 self.questionnaireData = questionnaire
