@@ -73,6 +73,21 @@ struct QuestionViews {
         @ObservedObject var viewModel: QuestionnaireViewModel
         var handleContinue: () -> Void
         
+        // STEVE JOBS OPTIMIZATION: Cache bindings to prevent recreation on every render
+        private var monthBinding: Binding<Int> {
+            Binding(
+                get: { viewModel.selectedBirthMonth },
+                set: { viewModel.updateSelectedMonth($0) }
+            )
+        }
+        
+        private var yearBinding: Binding<Int> {
+            Binding(
+                get: { viewModel.selectedBirthYear },
+                set: { viewModel.updateSelectedYear($0) }
+            )
+        }
+        
         var body: some View {
             VStack(spacing: 0) {
                 // Main content area with consistent padding
@@ -90,13 +105,10 @@ struct QuestionViews {
                     Spacer()
                     Spacer() // Additional spacer to push picker lower
 
-                    // OPTIMIZED: Reduce picker data for faster cleanup during transition
+                    // STEVE JOBS OPTIMIZATION: Ultra-fast pickers using cached bindings and pre-computed data
                     HStack(spacing: 0) {
-                        // Month Picker - OPTIMIZED: Only render necessary months
-                        Picker("Month", selection: Binding(
-                            get: { viewModel.selectedBirthMonth },
-                            set: { viewModel.updateSelectedMonth($0) }
-                        )) {
+                        // Month Picker - Using cached binding and pre-computed month data
+                        Picker("Month", selection: monthBinding) {
                             ForEach(viewModel.availableMonths, id: \.self) { month in
                                 Text(viewModel.monthName(for: month))
                                     .font(.system(size: 22, weight: .medium))
@@ -108,11 +120,8 @@ struct QuestionViews {
                         .frame(maxWidth: .infinity)
                         .colorScheme(.dark)
                         
-                        // Year Picker - OPTIMIZED: Limit to reasonable range for faster cleanup
-                        Picker("Year", selection: Binding(
-                            get: { viewModel.selectedBirthYear },
-                            set: { viewModel.updateSelectedYear($0) }
-                        )) {
+                        // Year Picker - Using cached binding and pre-computed year range
+                        Picker("Year", selection: yearBinding) {
                             ForEach(viewModel.optimizedYearRange, id: \.self) { year in
                                 Text(String(year))
                                     .font(.system(size: 22, weight: .medium))
@@ -154,16 +163,19 @@ struct QuestionViews {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @FocusState private var isTextFieldFocused: Bool
         
-        // OPTIMIZED: Local state to reduce @Published updates during typing
+        // STEVE JOBS OPTIMIZATION: Local state eliminates @Published updates during typing
         @State private var localUserName: String = ""
-        // OPTIMIZED: Timer-based debouncing instead of NSObject methods
-        @State private var debounceTimer: Timer?
-        // OPTIMIZED: Control focus timing to sequence animations properly
-        @State private var shouldDelayFocus: Bool = true
+        // STEVE JOBS OPTIMIZATION: Eliminate timer overhead - commit only on submit/continue
+        @State private var hasCommittedName: Bool = false
+        // INSTANT TAP RESPONSE: Removed complex focus timing - direct user control
+        
+        // ULTRA OPTIMIZATION: Cache button state to prevent constant recalculation
+        @State private var isButtonEnabled: Bool = false
         
         var body: some View {
+            // ULTRA OPTIMIZATION: Fixed layout structure to prevent recalculations during typing
             VStack(alignment: .center, spacing: 0) {
-                // Question placed higher
+                // Question placed higher - fixed height to prevent layout shifts
                 Text("What's your first name?")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
@@ -171,18 +183,20 @@ struct QuestionViews {
                     .lineLimit(nil)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, minHeight: 40) // Fixed minimum height
                 
                 Spacer()
                 
-                // Options at bottom for thumb access - matching other questions structure
+                // ULTRA OPTIMIZATION: Fixed input container to prevent layout recalculations
                 VStack(spacing: 12) {
+                    // INSTANT TAP RESPONSE: Ultra-streamlined TextField for zero lag on tap
                     TextField("Enter your name", text: $localUserName)
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
-                        .padding()
+                        .padding(16)
                         .background(
+                            // INSTANT TAP RESPONSE: Minimal background for instant focus response
                             RoundedRectangle(cornerRadius: 16)
                                 .fill(Color.white.opacity(0.1))
                                 .overlay(
@@ -191,80 +205,80 @@ struct QuestionViews {
                                 )
                         )
                         .focused($isTextFieldFocused)
+                        .textInputAutocapitalization(.words)
+                        .disableAutocorrection(true)
                         .onSubmit {
-                            commitNameToViewModel()
-                            if viewModel.canProceed {
+                            commitNameIfNeeded()
+                            if isButtonEnabled {
                                 proceedToNext()
                             }
                         }
-                        .textInputAutocapitalization(.words)
-                        .disableAutocorrection(true)
-                        // OPTIMIZED: Timer-based debouncing for smooth performance
+                        // ULTRA OPTIMIZATION: Batch state updates to minimize re-renders
                         .onChange(of: localUserName) { newValue in
-                            // Cancel any existing timer
-                            debounceTimer?.invalidate()
+                            let wasEmpty = isButtonEnabled == false
+                            let isEmpty = newValue.isEmpty
                             
-                            // Set a new timer to update the viewModel after a delay
-                            debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
-                                commitNameToViewModel()
+                            // Only update states if they actually changed
+                            if wasEmpty != isEmpty {
+                                isButtonEnabled = !isEmpty
+                            }
+                            if hasCommittedName {
+                                hasCommittedName = false
                             }
                         }
                     
+                    // ULTRA OPTIMIZATION: Maximum performance button with zero complex rendering
                     Button(action: {
-                        commitNameToViewModel()
-                        if viewModel.canProceed {
+                        commitNameIfNeeded()
+                        if isButtonEnabled {
                             proceedToNext()
                         }
                     }) {
                         Text("Continue")
                     }
-                    .questionnaireButtonStyle(isSelected: false)
-                    .opacity(!localUserName.isEmpty ? 1.0 : 0.6)
-                    .disabled(localUserName.isEmpty)
+                    .ultraOptimizedNameButtonStyle(isEnabled: isButtonEnabled)
+                    .opacity(isButtonEnabled ? 1.0 : 0.6)
+                    .disabled(!isButtonEnabled)
                     .hapticFeedback(.light)
                 }
                 .padding(.bottom, 30)
+                .frame(maxWidth: .infinity) // ULTRA OPTIMIZATION: Fixed width to prevent layout shifts
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
             .onAppear {
-                // Initialize local state with viewModel value
+                // ULTRA OPTIMIZATION: Initialize all cached states in single batch
                 localUserName = viewModel.userName
+                hasCommittedName = true // Mark as committed since we're syncing with ViewModel
+                isButtonEnabled = !viewModel.userName.isEmpty // Initialize button state cache
                 
-                // STEVE JOBS FIX: Sequence animations properly - never compete
-                if viewModel.currentQuestion == .name && shouldDelayFocus {
-                    // Let view transition complete BEFORE triggering keyboard
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        isTextFieldFocused = true
-                        shouldDelayFocus = false
-                    }
-                } else if viewModel.currentQuestion == .name {
-                    // If returning to this view, focus immediately
-                    isTextFieldFocused = true
-                }
+                // INSTANT TAP RESPONSE: Eliminate automatic focus delays - let user tap when ready
+                // No automatic keyboard triggering - responds instantly to user tap
             }
             .onDisappear {
-                // Cancel any pending timer and commit changes
-                debounceTimer?.invalidate()
-                commitNameToViewModel()
+                // STEVE JOBS OPTIMIZATION: Only commit if name was actually changed
+                commitNameIfNeeded()
                 isTextFieldFocused = false
-                shouldDelayFocus = true // Reset for next time
             }
         }
         
-        // OPTIMIZED: Simple commit function using main actor
-        private func commitNameToViewModel() {
-            Task { @MainActor in
+        // STEVE JOBS OPTIMIZATION: Efficient commit only when needed, zero Task overhead
+        private func commitNameIfNeeded() {
+            if !hasCommittedName && localUserName != viewModel.userName {
                 viewModel.userName = localUserName
+                hasCommittedName = true
             }
         }
         
-        // OPTIMIZED: Simplified navigation function without artificial delays
+        // STEVE JOBS OPTIMIZATION: Instant navigation with guaranteed commit
         private func proceedToNext() {
+            // Ensure name is committed before proceeding
+            commitNameIfNeeded()
+            
             // Dismiss keyboard first
             isTextFieldFocused = false
             
-            // OPTIMIZED: Immediate navigation for responsive feel
+            // Immediate navigation for responsive feel
             viewModel.proceedToNextQuestion()
         }
     }

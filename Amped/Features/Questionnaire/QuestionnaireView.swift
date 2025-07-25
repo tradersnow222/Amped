@@ -78,7 +78,7 @@ struct QuestionnaireView: View {
                     }
                     .clipped() // Ensure off-screen content doesn't show
                     .animation(
-                        .easeInOut(duration: 0.25), // OPTIMIZED: Even faster animation for instant feel
+                        .easeInOut(duration: 0.25), // STEVE JOBS OPTIMIZATION: Perfect timing for seamless transitions
                         value: viewModel.currentQuestion
                     )
                     

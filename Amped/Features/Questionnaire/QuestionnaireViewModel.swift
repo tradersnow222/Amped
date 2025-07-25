@@ -228,6 +228,20 @@ final class QuestionnaireViewModel: ObservableObject {
 
     private static let staticCurrentYear = Calendar.current.component(.year, from: Date())
     private static let staticCurrentMonth = Calendar.current.component(.month, from: Date())
+    
+    // STEVE JOBS OPTIMIZATION: Pre-computed practical year range for instant picker performance
+    private static let staticOptimizedYearRange: [Int] = {
+        let currentYear = staticCurrentYear
+        let minYear = currentYear - 110  // 110 years old max
+        let maxYear = currentYear - 5    // 5 years old min
+        return Array(minYear...maxYear)
+    }()
+    
+    // STEVE JOBS OPTIMIZATION: Pre-computed month arrays for instant performance
+    private static let staticAllMonths = Array(1...12)
+    private static let staticCurrentYearMonths: [Int] = {
+        return Array(1...staticCurrentMonth)
+    }()
 
     // Birthdate (replacing age)
     @Published var birthdate: Date = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date() // Default to 30 years ago
@@ -246,7 +260,7 @@ final class QuestionnaireViewModel: ObservableObject {
         }.value
     }
 
-    // Update birthdate when month or year changes - OPTIMIZED
+    // STEVE JOBS OPTIMIZATION: Batch birthdate updates to minimize @Published triggers
     private func updateBirthdateFromMonthYear() {
         var components = DateComponents()
         components.year = selectedBirthYear
@@ -254,48 +268,50 @@ final class QuestionnaireViewModel: ObservableObject {
         components.day = 1 // Always use 1st of the month for consistency
         
         if let newDate = calendar.date(from: components) {
-            birthdate = newDate
+            // Only update if the date actually changed to prevent unnecessary @Published triggers
+            if newDate != birthdate {
+                birthdate = newDate
+            }
         }
     }
 
-    // OPTIMIZED: Use static pre-computed values for maximum performance
+    // STEVE JOBS OPTIMIZATION: Zero-computation properties using pre-computed static values
     var availableMonths: [Int] {
         if selectedBirthYear == Self.staticCurrentYear {
-            // If current year is selected, only show months up to current month
-            return Array(1...Self.staticCurrentMonth)
+            // If current year is selected, use pre-computed current year months
+            return Self.staticCurrentYearMonths
         } else {
-            // For other years, show all months
-            return Array(1...12)
+            // For other years, use pre-computed all months array
+            return Self.staticAllMonths
         }
     }
 
-    // OPTIMIZED: Use pre-computed static array - no recalculation needed
+    // STEVE JOBS OPTIMIZATION: Direct reference to pre-computed static array
     var availableYears: [Int] {
         return Self.staticAvailableYears
     }
 
-    // STEVE JOBS OPTIMIZATION: Practical year range for faster picker cleanup
+    // STEVE JOBS OPTIMIZATION: Direct reference to pre-computed optimized year range
     var optimizedYearRange: [Int] {
-        let currentYear = Self.staticCurrentYear
-        let minYear = currentYear - 110  // 110 years old max
-        let maxYear = currentYear - 5    // 5 years old min
-        return Array(minYear...maxYear) // Original direction: oldest to newest
+        return Self.staticOptimizedYearRange
     }
 
-    // OPTIMIZED: Use pre-computed month names
+    // STEVE JOBS OPTIMIZATION: Direct array access to pre-computed month names
     func monthName(for month: Int) -> String {
         guard month >= 1 && month <= 12 else { return "" }
         return Self.staticMonthNames[month - 1]
     }
 
-    // Update month selection
+    // STEVE JOBS OPTIMIZATION: Efficient month selection with minimal @Published updates
     func updateSelectedMonth(_ month: Int) {
+        guard month != selectedBirthMonth else { return } // Prevent unnecessary updates
         selectedBirthMonth = month
         updateBirthdateFromMonthYear()
     }
 
-    // Update year selection  
+    // STEVE JOBS OPTIMIZATION: Efficient year selection with minimal @Published updates  
     func updateSelectedYear(_ year: Int) {
+        guard year != selectedBirthYear else { return } // Prevent unnecessary updates
         selectedBirthYear = year
         updateBirthdateFromMonthYear()
     }
@@ -311,10 +327,18 @@ final class QuestionnaireViewModel: ObservableObject {
         return Self.staticBirthdateRange
     }
 
-    // Calculate age from birthdate - OPTIMIZED with cached calendar
+    // STEVE JOBS OPTIMIZATION: Cached age calculation to prevent repeated date computations
+    private var _cachedAge: Int?
+    private var _cachedBirthdate: Date?
+    
     var age: Int {
-        let ageComponents = calendar.dateComponents([.year], from: birthdate, to: Date())
-        return ageComponents.year ?? 0
+        // Only recalculate if birthdate changed
+        if _cachedBirthdate != birthdate || _cachedAge == nil {
+            let ageComponents = calendar.dateComponents([.year], from: birthdate, to: Date())
+            _cachedAge = ageComponents.year ?? 0
+            _cachedBirthdate = birthdate
+        }
+        return _cachedAge ?? 0
     }
     
     // Gender
@@ -357,17 +381,19 @@ final class QuestionnaireViewModel: ObservableObject {
         currentQuestion == Question.lifeMotivation && canProceed
     }
     
-    // Check if it's possible to proceed to the next question
+    // STEVE JOBS OPTIMIZATION: Efficient validation with minimal computation
     var canProceed: Bool {
         switch currentQuestion {
         case .birthdate:
-            return age >= 18 && age <= 120 // Validate age from birthdate
+            // OPTIMIZED: Cache age calculation to prevent repeated date computations
+            let currentAge = age
+            return currentAge >= 18 && currentAge <= 120
         case .name:
-            return !userName.isEmpty // Validate name
+            return !userName.isEmpty
         case .stressLevel:
             return selectedStressLevel != nil
         case .gender:
-            return selectedGender != nil // Require user to make a selection
+            return selectedGender != nil
         case .nutritionQuality:
             return selectedNutritionQuality != nil
         case .smokingStatus:

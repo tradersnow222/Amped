@@ -193,6 +193,34 @@ struct SecondaryButtonStyle: ButtonStyle {
     }
 }
 
+/// ULTRA-OPTIMIZED button style for name input - eliminates expensive rendering
+struct UltraOptimizedNameButtonStyle: ButtonStyle {
+    let isEnabled: Bool
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 17, weight: .medium, design: .rounded))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .padding(.horizontal, 20)
+            .background(
+                // ULTRA OPTIMIZATION: Single background color, no complex effects
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.cardBackground)
+                    .opacity(configuration.isPressed ? 0.8 : 1.0)
+            )
+            .foregroundColor(.white)
+            .overlay(
+                // ULTRA OPTIMIZATION: Simple border only
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.ampedGreen.opacity(0.2), lineWidth: 0.5)
+            )
+            // ULTRA OPTIMIZATION: No shadow, no complex animations - just simple scale
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
 /// Extension to easily apply consistent button styles
 extension View {
     func primaryButtonStyle(isEnabled: Bool = true, isSelected: Bool = false) -> some View {
@@ -209,5 +237,10 @@ extension View {
     
     func secondaryButtonStyle(isEnabled: Bool = true) -> some View {
         self.buttonStyle(SecondaryButtonStyle(isEnabled: isEnabled))
+    }
+    
+    /// Apply ultra-optimized button style for name input
+    func ultraOptimizedNameButtonStyle(isEnabled: Bool = true) -> some View {
+        self.buttonStyle(UltraOptimizedNameButtonStyle(isEnabled: isEnabled))
     }
 } 
