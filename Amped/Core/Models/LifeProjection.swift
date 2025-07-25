@@ -142,6 +142,37 @@ struct LifeProjection: Identifiable, Codable, Equatable {
         return max(0.0, min(1.0, CGFloat(percentage))) // Clamp between 0 and 1
     }
     
+    /// Battery visualization percentage that provides more meaningful visual feedback
+    /// - Parameter currentUserAge: The current age of the user.
+    /// - Returns: A CGFloat between 0.0 and 1.0 optimized for battery visualization
+    func batteryVisualizationPercentage(currentUserAge: Double) -> CGFloat {
+        let yearsRemaining = adjustedLifeExpectancyYears - currentUserAge
+        
+        // Use a more generous scale for battery visualization
+        // 30+ years = 100% (full battery)
+        // 20 years = 75% (high charge)
+        // 10 years = 50% (medium charge)
+        // 5 years = 25% (low charge)
+        // 1 year = 10% (critical)
+        
+        let visualPercentage: Double
+        if yearsRemaining >= 30 {
+            visualPercentage = 1.0
+        } else if yearsRemaining >= 20 {
+            visualPercentage = 0.75 + (yearsRemaining - 20) / 40.0 // Linear scale from 75% to 100%
+        } else if yearsRemaining >= 10 {
+            visualPercentage = 0.5 + (yearsRemaining - 10) / 40.0 // Linear scale from 50% to 75%
+        } else if yearsRemaining >= 5 {
+            visualPercentage = 0.25 + (yearsRemaining - 5) / 20.0 // Linear scale from 25% to 50%
+        } else if yearsRemaining >= 1 {
+            visualPercentage = 0.1 + (yearsRemaining - 1) / 25.0 // Linear scale from 10% to 25%
+        } else {
+            visualPercentage = max(0.05, yearsRemaining / 10.0) // Minimum 5% for any positive value
+        }
+        
+        return CGFloat(max(0.0, min(1.0, visualPercentage)))
+    }
+    
     // MARK: - DashboardViewModel Compatibility Properties
     
     /// Baseline life expectancy (alias for baselineLifeExpectancyYears)

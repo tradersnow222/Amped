@@ -25,59 +25,114 @@ final class QuestionnaireManager: ObservableObject {
     @Published var manualMetrics: [ManualMetricInput] = []
     @Published var questionnaireData: QuestionnaireData?
     
-    // MARK: - Initialization
+    // ULTRA-FAST: Static cache to prevent repeated loading across instances
+    private static var dataCache: (
+        profile: UserProfile?,
+        metrics: [ManualMetricInput],
+        questionnaire: QuestionnaireData?
+    )?
+    
+    private static var isCacheValid = false
+    
+    // MARK: - ULTRA-FAST Initialization
     
     init() {
-        // OPTIMIZED: Initialize with minimal main thread work - defer heavy I/O
-        // Load critical data first, then async load the rest
-        loadUserProfileSync()
+        // ULTRA-FAST: ZERO main thread blocking - only set basic defaults
+        // All data loading is deferred until actually needed
+        setupDefaultState()
+    }
+    
+    /// ULTRA-FAST: Setup only essential defaults without any I/O
+    private func setupDefaultState() {
+        // Only set basic completion state from lightweight UserDefaults check
+        hasCompletedQuestionnaire = UserDefaults.standard.bool(forKey: "hasCompletedQuestionnaire")
         
-        // Defer non-critical loading to avoid blocking main thread
-        Task { @MainActor in
-            await loadDataAsync()
+        // Use cached data if available for instant access
+        if let cache = Self.dataCache, Self.isCacheValid {
+            self.currentUserProfile = cache.profile
+            self.manualMetrics = cache.metrics
+            self.questionnaireData = cache.questionnaire
         }
     }
     
-    /// Load critical data synchronously for immediate availability
-    private func loadUserProfileSync() {
-        // Only load the most essential data for immediate use
-        if let data = UserDefaults.standard.data(forKey: "user_profile"),
-           let profile = try? JSONDecoder().decode(UserProfile.self, from: data) {
-            self.currentUserProfile = profile
-            self.hasCompletedQuestionnaire = profile.hasCompletedQuestionnaire
-            logger.info("✅ Loaded user profile: Age \(profile.age ?? 0), Gender: \(profile.gender?.rawValue ?? "none")")
-        } else {
-            logger.warning("⚠️ No user profile found in UserDefaults with key 'user_profile'")
+    /// ULTRA-FAST: Load data on-demand when actually needed (called from ProfileDetailsViewModel)
+    func loadDataIfNeeded() async {
+        // Use cache if available for instant response
+        if let cache = Self.dataCache, Self.isCacheValid {
+            await MainActor.run {
+                self.currentUserProfile = cache.profile
+                self.manualMetrics = cache.metrics
+                self.questionnaireData = cache.questionnaire
+            }
+            return
         }
-    }
-    
-    /// Load all remaining data asynchronously
-    private func loadDataAsync() async {
-        // These can be loaded in background without blocking UI
-        await Task.detached(priority: .utility) {
-            await self.loadManualMetricsAsync()
-            await self.loadQuestionnaireDataAsync()
+        
+        // Prevent multiple simultaneous loads
+        guard currentUserProfile == nil else { return }
+        
+        // Load all data in background thread for maximum performance
+        let loadedData = await Task.detached(priority: .userInitiated) {
+            var result: (
+                profile: UserProfile?,
+                metrics: [ManualMetricInput],
+                questionnaire: QuestionnaireData?
+            ) = (nil, [], nil)
+            
+            // OPTIMIZED: Load with error handling
+            if let data = UserDefaults.standard.data(forKey: "user_profile") {
+                do {
+                    result.profile = try JSONDecoder().decode(UserProfile.self, from: data)
+                } catch {
+                    print("Failed to decode user profile: \(error)")
+                }
+            }
+            
+            if let data = UserDefaults.standard.data(forKey: "manual_metrics") {
+                do {
+                    result.metrics = try JSONDecoder().decode([ManualMetricInput].self, from: data)
+                } catch {
+                    print("Failed to decode manual metrics: \(error)")
+                }
+            }
+            
+            if let data = UserDefaults.standard.data(forKey: "questionnaire_data") {
+                do {
+                    result.questionnaire = try JSONDecoder().decode(QuestionnaireData.self, from: data)
+                } catch {
+                    print("Failed to decode questionnaire data: \(error)")
+                }
+            }
+            
+            return result
         }.value
-    }
-    
-    /// Async manual metrics loading
-    private func loadManualMetricsAsync() async {
-        if let data = UserDefaults.standard.data(forKey: "manual_metrics"),
-           let metrics = try? JSONDecoder().decode([ManualMetricInput].self, from: data) {
-            await MainActor.run {
-                self.manualMetrics = metrics
+        
+        // Cache the loaded data for future use
+        Self.dataCache = loadedData
+        Self.isCacheValid = true
+        
+        // Update state on main thread in single batch
+        await MainActor.run {
+            self.currentUserProfile = loadedData.profile
+            self.manualMetrics = loadedData.metrics
+            self.questionnaireData = loadedData.questionnaire
+            
+            if let profile = loadedData.profile {
+                self.hasCompletedQuestionnaire = profile.hasCompletedQuestionnaire
+                logger.info("✅ Loaded user profile: Age \(profile.age ?? 0), Gender: \(profile.gender?.rawValue ?? "none")")
+            }
+            
+            logger.info("✅ Loaded \(loadedData.metrics.count) manual metrics")
+            
+            if loadedData.questionnaire != nil {
+                logger.info("✅ Loaded questionnaire data")
             }
         }
     }
     
-    /// Async questionnaire data loading
-    private func loadQuestionnaireDataAsync() async {
-        if let data = UserDefaults.standard.data(forKey: "questionnaire_data"),
-           let questionnaire = try? JSONDecoder().decode(QuestionnaireData.self, from: data) {
-            await MainActor.run {
-                self.questionnaireData = questionnaire
-            }
-        }
+    /// ULTRA-FAST: Invalidate cache when data changes
+    private static func invalidateCache() {
+        dataCache = nil
+        isCacheValid = false
     }
     
     // MARK: - Public Methods
@@ -334,4 +389,4 @@ final class QuestionnaireManager: ObservableObject {
         UserDefaults.standard.set(true, forKey: "hasCompletedQuestionnaire")
         logger.info("✅ Questionnaire marked as completed")
     }
-} 
+}

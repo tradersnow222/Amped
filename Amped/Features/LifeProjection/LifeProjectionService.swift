@@ -71,9 +71,11 @@ class LifeProjectionService {
         let timeHorizon = remainingYears
         let decayFactor = exp(-behaviorDecayRate * timeHorizon / 2.0) // Use half-life for conservative estimate
         
-        // Convert daily impact to lifespan impact
-        let dailyImpactYears = dailyImpactMinutes / (24 * 60) // Convert minutes to years
-        let lifespanImpactYears = dailyImpactYears * 365.25 * timeHorizon * decayFactor
+        // FIXED: Convert daily impact minutes directly to total years of impact
+        // The daily impact is already in minutes per day, so we multiply by days remaining
+        let totalDaysRemaining = timeHorizon * 365.25
+        let totalImpactMinutes = dailyImpactMinutes * totalDaysRemaining * decayFactor
+        let lifespanImpactYears = totalImpactMinutes / (365.25 * 24 * 60) // Convert total minutes to years
         
         // Apply evidence quality weighting
         let evidenceAdjustedImpact = lifespanImpactYears * evidenceQuality
@@ -83,6 +85,13 @@ class LifeProjectionService {
         
         // Ensure reasonable bounds (don't project beyond 120 years or below current age)
         let boundedProjection = max(userAge + 1, min(120.0, projectedLifespan))
+        
+        logger.info("📊 Life projection details:")
+        logger.info("  - Daily impact: \(String(format: "%.1f", dailyImpactMinutes)) minutes/day")
+        logger.info("  - Time horizon: \(String(format: "%.1f", timeHorizon)) years")
+        logger.info("  - Total impact: \(String(format: "%.2f", lifespanImpactYears)) years")
+        logger.info("  - Evidence-adjusted: \(String(format: "%.2f", evidenceAdjustedImpact)) years")
+        logger.info("  - Final projection: \(String(format: "%.1f", boundedProjection)) years")
         
         return LifeProjection(
             id: UUID(),

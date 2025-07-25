@@ -1,261 +1,118 @@
 import SwiftUI
 import OSLog
 
-/// Settings view for background refresh status and information
+/// View for managing background app refresh settings
 struct BackgroundRefreshSettingsView: View {
-    @EnvironmentObject private var backgroundHealthManager: BackgroundHealthManager
-    @State private var backgroundStatus: BackgroundStatus?
-    
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.amped.Amped", category: "BackgroundRefreshSettingsView")
+    @State private var backgroundRefreshEnabled = true
+    private let logger = Logger(subsystem: "ai.ampedlife.amped", category: "BackgroundRefreshSettings")
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            headerSection
-            
-            if let status = backgroundStatus {
-                statusSection(status)
-                explanationSection
-                troubleshootingSection
-            } else {
-                loadingSection
-            }
-        }
-        .padding()
-        .onAppear {
-            loadBackgroundStatus()
-        }
-        .refreshable {
-            loadBackgroundStatus()
-        }
-    }
-    
-    // MARK: - View Components
-    
-    private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Background App Refresh")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(.ampedGreen)
-            
-            Text("Keep your health data up-to-date automatically")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-    }
-    
-    private func statusSection(_ status: BackgroundStatus) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Overall Status
-            HStack {
-                Image(systemName: status.refreshEnabled ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                    .foregroundColor(status.refreshEnabled ? .green : .orange)
-                
-                Text("Background Refresh")
-                    .fontWeight(.medium)
-                
-                Spacer()
-                
-                Text(status.refreshEnabled ? "Enabled" : "Disabled")
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(status.refreshEnabled ? Color.green.opacity(0.2) : Color.orange.opacity(0.2))
-                    .foregroundColor(status.refreshEnabled ? .green : .orange)
-                    .cornerRadius(8)
+        List {
+            Section {
+                Toggle("Background App Refresh", isOn: $backgroundRefreshEnabled)
+            } footer: {
+                Text("When enabled, Amped can update your health data automatically in the background for more accurate battery calculations.")
+                    .font(.footnote)
             }
             
-            // Last Update
-            if let lastUpdate = status.lastUpdate {
+            Section("What This Enables") {
                 HStack {
-                    Image(systemName: "clock")
-                        .foregroundColor(.ampedGreen)
+                    Image(systemName: "heart.text.square")
+                        .font(.title3)
+                        .foregroundColor(.red)
+                        .frame(width: 30)
                     
-                    Text("Last Update")
-                        .fontWeight(.medium)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Health Data Updates")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        Text("Automatically fetch new health metrics from HealthKit")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                     
                     Spacer()
+                }
+                .padding(.vertical, 2)
+                
+                HStack {
+                    Image(systemName: "battery.100")
+                        .font(.title3)
+                        .foregroundColor(.green)
+                        .frame(width: 30)
                     
-                    Text(formatRelativeTime(lastUpdate))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Battery Calculations")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        Text("Update life impact calculations with latest data")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.vertical, 2)
+                
+                HStack {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .font(.title3)
+                        .foregroundColor(.blue)
+                        .frame(width: 30)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Trend Analysis")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        Text("Track health trends and patterns over time")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.vertical, 2)
+            }
+            
+            Section("Privacy") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Your Privacy is Protected")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Text("All health data processing happens locally on your device. No data is transmitted to external servers, even with background refresh enabled.")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-            }
-            
-            // Enabled Metrics
-            if !status.enabledMetrics.isEmpty {
-                HStack {
-                    Image(systemName: "heart.fill")
-                        .foregroundColor(.ampedRed)
-                    
-                    Text("Active Metrics")
-                        .fontWeight(.medium)
-                    
-                    Spacer()
-                    
-                    Text("\(status.enabledMetrics.count)")
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.ampedGreen.opacity(0.2))
-                        .foregroundColor(.ampedGreen)
-                        .cornerRadius(8)
-                }
-                
-                // Show specific metrics
-                LazyVGrid(columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
-                ], spacing: 8) {
-                    ForEach(status.enabledMetrics.prefix(6), id: \.self) { metric in
-                        Text(metric.displayName)
-                            .font(.caption2)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(Color.ampedSilver.opacity(0.3))
-                            .cornerRadius(6)
-                    }
-                }
+                .padding(.vertical, 4)
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-    }
-    
-    private var explanationSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("How It Works")
-                .font(.headline)
-                .foregroundColor(.ampedGreen)
-            
-            VStack(alignment: .leading, spacing: 8) {
-                explanationItem(
-                    icon: "iphone",
-                    title: "Smart Scheduling",
-                    description: "iOS automatically schedules updates based on your usage patterns"
-                )
-                
-                explanationItem(
-                    icon: "battery.100",
-                    title: "Battery Efficient",
-                    description: "Updates only run when your device has sufficient battery"
-                )
-                
-                explanationItem(
-                    icon: "person.fill.checkmark",
-                    title: "User Controlled",
-                    description: "You can disable this feature in iOS Settings > General > Background App Refresh"
-                )
-            }
+        .navigationTitle("Background App Refresh")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            loadCurrentSetting()
+        }
+        .onChange(of: backgroundRefreshEnabled) { enabled in
+            saveBackgroundRefreshSetting(enabled)
         }
     }
     
-    private var troubleshootingSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Troubleshooting")
-                .font(.headline)
-                .foregroundColor(.ampedYellow)
-            
-            VStack(alignment: .leading, spacing: 8) {
-                if backgroundStatus?.refreshEnabled == false {
-                    troubleshootingItem(
-                        icon: "gear",
-                        title: "Enable Background App Refresh",
-                        description: "Go to Settings > General > Background App Refresh and enable it for Amped"
-                    )
-                }
-                
-                troubleshootingItem(
-                    icon: "bolt.fill",
-                    title: "Low Power Mode",
-                    description: "Background updates may be limited when Low Power Mode is enabled"
-                )
-                
-                troubleshootingItem(
-                    icon: "wifi",
-                    title: "Data Settings",
-                    description: "Some updates may require Wi-Fi connection to preserve cellular data"
-                )
-            }
-        }
+    private func loadCurrentSetting() {
+        backgroundRefreshEnabled = UserDefaults.standard.bool(forKey: "backgroundRefreshEnabled")
     }
     
-    private var loadingSection: some View {
-        HStack {
-            ProgressView()
-                .scaleEffect(0.8)
-            
-            Text("Loading background refresh status...")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .padding()
-    }
-    
-    // MARK: - Helper Views
-    
-    private func explanationItem(icon: String, title: String, description: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .foregroundColor(.ampedGreen)
-                .frame(width: 20)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                Text(description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-        }
-    }
-    
-    private func troubleshootingItem(icon: String, title: String, description: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .foregroundColor(.ampedYellow)
-                .frame(width: 20)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                Text(description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-        }
-    }
-    
-    // MARK: - Helper Methods
-    
-    private func loadBackgroundStatus() {
-        backgroundStatus = backgroundHealthManager.getBackgroundStatus()
-        logger.info("📊 Loaded background status: refresh enabled = \(backgroundStatus?.refreshEnabled ?? false)")
-    }
-    
-    private func formatRelativeTime(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
+    private func saveBackgroundRefreshSetting(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: "backgroundRefreshEnabled")
+        logger.info("Background refresh setting updated: \(enabled)")
     }
 }
 
-// MARK: - Preview
-
-struct BackgroundRefreshSettingsView_Previews: PreviewProvider {
-    static var previews: some View {
-        NavigationView {
-            BackgroundRefreshSettingsView()
-                .environmentObject(BackgroundHealthManager.shared)
-        }
+#Preview {
+    NavigationView {
+        BackgroundRefreshSettingsView()
     }
-} 
+}

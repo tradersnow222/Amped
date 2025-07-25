@@ -1,6 +1,7 @@
 import SwiftUI
 import OSLog
 import Combine // Added for CombineLatest
+import PhotosUI // Added for profile picture functionality
 
 /// View for updating questionnaire responses - Rules: User profile update best practices
 struct UpdateHealthProfileView: View {
@@ -267,46 +268,121 @@ struct UpdateHealthProfileView: View {
 struct CompleteProfileEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = CompleteProfileEditorViewModel()
+    @State private var showingPhotoPicker = false
+    
+    private var birthDateDisplay: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        return "\(formatter.string(from: viewModel.birthDate)) (\(viewModel.currentAge))"
+    }
     
     var body: some View {
         NavigationView {
             List {
-                Section("Personal Information") {
-                    // Name
+                // Apple Health-style profile photo section
+                Section {
                     HStack {
-                        Label("Name", systemImage: "person.fill")
                         Spacer()
-                        TextField("Enter your name", text: $viewModel.userName)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    
-                    // Age (Birthdate)
-                    VStack(alignment: .leading) {
-                        HStack {
-                            Label("Age", systemImage: "calendar")
-                            Spacer()
-                            Text("\(viewModel.currentAge) years old")
-                                .foregroundColor(.secondary)
-                        }
                         
-                        DatePicker("Birth Date", 
-                                 selection: $viewModel.birthDate, 
-                                 in: viewModel.validDateRange,
-                                 displayedComponents: [.date])
-                            .datePickerStyle(.compact)
-                    }
-                    
-                    // Gender
-                    VStack(alignment: .leading) {
-                        Label("Gender", systemImage: "person.2.fill")
-                        
-                        Picker("Gender", selection: $viewModel.selectedGender) {
-                            Text("Select Gender").tag(nil as UserProfile.Gender?)
-                            ForEach(UserProfile.Gender.allCases, id: \.self) { gender in
-                                Text(gender.displayName).tag(gender as UserProfile.Gender?)
+                        VStack(spacing: 16) {
+                            // Large tappable profile photo
+                            Button {
+                                showingPhotoPicker = true
+                            } label: {
+                                ProfileImageView(size: 100, showBorder: true)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Profile photo")
+                            .accessibilityHint("Double tap to change profile picture")
+                            
+                            // Photo picker and remove options
+                            VStack(spacing: 8) {
+                                PhotosPicker(
+                                    selection: $viewModel.selectedPhotoItem,
+                                    matching: .images,
+                                    photoLibrary: .shared()
+                                ) {
+                                    Text(viewModel.profileManager.profileImage == nil ? "Add Photo" : "Change Photo")
+                                        .font(.subheadline)
+                                        .foregroundColor(.accentColor)
+                                }
+                                
+                                if viewModel.profileManager.profileImage != nil {
+                                    Button("Remove Photo") {
+                                        viewModel.profileManager.removeProfileImage()
+                                    }
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                                }
                             }
                         }
-                        .pickerStyle(.segmented)
+                        
+                        Spacer()
+                    }
+                    .padding(.vertical, 20)
+                }
+                
+                // Personal Information Section (Apple Health Style)
+                Section {
+                    // First Name
+                    HStack {
+                        Text("First Name")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        TextField("First", text: Binding(
+                            get: { viewModel.userName.components(separatedBy: " ").first ?? "" },
+                            set: { newValue in
+                                let lastName = viewModel.userName.components(separatedBy: " ").dropFirst().joined(separator: " ")
+                                viewModel.userName = lastName.isEmpty ? newValue : "\(newValue) \(lastName)"
+                            }
+                        ))
+                        .multilineTextAlignment(.trailing)
+                        .foregroundColor(.secondary)
+                    }
+                    
+                    // Last Name
+                    HStack {
+                        Text("Last Name")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        TextField("Last", text: Binding(
+                            get: { 
+                                let components = viewModel.userName.components(separatedBy: " ")
+                                return components.count > 1 ? components.dropFirst().joined(separator: " ") : ""
+                            },
+                            set: { newValue in
+                                let firstName = viewModel.userName.components(separatedBy: " ").first ?? ""
+                                viewModel.userName = firstName.isEmpty ? newValue : "\(firstName) \(newValue)"
+                            }
+                        ))
+                        .multilineTextAlignment(.trailing)
+                        .foregroundColor(.secondary)
+                    }
+                    
+                    // Date of Birth with Age
+                    HStack {
+                        Text("Date of Birth")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        NavigationLink {
+                            DatePickerView(selectedDate: $viewModel.birthDate, validRange: viewModel.validDateRange)
+                        } label: {
+                            Text(birthDateDisplay)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    // Sex
+                    HStack {
+                        Text("Sex")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        NavigationLink {
+                            GenderPickerView(selectedGender: $viewModel.selectedGender)
+                        } label: {
+                            Text(viewModel.selectedGender?.displayName ?? "Not Set")
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
                 
@@ -406,13 +482,21 @@ struct CompleteProfileEditorView: View {
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("Edit Profile")
+            .navigationTitle("Health Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
+                    Button("Profile") {
                         dismiss()
                     }
+                    .foregroundColor(.accentColor)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Edit") {
+                        // Future: Enter edit mode
+                    }
+                    .foregroundColor(.accentColor)
                 }
             }
             .onAppear {
@@ -431,6 +515,10 @@ class CompleteProfileEditorViewModel: ObservableObject {
     @Published var userName: String = ""
     @Published var birthDate: Date = Date()
     @Published var selectedGender: UserProfile.Gender?
+    
+    // Profile Picture - Use centralized manager
+    @Published var selectedPhotoItem: PhotosPickerItem?
+    let profileManager = ProfileImageManager.shared
     
     // Health Factors
     @Published var selectedStressLevel: QuestionnaireViewModel.StressLevel?
@@ -467,6 +555,8 @@ class CompleteProfileEditorViewModel: ObservableObject {
     init() {
         // Set up change detection
         setupChangeDetection()
+        // Set up photo picker handling
+        setupPhotoPickerHandling()
     }
     
     var currentAge: Int {
@@ -599,24 +689,25 @@ class CompleteProfileEditorViewModel: ObservableObject {
     
     private func setupChangeDetection() {
         // Monitor all published properties for changes
-        Publishers.CombineLatest4(
+        Publishers.CombineLatest3(
             $userName,
             $birthDate,
-            $selectedGender,
-            $selectedStressLevel
+            $selectedGender
         )
         .combineLatest(
             Publishers.CombineLatest4(
+                $selectedStressLevel,
                 $selectedNutritionQuality,
                 $selectedSmokingStatus,
-                $selectedAlcoholFrequency,
-                $selectedSocialConnectionsQuality
+                $selectedAlcoholFrequency
             )
         )
         .combineLatest(
-            Publishers.CombineLatest(
+            Publishers.CombineLatest4(
+                $selectedSocialConnectionsQuality,
                 $selectedDeviceTrackingStatus,
-                $selectedLifeMotivation
+                $selectedLifeMotivation,
+                Just(true) // Placeholder to maintain CombineLatest4 structure
             )
         )
         .sink { [weak self] combinedOutput in
@@ -695,6 +786,114 @@ class CompleteProfileEditorViewModel: ObservableObject {
         case 4..<6: return .limited
         case 0..<4: return .isolated
         default: return nil
+        }
+    }
+    
+    // MARK: - Photo Picker Handling
+    
+    private func setupPhotoPickerHandling() {
+        // Monitor photo picker selection changes
+        $selectedPhotoItem
+            .dropFirst() // Skip the initial nil value
+            .compactMap { $0 } // Filter out nil values
+            .sink { [weak self] photoItem in
+                Task { @MainActor in
+                    await self?.loadSelectedPhoto(from: photoItem)
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    @MainActor
+    private func loadSelectedPhoto(from photoItem: PhotosPickerItem) async {
+        guard let imageData = try? await photoItem.loadTransferable(type: Data.self),
+              let uiImage = UIImage(data: imageData) else {
+            logger.error("Failed to load selected photo")
+            return
+        }
+        
+        // Use centralized profile manager to save the image
+        profileManager.saveProfileImage(uiImage)
+        
+        // Post notification to refresh any UI displaying the profile image
+        NotificationCenter.default.post(
+            name: NSNotification.Name("ProfileImageUpdated"),
+            object: nil
+        )
+        
+        logger.info("Profile image updated successfully")
+    }
+    
+ 
+}
+
+// MARK: - Apple Health Style Picker Views
+
+struct DatePickerView: View {
+    @Binding var selectedDate: Date
+    let validRange: ClosedRange<Date>
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                DatePicker("Birth Date", 
+                          selection: $selectedDate, 
+                          in: validRange,
+                          displayedComponents: [.date])
+                    .datePickerStyle(.wheel)
+                    .labelsHidden()
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Date of Birth")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(.accentColor)
+                }
+            }
+        }
+    }
+}
+
+struct GenderPickerView: View {
+    @Binding var selectedGender: UserProfile.Gender?
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            List {
+                ForEach(UserProfile.Gender.allCases, id: \.self) { gender in
+                    HStack {
+                        Text(gender.displayName)
+                        Spacer()
+                        if selectedGender == gender {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.accentColor)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        selectedGender = gender
+                        dismiss()
+                    }
+                }
+            }
+            .navigationTitle("Sex")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(.accentColor)
+                }
+            }
         }
     }
 }

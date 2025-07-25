@@ -48,22 +48,7 @@ struct DashboardView: View {
     
     // MARK: - Computed Properties
     
-    /// Get user initials from stored name for profile display
-    private var userInitials: String? {
-        guard let userName = UserDefaults.standard.string(forKey: "userName"),
-              !userName.isEmpty else { return nil }
-        
-        let components = userName.components(separatedBy: " ")
-        let initials = components.compactMap { $0.first }.map(String.init)
-        
-        if initials.count >= 2 {
-            return "\(initials[0])\(initials[1])"
-        } else if let firstInitial = initials.first {
-            return firstInitial
-        }
-        
-        return nil
-    }
+
 
     /// Convert period type to proper adjective form for display
     private var periodAdjective: String {
@@ -378,31 +363,7 @@ struct DashboardView: View {
                 Button {
                     showingSettings = true
                 } label: {
-                    // Profile icon - show initials if available, otherwise default icon
-                    ZStack {
-                        Circle()
-                            .fill(.ultraThinMaterial)
-                            .opacity(0.8)
-                            .frame(width: 44, height: 44)
-                        
-                        Circle()
-                            .stroke(.tertiary, lineWidth: 0.5)
-                            .frame(width: 44, height: 44)
-                        
-                        if let initials = userInitials {
-                            // Show user initials
-                            Text(initials)
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.primary)
-                        } else {
-                            // Show default profile icon
-                            Image(systemName: "person.crop.circle")
-                                .font(.title3)
-                                .fontWeight(.medium)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .contentShape(Circle())
+                    ProfileImageView(size: 44, showBorder: true)
                 }
                 .accessibilityLabel("Account & Settings")
                 .accessibilityHint("Double tap to open your account and settings")
