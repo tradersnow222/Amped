@@ -369,4 +369,43 @@ class LifeImpactService {
             return "Excellent cardiovascular fitness for your age! Maintain your current exercise routine."
         }
     }
+
+    // MARK: - Neutral Baseline Calculation
+    
+    /// Calculate the neutral baseline impact representing optimal health habits
+    /// This represents what the collective impact would be if all metrics were at research-backed optimal values
+    func calculateNeutralBaseline() -> Double {
+        logger.info("🎯 Calculating neutral baseline impact for optimal health habits")
+        
+        // Define optimal values based on scientific research
+        let optimalMetrics: [HealthMetric] = [
+            // Physical Activity - Research-backed optimal values
+            HealthMetric(id: UUID().uuidString, type: .steps, value: 10000, date: Date(), source: .calculated), // Optimal from Saint-Maurice et al.
+            HealthMetric(id: UUID().uuidString, type: .exerciseMinutes, value: 150/7, date: Date(), source: .calculated), // 150 min/week optimal from WHO
+            
+            // Cardiovascular Health - Research-backed optimal values  
+            HealthMetric(id: UUID().uuidString, type: .restingHeartRate, value: 60, date: Date(), source: .calculated), // Optimal RHR
+            HealthMetric(id: UUID().uuidString, type: .heartRateVariability, value: 40, date: Date(), source: .calculated), // Good HRV
+            HealthMetric(id: UUID().uuidString, type: .sleepHours, value: 7.5, date: Date(), source: .calculated), // Optimal sleep duration
+            
+            // Lifestyle Metrics - Research-backed optimal values
+            HealthMetric(id: UUID().uuidString, type: .alcoholConsumption, value: 10, date: Date(), source: .calculated), // No alcohol (optimal)
+            HealthMetric(id: UUID().uuidString, type: .smokingStatus, value: 10, date: Date(), source: .calculated), // Never smoked
+            HealthMetric(id: UUID().uuidString, type: .stressLevel, value: 2, date: Date(), source: .calculated), // Low stress
+            HealthMetric(id: UUID().uuidString, type: .nutritionQuality, value: 8, date: Date(), source: .calculated), // High nutrition quality
+            HealthMetric(id: UUID().uuidString, type: .socialConnectionsQuality, value: 8, date: Date(), source: .calculated) // Good social connections
+        ]
+        
+        // Calculate total impact for optimal metrics (this should be close to 0 or slightly positive)
+        let neutralImpactData = calculateTotalImpact(from: optimalMetrics, for: .day)
+        let neutralImpactMinutes = neutralImpactData.totalImpactMinutes
+        
+        logger.info("🎯 Neutral baseline calculated: \(String(format: "%.2f", neutralImpactMinutes)) minutes/day")
+        logger.info("📋 Optimal metrics used:")
+        for metric in optimalMetrics {
+            logger.info("  \(metric.type.displayName): \(metric.value)")
+        }
+        
+        return neutralImpactMinutes
+    }
 } 

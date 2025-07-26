@@ -273,6 +273,12 @@ import UIKit
     
     /// Schedule next health refresh task
     private func scheduleNextHealthRefresh() {
+        // Check if background refresh is enabled in settings
+        guard UserDefaults.standard.bool(forKey: "backgroundRefreshEnabled", defaultValue: true) else {
+            logger.info("📅 Background refresh disabled in settings - skipping task scheduling")
+            return
+        }
+        
         let request = BGAppRefreshTaskRequest(identifier: BackgroundTaskIdentifier.healthDataRefresh.fullIdentifier)
         
         // Schedule for optimal time - Apple's system will decide when to actually run it
@@ -288,6 +294,12 @@ import UIKit
     
     /// Schedule health processing task
     func scheduleHealthProcessing() {
+        // Check if background refresh is enabled in settings
+        guard UserDefaults.standard.bool(forKey: "backgroundRefreshEnabled", defaultValue: true) else {
+            logger.info("📅 Background refresh disabled in settings - skipping processing task scheduling")
+            return
+        }
+        
         let request = BGProcessingTaskRequest(identifier: BackgroundTaskIdentifier.healthProcessing.fullIdentifier)
         
         // Configure for efficiency - only run when conditions are optimal
@@ -307,6 +319,12 @@ import UIKit
     
     /// Initialize background health updates - call this after permissions are granted
     func startBackgroundUpdates() async {
+        // Check if background refresh is enabled in settings
+        guard UserDefaults.standard.bool(forKey: "backgroundRefreshEnabled", defaultValue: true) else {
+            logger.info("🚀 Background refresh disabled in settings - skipping background updates initialization")
+            return
+        }
+        
         logger.info("🚀 Starting background health updates")
         
         // Enable background delivery for all permitted metrics

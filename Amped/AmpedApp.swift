@@ -115,18 +115,21 @@ struct AmpedApp: App {
             // Rules: Trigger intro animations when returning from background
             appState.handleAppReturnFromBackground()
             
-            // Start background health updates if permissions are available
+            // Start background health updates if permissions are available AND setting is enabled
             Task {
                 let healthKitManager = HealthKitManager.shared
-                if healthKitManager.hasAllPermissions || healthKitManager.hasCriticalPermissions {
+                if (healthKitManager.hasAllPermissions || healthKitManager.hasCriticalPermissions) && 
+                   settingsManager.backgroundRefreshEnabled {
                     await backgroundHealthManager.startBackgroundUpdates()
                 }
             }
             
         case .background:
-            // App went to background - schedule background tasks
+            // App went to background - schedule background tasks only if setting is enabled
             analyticsService.trackEvent(.appBackground)
-            backgroundHealthManager.scheduleHealthProcessing()
+            if settingsManager.backgroundRefreshEnabled {
+                backgroundHealthManager.scheduleHealthProcessing()
+            }
             
         default:
             break

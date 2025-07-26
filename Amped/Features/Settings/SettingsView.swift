@@ -40,7 +40,7 @@ struct SettingsView: View {
                                     .fontWeight(.regular)
                                     .foregroundColor(.primary)
                                 
-                                Text("Health metrics, life projection, and app settings")
+                                Text("Personal info, manual health data, and more")
                                     .font(.footnote)
                                     .foregroundColor(.secondary)
                             }
@@ -60,7 +60,8 @@ struct SettingsView: View {
                         SettingsRowView(
                             icon: "arrow.clockwise",
                             iconColor: .blue,
-                            title: "Background App Refresh"
+                            title: "Background App Refresh",
+                            showChevron: false
                         )
                     }
                     
@@ -90,7 +91,8 @@ struct SettingsView: View {
                         SettingsRowView(
                             icon: "hand.raised.fill",
                             iconColor: .blue,
-                            title: "Privacy Policy"
+                            title: "Privacy Policy",
+                            showChevron: false
                         )
                     }
                     
@@ -101,7 +103,8 @@ struct SettingsView: View {
                         SettingsRowView(
                             icon: "doc.text.fill",
                             iconColor: .blue,
-                            title: "Terms of Service"
+                            title: "Terms of Service",
+                            showChevron: false
                         )
                     }
                     
@@ -341,41 +344,22 @@ struct ProfileDetailsView: View {
             
             // Personal Information Section
             Section("Personal Information") {
-                    // First Name
+                    // Your Name
                     HStack {
-                        Text("First Name")
+                        Text("Your Name")
                             .foregroundColor(.primary)
                         Spacer()
                         NavigationLink {
                             EditNameView(
-                                title: "First Name",
-                                currentValue: viewModel.firstName,
+                                title: "Your Name",
+                                currentValue: viewModel.fullName,
                                 onSave: { newValue in
-                                    viewModel.updateFirstName(newValue)
+                                    viewModel.updateFullName(newValue)
                                 }
                             )
                         } label: {
-                            Text(viewModel.firstName.isEmpty ? "Not Set" : viewModel.firstName)
-                                .foregroundColor(viewModel.firstName.isEmpty ? .secondary : .secondary)
-                        }
-                    }
-                    
-                    // Last Name
-                    HStack {
-                        Text("Last Name")
-                            .foregroundColor(.primary)
-                        Spacer()
-                        NavigationLink {
-                            EditNameView(
-                                title: "Last Name",
-                                currentValue: viewModel.lastName,
-                                onSave: { newValue in
-                                    viewModel.updateLastName(newValue)
-                                }
-                            )
-                        } label: {
-                            Text(viewModel.lastName.isEmpty ? "Not Set" : viewModel.lastName)
-                                .foregroundColor(viewModel.lastName.isEmpty ? .secondary : .secondary)
+                            Text(viewModel.fullName.isEmpty ? "Not Set" : viewModel.fullName)
+                                .foregroundColor(viewModel.fullName.isEmpty ? .secondary : .secondary)
                         }
                     }
                     
@@ -517,8 +501,7 @@ struct ProfileDetailsView: View {
 
 @MainActor
 class ProfileDetailsViewModel: ObservableObject {
-    @Published var firstName: String = ""
-    @Published var lastName: String = ""
+    @Published var fullName: String = ""
     @Published var birthDate: Date = Date()
     @Published var gender: UserProfile.Gender = .male
     @Published var nutritionQuality: Double = 5.0
@@ -621,9 +604,7 @@ class ProfileDetailsViewModel: ObservableObject {
     private func setupDefaultValues() {
         // Load only the most critical data synchronously from lightweight UserDefaults
         if let userName = UserDefaults.standard.string(forKey: "userName") {
-            let components = userName.components(separatedBy: " ")
-            self.firstName = components.first ?? ""
-            self.lastName = components.dropFirst().joined(separator: " ")
+            self.fullName = userName
         }
     }
     
@@ -708,18 +689,8 @@ class ProfileDetailsViewModel: ObservableObject {
     }
     
     // Update methods that automatically recalculate health impacts
-    func updateFirstName(_ newValue: String) {
-        firstName = newValue
-        updateUserName()
-    }
-    
-    func updateLastName(_ newValue: String) {
-        lastName = newValue
-        updateUserName()
-    }
-    
-    private func updateUserName() {
-        let fullName = "\(firstName) \(lastName)".trimmingCharacters(in: .whitespaces)
+    func updateFullName(_ newValue: String) {
+        fullName = newValue.trimmingCharacters(in: .whitespaces)
         UserDefaults.standard.set(fullName, forKey: "userName")
     }
     
@@ -1077,6 +1048,7 @@ struct EditDatePickerView: View {
                         onSave(newDate)
                     }
             }
+            .listRowBackground(Color.clear)
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Date of Birth")

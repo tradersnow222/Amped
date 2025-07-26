@@ -16,6 +16,7 @@ final class SettingsManager: ObservableObject {
         case showUnavailableMetrics
         case showRealtimeCountdown
         case showLifeProjectionAsPercentage
+        case backgroundRefreshEnabled
     }
     
     // MARK: - Enums
@@ -102,6 +103,13 @@ final class SettingsManager: ObservableObject {
         }
     }
     
+    /// Whether background app refresh is enabled
+    @Published var backgroundRefreshEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(backgroundRefreshEnabled, forKey: SettingKey.backgroundRefreshEnabled.rawValue)
+        }
+    }
+    
     // MARK: - Initialization
     
     init() {
@@ -123,6 +131,7 @@ final class SettingsManager: ObservableObject {
         self.showUnavailableMetrics = false // Default value
         self.showRealtimeCountdown = true // Default value
         self.showLifeProjectionAsPercentage = false // Default value
+        self.backgroundRefreshEnabled = true // Default value - enabled by default
         
         // Defer loading non-critical settings
         Task { @MainActor in
@@ -157,6 +166,7 @@ final class SettingsManager: ObservableObject {
         self.showUnavailableMetrics = defaults.bool(forKey: SettingKey.showUnavailableMetrics.rawValue, defaultValue: false)
         self.showRealtimeCountdown = defaults.bool(forKey: SettingKey.showRealtimeCountdown.rawValue, defaultValue: true)
         self.showLifeProjectionAsPercentage = defaults.bool(forKey: SettingKey.showLifeProjectionAsPercentage.rawValue, defaultValue: false)
+        self.backgroundRefreshEnabled = defaults.bool(forKey: SettingKey.backgroundRefreshEnabled.rawValue, defaultValue: true)
     }
     
     // MARK: - Methods
@@ -177,6 +187,7 @@ final class SettingsManager: ObservableObject {
         showUnavailableMetrics = false
         showRealtimeCountdown = true
         showLifeProjectionAsPercentage = false
+        backgroundRefreshEnabled = true
     }
 }
 

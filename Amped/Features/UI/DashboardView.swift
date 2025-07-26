@@ -1,4 +1,6 @@
 import SwiftUI
+import HealthKit
+import OSLog
 import CoreHaptics
 
 /// Main dashboard view displaying life projection battery
@@ -26,6 +28,9 @@ struct DashboardView: View {
     @State private var isRefreshing = false
     private let refreshThreshold: CGFloat = 60 // Apple's actual threshold is 60pt
     private let maxPullDistance: CGFloat = 120 // Apple's actual maximum is 120pt
+    
+    // CONSISTENCY FIX: Add logger for validation and debugging
+    private let logger = Logger(subsystem: "com.amped.app", category: "DashboardView")
     @State private var refreshIndicatorOpacity: Double = 0
     @State private var refreshIndicatorRotation: Double = 0
     
@@ -108,15 +113,30 @@ struct DashboardView: View {
             return lhsImpact > rhsImpact
         }
     }
-    /// Calculate total time impact from all filtered metrics
+    /// Calculate total time impact using sophisticated LifeImpactService calculation
+    /// Rules: Use consistent calculation methods across all views
     private var totalTimeImpact: Double {
-        let totalImpact = filteredMetrics
-            .compactMap { $0.impactDetails?.lifespanImpactMinutes }
-            .reduce(0, +)
+        // CONSISTENCY FIX: Use the same sophisticated calculation as the chart
+        // This includes interaction effects, mortality adjustments, and evidence weighting
+        guard let lifeImpact = viewModel.lifeImpactData else {
+            logger.warning("⚠️ No lifeImpactData available for headline calculation")
+            return 0.0
+        }
         
-        // For month/year views, this is already a daily average
-        // The metrics are averaged, so the impacts are also averaged
-        return totalImpact
+        // DATA VALIDATION: Ensure we're working with the same metrics as the chart
+        let metricsWithImpact = filteredMetrics.filter { $0.impactDetails != nil }
+        let metricsInLifeImpact = lifeImpact.metricContributions.count
+        
+        if metricsWithImpact.count != metricsInLifeImpact {
+            logger.warning("⚠️ Metric count mismatch - Filtered: \(metricsWithImpact.count), LifeImpact: \(metricsInLifeImpact)")
+        }
+        
+        // Apply the correct sign based on direction
+        let signedImpact = lifeImpact.totalImpact.value * (lifeImpact.totalImpact.direction == .positive ? 1.0 : -1.0)
+        
+        logger.info("📊 Headline impact calculation: \(String(format: "%.2f", signedImpact)) minutes (\(lifeImpact.totalImpact.direction == .positive ? "positive" : "negative"))")
+        
+        return signedImpact
     }
     
     /// Format the total time impact for display

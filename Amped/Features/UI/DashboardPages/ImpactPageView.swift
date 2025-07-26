@@ -43,13 +43,14 @@ struct ImpactPageView: View {
                         .padding(.top, 20)
                         .padding(.bottom, 24)
                     } else if totalTimeImpact != 0 {
-                        VStack(spacing: 80) {
+                        VStack(spacing: 40) {  // Rules: Reduced from 80 to 40 for better screen fit
                             // Main impact display section - Rules: Better spacing
                             VStack(spacing: 12) {
-                                // "Your habits collectively added/reduced" text above the number
-                                Text(totalTimeImpact >= 0 ? "\(timePeriodContext) added" : "\(timePeriodContext) reduced")
+                                // Original headline text format - Rules: Keep headline text the same as before
+                                Text(getHeadlineText())
                                     .font(.headline)
                                     .foregroundColor(.white.opacity(0.85))
+                                    .multilineTextAlignment(.center)
                                 
                                 // Main impact display - PROMINENT NUMBER
                                 HStack(spacing: 8) {
@@ -63,20 +64,27 @@ struct ImpactPageView: View {
                                         .foregroundColor(.white)
                                 }
                                 
-                                // "to/from your lifespan" text below
-                                Text(totalTimeImpact >= 0 ? "to your lifespan 🔥" : "from your lifespan")
-                                    .font(.headline)
-                                    .foregroundColor(.white.opacity(0.85))
-                                    .multilineTextAlignment(.center)
-                                    .fixedSize(horizontal: false, vertical: true)
+                                // Scientific explanation text below
+                                VStack(spacing: 4) {
+                                    Text("from your lifespan")
+                                        .font(.headline)
+                                        .foregroundColor(.white.opacity(0.85))
+                                        .multilineTextAlignment(.center)
+                                    
+                                    Text("Based on peer-reviewed health research")
+                                        .font(.caption)
+                                        .foregroundColor(.white.opacity(0.6))
+                                        .multilineTextAlignment(.center)
+                                }
                             }
                             
-                            // Jobs-inspired animated battery element - Rules: Cool battery animation
+                            // Collective Impact Chart - Rules: Dynamic height to maximize chart space
                             if showLifeEnergyBattery {
-                                LifeEnergyFlowBattery(
-                                    isAnimating: isBatteryAnimating,
-                                    timeImpactMinutes: totalTimeImpact
+                                CollectiveImpactChartContainer(
+                                    viewModel: viewModel,
+                                    selectedPeriod: selectedPeriod
                                 )
+                                .frame(height: calculateOptimalChartHeight(geometry: geometry))
                                 .transition(.asymmetric(
                                     insertion: .scale(scale: 0.8).combined(with: .opacity),
                                     removal: .scale(scale: 0.8).combined(with: .opacity)
@@ -85,8 +93,8 @@ struct ImpactPageView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.horizontal, 16)
-                        .padding(.top, 40)
-                        .padding(.bottom, 40) // Rules: Increased spacing around battery
+                        .padding(.top, 20)  // Rules: Reduced from 40 to 20 for better screen fit
+                        .padding(.bottom, 20) // Rules: Reduced from 40 to 20 for better screen fit
                     } else {
                         // No impact yet
                         VStack(spacing: 16) { // Rules: Better spacing
@@ -103,7 +111,7 @@ struct ImpactPageView: View {
                                 .padding(.horizontal, 20) // Rules: Better text width control
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 32) // Rules: Reduced vertical padding
+                        .padding(.vertical, 20) // Rules: Reduced from 32 to 20 for better screen fit
                         .padding(.top, 20)
                     }
                     
@@ -125,13 +133,13 @@ struct ImpactPageView: View {
                             }
                         )
                         .padding(.horizontal, 16)
-                        .padding(.top, 8) // Rules: Reduced top padding for better flow
-                        .padding(.bottom, 20) // Rules: Consistent bottom spacing
+                        .padding(.top, 4) // Rules: Reduced from 8 to 4 for better screen fit
+                        .padding(.bottom, 12) // Rules: Reduced from 20 to 12 for better screen fit
                     }
                     
                     // Add consistent padding for page indicators - Rules: Better spacing
                     Spacer()
-                        .frame(height: max(40, geometry.safeAreaInsets.bottom + 20))
+                        .frame(height: max(30, geometry.safeAreaInsets.bottom + 15))  // Rules: Reduced from 40/20 to 30/15 for better screen fit
                 }
             }
             .refreshable {
@@ -151,5 +159,45 @@ struct ImpactPageView: View {
                 }
             }
         }
+    }
+    
+    private func getHeadlineText() -> String {
+        // Rules: Restore original headline format that shows specific impact on lifespan
+        let timeFrame: String
+        switch selectedPeriod {
+        case .day:
+            timeFrame = "today"
+        case .month:
+            timeFrame = "this month"
+        case .year:
+            timeFrame = "this year"
+        }
+        
+        if totalTimeImpact >= 0 {
+            return "\(timeFrame.capitalized), your habits collectively added"
+        } else {
+            return "\(timeFrame.capitalized), your habits collectively reduced"
+        }
+    }
+    
+    /// Calculate optimal chart height to maximize space while keeping recommendations visible
+    /// Rules: Conservative sizing to ensure recommendation card is always visible
+    private func calculateOptimalChartHeight(geometry: GeometryProxy) -> CGFloat {
+        let screenHeight = geometry.size.height
+        
+        // Be more conservative with space estimates to ensure recommendation card is visible
+        let impactSummaryHeight: CGFloat = 160  // Impact text and icon section (increased)
+        let recommendationCardHeight: CGFloat = 140  // Recommendation card with margin (increased)
+        let paddingAndSpacing: CGFloat = 120  // Total padding, spacing, and safe areas (increased)
+        
+        // Calculate available space for chart with safety margin
+        let usedSpace = impactSummaryHeight + recommendationCardHeight + paddingAndSpacing
+        let availableSpace = screenHeight - usedSpace
+        
+        // Set conservative bounds: minimum 180px, maximum 280px (reduced max)
+        let minHeight: CGFloat = 180
+        let maxHeight: CGFloat = 280
+        
+        return max(minHeight, min(maxHeight, availableSpace))
     }
 } 

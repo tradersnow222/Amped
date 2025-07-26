@@ -3,13 +3,13 @@ import OSLog
 
 /// View for managing background app refresh settings
 struct BackgroundRefreshSettingsView: View {
-    @State private var backgroundRefreshEnabled = true
+    @EnvironmentObject private var settingsManager: SettingsManager
     private let logger = Logger(subsystem: "ai.ampedlife.amped", category: "BackgroundRefreshSettings")
     
     var body: some View {
         List {
             Section {
-                Toggle("Background App Refresh", isOn: $backgroundRefreshEnabled)
+                Toggle("Background App Refresh", isOn: $settingsManager.backgroundRefreshEnabled)
             } footer: {
                 Text("When enabled, Amped can update your health data automatically in the background for more accurate battery calculations.")
                     .font(.footnote)
@@ -93,26 +93,33 @@ struct BackgroundRefreshSettingsView: View {
         }
         .navigationTitle("Background App Refresh")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            loadCurrentSetting()
-        }
-        .onChange(of: backgroundRefreshEnabled) { enabled in
-            saveBackgroundRefreshSetting(enabled)
+        .onChange(of: settingsManager.backgroundRefreshEnabled) { enabled in
+            handleBackgroundRefreshToggle(enabled)
         }
     }
     
-    private func loadCurrentSetting() {
-        backgroundRefreshEnabled = UserDefaults.standard.bool(forKey: "backgroundRefreshEnabled")
-    }
-    
-    private func saveBackgroundRefreshSetting(_ enabled: Bool) {
-        UserDefaults.standard.set(enabled, forKey: "backgroundRefreshEnabled")
+    private func handleBackgroundRefreshToggle(_ enabled: Bool) {
         logger.info("Background refresh setting updated: \(enabled)")
+        
+        if enabled {
+            // Start background updates when enabled
+            Task {
+                let healthKitManager = HealthKitManager.shared
+                if healthKitManager.hasAllPermissions || healthKitManager.hasCriticalPermissions {
+                    await BackgroundHealthManager.shared.startBackgroundUpdates()
+                }
+            }
+        } else {
+            // Note: We don't stop background updates when disabled as iOS will handle scheduling
+            // The background tasks will simply not be executed if the user disables background refresh
+            logger.info("Background refresh disabled - future background tasks will not execute")
+        }
     }
 }
 
 #Preview {
     NavigationView {
         BackgroundRefreshSettingsView()
+            .environmentObject(SettingsManager())
     }
 }
