@@ -186,17 +186,17 @@ struct ImpactPageView: View {
         let screenHeight = geometry.size.height
         
         // Be more conservative with space estimates to ensure recommendation card is visible
-        let impactSummaryHeight: CGFloat = 160  // Impact text and icon section (increased)
-        let recommendationCardHeight: CGFloat = 140  // Recommendation card with margin (increased)
-        let paddingAndSpacing: CGFloat = 120  // Total padding, spacing, and safe areas (increased)
+        let impactSummaryHeight: CGFloat = 160  // Impact text and icon section
+        let recommendationCardHeight: CGFloat = 180  // Recommendation card with margin (increased for visibility)
+        let paddingAndSpacing: CGFloat = 100  // Total padding, spacing, and safe areas
         
         // Calculate available space for chart with safety margin
         let usedSpace = impactSummaryHeight + recommendationCardHeight + paddingAndSpacing
         let availableSpace = screenHeight - usedSpace
         
-        // Set conservative bounds: minimum 180px, maximum 280px (reduced max)
+        // Set conservative bounds: minimum 180px, maximum 250px (reduced max to ensure recommendations visible)
         let minHeight: CGFloat = 180
-        let maxHeight: CGFloat = 280
+        let maxHeight: CGFloat = 250
         
         return max(minHeight, min(maxHeight, availableSpace))
     }

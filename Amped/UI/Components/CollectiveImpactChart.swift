@@ -11,26 +11,62 @@ struct CollectiveImpactChartContainer: View {
     @State private var selectedDataPoint: ChartImpactDataPoint?
     @State private var isDragging: Bool = false
     
+    // CONSISTENCY FIX: Use viewModel's period for accurate synchronization
+    private var effectivePeriod: ImpactDataPoint.PeriodType {
+        return viewModel.selectedTimePeriod.impactDataPointPeriodType
+    }
+    
     var body: some View {
-        // CRITICAL FIX: Always use synchronous chart data that matches the headline exactly
-        // Remove dependency on async historicalChartData which may be inconsistent
-        let chartData = viewModel.generateCollectiveImpactChartData()
+        // Use historical chart data when available
+        let chartData = viewModel.historicalChartData
         
-        CollectiveImpactChart(
-            dataPoints: chartData,
-            period: selectedPeriod,
-            selectedDataPoint: $selectedDataPoint,  // FIXED: Use proper binding
-            isDragging: $isDragging                  // FIXED: Use proper binding
-        )
-        .onAppear {
-            // Force chart data generation on appear to ensure fresh data
-            _ = viewModel.generateCollectiveImpactChartData()
+        Group {
+            if chartData.isEmpty {
+                // Show loading state while fetching real data
+                VStack {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .scaleEffect(0.8)
+                    Text("Loading historical data...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(height: 250)
+                .frame(maxWidth: .infinity)
+            } else {
+                CollectiveImpactChart(
+                    dataPoints: chartData,
+                    period: effectivePeriod,  // FIXED: Use viewModel's period for consistency
+                    selectedDataPoint: $selectedDataPoint,  // FIXED: Use proper binding
+                    isDragging: $isDragging                  // FIXED: Use proper binding
+                )
+            }
         }
-        .onChange(of: selectedPeriod) { _ in
-            // Regenerate chart data when period changes and reset drag state
+        .onAppear {
+            // ENHANCED DEBUG: Log when chart container appears
+            print("🔍 CHART CONTAINER DEBUG - Period: \(effectivePeriod.rawValue), Data points: \(chartData.count)")
+            
+            // Load real historical data on appear
+            viewModel.loadHistoricalChartData()
+        }
+        .onChange(of: effectivePeriod) { _ in
+            // ENHANCED DEBUG: Log period changes
+            print("🔍 CHART CONTAINER DEBUG - Period changed to: \(effectivePeriod.rawValue)")
+            
+            // FIXED: Listen to viewModel's period changes for better synchronization
             selectedDataPoint = nil
             isDragging = false
-            _ = viewModel.generateCollectiveImpactChartData()
+            viewModel.loadHistoricalChartData()
+        }
+        .onChange(of: viewModel.historicalChartData) { newData in
+            // ENHANCED DEBUG: Log data changes
+            print("🔍 CHART CONTAINER DEBUG - Data updated: \(newData.count) points")
+            if let lastPoint = newData.last {
+                print("  📊 Latest impact: \(String(format: "%.2f", lastPoint.impact)) minutes")
+            }
+            
+            // Reset selection when data changes
+            selectedDataPoint = nil
         }
     }
 }
@@ -172,48 +208,11 @@ struct CollectiveImpactChart: View {
                     }
                 }
             }
-            .padding(.top, 40)  // Rules: Reduced from 80 to 40 to better fit on screen
+            .padding(.top, 16)  // Rules: Reduced from 40 to 16 since legend is removed
             .overlay(alignment: .topLeading) {
-                // Rules: Position legend in the reduced padding area
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(.ampedGreen)
-                            .frame(width: 8, height: 8)
-                        Text("Above optimal health")
-                            .font(.caption2)
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(.ampedRed)
-                            .frame(width: 8, height: 8)
-                        Text("Below optimal health")
-                            .font(.caption2)
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-                    HStack(spacing: 6) {
-                        Rectangle()
-                            .stroke(Color.white.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [4, 2]))
-                            .frame(width: 12, height: 2)
-                        Text("Research-based optimal")
-                            .font(.caption2)
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-                }
-                .padding(.leading, 12)
-                .padding(.top, 4)  // Rules: Adjusted for reduced padding area
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(.ultraThinMaterial.opacity(0.3))
-                        .padding(-4)
-                )
- 
-            }
-            .overlay(alignment: .topTrailing) {
-                // Interactive value display when dragging - Rules: Adjusted for reduced padding
+                // Interactive value display when dragging - Rules: Smart positioning to prevent cutoffs
                 if isDragging, let selected = selectedDataPoint {
-                    VStack(alignment: .trailing, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 2) {
                         Text("Collective Impact")
                             .style(.caption)
                             .foregroundColor(.secondary)
@@ -231,7 +230,13 @@ struct CollectiveImpactChart: View {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(Color.black.opacity(0.8))
                     )
-                    .offset(x: max(dragLocation.x - geometry.size.width + 100, -geometry.size.width + 100), y: 50) // Rules: Adjusted for reduced legend padding
+                    .offset(
+                        x: calculateTooltipXOffset(
+                            dragX: dragLocation.x,
+                            geometryWidth: geometry.size.width
+                        ),
+                        y: -60 // Rules: Increased from 20 to -60 for higher positioning above chart
+                    )
                 }
             }
             .contentShape(Rectangle())
@@ -259,9 +264,42 @@ struct CollectiveImpactChart: View {
                     }
             )
         }
+        .onAppear {
+            // ENHANCED DEBUGGING: Log chart data for verification
+            if !dataPoints.isEmpty {
+                print("🔍 CHART DEBUG - Displaying \(dataPoints.count) data points:")
+                for (index, point) in dataPoints.enumerated() {
+                    print("  \(index): \(point.date) = \(String(format: "%.2f", point.impact)) minutes")
+                }
+                
+                if let firstPoint = dataPoints.first, let lastPoint = dataPoints.last {
+                    let totalChange = lastPoint.impact - firstPoint.impact
+                    print("  📈 Total change: \(String(format: "%.2f", totalChange)) minutes")
+                    print("  📊 Current value: \(String(format: "%.2f", lastPoint.impact)) minutes")
+                }
+            }
+        }
     }
     
     // MARK: - Helper Methods
+    
+    /// Calculate tooltip X offset to prevent cutoffs at screen edges
+    /// Rules: Smart positioning for better UX, preventing tooltip cutoffs
+    private func calculateTooltipXOffset(dragX: CGFloat, geometryWidth: CGFloat) -> CGFloat {
+        // Estimated tooltip width based on content
+        let tooltipWidth: CGFloat = 120
+        let padding: CGFloat = 16
+        
+        // Calculate desired position (centered on drag point)
+        let desiredX = dragX - (tooltipWidth / 2)
+        
+        // Ensure tooltip stays within bounds with padding
+        let minX = padding
+        let maxX = geometryWidth - tooltipWidth - padding
+        
+        // Clamp the position within safe bounds
+        return max(minX, min(maxX, desiredX))
+    }
     
     private func getXAxisStride() -> AxisMarkValues {
         guard !dataPoints.isEmpty else { return .automatic() }

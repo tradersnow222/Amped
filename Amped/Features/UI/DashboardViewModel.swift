@@ -2,6 +2,16 @@ import SwiftUI
 @preconcurrency import Combine
 import OSLog
 import UIKit
+import HealthKit
+
+extension Calendar {
+    func endOfDay(for date: Date) -> Date {
+        var components = dateComponents([.year, .month, .day], from: date)
+        components.day! += 1
+        components.second = -1
+        return self.date(from: components) ?? date
+    }
+}
 
 @MainActor
 final class DashboardViewModel: ObservableObject {
@@ -11,6 +21,7 @@ final class DashboardViewModel: ObservableObject {
     private let healthDataService: HealthDataServicing
     private let lifeImpactService: LifeImpactService
     private let lifeProjectionService: LifeProjectionService
+    private let questionnaireManager: QuestionnaireManager
     
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.amped.Amped", category: "DashboardViewModel")
     
@@ -23,6 +34,7 @@ final class DashboardViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var selectedTimePeriod: TimePeriod = .day
+    @Published var historicalChartData: [ChartImpactDataPoint] = []
     
     // MARK: - Real-time Update Notification
     
@@ -94,16 +106,24 @@ final class DashboardViewModel: ObservableObject {
             logger.info("⚠️ Using default user profile: Age \(self.userProfile.age ?? 0)")
         }
         
+        // Create questionnaire manager first to ensure same instance is used everywhere
+        self.questionnaireManager = questionnaireManager
+        
         // Create default health kit manager and services if none provided
         let healthKitManager = healthKitManager ?? HealthKitManager()
         self.healthKitManager = healthKitManager
         self.healthDataService = healthDataService ?? HealthDataService(
             healthKitManager: healthKitManager,
             userProfile: self.userProfile,
-            questionnaireManager: questionnaireManager
+            questionnaireManager: self.questionnaireManager  // Use the same instance
         )
         self.lifeImpactService = lifeImpactService ?? LifeImpactService(userProfile: self.userProfile)
         self.lifeProjectionService = lifeProjectionService ?? LifeProjectionService()
+        
+        // Ensure questionnaire data is loaded
+        Task {
+            await self.questionnaireManager.loadDataIfNeeded()
+        }
         
         setupSubscriptions()
         loadData()
@@ -219,7 +239,8 @@ final class DashboardViewModel: ObservableObject {
                         logger.info("⚡ Life impact calculated for \(timePeriod.displayName): \(impactData.totalImpact.displayString)")
                         logger.info("🔋 Battery level: \(String(format: "%.1f", impactData.batteryLevel))%")
                         
-                        // Chart data is now generated synchronously to match headline
+                        // Load historical chart data when impact data is available
+                        loadHistoricalChartData()
                     } else {
                         logger.warning("⚠️ No life impact data calculated for \(timePeriod.displayName)")
                     }
@@ -488,6 +509,9 @@ final class DashboardViewModel: ObservableObject {
                 if let impactData = lifeImpactData {
                     logger.info("⚡ Refresh complete - Life impact: \(impactData.totalImpact.displayString)")
                 }
+                
+                // Load historical chart data after refresh
+                loadHistoricalChartData()
             }
         } catch {
             await MainActor.run {
@@ -617,155 +641,382 @@ final class DashboardViewModel: ObservableObject {
     /// Calculate neutral baseline impact for comparison
     @Published private var neutralBaseline: Double = 0.0
     
-    /// Generate collective impact chart data points showing real historical data relative to neutral baseline
+    /// Generate collective impact chart data points showing real historical data
     func generateCollectiveImpactChartData() -> [ChartImpactDataPoint] {
-        guard let lifeImpact = lifeImpactData else { 
+        // Return current historicalChartData if available, otherwise empty
+        // The real data will be loaded asynchronously
+        return historicalChartData
+    }
+    
+    /// Load real historical chart data with TradingView-style progression
+    func loadHistoricalChartData() {
+        guard lifeImpactData != nil else { 
             logger.warning("⚠️ No lifeImpactData available for chart generation")
-            return [] 
-        }
-        
-        // Calculate or use cached neutral baseline
-        if self.neutralBaseline == 0.0 {
-            self.neutralBaseline = lifeImpactService.calculateNeutralBaseline()
+            historicalChartData = []
+            return 
         }
         
         let now = Date()
-        logger.info("📊 Generating realistic progression chart data for \(self.selectedTimePeriod.displayName)")
+        logger.info("📊 Loading TradingView-style historical data for \(self.selectedTimePeriod.displayName)")
         
-        var chartPoints: [ChartImpactDataPoint] = []
+        // Clear existing data to show loading state
+        historicalChartData = []
         
-        switch self.selectedTimePeriod {
-        case .day:
-            // For day view: Show realistic hourly progression from starting baseline
-            chartPoints = generateRealisticHourlyProgression(currentDate: now)
+        // Generate realistic historical data based on selected period
+        Task {
+            let chartData: [ChartImpactDataPoint]
             
-        case .month:
-            // For month view: Show realistic daily progression over past 30 days
-            chartPoints = generateRealisticDailyProgression(currentDate: now, days: 30)
+            switch selectedTimePeriod {
+            case .day:
+                chartData = await generateTradingViewStyleHourlyData(currentDate: now)
+            case .month:
+                chartData = await generateTradingViewStyleDailyData(currentDate: now, days: 30)
+            case .year:
+                chartData = await generateTradingViewStyleMonthlyData(currentDate: now, months: 12)
+            }
             
-        case .year:
-            // For year view: Show realistic monthly progression over past 12 months
-            chartPoints = generateRealisticMonthlyProgression(currentDate: now, months: 12)
+            await MainActor.run {
+                self.historicalChartData = chartData
+                logger.info("✅ Loaded \(chartData.count) TradingView-style chart points for \(self.selectedTimePeriod.displayName)")
+                if let lastPoint = chartData.last {
+                    logger.info("  📍 Final chart impact: \(String(format: "%.2f", lastPoint.impact)) minutes")
+                }
+            }
         }
-        
-        logger.info("✅ Generated \(chartPoints.count) realistic progression chart points")
-        
-        return chartPoints
     }
-    
-    /// Generate realistic hourly progression for the current day showing improvement/decline over time
-    private func generateRealisticHourlyProgression(currentDate: Date) -> [ChartImpactDataPoint] {
-        guard let lifeImpact = lifeImpactData else { return [] }
-        
-        let startOfDay = Calendar.current.startOfDay(for: currentDate)
-        let currentHour = Calendar.current.component(.hour, from: currentDate)
-        var chartPoints: [ChartImpactDataPoint] = []
-        
-        // Current final impact
-        let finalImpactMinutes = lifeImpact.totalImpact.value * (lifeImpact.totalImpact.direction == .positive ? 1.0 : -1.0)
-        
-        // Create realistic starting baseline - assume user started at a moderate negative impact
-        let startingImpact = finalImpactMinutes > 0 ? finalImpactMinutes * -0.3 : finalImpactMinutes * 1.8
-        
-        // Generate progression from starting point to current impact
-        for hour in 0...currentHour {
-            guard let hourDate = Calendar.current.date(byAdding: .hour, value: hour, to: startOfDay) else { continue }
-            
-            // Calculate progress ratio (0.0 to 1.0)
-            let progressRatio = currentHour > 0 ? Double(hour) / Double(currentHour) : 0.0
-            
-            // Smooth interpolation from starting impact to final impact with realistic curve
-            let smoothProgress = 0.5 * (1 + tanh(4 * progressRatio - 2)) // S-curve for realistic progression
-            let currentImpact = startingImpact + (finalImpactMinutes - startingImpact) * smoothProgress
-            
-            chartPoints.append(ChartImpactDataPoint(
-                date: hourDate,
-                impact: currentImpact,
-                value: currentImpact
-            ))
-        }
-        
-        return chartPoints
-    }
-    
-    /// Generate realistic daily progression over specified number of days
-    private func generateRealisticDailyProgression(currentDate: Date, days: Int) -> [ChartImpactDataPoint] {
-        guard let lifeImpact = lifeImpactData else { return [] }
-        
-        let calendar = Calendar.current
-        let startDate = calendar.date(byAdding: .day, value: -days + 1, to: currentDate) ?? currentDate
-        var chartPoints: [ChartImpactDataPoint] = []
-        
-        // Current final impact
-        let finalImpactMinutes = lifeImpact.totalImpact.value * (lifeImpact.totalImpact.direction == .positive ? 1.0 : -1.0)
-        
-        // Create realistic starting baseline - assume gradual improvement/decline over the month
-        let startingImpact = finalImpactMinutes > 0 ? finalImpactMinutes * -0.4 : finalImpactMinutes * 1.5
-        
-        for day in 0..<days {
-            guard let dayDate = calendar.date(byAdding: .day, value: day, to: startDate) else { continue }
-            
-            // Calculate progress ratio with some realistic variation
-            let progressRatio = Double(day) / Double(days - 1)
-            
-            // Add realistic daily variation around the trend line
-            let variation = sin(Double(day) * 0.4) * 0.1 * abs(finalImpactMinutes - startingImpact)
-            
-            // Smooth progression with realistic curve
-            let smoothProgress = 0.5 * (1 + tanh(3 * progressRatio - 1.5))
-            let baseImpact = startingImpact + (finalImpactMinutes - startingImpact) * smoothProgress
-            let currentImpact = baseImpact + variation
-            
-            chartPoints.append(ChartImpactDataPoint(
-                date: dayDate,
-                impact: currentImpact,
-                value: currentImpact
-            ))
-        }
-        
-        return chartPoints
-    }
-    
-    /// Generate realistic monthly progression over specified number of months
-    private func generateRealisticMonthlyProgression(currentDate: Date, months: Int) -> [ChartImpactDataPoint] {
-        guard let lifeImpact = lifeImpactData else { return [] }
-        
-        let calendar = Calendar.current
-        let startDate = calendar.date(byAdding: .month, value: -months + 1, to: currentDate) ?? currentDate
-        var chartPoints: [ChartImpactDataPoint] = []
-        
-        // Current final impact
-        let finalImpactMinutes = lifeImpact.totalImpact.value * (lifeImpact.totalImpact.direction == .positive ? 1.0 : -1.0)
-        
-        // Create realistic starting baseline - assume longer-term health journey
-        let startingImpact = finalImpactMinutes > 0 ? finalImpactMinutes * -0.6 : finalImpactMinutes * 2.0
-        
-        for month in 0..<months {
-            guard let monthDate = calendar.date(byAdding: .month, value: month, to: startDate) else { continue }
-            
-            // Calculate progress ratio
-            let progressRatio = Double(month) / Double(months - 1)
-            
-            // Add realistic monthly variation (seasonal effects, life changes, etc.)
-            let seasonalVariation = cos(Double(month) * 0.52) * 0.15 * abs(finalImpactMinutes - startingImpact)
-            
-            // Smooth progression with realistic curve showing health journey
-            let smoothProgress = 0.5 * (1 + tanh(2.5 * progressRatio - 1.25))
-            let baseImpact = startingImpact + (finalImpactMinutes - startingImpact) * smoothProgress
-            let currentImpact = baseImpact + seasonalVariation
-            
-            chartPoints.append(ChartImpactDataPoint(
-                date: monthDate,
-                impact: currentImpact,
-                value: currentImpact
-            ))
-        }
-        
-        return chartPoints
-    }
-    
-    // REMOVED: Old historical HealthKit data fetching methods - replaced with realistic progression visualization
 
+    // MARK: - TradingView-Style Chart Generation
+    
+    /// Generate TradingView-style hourly data showing actual hourly impacts (scaled for day period)
+    private func generateTradingViewStyleHourlyData(currentDate: Date) async -> [ChartImpactDataPoint] {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: currentDate)
+        let currentHour = calendar.component(.hour, from: currentDate)
+        var chartPoints: [ChartImpactDataPoint] = []
+        
+        logger.info("📊 Generating TradingView-style hourly data (Day period scaling) - REAL DATA ONLY")
+        
+        // TradingView approach: Only create chart points where we have actual data
+        for hour in 0...currentHour {
+            guard let hourTime = calendar.date(byAdding: .hour, value: hour, to: startOfDay) else { continue }
+            
+            // Calculate impact using ONLY real data available at this time
+            let hourImpact = await calculatePeriodScaledImpactAtTime(hourTime, periodType: .day)
+            
+            // TradingView approach: Only add points where we have real data
+            // If calculation returned 0, it means no real data was available
+            if hourImpact != 0 {
+                logger.info("  Hour \(hour): REAL impact = \(String(format: "%.2f", hourImpact)) minutes")
+                
+                chartPoints.append(ChartImpactDataPoint(
+                    date: hourTime,
+                    impact: hourImpact,
+                    value: 0 // Not used for collective impact display
+                ))
+            } else {
+                logger.info("  Hour \(hour): No real data available - creating gap like TradingView")
+            }
+        }
+        
+        // CRITICAL: Ensure the final point matches the headline exactly (if we have data)
+        if !chartPoints.isEmpty, let lifeImpactData = self.lifeImpactData {
+            let headlineImpact = lifeImpactData.totalImpact.value * (lifeImpactData.totalImpact.direction == .positive ? 1.0 : -1.0)
+            let lastPoint = chartPoints[chartPoints.count - 1]
+            chartPoints[chartPoints.count - 1] = ChartImpactDataPoint(
+                date: lastPoint.date,
+                impact: headlineImpact,
+                value: lastPoint.value
+            )
+            logger.info("  📍 Final point synchronized with headline: \(String(format: "%.2f", headlineImpact)) minutes")
+        }
+        
+        return chartPoints
+    }
+
+    /// Generate TradingView-style daily data showing actual daily impacts (scaled for month period)
+    private func generateTradingViewStyleDailyData(currentDate: Date, days: Int) async -> [ChartImpactDataPoint] {
+        let calendar = Calendar.current
+        var chartPoints: [ChartImpactDataPoint] = []
+        
+        logger.info("📊 Generating TradingView-style daily data (Month period scaling) - REAL DATA ONLY")
+        
+        // TradingView approach: Only process days where we might have actual data
+        for dayOffset in -days+1...0 {
+            guard let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: currentDate) else { continue }
+            
+            // Use end of day for complete data availability
+            let dayEnd = calendar.date(byAdding: .hour, value: 23, to: calendar.startOfDay(for: dayDate)) ?? dayDate
+            
+            // Skip future dates (TradingView doesn't show future data)
+            if dayEnd > Date() { continue }
+            
+            // Calculate impact using ONLY real data available for this day
+            let dayImpact = await calculatePeriodScaledImpactAtTime(dayEnd, periodType: .month)
+            
+            // TradingView approach: Only add points where we have real data
+            if dayImpact != 0 {
+                logger.info("  Day \(dayOffset): REAL impact = \(String(format: "%.2f", dayImpact)) minutes")
+                
+                chartPoints.append(ChartImpactDataPoint(
+                    date: dayDate,
+                    impact: dayImpact,
+                    value: 0 // Not used for collective impact display
+                ))
+            } else {
+                logger.info("  Day \(dayOffset): No real data available - creating gap like TradingView")
+            }
+        }
+        
+        // CRITICAL: Ensure the final point matches the headline exactly (if we have data)
+        if !chartPoints.isEmpty, let lifeImpactData = self.lifeImpactData {
+            let headlineImpact = lifeImpactData.totalImpact.value * (lifeImpactData.totalImpact.direction == .positive ? 1.0 : -1.0)
+            let lastPoint = chartPoints[chartPoints.count - 1]
+            chartPoints[chartPoints.count - 1] = ChartImpactDataPoint(
+                date: lastPoint.date,
+                impact: headlineImpact,
+                value: lastPoint.value
+            )
+            logger.info("  📍 Final point synchronized with headline: \(String(format: "%.2f", headlineImpact)) minutes")
+        }
+        
+        return chartPoints
+    }
+
+    /// Generate TradingView-style monthly data showing actual monthly impacts (scaled for year period)
+    private func generateTradingViewStyleMonthlyData(currentDate: Date, months: Int) async -> [ChartImpactDataPoint] {
+        let calendar = Calendar.current
+        var chartPoints: [ChartImpactDataPoint] = []
+        
+        logger.info("📊 Generating TradingView-style monthly data (Year period scaling) - REAL DATA ONLY")
+        
+        // TradingView approach: Only process months where we might have actual data
+        for monthOffset in -months+1...0 {
+            guard let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: currentDate) else { continue }
+            
+            // Use end of month for complete data availability
+            guard let monthInterval = calendar.dateInterval(of: .month, for: monthDate),
+                  let endOfMonth = calendar.date(byAdding: .day, value: -1, to: monthInterval.end) else { continue }
+            
+            // Skip future dates (TradingView doesn't show future data)
+            if endOfMonth > Date() { continue }
+            
+            // Calculate impact using ONLY real data available for this month
+            let monthImpact = await calculatePeriodScaledImpactAtTime(endOfMonth, periodType: .year)
+            
+            // TradingView approach: Only add points where we have real data
+            if monthImpact != 0 {
+                logger.info("  Month \(monthOffset): REAL impact = \(String(format: "%.2f", monthImpact)) minutes")
+                
+                chartPoints.append(ChartImpactDataPoint(
+                    date: monthDate,
+                    impact: monthImpact,
+                    value: 0 // Not used for collective impact display
+                ))
+            } else {
+                logger.info("  Month \(monthOffset): No real data available - creating gap like TradingView")
+            }
+        }
+        
+        // CRITICAL: Ensure the final point matches the headline exactly (if we have data)
+        if !chartPoints.isEmpty, let lifeImpactData = self.lifeImpactData {
+            let headlineImpact = lifeImpactData.totalImpact.value * (lifeImpactData.totalImpact.direction == .positive ? 1.0 : -1.0)
+            let lastPoint = chartPoints[chartPoints.count - 1]
+            chartPoints[chartPoints.count - 1] = ChartImpactDataPoint(
+                date: lastPoint.date,
+                impact: headlineImpact,
+                value: lastPoint.value
+            )
+            logger.info("  📍 Final point synchronized with headline: \(String(format: "%.2f", headlineImpact)) minutes")
+        }
+        
+        return chartPoints
+    }
+    
+    /// Calculate period-scaled impact at a specific time using ONLY real data (like TradingView)
+    private func calculatePeriodScaledImpactAtTime(_ targetTime: Date, periodType: ImpactDataPoint.PeriodType) async -> Double {
+        let lifeImpactService = LifeImpactService(userProfile: self.userProfile)
+        var hasAnyRealData = false
+        
+        // Collect all available metrics at the target time - TradingView approach: REAL DATA ONLY
+        var metricsAtTime: [HealthMetric] = []
+        
+        for metricType in HealthMetricType.allCases {
+            if let metricValue = await getMetricValueAtTime(metricType, targetTime: targetTime) {
+                let metric = HealthMetric(
+                    id: UUID().uuidString,
+                    type: metricType,
+                    value: metricValue.value,
+                    date: targetTime,
+                    source: HealthMetricSource(rawValue: metricValue.source) ?? .healthKit
+                )
+                metricsAtTime.append(metric)
+                hasAnyRealData = true
+                
+                logger.debug("  ✅ Real data found for \(metricType.displayName): \(String(format: "%.2f", metricValue.value))")
+            } else {
+                logger.debug("  ❌ No real data for \(metricType.displayName) at \(targetTime)")
+            }
+        }
+        
+        // TradingView approach: If no real data exists, return 0 (creates gap in chart)
+        if !hasAnyRealData {
+            logger.info("  🚫 No real data available for any metrics at \(targetTime) - TradingView gap")
+            return 0.0
+        }
+        
+        // Calculate impact using the same sophisticated logic as headline, but only with real data
+        let impactDataPoint = lifeImpactService.calculateTotalImpact(from: metricsAtTime, for: periodType)
+        
+        let scaledImpact = impactDataPoint.totalImpactMinutes
+        logger.info("  📊 Real impact calculated: \(String(format: "%.2f", scaledImpact)) minutes from \(metricsAtTime.count) real metrics")
+        
+        return scaledImpact
+    }
+    
+    /// Get the actual metric value at a specific time using 100% real data (like TradingView)
+    private func getMetricValueAtTime(_ metricType: HealthMetricType, targetTime: Date) async -> (value: Double, source: String)? {
+        // Handle manual metrics (from questionnaire) - TradingView approach
+        if !metricType.isHealthKitMetric {
+            // Manual metrics represent lifestyle patterns that don't change minute-by-minute
+            // Like TradingView showing last known price, we use current questionnaire value
+            if self.questionnaireManager.manualMetrics.isEmpty && self.questionnaireManager.hasCompletedQuestionnaire {
+                await self.questionnaireManager.loadDataIfNeeded()
+            }
+            
+            let manualMetricInputs = self.questionnaireManager.getCurrentManualMetrics()
+            
+            if let manualInput = manualMetricInputs.first(where: { $0.type == metricType }) {
+                // TradingView approach: Use actual value (no artificial variations)
+                // Manual metrics represent consistent lifestyle patterns
+                return (value: manualInput.value, source: "Manual")
+            }
+            // TradingView approach: If no data exists, return nil (gap in chart)
+            return nil
+        }
+        
+        // Handle HealthKit metrics using REAL historical data only
+        let calendar = Calendar.current
+        
+        // For cumulative metrics, get the actual total for that specific day
+        if metricType == .steps || metricType == .exerciseMinutes || metricType == .activeEnergyBurned {
+            // Get real cumulative total for the specific day (like TradingView getting actual volume)
+            if let cumulativeValue = await fetchCumulativeValueForDay(metricType: metricType, targetTime: targetTime) {
+                return (value: cumulativeValue, source: "healthKit")
+            }
+            // TradingView approach: If no real data exists, return nil (gap)
+            return nil
+        }
+        
+        // For status metrics, get the actual HealthKit reading for that day
+        let startOfDay = calendar.startOfDay(for: targetTime)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? targetTime
+        
+        // Fetch actual historical HealthKit data (no artificial generation)
+        let healthKitData = await healthKitManager.fetchData(for: metricType, from: startOfDay, to: endOfDay)
+        
+        // Use actual data that was recorded before or at the target time
+        let validData = healthKitData.filter { $0.date <= targetTime }
+        
+        if let latestMetric = validData.last {
+            // TradingView approach: Use actual recorded data
+            return (value: latestMetric.value, source: latestMetric.source.rawValue)
+        }
+        
+        // TradingView approach: If no real data exists for this time, return nil (creates gap)
+        return nil
+    }
+    
+    /// Fetch cumulative value for a specific day up to the target time
+    private func fetchCumulativeValueForDay(metricType: HealthMetricType, targetTime: Date) async -> Double? {
+        guard let quantityType = metricType.healthKitType,
+              let unit = metricType.unit else { return nil }
+        
+        let healthStore = HKHealthStore()
+        let calendar = Calendar.current
+        
+        // For cumulative metrics, we want data from start of day to the target time
+        let startOfDay = calendar.startOfDay(for: targetTime)
+        
+        // Create predicate for the time range
+        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: targetTime, options: .strictEndDate)
+        
+        do {
+            // Use HKStatisticsQuery to get the cumulative sum
+            let statistics = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<HKStatistics?, Error>) in
+                let query = HKStatisticsQuery(
+                    quantityType: quantityType,
+                    quantitySamplePredicate: predicate,
+                    options: .cumulativeSum
+                ) { _, statistics, error in
+                    if let error = error {
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    continuation.resume(returning: statistics)
+                }
+                
+                healthStore.execute(query)
+            }
+            
+            // Extract the cumulative sum
+            if let sumQuantity = statistics?.sumQuantity() {
+                let value = sumQuantity.doubleValue(for: unit)
+                return value
+            }
+            
+            return nil
+        } catch {
+            logger.error("Failed to fetch cumulative value for \(metricType.displayName): \(error.localizedDescription)")
+            return nil
+        }
+    }
+    
+    /// FIXED: Get appropriate time windows for different metric types
+    /// Based on how long the data is typically valid, not artificial availability logic
+    private func getAppropriateTimeWindow(for metricType: HealthMetricType, targetTime: Date, calendar: Calendar) -> (Date, Date) {
+        switch metricType {
+        case .sleepHours:
+            // Sleep: Look for sleep data from the night before (past 24 hours)
+            let past24Hours = calendar.date(byAdding: .hour, value: -24, to: targetTime) ?? targetTime
+            return (past24Hours, targetTime)
+            
+        case .steps, .exerciseMinutes, .activeEnergyBurned:
+            // Cumulative metrics: From start of current day to target time
+            let startOfDay = calendar.startOfDay(for: targetTime)
+            return (startOfDay, targetTime)
+            
+        case .restingHeartRate:
+            // Resting HR: Past 24 hours (typically measured during sleep/rest)
+            let past24Hours = calendar.date(byAdding: .hour, value: -24, to: targetTime) ?? targetTime
+            return (past24Hours, targetTime)
+            
+        case .heartRateVariability:
+            // HRV: Past 24 hours (typically from sleep)
+            let past24Hours = calendar.date(byAdding: .hour, value: -24, to: targetTime) ?? targetTime
+            return (past24Hours, targetTime)
+            
+        case .bodyMass:
+            // Weight: Past week (doesn't change rapidly)
+            let pastWeek = calendar.date(byAdding: .day, value: -7, to: targetTime) ?? targetTime
+            return (pastWeek, targetTime)
+            
+        case .vo2Max:
+            // VO2 Max: Past month (measured infrequently)
+            let pastMonth = calendar.date(byAdding: .month, value: -1, to: targetTime) ?? targetTime
+            return (pastMonth, targetTime)
+            
+        case .oxygenSaturation:
+            // Oxygen sat: Past 24 hours
+            let past24Hours = calendar.date(byAdding: .hour, value: -24, to: targetTime) ?? targetTime
+            return (past24Hours, targetTime)
+            
+        default:
+            // Default: Past 24 hours
+            let past24Hours = calendar.date(byAdding: .hour, value: -24, to: targetTime) ?? targetTime
+            return (past24Hours, targetTime)
+        }
+    }
+    
     /// Cleanup when view model is deallocated
     deinit {
         // Direct timer cleanup is synchronous and safe in deinit

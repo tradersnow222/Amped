@@ -208,14 +208,27 @@ class LifeImpactService {
         for timePeriod: ImpactDataPoint.PeriodType,
         userProfile: UserProfile
     ) -> LifeImpactData {
-        // Calculate individual impacts for all metrics
-        let metricDetails = metrics.compactMap { metric -> (HealthMetricType, MetricImpactDetail)? in
-            let impactDetail = calculateImpact(for: metric)
-            return (metric.type, impactDetail)
-        }
+        // Group metrics by type to handle duplicates
+        let metricsByType = Dictionary(grouping: metrics, by: { $0.type })
         
-        // Create metric contributions dictionary
-        let metricContributions = Dictionary(uniqueKeysWithValues: metricDetails)
+        // Calculate impact for each metric type, averaging if there are duplicates
+        var metricContributions: [HealthMetricType: MetricImpactDetail] = [:]
+        
+        for (metricType, metricsOfType) in metricsByType {
+            if metricsOfType.count == 1 {
+                // Single metric - calculate impact directly
+                let impactDetail = calculateImpact(for: metricsOfType[0])
+                metricContributions[metricType] = impactDetail
+            } else {
+                // Multiple metrics of same type - use the most recent one
+                let sortedMetrics = metricsOfType.sorted { $0.date > $1.date }
+                if let mostRecent = sortedMetrics.first {
+                    let impactDetail = calculateImpact(for: mostRecent)
+                    metricContributions[metricType] = impactDetail
+                    logger.info("📊 Found \(metricsOfType.count) \(metricType.displayName) readings, using most recent from \(mostRecent.date)")
+                }
+            }
+        }
         
         // Calculate total impact using existing method
         let totalImpactPoint = calculateTotalImpact(from: metrics, for: timePeriod)
@@ -233,12 +246,12 @@ class LifeImpactService {
         let batteryLevel = calculateBatteryLevel(from: totalImpactPoint.totalImpactMinutes)
         
         // Find top positive and negative metrics
-        let sortedByImpact = metricDetails.sorted { $0.1.lifespanImpactMinutes > $1.1.lifespanImpactMinutes }
+        let sortedByImpact = metricContributions.sorted { $0.1.lifespanImpactMinutes > $1.1.lifespanImpactMinutes }
         let topPositiveMetric = sortedByImpact.first?.1.lifespanImpactMinutes ?? 0 > 0 ? sortedByImpact.first?.0 : nil
         let topNegativeMetric = sortedByImpact.last?.1.lifespanImpactMinutes ?? 0 < 0 ? sortedByImpact.last?.0 : nil
         
         return LifeImpactData(
-            timePeriod: timePeriodEnum,
+            timePeriod: TimePeriod(from: timePeriod),
             totalImpact: ImpactValue(
                 value: abs(totalImpactPoint.totalImpactMinutes),
                 unit: .minutes,
@@ -246,9 +259,39 @@ class LifeImpactService {
             ),
             batteryLevel: batteryLevel,
             metricContributions: metricContributions,
-            topPositiveMetric: topPositiveMetric,
-            topNegativeMetric: topNegativeMetric
+            topPositiveMetric: sortedByImpact.first?.0,
+            topNegativeMetric: sortedByImpact.last?.0
         )
+    }
+    
+    /// Calculate comprehensive life impact data for a specific point in time
+    /// Only uses metrics that were available before or at the specified date
+    func calculateLifeImpactAtDate(
+        from metrics: [HealthMetric],
+        at targetDate: Date,
+        for timePeriod: ImpactDataPoint.PeriodType,
+        userProfile: UserProfile
+    ) -> LifeImpactData {
+        // Filter metrics to only include those before or at the target date
+        let metricsBeforeDate = metrics.filter { $0.date <= targetDate }
+        
+        // Group metrics by type
+        let metricsByType = Dictionary(grouping: metricsBeforeDate, by: { $0.type })
+        
+        // For each metric type, use the most recent reading BEFORE the target date
+        var relevantMetrics: [HealthMetric] = []
+        
+        for (metricType, metricsOfType) in metricsByType {
+            // Sort by date descending and take the most recent one before target date
+            let sortedMetrics = metricsOfType.sorted { $0.date > $1.date }
+            if let mostRecentBeforeTarget = sortedMetrics.first {
+                relevantMetrics.append(mostRecentBeforeTarget)
+                logger.debug("📊 For \(metricType.displayName) at \(targetDate): using reading from \(mostRecentBeforeTarget.date)")
+            }
+        }
+        
+        // Now calculate impact using only the relevant metrics
+        return calculateLifeImpact(from: relevantMetrics, for: timePeriod, userProfile: userProfile)
     }
     
     /// Calculate battery level (0-100) based on total impact minutes

@@ -134,7 +134,13 @@ struct DashboardView: View {
         // Apply the correct sign based on direction
         let signedImpact = lifeImpact.totalImpact.value * (lifeImpact.totalImpact.direction == .positive ? 1.0 : -1.0)
         
-        logger.info("📊 Headline impact calculation: \(String(format: "%.2f", signedImpact)) minutes (\(lifeImpact.totalImpact.direction == .positive ? "positive" : "negative"))")
+        // ENHANCED DEBUGGING: Log comprehensive calculation details
+        logger.info("📊 Headline impact calculation:")
+        logger.info("  📅 Period: \(viewModel.selectedTimePeriod.displayName)")
+        logger.info("  🔢 Impact value: \(String(format: "%.2f", signedImpact)) minutes")
+        logger.info("  ↗️ Direction: \(lifeImpact.totalImpact.direction == .positive ? "positive" : "negative")")
+        logger.info("  📈 Raw value: \(String(format: "%.2f", lifeImpact.totalImpact.value))")
+        logger.info("  🧮 Metrics count: \(metricsInLifeImpact)")
         
         return signedImpact
     }

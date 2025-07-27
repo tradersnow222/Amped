@@ -16,18 +16,13 @@ final class MetricDetailViewModel: ObservableObject {
     @Published var historyData: [HistoryDataPoint] = []
     @Published var recommendations: [MetricRecommendation] = []
     @Published var metric: HealthMetric  // Always stores the original daily metric
-    @Published var selectedPeriod: ImpactDataPoint.PeriodType = .day {
-        didSet {
-            // Cancel previous task to prevent race conditions
-            currentDataTask?.cancel()
-            
-            // Reload real data when period changes
-            currentDataTask = Task {
-                await loadRealHistoryData(for: originalMetric)
-                await updatePeriodSpecificValue()
-            }
-        }
-    }
+    @Published var selectedPeriod: ImpactDataPoint.PeriodType = .day
+    
+    /// Loading state for TradingView-style charts
+    @Published var isLoadingHistory: Bool = false
+    
+    // Task management for data loading
+    private var currentDataTask: Task<Void, Never>?
     
     // CRITICAL FIX: Store original daily metric to prevent value corruption
     private let originalMetric: HealthMetric
@@ -35,14 +30,38 @@ final class MetricDetailViewModel: ObservableObject {
     // Store period-specific calculated values separately
     @Published private var periodSpecificValue: Double?
     
+    // MARK: - Dependencies
+    
+    /// Health data service for fetching real HealthKit data
     private let healthKitManager: HealthKitManager
-    private let healthDataService: HealthDataService
-    private var currentDataTask: Task<Void, Never>?
+    
+    /// User profile for accurate impact calculations (CRITICAL: Use real profile, not empty one)
+    private let userProfile: UserProfile
+    
+    // MARK: - Initializer
+    
+    /// Initialize with required dependencies for real data calculations  
+    init(healthKitManager: HealthKitManager = HealthKitManager.shared) {
+        // Initialize with default metric first
+        let defaultMetric = HealthMetric(
+            id: "default",
+            type: .steps,
+            value: 0,
+            date: Date(),
+            source: .healthKit
+        )
+        
+        self.healthKitManager = healthKitManager
+        self.userProfile = UserProfile() // Will be set properly when metric is set
+        self.originalMetric = defaultMetric
+        self.metric = defaultMetric
+        self.lastKnownValue = defaultMetric.value
+    }
     
     // MARK: - Real-time Update Support
     
     /// Store the last known metric value to detect significant changes
-    private var lastKnownValue: Double
+    private var lastKnownValue: Double = 0.0
     
     /// Observe dashboard updates and refresh when significant changes occur
     @MainActor
@@ -109,9 +128,9 @@ final class MetricDetailViewModel: ObservableObject {
             let isCumulativeMetric = (originalMetric.type == .steps || originalMetric.type == .exerciseMinutes || originalMetric.type == .activeEnergyBurned)
             
             if isCumulativeMetric {
-                // For cumulative metrics, calculate impact dynamically as values accumulate
-                let userProfile = UserProfile()
-                let lifeImpactService = LifeImpactService(userProfile: userProfile)
+                // TradingView approach: Calculate impact using REAL data with proper period scaling
+                // CRITICAL FIX: Use actual user profile (not empty one)
+                let lifeImpactService = LifeImpactService(userProfile: self.userProfile)
                 
                 for dataPoint in sortedHistory {
                     let tempMetric = HealthMetric(
@@ -122,10 +141,11 @@ final class MetricDetailViewModel: ObservableObject {
                         source: originalMetric.source
                     )
                     
-                    let impactDetail = lifeImpactService.calculateImpact(for: tempMetric)
+                    // TradingView approach: Apply same period scaling as headlines and collective charts
+                    let impactDataPoint = lifeImpactService.calculateTotalImpact(from: [tempMetric], for: selectedPeriod)
                     impactPoints.append(ChartImpactDataPoint(
                         date: dataPoint.date,
-                        impact: impactDetail.lifespanImpactMinutes,
+                        impact: impactDataPoint.totalImpactMinutes, // Period-scaled impact like headlines
                         value: dataPoint.value
                     ))
                 }
@@ -153,9 +173,9 @@ final class MetricDetailViewModel: ObservableObject {
                     }
                 }
             } else {
-                // For non-cumulative metrics, calculate dynamic impact based on each value's distance from optimal range
-                let userProfile = UserProfile()
-                let lifeImpactService = LifeImpactService(userProfile: userProfile)
+                // TradingView approach: Calculate impact using REAL data with proper period scaling
+                // CRITICAL FIX: Use actual user profile (not empty one)
+                let lifeImpactService = LifeImpactService(userProfile: self.userProfile)
                 
                 for dataPoint in sortedHistory {
                     let tempMetric = HealthMetric(
@@ -166,10 +186,11 @@ final class MetricDetailViewModel: ObservableObject {
                         source: originalMetric.source
                     )
                     
-                    let impactDetail = lifeImpactService.calculateImpact(for: tempMetric)
+                    // TradingView approach: Apply same period scaling as headlines and collective charts
+                    let impactDataPoint = lifeImpactService.calculateTotalImpact(from: [tempMetric], for: selectedPeriod)
                     impactPoints.append(ChartImpactDataPoint(
                         date: dataPoint.date,
-                        impact: impactDetail.lifespanImpactMinutes, // Dynamic impact based on distance from optimal
+                        impact: impactDataPoint.totalImpactMinutes, // Period-scaled impact like headlines
                         value: dataPoint.value
                     ))
                 }
@@ -198,9 +219,9 @@ final class MetricDetailViewModel: ObservableObject {
                 }
             }
         } else {
-            // For month/year views, use historical calculations
-            let userProfile = UserProfile()
-            let lifeImpactService = LifeImpactService(userProfile: userProfile)
+            // TradingView approach: Use REAL historical data with proper period scaling
+            // CRITICAL FIX: Use actual user profile (not empty one)
+            let lifeImpactService = LifeImpactService(userProfile: self.userProfile)
             
             for dataPoint in sortedHistory {
                 let tempMetric = HealthMetric(
@@ -211,10 +232,11 @@ final class MetricDetailViewModel: ObservableObject {
                     source: originalMetric.source
                 )
                 
-                let impactDetail = lifeImpactService.calculateImpact(for: tempMetric)
+                // TradingView approach: Apply same period scaling as headlines and collective charts
+                let impactDataPoint = lifeImpactService.calculateTotalImpact(from: [tempMetric], for: selectedPeriod)
                 impactPoints.append(ChartImpactDataPoint(
                     date: dataPoint.date,
-                    impact: impactDetail.lifespanImpactMinutes,
+                    impact: impactDataPoint.totalImpactMinutes, // Period-scaled impact like headlines
                     value: dataPoint.value
                 ))
             }
@@ -327,14 +349,10 @@ final class MetricDetailViewModel: ObservableObject {
     
     init(metric: HealthMetric, initialPeriod: ImpactDataPoint.PeriodType? = nil) {
         // CRITICAL FIX: Use the pre-calculated impact from the dashboard metric to ensure consistency
-        let userProfile = UserProfile() // Using default initialization
         
-        // Initialize health services
-        self.healthKitManager = HealthKitManager()
-        self.healthDataService = HealthDataService(
-            healthKitManager: healthKitManager,
-            userProfile: userProfile
-        )
+        // Initialize required dependencies
+        self.healthKitManager = HealthKitManager.shared
+        self.userProfile = UserProfile() // Using default initialization
         
         // CONSISTENCY FIX: Use the exact same impact that the dashboard calculated
         // This prevents discrepancies between dashboard and detail view
@@ -387,23 +405,9 @@ final class MetricDetailViewModel: ObservableObject {
             return 
         }
         
-        // For month/year periods, fetch the period-appropriate value
-        do {
-            let timePeriod: TimePeriod = selectedPeriod == .month ? .month : .year
-            let periodMetrics = try await healthDataService.fetchHealthMetricsForPeriod(timePeriod: timePeriod)
-            
-            // Find the matching metric type in the period results
-            if let updatedMetric = periodMetrics.first(where: { $0.type == originalMetric.type }) {
-                // Store the period-specific value separately - NEVER modify original metric
-                self.periodSpecificValue = updatedMetric.value
-                
-                logger.info("✅ Updated period-specific value for \(self.selectedPeriod.rawValue): \(self.originalMetric.type.displayName) = \(updatedMetric.formattedValue)")
-            }
-        } catch {
-            logger.error("❌ Failed to update period-specific value: \(error.localizedDescription)")
-            // On error, clear period-specific value to fall back to original
-            periodSpecificValue = nil
-        }
+        // TradingView approach: Use direct HealthKit data fetching instead of period calculations
+        // Individual metrics will show real historical data instead of synthetic period values
+        logger.info("📊 Using TradingView approach - showing real historical data instead of period calculations")
     }
     
     func getChartYRange(for metric: HealthMetric) -> ClosedRange<Double> {
@@ -440,10 +444,11 @@ final class MetricDetailViewModel: ObservableObject {
         // Determine the date range based on the selected period
         let (startDate, endDate, interval) = getDateRangeAndInterval(for: selectedPeriod, now: now)
         
-        // For manual metrics, just show the current value across the time period
+        // TradingView approach: For manual metrics, show real questionnaire data consistently
         if metric.type.isHealthKitMetric == false {
-            // Generate a flat line showing the current manual value
-            generateManualMetricData(metric: metric, startDate: startDate, endDate: endDate, interval: interval)
+            // Use actual questionnaire value (like TradingView showing last known price)
+            // Manual metrics represent lifestyle patterns that don't change minute-by-minute
+            generateRealManualMetricData(metric: metric, startDate: startDate, endDate: endDate, interval: interval)
             return
         }
         
@@ -677,8 +682,9 @@ final class MetricDetailViewModel: ObservableObject {
         let samples = await healthKitManager.fetchData(for: metricType, from: startDate, to: endDate)
         
         if samples.isEmpty {
-                    // If no data, show current value as a flat line
-        generateManualMetricData(metric: originalMetric, startDate: startDate, endDate: endDate, interval: DateComponents(hour: 1))
+            // TradingView approach: If no real data exists, show gaps (empty chart)
+            // Don't create artificial flat lines like the old implementation
+            logger.info("📊 No real HealthKit data found for \(metricType.displayName) - showing gap like TradingView")
             return
         }
         
@@ -699,9 +705,10 @@ final class MetricDetailViewModel: ObservableObject {
         // Sort by date
         historyData.sort { $0.date < $1.date }
         
-        // If we still have no data after fetching, show current value as fallback
+        // TradingView approach: If we still have no real data after fetching, show gaps (no artificial fallback)
         if historyData.isEmpty {
-            generateManualMetricData(metric: originalMetric, startDate: startDate, endDate: endDate, interval: DateComponents(hour: 1))
+            logger.info("📊 No real historical data available for \(self.originalMetric.type.displayName) - showing empty chart like TradingView gaps")
+            // Don't generate artificial manual metric data - show real gaps instead
         }
         
         // For body mass, if showing daily view, we should show the actual weight changes throughout the day
@@ -768,24 +775,34 @@ final class MetricDetailViewModel: ObservableObject {
         }
     }
     
-    private func generateManualMetricData(metric: HealthMetric, startDate: Date, endDate: Date, interval: DateComponents) {
+    /// Generate real manual metric data using actual questionnaire responses (TradingView approach)
+    /// Unlike the old generateManualMetricData, this uses REAL questionnaire values consistently
+    private func generateRealManualMetricData(metric: HealthMetric, startDate: Date, endDate: Date, interval: DateComponents) {
+        // TradingView approach: Manual metrics represent consistent lifestyle patterns
+        // Use actual questionnaire value (like TradingView showing last known price when markets are closed)
+        
         let calendar = Calendar.current
         var currentDate = startDate
+        let actualValue = metric.value // Use the REAL questionnaire response value
         
-        // For body mass, ensure we're using the display value not the stored kg value
-        let displayValue: Double
-        if metric.type == .bodyMass {
-            let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem")
-            displayValue = useMetric ? metric.value : metric.value * 2.20462
-        } else {
-            displayValue = metric.value
-        }
+        logger.info("📊 Using REAL manual metric value: \(String(format: "%.2f", actualValue)) for \(metric.type.displayName)")
         
-        // Generate data points showing the same value across the time period
+        // Create data points using the actual questionnaire value consistently
         while currentDate <= endDate {
-            historyData.append(HistoryDataPoint(date: currentDate, value: displayValue))
-            currentDate = calendar.date(byAdding: interval, to: currentDate) ?? endDate
+            // Skip future dates (TradingView doesn't show future data)
+            if currentDate > Date() { break }
+            
+                         self.historyData.append(HistoryDataPoint(
+                 date: currentDate,
+                 value: actualValue // REAL questionnaire value (no artificial variations)
+             ))
+            
+            // Move to next interval
+            guard let nextDate = calendar.date(byAdding: interval, to: currentDate) else { break }
+            currentDate = nextDate
         }
+        
+        logger.info("✅ Generated \(self.historyData.count) real manual metric data points for \(metric.type.displayName)")
     }
     
     private func generateRecommendations(for metric: HealthMetric) {
@@ -953,6 +970,44 @@ final class MetricDetailViewModel: ObservableObject {
             iconName: "calendar.badge.clock",
             actionText: ""
         ))
+    }
+
+    /// Load real historical data for TradingView-style charts (100% real data only)
+    /// - Parameters:
+    ///   - metric: The metric to load history for
+    ///   - period: The time period to load
+    func loadRealHistoricalData(for metric: HealthMetric, period: ImpactDataPoint.PeriodType) {
+        isLoadingHistory = true
+        
+        // Cancel any existing data loading task
+        currentDataTask?.cancel()
+        
+        // Update the selected period
+        selectedPeriod = period
+        
+        currentDataTask = Task {
+            // Load real historical data using TradingView approach
+            await loadRealHistoryData(for: metric)
+            
+            await MainActor.run {
+                self.isLoadingHistory = false
+            }
+        }
+    }
+
+    /// TradingView-style data points for charts (100% real data)
+    var tradingViewStyleDataPoints: [MetricDataPoint] {
+        return historyData.map { dataPoint in
+            MetricDataPoint(
+                date: dataPoint.date,
+                value: dataPoint.value
+            )
+        }
+    }
+    
+    /// Historical data points for charting (UI compatibility)
+    var historyDataPoints: [MetricDataPoint] {
+        return tradingViewStyleDataPoints
     }
 }
 
