@@ -19,24 +19,20 @@ struct HealthMetricRow: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            // Icon with background - Rules: Subtle visual differentiation
-            ZStack {
-                Circle()
-                    .fill(iconBackgroundColor)
-                    .frame(width: 40, height: 40)
-                
-                // Add subtle ring for manual metrics
-                if metric.source == .userInput {
-                    Circle()
-                        .strokeBorder(Color.white.opacity(0.15), lineWidth: 1.5)
-                        .frame(width: 40, height: 40)
-                }
-                
-                Image(systemName: iconName)
-                    .font(.system(size: 16))
-                    .foregroundColor(iconForegroundColor)
-            }
-            .accessibilityHidden(true)
+            // Progress ring with icon - Rules: FitBit-inspired visualization
+            SimpleMetricRing(metric: metric)
+                .frame(width: 40, height: 40) // CRITICAL: Enforce fixed size to prevent HStack compression
+                .overlay(
+                    // Add subtle ring for manual metrics
+                    Group {
+                        if metric.source == .userInput {
+                            Circle()
+                                .strokeBorder(Color.white.opacity(0.15), lineWidth: 1.5)
+                                .frame(width: 32, height: 32)
+                        }
+                    }
+                )
+                .accessibilityHidden(true)
             
             // Metric info
             VStack(alignment: .leading, spacing: 4) {
@@ -105,10 +101,10 @@ struct HealthMetricRow: View {
                     .accessibilityHidden(true)
             }
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 16)
+        .padding(.vertical, 16) // Increased padding to give ring space
+        .padding(.horizontal, 20) // Increased horizontal padding for ring space
         .background(
-            // Clean glass background matching the recommendation section
+            // Clean glass background that doesn't clip ring content
             RoundedRectangle(cornerRadius: 12)
                 .fill(.black.opacity(0.4))
                 .background(
@@ -128,6 +124,8 @@ struct HealthMetricRow: View {
                     RoundedRectangle(cornerRadius: 12)
                         .strokeBorder(.white.opacity(0.2), lineWidth: 0.5)
                 )
+                .padding(.horizontal, 4) // Inset background to not clip rings
+                .padding(.vertical, 4) // Inset background to not clip rings
         )
         .contentShape(Rectangle()) // Make entire row tappable
         .accessibilityElement(children: .combine)

@@ -78,13 +78,14 @@ struct ImpactPageView: View {
                                 }
                             }
                             
-                            // Collective Impact Chart - Rules: Dynamic height to maximize chart space
+                            // Collective Impact Ring - Rules: FitBit-inspired visualization  
                             if showLifeEnergyBattery {
-                                CollectiveImpactChartContainer(
+                                CollectiveImpactRingContainer(
                                     viewModel: viewModel,
                                     selectedPeriod: selectedPeriod
                                 )
-                                .frame(height: calculateOptimalChartHeight(geometry: geometry))
+                                .frame(height: min(300, geometry.size.width - 40))
+                                .aspectRatio(1.0, contentMode: .fit)
                                 .transition(.asymmetric(
                                     insertion: .scale(scale: 0.8).combined(with: .opacity),
                                     removal: .scale(scale: 0.8).combined(with: .opacity)
@@ -92,7 +93,6 @@ struct ImpactPageView: View {
                             }
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 16)
                         .padding(.top, 20)  // Rules: Reduced from 40 to 20 for better screen fit
                         .padding(.bottom, 20) // Rules: Reduced from 40 to 20 for better screen fit
                     } else {
@@ -194,9 +194,9 @@ struct ImpactPageView: View {
         let usedSpace = impactSummaryHeight + recommendationCardHeight + paddingAndSpacing
         let availableSpace = screenHeight - usedSpace
         
-        // Set conservative bounds: minimum 180px, maximum 250px (reduced max to ensure recommendations visible)
+        // Set conservative bounds: minimum 180px, maximum 280px (increased for ring with padding)
         let minHeight: CGFloat = 180
-        let maxHeight: CGFloat = 250
+        let maxHeight: CGFloat = 280
         
         return max(minHeight, min(maxHeight, availableSpace))
     }
