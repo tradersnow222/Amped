@@ -238,7 +238,7 @@ final class RecommendationService {
             let mid = (low + high) / 2.0
             
             // Calculate impact at this step count using the ACTUAL formula
-            let testMetric = HealthMetric(
+            let _ = HealthMetric(
                 id: UUID().uuidString,
                 type: .steps,
                 value: mid,
@@ -290,7 +290,7 @@ final class RecommendationService {
         for _ in 0..<20 {
             let mid = (low + high) / 2.0
             
-            let testMetric = HealthMetric(
+            let _ = HealthMetric(
                 id: UUID().uuidString,
                 type: .exerciseMinutes,
                 value: mid,
@@ -346,7 +346,7 @@ final class RecommendationService {
         for _ in 0..<20 {
             let mid = (low + high) / 2.0
             
-            let testMetric = HealthMetric(
+            let _ = HealthMetric(
                 id: UUID().uuidString,
                 type: .sleepHours,
                 value: mid,
@@ -473,7 +473,7 @@ final class RecommendationService {
         for _ in 0..<20 {
             let mid = (low + high) / 2.0
             
-            let testMetric = HealthMetric(
+            let _ = HealthMetric(
                 id: UUID().uuidString,
                 type: .restingHeartRate,
                 value: mid,
@@ -528,7 +528,7 @@ final class RecommendationService {
         for _ in 0..<20 {
             let mid = (low + high) / 2.0
             
-            let testMetric = HealthMetric(
+            let _ = HealthMetric(
                 id: UUID().uuidString,
                 type: .bodyMass,
                 value: mid,
@@ -581,7 +581,7 @@ final class RecommendationService {
         for _ in 0..<20 {
             let mid = (low + high) / 2.0
             
-            let testMetric = HealthMetric(
+            let _ = HealthMetric(
                 id: UUID().uuidString,
                 type: .alcoholConsumption,
                 value: mid,
@@ -624,7 +624,7 @@ final class RecommendationService {
         for _ in 0..<20 {
             let mid = (low + high) / 2.0
             
-            let testMetric = HealthMetric(
+            let _ = HealthMetric(
                 id: UUID().uuidString,
                 type: .smokingStatus,
                 value: mid,
@@ -667,7 +667,7 @@ final class RecommendationService {
         for _ in 0..<20 {
             let mid = (low + high) / 2.0
             
-            let testMetric = HealthMetric(
+            let _ = HealthMetric(
                 id: UUID().uuidString,
                 type: .stressLevel,
                 value: mid,
@@ -710,7 +710,7 @@ final class RecommendationService {
         for _ in 0..<20 {
             let mid = (low + high) / 2.0
             
-            let testMetric = HealthMetric(
+            let _ = HealthMetric(
                 id: UUID().uuidString,
                 type: .nutritionQuality,
                 value: mid,

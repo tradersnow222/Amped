@@ -163,14 +163,6 @@ struct DailyTarget: Codable, Identifiable, Equatable {
         }
         
         // CRITICAL FIX: Check if we're currently in negative impact
-        let currentMetric = HealthMetric(
-            id: UUID().uuidString,
-            type: metricType,
-            value: originalCurrentValue,
-            date: Date(),
-            source: .healthKit
-        )
-        
         // Simple check for negative impact based on metric type and value
         let isCurrentlyNegative = isMetricInNegativeImpact(type: metricType, value: originalCurrentValue)
         

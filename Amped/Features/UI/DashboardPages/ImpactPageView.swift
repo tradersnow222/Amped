@@ -3,6 +3,7 @@ import SwiftUI
 /// Page 1: Impact number and Today's Focus
 struct ImpactPageView: View {
     @Binding var selectedPeriod: ImpactDataPoint.PeriodType
+    @Binding var currentPage: Int
     @Binding var isCalculatingImpact: Bool
     @Binding var hasInitiallyCalculated: Bool
     @Binding var showLifeEnergyBattery: Bool
@@ -78,14 +79,19 @@ struct ImpactPageView: View {
                                 }
                             }
                             
-                            // Collective Impact Ring - Rules: FitBit-inspired visualization  
+                            // Interactive Battery - Rules: Battery-themed visualization replacing progress rings  
                             if showLifeEnergyBattery {
-                                CollectiveImpactRingContainer(
-                                    viewModel: viewModel,
-                                    selectedPeriod: selectedPeriod
-                                )
-                                .frame(height: min(300, geometry.size.width - 40))
-                                .aspectRatio(1.0, contentMode: .fit)
+                                                            InteractiveBatteryContainer(
+                                viewModel: viewModel,
+                                selectedPeriod: selectedPeriod,
+                                onTapToDrillIn: {
+                                    // Navigate to Today's metrics page (LifespanFactorsPageView)
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        currentPage = 1
+                                    }
+                                }
+                            )
+                                .frame(height: min(280, geometry.size.width - 40))
                                 .transition(.asymmetric(
                                     insertion: .scale(scale: 0.8).combined(with: .opacity),
                                     removal: .scale(scale: 0.8).combined(with: .opacity)
@@ -93,8 +99,8 @@ struct ImpactPageView: View {
                             }
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 20)  // Rules: Reduced from 40 to 20 for better screen fit
-                        .padding(.bottom, 20) // Rules: Reduced from 40 to 20 for better screen fit
+                        .padding(.top, 12)  // Rules: Further reduced to prevent bottom cutoff
+                        .padding(.bottom, 8) // Rules: Further reduced to prevent bottom cutoff
                     } else {
                         // No impact yet
                         VStack(spacing: 16) { // Rules: Better spacing
@@ -133,13 +139,13 @@ struct ImpactPageView: View {
                             }
                         )
                         .padding(.horizontal, 16)
-                        .padding(.top, 4) // Rules: Reduced from 8 to 4 for better screen fit
-                        .padding(.bottom, 12) // Rules: Reduced from 20 to 12 for better screen fit
+                        .padding(.top, 2) // Rules: Further reduced to prevent bottom cutoff
+                        .padding(.bottom, 8) // Rules: Further reduced to prevent bottom cutoff
                     }
                     
-                    // Add consistent padding for page indicators - Rules: Better spacing
+                    // Add consistent padding for page indicators - Rules: Minimal spacing to prevent cutoff
                     Spacer()
-                        .frame(height: max(30, geometry.safeAreaInsets.bottom + 15))  // Rules: Reduced from 40/20 to 30/15 for better screen fit
+                        .frame(height: max(16, geometry.safeAreaInsets.bottom + 8))  // Rules: Significantly reduced to prevent bottom cutoff
                 }
             }
             .refreshable {

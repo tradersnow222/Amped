@@ -41,7 +41,7 @@ final class MetricDetailViewModel: ObservableObject {
     // MARK: - Initializer
     
     /// Initialize with required dependencies for real data calculations  
-    init(healthKitManager: HealthKitManager = HealthKitManager.shared) {
+    init(healthKitManager: HealthKitManager? = nil) {
         // Initialize with default metric first
         let defaultMetric = HealthMetric(
             id: "default",
@@ -51,7 +51,7 @@ final class MetricDetailViewModel: ObservableObject {
             source: .healthKit
         )
         
-        self.healthKitManager = healthKitManager
+        self.healthKitManager = healthKitManager ?? HealthKitManager.shared
         self.userProfile = UserProfile() // Will be set properly when metric is set
         self.originalMetric = defaultMetric
         self.metric = defaultMetric

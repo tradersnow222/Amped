@@ -4,6 +4,7 @@ import SwiftUI
 
 /// Centralized manager for handling user profile images throughout the app
 /// Following Apple guidelines for consistent UI and proper storage
+@MainActor
 class ProfileImageManager: ObservableObject {
     static let shared = ProfileImageManager()
     

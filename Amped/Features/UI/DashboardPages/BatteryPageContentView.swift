@@ -36,7 +36,8 @@ struct BatteryPageContentView: View {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             showingProjectionHelp = true
                         }
-                    }
+                    },
+                    viewModel: viewModel
                 )
                 
                 Spacer()

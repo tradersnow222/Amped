@@ -99,10 +99,10 @@ struct ActionableRecommendationsView: View {
             // Dynamic Header based on selected period
             Text(focusHeaderText())
                 .style(.headlineBold)
-                .padding(.bottom, 20)
+                .padding(.bottom, 12)
             
             // Main content with clear visual separation
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
                 // Top section: Current status (if negative impact)
                 if let dailyImpact = metric.impactDetails?.lifespanImpactMinutes, dailyImpact < 0 {
                     // SCIENTIFIC ACCURACY FIX: Apply period scaling to match recommendation calculation
@@ -113,7 +113,7 @@ struct ActionableRecommendationsView: View {
                 actionRecommendationSection(for: metric)
             }
         }
-        .padding(20)
+        .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(.black.opacity(0.3))
@@ -216,7 +216,7 @@ struct ActionableRecommendationsView: View {
             } else if metric.value < 5000 {
                 return "Low Step Count"
             } else {
-                return "Need More Steps"
+                return "You need more steps"
             }
             
         case .exerciseMinutes:
@@ -225,7 +225,7 @@ struct ActionableRecommendationsView: View {
             } else if metric.value < 20 {
                 return "Low Exercise"
             } else {
-                return "Need More Exercise"
+                return "You need more exercise"
             }
             
         case .sleepHours:

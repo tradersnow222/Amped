@@ -19,19 +19,9 @@ struct HealthMetricRow: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            // Progress ring with icon - Rules: FitBit-inspired visualization
-            SimpleMetricRing(metric: metric)
+            // Battery indicator with impact visualization - Rules: Battery-themed visualization
+            SimpleMetricBattery(metric: metric)
                 .frame(width: 40, height: 40) // CRITICAL: Enforce fixed size to prevent HStack compression
-                .overlay(
-                    // Add subtle ring for manual metrics
-                    Group {
-                        if metric.source == .userInput {
-                            Circle()
-                                .strokeBorder(Color.white.opacity(0.15), lineWidth: 1.5)
-                                .frame(width: 32, height: 32)
-                        }
-                    }
-                )
                 .accessibilityHidden(true)
             
             // Metric info
@@ -104,7 +94,7 @@ struct HealthMetricRow: View {
         .padding(.vertical, 16) // Increased padding to give ring space
         .padding(.horizontal, 20) // Increased horizontal padding for ring space
         .background(
-            // Clean glass background that doesn't clip ring content
+            // Clean glass background with subtle color differentiation only in the border
             RoundedRectangle(cornerRadius: 12)
                 .fill(.black.opacity(0.4))
                 .background(
@@ -122,7 +112,7 @@ struct HealthMetricRow: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(.white.opacity(0.2), lineWidth: 0.5)
+                        .strokeBorder(backgroundTintColor.opacity(0.4), lineWidth: 0.8)
                 )
                 .padding(.horizontal, 4) // Inset background to not clip rings
                 .padding(.vertical, 4) // Inset background to not clip rings
@@ -136,6 +126,17 @@ struct HealthMetricRow: View {
     }
     
     // MARK: - Visual Differentiation
+    
+    /// Background tint color based on metric source
+    private var backgroundTintColor: Color {
+        if metric.source == .userInput {
+            // Subtle amber/yellow tint for manually entered habits
+            return .ampedYellow
+        } else {
+            // Subtle green tint for live HealthKit habits
+            return .ampedGreen
+        }
+    }
     
     /// Icon background color based on source
     private var iconBackgroundColor: Color {

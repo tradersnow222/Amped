@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// FitBit-inspired collective impact ring visualization
-/// Rule: Simplicity is KING - intuitive progress visualization
+/// Goal-oriented collective impact ring inspired by Apple Fitness and Fitbit
+/// Rule: Simplicity is KING - clear goal visualization without redundant text
 struct CollectiveImpactRing: View {
     // MARK: - Properties
     
@@ -10,6 +10,15 @@ struct CollectiveImpactRing: View {
     
     @Environment(\.glassTheme) private var glassTheme
     @State private var isAnimating = false
+    
+    // MARK: - Constants
+    
+    private let ringWidth: CGFloat = 24
+    private let outerRingWidth: CGFloat = 28
+    private let minImpact: Double = -120 // Critical negative impact
+    private let maxImpact: Double = 120  // Optimal positive impact
+    private let neutralPoint: Double = 0  // Baseline neutral
+    private let optimalThreshold: Double = 60 // Where "optimal" begins
     
     // MARK: - Computed Properties
     
@@ -27,132 +36,228 @@ struct CollectiveImpactRing: View {
             return baseValue * 60
         case .days:
             return baseValue * 1440
-        @unknown default:
-            return baseValue // Fallback to raw value
+        case .years:
+            return baseValue * 525600
         }
     }
     
-    /// Normalize impact to 0-1 range for ring progress
-    private var normalizedProgress: Double {
-        // Map -120 to +120 range to 0.0 to 1.0
-        // 0.0 = -120 minutes (critical)
-        // 0.5 = 0 minutes (neutral)
-        // 1.0 = +120 minutes (optimal)
-        let clamped = max(-120, min(120, impactMinutes))
-        return (clamped + 120) / 240
+    /// Current progress position (0.0 to 1.0) - like Apple Fitness rings
+    private var currentProgress: Double {
+        let clamped = max(minImpact, min(maxImpact, impactMinutes))
+        return (clamped - minImpact) / (maxImpact - minImpact)
     }
     
-    /// Battery level as percentage
-    private var batteryLevel: Int {
-        Int(normalizedProgress * 100)
+    /// Neutral position on the ring (where 0 minutes sits)
+    private var neutralProgress: Double {
+        return (neutralPoint - minImpact) / (maxImpact - minImpact)
     }
     
-    /// Ring gradient colors based on impact
-    private var ringColors: [Color] {
+    /// Optimal zone start position
+    private var optimalProgress: Double {
+        return (optimalThreshold - minImpact) / (maxImpact - minImpact)
+    }
+    
+    /// Ring color based on current impact - inspired by Apple Fitness
+    private var ringColor: Color {
         if impactMinutes < -60 {
-            return [.ampedRed.opacity(0.8), .ampedRed]
+            return .ampedRed
         } else if impactMinutes < 0 {
-            return [.ampedRed, .ampedYellow]
-        } else if impactMinutes < 60 {
-            return [.ampedYellow, .ampedGreen]
+            return .ampedYellow
+        } else if impactMinutes < optimalThreshold {
+            return .ampedGreen.opacity(0.8)
         } else {
-            return [.ampedGreen.opacity(0.8), .ampedGreen]
+            return .ampedGreen
+        }
+    }
+    
+    /// Status text for current position
+    private var statusText: String {
+        if impactMinutes < -30 {
+            return "Critical"
+        } else if impactMinutes < 0 {
+            return "Below Neutral"
+        } else if impactMinutes < optimalThreshold {
+            return "Positive"
+        } else {
+            return "Optimal"
         }
     }
     
     // MARK: - Body
     
     var body: some View {
-        VStack(spacing: 16) { // Reduced spacing for better fit
-            // Main ring visualization
-            GeometryReader { geometry in
-                // Use the smaller dimension to ensure perfect circle
-                let availableSize = min(geometry.size.width, geometry.size.height)
-                let ringSize = availableSize * 0.85 // Leave 15% margin for labels
-                
-                ZStack {
-                    // Progress ring
-                    ProgressRingView(
-                        progress: normalizedProgress,
-                        ringWidth: ringSize * 0.12,
-                        size: ringSize,
-                        gradientColors: ringColors,
-                        backgroundColor: Color.white.opacity(0.15)
-                    )
-                    .scaleEffect(isAnimating ? 1.0 : 0.8)
-                    .opacity(isAnimating ? 1.0 : 0.0)
-                    
-                    // Reference marks
-                    ReferenceMarksView(
-                        ringSize: ringSize,
-                        showLabels: ringSize > 150
-                    )
-                    .opacity(isAnimating ? 1.0 : 0.0)
-                    
-                    // Center content with battery
-                    VStack(spacing: 12) {
-                        BatteryIconView(
-                            level: batteryLevel,
-                            size: CGSize(
-                                width: ringSize * 0.3,
-                                height: ringSize * 0.15
-                            )
-                        )
-                        
-                        Text("\(batteryLevel)%")
-                            .font(.system(
-                                size: ringSize * 0.12,
-                                weight: .bold,
-                                design: .rounded
-                            ))
-                            .foregroundColor(.white)
-                            .contentTransition(.numericText())
-                            .animation(.spring(response: 0.3), value: batteryLevel)
-                        
-                        // Small impact indicator
-                        if let lifeImpactData = viewModel.lifeImpactData {
-                            HStack(spacing: 4) {
-                                Image(systemName: lifeImpactData.totalImpact.direction == .positive ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                                    .font(.system(size: ringSize * 0.06))
-                                
-                                Text(lifeImpactData.totalImpact.displayString)
-                                    .font(.system(
-                                        size: ringSize * 0.06,
-                                        weight: .medium,
-                                        design: .rounded
-                                    ))
-                            }
-                            .foregroundColor(lifeImpactData.totalImpact.direction == .positive ? .ampedGreen : .ampedRed)
-                        }
-                    }
-                    .scaleEffect(isAnimating ? 1.0 : 0.5)
-                    .opacity(isAnimating ? 1.0 : 0.0)
-                }
-                .frame(width: ringSize, height: ringSize)
-                .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-            }
-            .aspectRatio(1.0, contentMode: .fit)
-            .clipped() // Ensure reference marks don't extend beyond bounds
+        GeometryReader { geometry in
+            let size = min(geometry.size.width, geometry.size.height)
             
-            // Impact summary below ring
-            if let lifeImpactData = viewModel.lifeImpactData {
-                ImpactSummaryView(
-                    impact: lifeImpactData.totalImpact,
-                    period: selectedPeriod
-                )
-                .opacity(isAnimating ? 1.0 : 0.0)
+            ZStack {
+                // Background ring segments
+                backgroundRingSegments(size: size)
+                
+                // Progress ring (current impact)
+                progressRing(size: size)
+                
+                // Goal markers (neutral and optimal indicators)
+                goalMarkers(size: size)
+                
+                // Center content - no redundant numbers, just status
+                centerContent
             }
+            .frame(width: size, height: size)
         }
+        .aspectRatio(1.0, contentMode: .fit)
         .onAppear {
-            withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.2)) {
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.3)) {
                 isAnimating = true
             }
         }
         .onChange(of: viewModel.lifeImpactData?.id) { _ in
-            // Animate when data updates
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                 isAnimating = true
             }
+        }
+    }
+    
+    // MARK: - Components
+    
+    /// Background ring with three segments: negative, neutral, positive
+    @ViewBuilder
+    private func backgroundRingSegments(size: CGFloat) -> some View {
+        ZStack {
+            // Negative zone (red background)
+            Circle()
+                .trim(from: 0, to: neutralProgress)
+                .stroke(Color.ampedRed.opacity(0.15), lineWidth: outerRingWidth)
+                .rotationEffect(.degrees(-90))
+            
+            // Neutral to optimal zone (yellow background)
+            Circle()
+                .trim(from: neutralProgress, to: optimalProgress)
+                .stroke(Color.ampedYellow.opacity(0.15), lineWidth: outerRingWidth)
+                .rotationEffect(.degrees(-90))
+                
+            // Optimal zone (green background)
+            Circle()
+                .trim(from: optimalProgress, to: 1.0)
+                .stroke(Color.ampedGreen.opacity(0.15), lineWidth: outerRingWidth)
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: size, height: size)
+    }
+    
+    /// Main progress ring showing current impact
+    @ViewBuilder
+    private func progressRing(size: CGFloat) -> some View {
+        Circle()
+            .trim(from: 0, to: isAnimating ? currentProgress : 0)
+            .stroke(
+                LinearGradient(
+                    gradient: Gradient(colors: [ringColor.opacity(0.7), ringColor]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                ),
+                style: StrokeStyle(lineWidth: ringWidth, lineCap: .round)
+            )
+            .frame(width: size - outerRingWidth, height: size - outerRingWidth)
+            .rotationEffect(.degrees(-90))
+            .animation(.spring(response: 1.2, dampingFraction: 0.8), value: currentProgress)
+    }
+    
+    /// Goal markers at neutral and optimal points - inspired by Fitbit
+    @ViewBuilder
+    private func goalMarkers(size: CGFloat) -> some View {
+        ZStack {
+            // Neutral marker (0 minutes)
+            goalMarker(
+                at: neutralProgress,
+                color: .white,
+                size: size,
+                label: "0"
+            )
+            
+            // Optimal marker (60+ minutes)
+            goalMarker(
+                at: optimalProgress,
+                color: .ampedGreen,
+                size: size,
+                label: "⭐"
+            )
+        }
+    }
+    
+    /// Individual goal marker
+    @ViewBuilder
+    private func goalMarker(at progress: Double, color: Color, size: CGFloat, label: String) -> some View {
+        let angle = progress * 360 - 90 // Convert to degrees
+        let radius = (size - outerRingWidth) / 2
+        
+        VStack {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+                .overlay(
+                    Circle()
+                        .stroke(Color.black.opacity(0.3), lineWidth: 1)
+                )
+            
+            Text(label)
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .foregroundColor(color)
+        }
+        .offset(y: -radius - 20)
+        .rotationEffect(.degrees(angle))
+    }
+    
+    /// Center content - status only, no redundant numbers
+    @ViewBuilder
+    private var centerContent: some View {
+        VStack(spacing: 8) {
+            // Battery icon showing charge level
+            Image(systemName: batteryIcon)
+                .font(.system(size: 32))
+                .foregroundColor(ringColor)
+                .symbolRenderingMode(.hierarchical)
+            
+            // Status text
+            Text(statusText)
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(.white)
+            
+            // Time period context
+            Text(periodText)
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.7))
+        }
+        .opacity(isAnimating ? 1.0 : 0.0)
+        .scaleEffect(isAnimating ? 1.0 : 0.8)
+    }
+    
+    /// Battery icon based on current impact level
+    private var batteryIcon: String {
+        let level = currentProgress
+        if level < 0.2 {
+            return "battery.0"
+        } else if level < 0.4 {
+            return "battery.25"
+        } else if level < 0.6 {
+            return "battery.50"
+        } else if level < 0.8 {
+            return "battery.75"
+        } else {
+            return "battery.100"
+        }
+    }
+    
+    /// Period context text
+    private var periodText: String {
+        switch selectedPeriod {
+        case .day:
+            return "Today"
+        case .month:
+            return "This Month" 
+        case .year:
+            return "This Year"
         }
     }
 }
@@ -173,9 +278,49 @@ struct CollectiveImpactRingContainer: View {
 
 // MARK: - Preview
 
-#Preview("Collective Impact Ring") {
+#Preview("Goal-Oriented Impact Ring") {
     VStack(spacing: 40) {
-        // Positive impact
+        // Positive impact example
+        CollectiveImpactRing(
+            viewModel: {
+                let vm = DashboardViewModel()
+                vm.lifeImpactData = LifeImpactData(
+                    timePeriod: .day,
+                    totalImpact: ImpactValue(
+                        value: 22,
+                        unit: .minutes,
+                        direction: .positive
+                    ),
+                    batteryLevel: 65,
+                    metricContributions: [:]
+                )
+                return vm
+            }(),
+            selectedPeriod: .day
+        )
+        .frame(height: 200)
+        
+        // Optimal impact example
+        CollectiveImpactRing(
+            viewModel: {
+                let vm = DashboardViewModel()
+                vm.lifeImpactData = LifeImpactData(
+                    timePeriod: .day,
+                    totalImpact: ImpactValue(
+                        value: 75,
+                        unit: .minutes,
+                        direction: .positive
+                    ),
+                    batteryLevel: 90,
+                    metricContributions: [:]
+                )
+                return vm
+            }(),
+            selectedPeriod: .day
+        )
+        .frame(height: 200)
+        
+        // Negative impact example
         CollectiveImpactRing(
             viewModel: {
                 let vm = DashboardViewModel()
@@ -184,36 +329,16 @@ struct CollectiveImpactRingContainer: View {
                     totalImpact: ImpactValue(
                         value: 45,
                         unit: .minutes,
-                        direction: .positive
-                    ),
-                    batteryLevel: 75,
-                    metricContributions: [:]
-                )
-                return vm
-            }(),
-            selectedPeriod: .day
-        )
-        .frame(height: 300)
-        
-        // Negative impact
-        CollectiveImpactRing(
-            viewModel: {
-                let vm = DashboardViewModel()
-                vm.lifeImpactData = LifeImpactData(
-                    timePeriod: .day,
-                    totalImpact: ImpactValue(
-                        value: 30,
-                        unit: .minutes,
                         direction: .negative
                     ),
-                    batteryLevel: 35,
+                    batteryLevel: 25,
                     metricContributions: [:]
                 )
                 return vm
             }(),
             selectedPeriod: .day
         )
-        .frame(height: 300)
+        .frame(height: 200)
     }
     .padding()
     .background(Color.black)

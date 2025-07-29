@@ -157,7 +157,10 @@ struct BatteryMetricCard: View {
     
     /// Individual battery segment with glass effects
     private func batterySegment(index: Int, totalWidth: CGFloat) -> some View {
-        let segmentWidth = (totalWidth - (CGFloat(segmentCount - 1) * segmentSpacing) - 6) / CGFloat(segmentCount)
+        // Account for the padding applied to the HStack container
+        let containerPadding: CGFloat = 6  // 3 padding on each side from .padding(3)
+        let availableWidth = totalWidth - containerPadding
+        let segmentWidth = (availableWidth - (CGFloat(segmentCount - 1) * segmentSpacing)) / CGFloat(segmentCount)
         let isFilled = index < powerLevel
         
         return RoundedRectangle(cornerRadius: 2)
@@ -180,7 +183,7 @@ struct BatteryMetricCard: View {
                 RoundedRectangle(cornerRadius: 2)
                     .stroke(Color.white.opacity(0.3), lineWidth: 0.5) : nil
             )
-            .frame(width: segmentWidth, height: batteryHeight - 6)
+            .frame(width: max(1, segmentWidth), height: batteryHeight - 6)  // Ensure minimum width
     }
     
     /// Impact section with emotional context

@@ -153,7 +153,7 @@ struct LifeEnergyFlowBattery: View {
     /// Flowing energy particles - inspired by Jobs' attention to detail
     private var energyFlowParticles: some View {
         GeometryReader { geometry in
-            ForEach(0..<8, id: \.self) { index in
+            ForEach(0..<12, id: \.self) { index in
                 EnergyParticle(
                     index: index,
                     phase: animationPhase,
@@ -194,13 +194,13 @@ struct LifeEnergyFlowBattery: View {
             showContent = true
         }
         
-        // Energy flow animation
-        withAnimation(.linear(duration: 2.5).repeatForever(autoreverses: false)) {
+        // Energy flow animation - slower and more organic
+        withAnimation(.linear(duration: 4.2).repeatForever(autoreverses: false)) {  // Slower: 2.5 → 4.2 seconds
             animationPhase = 1.0
         }
         
-        // Subtle pulse animation
-        withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
+        // Subtle pulse animation - slightly slower for more relaxed feel
+        withAnimation(.easeInOut(duration: 3.6).repeatForever(autoreverses: true)) {  // Slower: 2.0 → 3.6 seconds
             pulseScale = 1.05
             glowIntensity = 0.6
         }
@@ -253,21 +253,21 @@ private struct EnergyParticle: View {
     }
     
     private func updateParticle(phase: Double) {
-        // Calculate particle position based on phase and index
-        let adjustedPhase = (phase + Double(index) * 0.125).truncatingRemainder(dividingBy: 1.0)
+        // Calculate particle position with slower, more staggered timing for seamless loops
+        let adjustedPhase = (phase + Double(index) * 0.12).truncatingRemainder(dividingBy: 1.0)
         
-        // Vertical movement based on direction
+        // Vertical movement with much tighter bounds - stay well within battery
         let yProgress = direction == .upward ? (1.0 - adjustedPhase) : adjustedPhase
-        let yPosition = containerSize.height * 0.8 * yProgress + containerSize.height * 0.1
+        let yPosition = containerSize.height * 0.6 * yProgress + containerSize.height * 0.2
         
-        // Slight horizontal variation for natural movement
-        let xOffset = sin(adjustedPhase * .pi * 2 + Double(index)) * 8
+        // Much tighter horizontal variation with smoother sine wave for organic movement  
+        let xOffset = sin(adjustedPhase * .pi * 2 + Double(index)) * (containerSize.width * 0.1)
         let xPosition = containerSize.width * 0.5 + xOffset
         
-        // Fade in/out based on position
-        let opacity = sin(adjustedPhase * .pi) * 0.8
+        // Smoother fade in/out with continuous sine wave (no visible restart)
+        let opacity = sin(adjustedPhase * .pi) * 0.7
         
-        withAnimation(.linear(duration: 0.1)) {
+        withAnimation(.linear(duration: 0.16)) {  // Slightly slower: 0.1 → 0.16
             particlePosition = CGPoint(x: xPosition, y: yPosition)
             particleOpacity = opacity
         }

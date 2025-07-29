@@ -10,7 +10,7 @@
 - **Icons**: Battery icons following Apple's familiar design patterns (horizontal battery with segments)
 
 ### Key UI Components
-- **BatteryLifeImpactCard**: Recent impact visualization with battery charge level
+- **InteractiveBatteryView**: Recent impact visualization with battery charge level
 - **BatteryLifeProjectionCard**: Total projected life expectancy visualization
 - **BatteryMetricCard**: Individual metric card with power level visualization
 - **MetricDetailView**: Expanded view for single health metric

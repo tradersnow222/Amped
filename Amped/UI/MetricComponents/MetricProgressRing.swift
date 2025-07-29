@@ -106,9 +106,103 @@ struct MetricProgressRing: View {
     }
 }
 
-// MARK: - Simplified Ring for Row Display
+// MARK: - Simplified Battery for Row Display
+
+/// Simple battery indicator for use in metric rows - vertical battery visualization
+/// Rule: Battery-themed visualization that accurately reflects metric impact
+struct SimpleMetricBattery: View {
+    let metric: HealthMetric
+    
+    // MARK: - Constants
+    private let batteryWidth: CGFloat = 16
+    private let batteryHeight: CGFloat = 28
+    private let batteryCornerRadius: CGFloat = 3
+    private let terminalWidth: CGFloat = 8
+    private let terminalHeight: CGFloat = 2
+    private let fillPadding: CGFloat = 2.0  // Increased padding to ensure fill stays within bounds
+    
+    // MARK: - Computed Properties
+    
+    /// Calculate battery charge level based on impact
+    private var chargeLevel: Double {
+        guard let impact = metric.impactDetails?.lifespanImpactMinutes else { return 0.5 }
+        
+        // Map impact to battery charge level
+        // Positive impact = higher charge, negative impact = lower charge
+        // -60 to +60 minutes mapped to 0.1 to 0.9 (keeping some visual charge even at worst)
+        let normalizedImpact = max(-60, min(60, impact)) / 60.0  // -1.0 to 1.0
+        return 0.5 + (normalizedImpact * 0.4)  // 0.1 to 0.9 range
+    }
+    
+    /// Battery color based on impact
+    private var batteryColor: Color {
+        if let impact = metric.impactDetails?.lifespanImpactMinutes {
+            // Show green for minimal impacts (< 1 minute) since "No change" is positive
+            // This matches the logic in HealthMetricRow for consistency
+            if abs(impact) < 1.0 {
+                return .ampedGreen.opacity(0.8)  // No change is good
+            } else if impact > 0 {
+                return .ampedGreen
+            } else {
+                return .ampedRed  // Meaningful negative impact
+            }
+        }
+        return .gray.opacity(0.6)  // No data
+    }
+    
+    /// Battery outline color
+    private var outlineColor: Color {
+        return .white.opacity(0.6)
+    }
+    
+    /// Calculate fill height (charging from bottom up)
+    private var fillHeight: CGFloat {
+        let availableHeight = batteryHeight - (fillPadding * 2)
+        return availableHeight * CGFloat(chargeLevel)
+    }
+    
+    // MARK: - Body
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Battery terminal/cap at top
+            RoundedRectangle(cornerRadius: 1)
+                .fill(outlineColor)
+                .frame(width: terminalWidth, height: terminalHeight)
+            
+            // Main battery body
+            ZStack {
+                // Battery outline
+                RoundedRectangle(cornerRadius: batteryCornerRadius)
+                    .stroke(outlineColor, lineWidth: 1)
+                    .frame(width: batteryWidth, height: batteryHeight)
+                
+                // Battery fill (fills from bottom up) - simplified with proper clipping
+                VStack {
+                    Spacer(minLength: 0)
+                    
+                    RoundedRectangle(cornerRadius: max(0, batteryCornerRadius - 1.5))
+                        .fill(batteryColor)
+                        .frame(
+                            width: batteryWidth - (fillPadding * 2), 
+                            height: fillHeight
+                        )
+                        .animation(.easeInOut(duration: 0.3), value: chargeLevel)
+                }
+                .padding(.horizontal, fillPadding)
+                .padding(.vertical, fillPadding)
+                .frame(width: batteryWidth, height: batteryHeight)
+                .clipped()
+            }
+            .offset(y: -0.5) // Slight overlap for connection
+        }
+        .frame(width: batteryWidth, height: batteryHeight + terminalHeight)
+        .aspectRatio(contentMode: .fit)
+    }
+}
 
 /// Even simpler ring for use in metric rows
+/// @deprecated Use SimpleMetricBattery instead
 struct SimpleMetricRing: View {
     let metric: HealthMetric
     
@@ -217,50 +311,76 @@ struct SimpleMetricRing: View {
         Divider()
             .background(Color.white.opacity(0.3))
         
-        // Simple rings for row display
+        // Simple batteries for row display
         VStack(alignment: .leading, spacing: 16) {
-            Text("Simple Rings for Rows")
+            Text("Simple Batteries for Rows")
                 .font(.headline)
                 .foregroundColor(.white)
             
             HStack(spacing: 20) {
-                SimpleMetricRing(
-                    metric: HealthMetric(
-                        id: UUID().uuidString,
-                        type: .steps,
-                        value: 10000,
-                        date: Date(),
-                        source: .healthKit,
-                        impactDetails: MetricImpactDetail(
-                            metricType: .steps,
-                            currentValue: 10000,
-                            baselineValue: 7500,
-                            studyReferences: [],
-                            lifespanImpactMinutes: 15,
-                            calculationMethod: .directStudyMapping,
-                            recommendation: "Good job!"
+                VStack {
+                    SimpleMetricBattery(
+                        metric: HealthMetric(
+                            id: UUID().uuidString,
+                            type: .steps,
+                            value: 10000,
+                            date: Date(),
+                            source: .healthKit,
+                            impactDetails: MetricImpactDetail(
+                                metricType: .steps,
+                                currentValue: 10000,
+                                baselineValue: 7500,
+                                studyReferences: [],
+                                lifespanImpactMinutes: 15,
+                                calculationMethod: .directStudyMapping,
+                                recommendation: "Good job!"
+                            )
                         )
                     )
-                )
+                    Text("Positive")
+                        .font(.caption2)
+                        .foregroundColor(.ampedGreen)
+                }
                 
-                SimpleMetricRing(
-                    metric: HealthMetric(
-                        id: UUID().uuidString,
-                        type: .restingHeartRate,
-                        value: 75,
-                        date: Date(),
-                        source: .healthKit,
-                        impactDetails: MetricImpactDetail(
-                            metricType: .restingHeartRate,
-                            currentValue: 75,
-                            baselineValue: 70,
-                            studyReferences: [],
-                            lifespanImpactMinutes: -8,
-                            calculationMethod: .directStudyMapping,
-                            recommendation: "Try to lower your resting heart rate."
+                VStack {
+                    SimpleMetricBattery(
+                        metric: HealthMetric(
+                            id: UUID().uuidString,
+                            type: .restingHeartRate,
+                            value: 75,
+                            date: Date(),
+                            source: .healthKit,
+                            impactDetails: MetricImpactDetail(
+                                metricType: .restingHeartRate,
+                                currentValue: 75,
+                                baselineValue: 70,
+                                studyReferences: [],
+                                lifespanImpactMinutes: -8,
+                                calculationMethod: .directStudyMapping,
+                                recommendation: "Try to lower your resting heart rate."
+                            )
                         )
                     )
-                )
+                    Text("Negative")
+                        .font(.caption2)
+                        .foregroundColor(.ampedRed)
+                }
+                
+                VStack {
+                    SimpleMetricBattery(
+                        metric: HealthMetric(
+                            id: UUID().uuidString,
+                            type: .heartRateVariability,
+                            value: 45,
+                            date: Date(),
+                            source: .healthKit,
+                            impactDetails: nil
+                        )
+                    )
+                    Text("No Data")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
             }
         }
     }

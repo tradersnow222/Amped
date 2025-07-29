@@ -165,7 +165,7 @@ struct MetricDetailView: View {
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(formatImpactDisplay(viewModel.totalPeriodImpact))
                         .font(.system(size: 18, weight: .medium, design: .rounded))
-                        .foregroundColor(viewModel.totalPeriodImpact >= 0 ? .ampedGreen : .ampedRed)
+                        .foregroundColor(getImpactColor(for: viewModel.totalPeriodImpact))
                     
                     Text("total impact")
                         .style(.caption)
@@ -446,6 +446,18 @@ struct MetricDetailView: View {
             return nil
         }
         return nil
+    }
+    
+    /// Get impact color based on whether impact is positive, negative, or negligible
+    private func getImpactColor(for minutes: Double) -> Color {
+        // Show green for minimal impacts (< 1 minute) since "No change" is positive
+        // This matches the logic in HealthMetricRow and SimpleMetricBattery for consistency
+        if abs(minutes) < 1.0 {
+            return .ampedGreen // "0 lost" or "0 added" should be green
+        }
+        
+        // Show proper color based on direction for meaningful impacts
+        return minutes >= 0 ? .ampedGreen : .ampedRed
     }
     
     private func setupNavigationBar() {

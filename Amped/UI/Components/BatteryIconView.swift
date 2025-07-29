@@ -38,9 +38,10 @@ struct BatteryIconView: View {
     
     private var fillWidth: CGFloat {
         let batteryBodyWidth = size.width * 0.9
-        let padding: CGFloat = 3
-        let availableWidth = batteryBodyWidth - (padding * 2)
-        return availableWidth * CGFloat(level) / 100.0
+        let strokeWidth: CGFloat = 2
+        let padding: CGFloat = 4  // Increased padding for better visual containment
+        let availableWidth = batteryBodyWidth - (strokeWidth * 2) - (padding * 2)
+        return max(0, availableWidth * CGFloat(level) / 100.0)
     }
     
     // MARK: - Body
@@ -61,18 +62,23 @@ struct BatteryIconView: View {
                     .offset(x: -1) // Slight overlap for seamless connection
             }
             
-            // Battery fill
-            HStack {
-                RoundedRectangle(cornerRadius: size.height * 0.1)
-                    .fill(fillColor)
-                    .frame(width: fillWidth, height: size.height - 6)
-                    .padding(.leading, 3)
-                    .animation(.easeInOut(duration: 0.3), value: level)
-                
-                Spacer(minLength: 0)
-            }
-            .frame(width: size.width * 0.9, height: size.height)
-            .offset(x: -size.width * 0.05) // Align with battery body
+            // Battery fill - properly clipped within outline
+            RoundedRectangle(cornerRadius: size.height * 0.15)
+                .frame(width: size.width * 0.9, height: size.height)
+                .clipped()
+                .overlay(
+                    HStack {
+                        RoundedRectangle(cornerRadius: max(1, size.height * 0.1))
+                            .fill(fillColor)
+                            .frame(width: fillWidth, height: max(1, size.height - 8))  // Ensure contained within outline
+                            .animation(.easeInOut(duration: 0.3), value: level)
+                        
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 4)
+                    .frame(width: size.width * 0.9, height: size.height)
+                )
             
             // Optional percentage text overlay
             if showPercentage {

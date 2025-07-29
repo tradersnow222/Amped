@@ -233,22 +233,11 @@ class LifeImpactService {
         // Calculate total impact using existing method
         let totalImpactPoint = calculateTotalImpact(from: metrics, for: timePeriod)
         
-        // Convert to appropriate time period representation
-        let timePeriodEnum: TimePeriod = {
-            switch timePeriod {
-            case .day: return .day
-            case .month: return .month  
-            case .year: return .year
-            }
-        }()
-        
         // Calculate battery level (0-100) based on total impact
         let batteryLevel = calculateBatteryLevel(from: totalImpactPoint.totalImpactMinutes)
         
         // Find top positive and negative metrics
         let sortedByImpact = metricContributions.sorted { $0.1.lifespanImpactMinutes > $1.1.lifespanImpactMinutes }
-        let topPositiveMetric = sortedByImpact.first?.1.lifespanImpactMinutes ?? 0 > 0 ? sortedByImpact.first?.0 : nil
-        let topNegativeMetric = sortedByImpact.last?.1.lifespanImpactMinutes ?? 0 < 0 ? sortedByImpact.last?.0 : nil
         
         return LifeImpactData(
             timePeriod: TimePeriod(from: timePeriod),

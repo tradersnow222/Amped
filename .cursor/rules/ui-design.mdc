@@ -1,8 +1,3 @@
----
-description: 
-globs: 
-alwaysApply: true
----
 ## UI Design
 
 ### Design System
@@ -15,7 +10,7 @@ alwaysApply: true
 - **Icons**: Battery icons following Apple's familiar design patterns (horizontal battery with segments)
 
 ### Key UI Components
-- **BatteryLifeImpactCard**: Recent impact visualization with battery charge level
+- **InteractiveBatteryView**: Recent impact visualization with battery charge level
 - **BatteryLifeProjectionCard**: Total projected life expectancy visualization
 - **BatteryMetricCard**: Individual metric card with power level visualization
 - **MetricDetailView**: Expanded view for single health metric
@@ -49,6 +44,11 @@ alwaysApply: true
 - Optimize touch targets for easy interaction
 - Minimize data input requirements where possible
 - Use animations as functional indicators (not just decoration)
+- Ensure all screens have clear next steps
+- Design for interruption (users can leave and return easily)
+- **Apply "Little Yesses" principle throughout the flow**
+- User flow should give the feeling of “Making Progress” or “Moving forward” visually
+
 - Ensure all screens have clear next steps
 - Design for interruption (users can leave and return easily)
 - **Apply "Little Yesses" principle throughout the flow**

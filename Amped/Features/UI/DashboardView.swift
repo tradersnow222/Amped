@@ -500,6 +500,7 @@ struct DashboardView: View {
     private var impactPage: some View {
         ImpactPageView(
             selectedPeriod: $selectedPeriod,
+            currentPage: $currentPage,
             isCalculatingImpact: $isCalculatingImpact,
             hasInitiallyCalculated: $hasInitiallyCalculated,
             showLifeEnergyBattery: $showLifeEnergyBattery,

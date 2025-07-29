@@ -64,7 +64,7 @@ struct HealthMetricsListView: View {
                             .font(.caption)
                             .foregroundColor(.white.opacity(0.6))
                         
-                        Text("Live")
+                        Text("Your Live Habits")
                             .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundColor(.white.opacity(0.6))
@@ -96,7 +96,7 @@ struct HealthMetricsListView: View {
                             .font(.caption)
                             .foregroundColor(.white.opacity(0.6))
                         
-                        Text("Your Health Profile")
+                        Text("Manually Entered Habits")
                             .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundColor(.white.opacity(0.6))

@@ -812,8 +812,10 @@ class CompleteProfileEditorViewModel: ObservableObject {
             return
         }
         
-        // Use centralized profile manager to save the image
-        profileManager.saveProfileImage(uiImage)
+        // Use centralized profile manager to save the image - explicitly on main actor
+        await MainActor.run {
+            profileManager.saveProfileImage(uiImage)
+        }
         
         // Post notification to refresh any UI displaying the profile image
         NotificationCenter.default.post(
