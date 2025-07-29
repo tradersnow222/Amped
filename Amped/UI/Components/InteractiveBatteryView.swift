@@ -308,25 +308,25 @@ struct InteractiveBatteryView: View {
             let batteryContentWidth = batteryWidth - (chargePadding * 2)
             
             // Much tighter bounds with significant margin from edges
-            let particleAreaTop = -(batteryContentHeight / 2) + 25
-            let particleAreaBottom = (batteryContentHeight / 2) - 25  
-            let particleAreaLeft = -(batteryContentWidth / 2) + 20
-            let particleAreaRight = (batteryContentWidth / 2) - 20
+            let particleAreaTop = -(batteryContentHeight / 2) + 30      // Increased margin
+            let particleAreaBottom = (batteryContentHeight / 2) - 30    // Increased margin
+            let particleAreaLeft = -(batteryContentWidth / 2) + 25
+            let particleAreaRight = (batteryContentWidth / 2) - 25
             
-            // Reduced to 8 particles for better performance
-            ForEach(0..<8, id: \.self) { index in
+            // Reduced to 4 particles for cleaner look (from 8)
+            ForEach(0..<4, id: \.self) { index in
                 Circle()
-                    .fill(batteryColor.opacity(0.7))
-                    .frame(width: 4, height: 4)
+                    .fill(batteryColor.opacity(0.5))  // Reduced opacity from 0.7
+                    .frame(width: 3, height: 3)       // Reduced size from 4
                     .offset(
                         x: CGFloat.random(in: particleAreaLeft...particleAreaRight),
                         y: CGFloat.random(in: particleAreaTop...particleAreaBottom)
                     )
-                    .scaleEffect(pulseAnimation ? 1.3 : 0.6)
-                    .opacity(pulseAnimation ? 0.8 : 0.4)
+                    .scaleEffect(pulseAnimation ? 1.1 : 0.5)  // Reduced scale range
+                    .opacity(pulseAnimation ? 0.6 : 0.3)      // Reduced opacity range
                     .animation(
-                        .easeInOut(duration: 2.4)  // Slower: 1.2 → 2.4 seconds
-                        .delay(Double(index) * 0.3)  // More staggered: 0.15 → 0.3 seconds
+                        .easeInOut(duration: 2.8)    // Slower: 2.4 → 2.8 seconds
+                        .delay(Double(index) * 0.4)  // More staggered timing
                         .repeatForever(autoreverses: true),
                         value: pulseAnimation
                     )
@@ -338,34 +338,32 @@ struct InteractiveBatteryView: View {
     
     @ViewBuilder
     private var floatingParticles: some View {
-        if abs(impactMinutes) > 1.0 {
-            let batteryContentHeight = batteryHeight - (chargePadding * 2)
-            let batteryContentWidth = batteryWidth - (chargePadding * 2)
-            
-            // Even tighter bounds for floating particles
-            let particleAreaTop = -(batteryContentHeight / 2) + 30
-            let particleAreaBottom = (batteryContentHeight / 2) - 30
-            let particleAreaLeft = -(batteryContentWidth / 2) + 25  
-            let particleAreaRight = (batteryContentWidth / 2) - 25
-            
-            // Only 4 floating particles
-            ForEach(0..<4, id: \.self) { index in
-                Circle()
-                    .fill(batteryColor.opacity(0.5))
-                    .frame(width: 3, height: 3)
-                    .offset(
-                        x: CGFloat.random(in: particleAreaLeft...particleAreaRight),
-                        y: CGFloat.random(in: particleAreaTop...particleAreaBottom)
-                    )
-                    .scaleEffect(pulseAnimation ? 1.1 : 0.8)
-                    .opacity(pulseAnimation ? 0.6 : 0.3)
-                    .animation(
-                        .easeInOut(duration: 3.2)  // Slower: 1.5 → 3.2 seconds
-                        .delay(Double(index) * 0.4)  // More staggered: 0.2 → 0.4 seconds  
-                        .repeatForever(autoreverses: true),
-                        value: pulseAnimation
-                    )
-            }
+        let batteryContentHeight = batteryHeight - (chargePadding * 2)
+        let batteryContentWidth = batteryWidth - (chargePadding * 2)
+        
+        // Even tighter bounds for floating particles
+        let particleAreaTop = -(batteryContentHeight / 2) + 35      // Increased margin
+        let particleAreaBottom = (batteryContentHeight / 2) - 35    // Increased margin
+        let particleAreaLeft = -(batteryContentWidth / 2) + 30      // Increased margin
+        let particleAreaRight = (batteryContentWidth / 2) - 30     // Increased margin
+        
+        // Reduced to 2 floating particles (from 4)
+        ForEach(0..<2, id: \.self) { index in
+            Circle()
+                .fill(batteryColor.opacity(0.3))  // Reduced opacity from 0.5
+                .frame(width: 2, height: 2)       // Reduced size from 3
+                .offset(
+                    x: CGFloat.random(in: particleAreaLeft...particleAreaRight),
+                    y: CGFloat.random(in: particleAreaTop...particleAreaBottom)
+                )
+                .scaleEffect(pulseAnimation ? 1.0 : 0.6)  // Reduced scale range
+                .opacity(pulseAnimation ? 0.4 : 0.2)      // Reduced opacity range
+                .animation(
+                    .easeInOut(duration: 3.8)    // Slower: 3.2 → 3.8 seconds
+                    .delay(Double(index) * 0.6)  // More staggered timing
+                    .repeatForever(autoreverses: true),
+                    value: pulseAnimation
+                )
         }
     }
 

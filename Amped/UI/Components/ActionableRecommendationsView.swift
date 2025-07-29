@@ -99,10 +99,10 @@ struct ActionableRecommendationsView: View {
             // Dynamic Header based on selected period
             Text(focusHeaderText())
                 .style(.headlineBold)
-                .padding(.bottom, 12)
+                .padding(.bottom, 8)  // Rules: Reduced from 12 to 8
             
             // Main content with clear visual separation
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {  // Rules: Reduced from 12 to 8
                 // Top section: Current status (if negative impact)
                 if let dailyImpact = metric.impactDetails?.lifespanImpactMinutes, dailyImpact < 0 {
                     // SCIENTIFIC ACCURACY FIX: Apply period scaling to match recommendation calculation
@@ -113,7 +113,7 @@ struct ActionableRecommendationsView: View {
                 actionRecommendationSection(for: metric)
             }
         }
-        .padding(16)
+        .padding(12)  // Rules: Reduced from 16 to 12
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(.black.opacity(0.3))
@@ -148,16 +148,16 @@ struct ActionableRecommendationsView: View {
     
     /// Current status section (only shown for negative impact metrics)
     private func currentStatusSection(for metric: HealthMetric, impact: Double) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {  // Rules: Reduced from 8 to 6
             HStack(spacing: 12) {
                 // Icon with warning color
                 Image(systemName: iconName(for: metric.type))
                     .foregroundColor(.ampedRed)
-                    .font(.system(size: 20))
-                    .frame(width: 24, height: 24)
+                    .font(.system(size: 18))  // Rules: Reduced from 20 to 18
+                    .frame(width: 22, height: 22)  // Rules: Reduced from 24 to 22
                 
                 // Specific problem statement
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {  // Rules: Reduced from 2 to 1
                     Text(getSpecificProblemTitle(for: metric))
                         .style(.body)
                         .foregroundColor(.white)
@@ -168,7 +168,7 @@ struct ActionableRecommendationsView: View {
                 
                 Spacer()
             }
-            .padding(.bottom, 4)
+            .padding(.bottom, 2)  // Rules: Reduced from 4 to 2
             
             // Subtle divider
             Rectangle()
@@ -179,12 +179,12 @@ struct ActionableRecommendationsView: View {
     
     /// Action recommendation section
     private func actionRecommendationSection(for metric: HealthMetric) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {  // Rules: Reduced from 12 to 10
             // Icon with positive color
             Image(systemName: "arrow.up.circle.fill")
                 .foregroundColor(.ampedGreen)
-                .font(.system(size: 20))
-                .frame(width: 24, height: 24)
+                .font(.system(size: 18))  // Rules: Reduced from 20 to 18
+                .frame(width: 22, height: 22)  // Rules: Reduced from 24 to 22
             
             // Action text
             buildActionText(for: metric)
