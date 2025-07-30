@@ -62,7 +62,7 @@ struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
-/// Sleek, glass-themed button style for questionnaire - OPTIMIZED for performance
+/// ULTRA-OPTIMIZED questionnaire button style - eliminates lag during interactions
 struct QuestionnaireButtonStyle: ButtonStyle {
     let isSelected: Bool
     
@@ -80,43 +80,43 @@ struct QuestionnaireButtonStyle: ButtonStyle {
             .padding(.vertical, 16)
             .padding(.horizontal, 20)
             .background(
-                ZStack {
-                    // Base background
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.cardBackground)
-                        .opacity(configuration.isPressed ? 0.8 : 1.0)
-                    
-                    // Green overlay for selection/press state
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.ampedGreen)
-                        .opacity(isSelected ? 0.15 : (configuration.isPressed ? 0.08 : 0))
-                }
-            )
-            .foregroundColor(.white)
-            .overlay(
-                // OPTIMIZED: Simplified border without complex glow effects
+                // PERFORMANCE FIX: Single background layer, no complex ZStack
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(
-                        Color.ampedGreen.opacity(isSelected ? 0.7 : 0.2),
-                        lineWidth: isSelected ? 2 : 0.5
+                    .fill(
+                        Color.cardBackground.opacity(
+                            configuration.isPressed ? 0.8 : 
+                            isSelected ? 0.9 : 1.0
+                        )
+                    )
+                    .overlay(
+                        // PERFORMANCE FIX: Simple border without complex gradients
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(
+                                Color.ampedGreen.opacity(
+                                    isSelected ? 0.7 : 
+                                    configuration.isPressed ? 0.4 : 0.2
+                                ),
+                                lineWidth: isSelected ? 2 : 0.5
+                            )
                     )
             )
-            // OPTIMIZED: Simplified shadow for better performance
+            .foregroundColor(.white)
+            // PERFORMANCE FIX: Minimal shadow for better performance
             .shadow(
-                color: Color.ampedGreen.opacity(isSelected ? 0.3 : 0.1),
-                radius: isSelected ? 6 : 2,
+                color: Color.ampedGreen.opacity(isSelected ? 0.2 : 0.05),
+                radius: isSelected ? 3 : 1,
                 x: 0,
-                y: 0
+                y: 1
             )
-            // OPTIMIZED: Subtle scale effect only
+            // PERFORMANCE FIX: Subtle scale effect only
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            // OPTIMIZED: Faster spring animation
+            // PERFORMANCE FIX: Fast easeOut animation instead of complex spring
             .animation(
-                .spring(response: 0.2, dampingFraction: 0.8, blendDuration: 0),
+                .easeOut(duration: 0.1),
                 value: configuration.isPressed
             )
             .animation(
-                .easeInOut(duration: 0.2),
+                .easeOut(duration: 0.15),
                 value: isSelected
             )
     }
@@ -204,20 +204,15 @@ struct UltraOptimizedNameButtonStyle: ButtonStyle {
             .padding(.vertical, 16)
             .padding(.horizontal, 20)
             .background(
-                // ULTRA OPTIMIZATION: Single background color, no complex effects
+                // PERFORMANCE FIX: Single background with state-based opacity
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.cardBackground)
-                    .opacity(configuration.isPressed ? 0.8 : 1.0)
+                    .fill(Color.ampedGreen.opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1.0) : 0.3))
             )
             .foregroundColor(.white)
-            .overlay(
-                // ULTRA OPTIMIZATION: Simple border only
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.ampedGreen.opacity(0.2), lineWidth: 0.5)
-            )
-            // ULTRA OPTIMIZATION: No shadow, no complex animations - just simple scale
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+            .opacity(isEnabled ? 1.0 : 0.6)
+            // PERFORMANCE FIX: Minimal animation, only when necessary
+            .scaleEffect(configuration.isPressed && isEnabled ? 0.98 : 1.0)
+            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
     }
 }
 

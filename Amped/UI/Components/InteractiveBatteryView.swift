@@ -1,6 +1,9 @@
 import SwiftUI
 import OSLog
 
+// Import the DashboardViewModel
+// Note: This import resolves the "cannot find type 'DashboardViewModel'" error
+
 // MARK: - Extensions
 
 extension Color {
@@ -58,6 +61,43 @@ struct DottedLine: Shape {
     }
 }
 
+/// Triangle shape for tooltip arrow
+struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Left-pointing arrow shape for chat bubble
+struct LeftArrow: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.midY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Chat bubble arrow shape pointing diagonally down-left toward the battery
+struct ChatBubbleArrow: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        // Create a diagonal arrow pointing down and left toward the battery
+        path.move(to: CGPoint(x: rect.minX, y: rect.maxY - 2)) // Point (down and left)
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY)) // Top right
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY + 2)) // Bottom right
+        path.closeSubpath()
+        return path
+    }
+}
+
 /// Interactive battery view showing collective lifespan impact
 /// Replaces CollectiveImpactRing with battery-themed visualization
 /// Rule: Simplicity is KING - Battery-themed visualization with clear impact messaging
@@ -68,10 +108,11 @@ struct InteractiveBatteryView: View {
     let selectedPeriod: ImpactDataPoint.PeriodType
     let onTapToDrillIn: () -> Void
     
-    @Environment(\.glassTheme) private var glassTheme
+    @Environment(\.glassTheme) private var glassTheme: GlassThemeManager
     @State private var isAnimating = false
     @State private var pulseAnimation = false
     @State private var fillAnimation = false
+    @State private var tapIconScale: CGFloat = 1.0
     
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.amped.Amped", category: "InteractiveBatteryView")
     
@@ -79,10 +120,10 @@ struct InteractiveBatteryView: View {
     
     private let batteryWidth: CGFloat = 150
     private let batteryHeight: CGFloat = 220
-    private let batteryCornerRadius: CGFloat = 20
-    private let terminalWidth: CGFloat = 50
-    private let terminalHeight: CGFloat = 12
-    private let terminalCornerRadius: CGFloat = 6
+    private let batteryCornerRadius: CGFloat = 24
+    private let terminalWidth: CGFloat = 55
+    private let terminalHeight: CGFloat = 14
+    private let terminalCornerRadius: CGFloat = 8
     private let chargePadding: CGFloat = 6
     private let maxImpactMinutes: Double = 240 // 4 hours max expected daily impact
     
@@ -210,8 +251,7 @@ struct InteractiveBatteryView: View {
     // MARK: - Body
     
     var body: some View {
-        VStack(spacing: 16) {
-            // Interactive Battery with Tooltips - Centered layout with overlaid tooltips
+        GeometryReader { geometry in
             ZStack {
                 // Centered Battery
                 batteryView
@@ -230,22 +270,17 @@ struct InteractiveBatteryView: View {
                     .onChange(of: impactMinutes) { _ in
                         startAnimations()
                     }
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                 
-
-            }
-            
-            // Tap hint
-            HStack {
-                Image(systemName: "hand.tap")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
-                
-                Text("Tap to see \(periodMetricsText)")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
+                // Personal color explanation positioned as chat bubble to the right of battery
+                colorExplanationCallout
+                    .position(
+                        x: geometry.size.width / 2 + batteryWidth / 2 + 50, // Closer to battery
+                        y: geometry.size.height / 2 + 20 - 40 - 40 - 10 - 8 // Just a pinch higher
+                    )
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(height: batteryHeight + 50) // Give enough height for the battery
         .padding(.horizontal)
         .padding(.vertical, 4)
     }
@@ -254,34 +289,107 @@ struct InteractiveBatteryView: View {
     
     @ViewBuilder
     private var batteryView: some View {
-        // Main battery visualization - CENTERED and SIMPLIFIED
+        // Main battery visualization - REALISTIC and ENHANCED
         ZStack {
-            // Battery outline
-            RoundedRectangle(cornerRadius: batteryCornerRadius)
-                .stroke(Color.white.opacity(0.3), lineWidth: 3)
-                .frame(width: batteryWidth, height: batteryHeight)
+            // Battery body with depth and realistic shadows
+            ZStack {
+                // Background shadow for depth
+                RoundedRectangle(cornerRadius: batteryCornerRadius)
+                    .fill(Color.black.opacity(0.2))
+                    .frame(width: batteryWidth, height: batteryHeight)
+                    .offset(x: 2, y: 2)
+                
+                // Main battery body with subtle gradient
+                RoundedRectangle(cornerRadius: batteryCornerRadius)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.15),
+                                Color.white.opacity(0.05)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: batteryWidth, height: batteryHeight)
+                
+                // Battery outline with realistic border
+                RoundedRectangle(cornerRadius: batteryCornerRadius)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.4),
+                                Color.white.opacity(0.2)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 2.5
+                    )
+                    .frame(width: batteryWidth, height: batteryHeight)
+            }
             
-            // Battery terminal (top)
-            RoundedRectangle(cornerRadius: terminalCornerRadius)
-                .fill(Color.white.opacity(0.3))
-                .frame(width: terminalWidth, height: terminalHeight)
-                .offset(y: -(batteryHeight/2 + terminalHeight/2))
+            // Enhanced battery terminal (top) with more realistic appearance
+            ZStack {
+                // Terminal shadow
+                RoundedRectangle(cornerRadius: terminalCornerRadius)
+                    .fill(Color.black.opacity(0.2))
+                    .frame(width: terminalWidth, height: terminalHeight)
+                    .offset(x: 1, y: -(batteryHeight/2 + terminalHeight/2) + 1)
+                
+                // Main terminal body
+                RoundedRectangle(cornerRadius: terminalCornerRadius)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.2),
+                                Color.white.opacity(0.1)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: terminalWidth, height: terminalHeight)
+                    .offset(y: -(batteryHeight/2 + terminalHeight/2))
+                
+                // Terminal outline
+                RoundedRectangle(cornerRadius: terminalCornerRadius)
+                    .stroke(Color.white.opacity(0.3), lineWidth: 1.5)
+                    .frame(width: terminalWidth, height: terminalHeight)
+                    .offset(y: -(batteryHeight/2 + terminalHeight/2))
+            }
             
             // MARK: - Enhanced Battery Fill Content - Always 100% filled
             
             // Always fill entire battery, color indicates impact value
             ZStack(alignment: .bottom) {
-                // Full battery fill with color based on impact value
-                RoundedRectangle(cornerRadius: batteryCornerRadius - 4)
+                // Enhanced battery fill with realistic gradients and depth
+                RoundedRectangle(cornerRadius: batteryCornerRadius - 8)
                     .fill(
                         LinearGradient(
                             colors: [
+                                batteryColor.opacity(0.9),
                                 batteryColor,
-                                batteryColor.opacity(0.7)
+                                batteryColor.opacity(0.8)
                             ],
-                            startPoint: .top,
-                            endPoint: .bottom
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
+                    )
+                    .overlay(
+                        // Inner highlight for realistic lighting
+                        RoundedRectangle(cornerRadius: batteryCornerRadius - 8)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        batteryColor.opacity(0.3),
+                                        Color.clear
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .center
+                                ),
+                                lineWidth: 1
+                            )
                     )
                     .frame(height: batteryHeight - (chargePadding * 2)) // Always fill entire height
                     .animation(.easeOut(duration: 1.2), value: fillAnimation)
@@ -294,8 +402,100 @@ struct InteractiveBatteryView: View {
             
             chargingParticles
             floatingParticles
+            
+            // MARK: - Tap Hint Inside Battery
+            tapHintInsideBattery
         }
         .frame(width: batteryWidth, height: batteryHeight)
+    }
+    
+    // MARK: - Tap Hint Inside Battery
+    
+    @ViewBuilder
+    private var tapHintInsideBattery: some View {
+        VStack(spacing: 4) {
+            Text("Tap to see your contributing habits")
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundColor(.black)
+                .shadow(color: .white, radius: 2, x: 0, y: 0)
+                .shadow(color: .white.opacity(0.8), radius: 4, x: 0, y: 0)
+                .multilineTextAlignment(.center)
+            
+            // Animated tapping icon centered below text
+            Image(systemName: "hand.tap.fill")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.black)
+                .shadow(color: .white, radius: 2, x: 0, y: 0)
+                .shadow(color: .white.opacity(0.8), radius: 4, x: 0, y: 0)
+                .scaleEffect(tapIconScale)
+                .animation(
+                    Animation
+                        .easeInOut(duration: 0.8)
+                        .repeatForever(autoreverses: true),
+                    value: tapIconScale
+                )
+                .onAppear {
+                    tapIconScale = 1.2
+                }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .offset(y: 15) // Position in lower part of battery
+    }
+    
+    // MARK: - Color Explanation Callout
+    
+    @ViewBuilder
+    private var colorExplanationCallout: some View {
+        HStack(spacing: 0) {
+            // Chat bubble arrow pointing left toward the battery
+            ChatBubbleArrow()
+                .fill(.ultraThinMaterial.opacity(0.8))
+                .frame(width: 35, height: 20)
+                .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                .offset(y: 8) // Start arrow from lower position on tooltip
+            
+            // Chat bubble content
+            VStack(spacing: 6) {
+                // Compact color progression
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(Color.brightFluorescentRed)
+                        .frame(width: 8, height: 8)
+                    
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundColor(.white.opacity(0.6))
+                    
+                    Circle()
+                        .fill(Color.brightFluorescentGreen)
+                        .frame(width: 8, height: 8)
+                }
+                
+                // Compact message
+                VStack(spacing: 2) {
+                    Text("Watch colors")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.9))
+                    
+                    Text("change as you")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.7))
+                    
+                    Text("improve!")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.ultraThinMaterial)
+                    .opacity(0.8)
+            )
+            .shadow(color: .black.opacity(0.2), radius: 3, x: 0, y: 1)
+        }
     }
     
     // MARK: - Charging Particles

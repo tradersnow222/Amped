@@ -204,11 +204,10 @@ final class QuestionnaireViewModel: ObservableObject {
     // Form data
     @Published var currentQuestion: Question {
         didSet {
-            // OPTIMIZED: Move UserDefaults to background queue to prevent main thread blocking
+            // PERFORMANCE FIX: Only persist if question actually changed and do it efficiently
             if currentQuestion != oldValue {
-                Task {
-                    await persistCurrentQuestion()
-                }
+                // Use immediate synchronous write for better performance
+                UserDefaults.standard.set(currentQuestion.rawValue, forKey: "questionnaire_current_question")
             }
         }
     }
@@ -247,21 +246,15 @@ final class QuestionnaireViewModel: ObservableObject {
     @Published var birthdate: Date = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date() // Default to 30 years ago
 
     // Separate month and year selection for improved UX
+    // PERFORMANCE FIX: Remove expensive didSet observers that trigger on every picker scroll
     @Published var selectedBirthMonth: Int = Calendar.current.component(.month, from: Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date())
     @Published var selectedBirthYear: Int = Calendar.current.component(.year, from: Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date())
 
     // PERFORMANCE: Use pre-computed static values
     private let calendar = Calendar.current
-
-    // OPTIMIZED: Async UserDefaults persistence
-    private func persistCurrentQuestion() async {
-        await Task.detached(priority: .utility) {
-            UserDefaults.standard.set(self.currentQuestion.rawValue, forKey: "questionnaire_current_question")
-        }.value
-    }
-
-    // STEVE JOBS OPTIMIZATION: Batch birthdate updates to minimize @Published triggers
-    private func updateBirthdateFromMonthYear() {
+    
+    // PERFORMANCE FIX: Public method for updating birthdate when user finishes selection
+    func updateBirthdateFromMonthYear() {
         var components = DateComponents()
         components.year = selectedBirthYear
         components.month = selectedBirthMonth
@@ -271,49 +264,11 @@ final class QuestionnaireViewModel: ObservableObject {
             // Only update if the date actually changed to prevent unnecessary @Published triggers
             if newDate != birthdate {
                 birthdate = newDate
+                // Clear cached age when birthdate changes
+                _cachedAge = nil
+                _cachedBirthdate = nil
             }
         }
-    }
-
-    // STEVE JOBS OPTIMIZATION: Zero-computation properties using pre-computed static values
-    var availableMonths: [Int] {
-        if selectedBirthYear == Self.staticCurrentYear {
-            // If current year is selected, use pre-computed current year months
-            return Self.staticCurrentYearMonths
-        } else {
-            // For other years, use pre-computed all months array
-            return Self.staticAllMonths
-        }
-    }
-
-    // STEVE JOBS OPTIMIZATION: Direct reference to pre-computed static array
-    var availableYears: [Int] {
-        return Self.staticAvailableYears
-    }
-
-    // STEVE JOBS OPTIMIZATION: Direct reference to pre-computed optimized year range
-    var optimizedYearRange: [Int] {
-        return Self.staticOptimizedYearRange
-    }
-
-    // STEVE JOBS OPTIMIZATION: Direct array access to pre-computed month names
-    func monthName(for month: Int) -> String {
-        guard month >= 1 && month <= 12 else { return "" }
-        return Self.staticMonthNames[month - 1]
-    }
-
-    // STEVE JOBS OPTIMIZATION: Efficient month selection with minimal @Published updates
-    func updateSelectedMonth(_ month: Int) {
-        guard month != selectedBirthMonth else { return } // Prevent unnecessary updates
-        selectedBirthMonth = month
-        updateBirthdateFromMonthYear()
-    }
-
-    // STEVE JOBS OPTIMIZATION: Efficient year selection with minimal @Published updates  
-    func updateSelectedYear(_ year: Int) {
-        guard year != selectedBirthYear else { return } // Prevent unnecessary updates
-        selectedBirthYear = year
-        updateBirthdateFromMonthYear()
     }
 
     // OPTIMIZED: Pre-computed birthdate range
@@ -385,8 +340,16 @@ final class QuestionnaireViewModel: ObservableObject {
     var canProceed: Bool {
         switch currentQuestion {
         case .birthdate:
-            // OPTIMIZED: Cache age calculation to prevent repeated date computations
-            let currentAge = age
+            // PERFORMANCE FIX: Calculate age directly from selected values to avoid circular dependency
+            var components = DateComponents()
+            components.year = selectedBirthYear
+            components.month = selectedBirthMonth
+            components.day = 1
+            
+            guard let selectedDate = calendar.date(from: components) else { return false }
+            
+            let ageComponents = calendar.dateComponents([.year], from: selectedDate, to: Date())
+            let currentAge = ageComponents.year ?? 0
             return currentAge >= 18 && currentAge <= 120
         case .name:
             return !userName.isEmpty
@@ -486,19 +449,48 @@ final class QuestionnaireViewModel: ObservableObject {
         return currentQuestion.rawValue
     }
     
+    // PERFORMANCE FIX: Direct array access to pre-computed month names
+    func monthName(for month: Int) -> String {
+        guard month >= 1 && month <= 12 else { return "" }
+        return Self.staticMonthNames[month - 1]
+    }
+    
+    // PERFORMANCE FIX: Simplified computed properties using pre-computed static values
+    var availableMonths: [Int] {
+        if selectedBirthYear == Self.staticCurrentYear {
+            return Self.staticCurrentYearMonths
+        } else {
+            return Self.staticAllMonths
+        }
+    }
+    
+    var optimizedYearRange: [Int] {
+        return Self.staticOptimizedYearRange
+    }
+    
     // MARK: - Initialization
     
-    init() {
-        // Restore current question from UserDefaults if available
-        if let savedQuestionRawValue = UserDefaults.standard.object(forKey: "questionnaire_current_question") as? Int,
-           let savedQuestion = Question(rawValue: savedQuestionRawValue) {
-            self.currentQuestion = savedQuestion
-        } else {
+    init(startFresh: Bool = false) {
+        // CRITICAL FIX: Allow forcing a fresh start, ignoring saved state
+        if startFresh {
+            // Always start from birthdate when forcing fresh start
             self.currentQuestion = .birthdate
+            
+            // Clear any saved state to ensure consistency
+            UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
+            UserDefaults.standard.removeObject(forKey: "userName")
+        } else {
+            // Restore current question from UserDefaults if available
+            if let savedQuestionRawValue = UserDefaults.standard.object(forKey: "questionnaire_current_question") as? Int,
+               let savedQuestion = Question(rawValue: savedQuestionRawValue) {
+                self.currentQuestion = savedQuestion
+            } else {
+                self.currentQuestion = .birthdate
+            }
         }
         
         // Load saved userName if available
-        if let savedName = UserDefaults.standard.string(forKey: "userName") {
+        if let savedName = UserDefaults.standard.string(forKey: "userName"), !startFresh {
             self.userName = savedName
         }
         

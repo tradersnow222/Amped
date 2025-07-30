@@ -21,12 +21,13 @@ struct QuestionnaireView: View {
     
     // MARK: - Initializers
     
-    init(exitToPersonalizationIntro: Binding<Bool>, proceedToHealthPermissions: Binding<Bool>) {
+    init(exitToPersonalizationIntro: Binding<Bool>, proceedToHealthPermissions: Binding<Bool>, startFresh: Bool = false) {
         self._exitToPersonalizationIntro = exitToPersonalizationIntro
         self._proceedToHealthPermissions = proceedToHealthPermissions
         
         // Create the StateObject before init completes
-        let viewModel = QuestionnaireViewModel()
+        // CRITICAL FIX: Pass startFresh parameter to ensure fresh start when needed
+        let viewModel = QuestionnaireViewModel(startFresh: startFresh)
         self._viewModel = StateObject(wrappedValue: viewModel)
         
         // Use the same view model instance for the gesture handler
@@ -78,7 +79,7 @@ struct QuestionnaireView: View {
                     }
                     .clipped() // Ensure off-screen content doesn't show
                     .animation(
-                        .easeInOut(duration: 0.25), // STEVE JOBS OPTIMIZATION: Perfect timing for seamless transitions
+                        .easeOut(duration: 0.15), // PERFORMANCE FIX: Faster animation for snappier feel
                         value: viewModel.currentQuestion
                     )
                     
@@ -115,16 +116,17 @@ struct QuestionnaireView: View {
             )
         }
         .onAppear {
-            // OPTIMIZATION: Pre-warm HealthKit when questionnaire appears
-            // This ensures everything is ready by the time user reaches device tracking
-            if HKHealthStore.isHealthDataAvailable() {
-                Task.detached(priority: .utility) { @MainActor in
-                    // Access the shared instance to trigger initialization
-                    _ = HealthKitManager.shared
-                    
-                    // Pre-compute health types if not already done
-                    _ = HealthKitManager.precomputedHealthTypes
-                }
+            // PERFORMANCE FIX: Move ALL HealthKit initialization to utility background queue
+            // This prevents ANY chance of UI thread blocking
+            DispatchQueue.global(qos: .utility).async {
+                // Only pre-warm if HealthKit is available
+                guard HKHealthStore.isHealthDataAvailable() else { return }
+                
+                // Pre-compute health types in background
+                _ = HealthKitManager.precomputedHealthTypes
+                
+                // Initialize HealthKit manager in background
+                _ = HealthKitManager.shared
             }
         }
     }
@@ -215,7 +217,7 @@ struct QuestionnaireView: View {
         viewModel.navigationDirection = .forward
         
         // Move directly to life motivation question after successful HealthKit authorization
-        withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
+        withAnimation(.easeOut(duration: 0.12)) {
             viewModel.currentQuestion = .lifeMotivation
         }
         
@@ -228,7 +230,7 @@ struct QuestionnaireView: View {
         // Set forward direction for proper iOS-standard transition
         viewModel.navigationDirection = .forward
         
-        withAnimation(.easeInOut(duration: 0.4).delay(0.1)) {
+        withAnimation(.easeOut(duration: 0.12)) {
             viewModel.currentQuestion = .lifeMotivation
         }
         
@@ -272,8 +274,8 @@ struct QuestionnaireView: View {
         // Set forward direction for proper iOS-standard transition
         viewModel.navigationDirection = .forward
         
-        // OPTIMIZED: Use the same fast animation as the main view for consistency
-        withAnimation(.easeInOut(duration: 0.3)) {
+        // PERFORMANCE FIX: Much faster animation for instant responsiveness
+        withAnimation(.easeOut(duration: 0.12)) {
             viewModel.proceedToNextQuestion()
         }
     }

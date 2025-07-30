@@ -216,6 +216,15 @@ final class AppState: ObservableObject {
     /// Reset onboarding state (for testing/debugging)
     func resetOnboarding() {
         hasCompletedOnboarding = false
+        
+        // CRITICAL FIX: Also clear questionnaire data to ensure fresh start
+        // Clear the saved questionnaire progress
+        UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
+        UserDefaults.standard.removeObject(forKey: "userName")
+        
+        // Clear any saved questionnaire data using QuestionnaireManager
+        QuestionnaireManager().clearAllData()
+        
         saveOnboardingState()
     }
 }

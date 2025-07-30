@@ -73,21 +73,6 @@ struct QuestionViews {
         @ObservedObject var viewModel: QuestionnaireViewModel
         var handleContinue: () -> Void
         
-        // STEVE JOBS OPTIMIZATION: Cache bindings to prevent recreation on every render
-        private var monthBinding: Binding<Int> {
-            Binding(
-                get: { viewModel.selectedBirthMonth },
-                set: { viewModel.updateSelectedMonth($0) }
-            )
-        }
-        
-        private var yearBinding: Binding<Int> {
-            Binding(
-                get: { viewModel.selectedBirthYear },
-                set: { viewModel.updateSelectedYear($0) }
-            )
-        }
-        
         var body: some View {
             VStack(spacing: 0) {
                 // Main content area with consistent padding
@@ -105,10 +90,10 @@ struct QuestionViews {
                     Spacer()
                     Spacer() // Additional spacer to push picker lower
 
-                    // STEVE JOBS OPTIMIZATION: Ultra-fast pickers using cached bindings and pre-computed data
+                    // PERFORMANCE FIX: Simplified pickers with direct bindings - no caching overhead
                     HStack(spacing: 0) {
-                        // Month Picker - Using cached binding and pre-computed month data
-                        Picker("Month", selection: monthBinding) {
+                        // Month Picker - Direct binding for better performance
+                        Picker("Month", selection: $viewModel.selectedBirthMonth) {
                             ForEach(viewModel.availableMonths, id: \.self) { month in
                                 Text(viewModel.monthName(for: month))
                                     .font(.system(size: 22, weight: .medium))
@@ -119,9 +104,10 @@ struct QuestionViews {
                         .pickerStyle(.wheel)
                         .frame(maxWidth: .infinity)
                         .colorScheme(.dark)
+                        // PERFORMANCE FIX: Remove onChange handler to prevent lag during scrolling
                         
-                        // Year Picker - Using cached binding and pre-computed year range
-                        Picker("Year", selection: yearBinding) {
+                        // Year Picker - Direct binding for better performance
+                        Picker("Year", selection: $viewModel.selectedBirthYear) {
                             ForEach(viewModel.optimizedYearRange, id: \.self) { year in
                                 Text(String(year))
                                     .font(.system(size: 22, weight: .medium))
@@ -132,6 +118,7 @@ struct QuestionViews {
                         .pickerStyle(.wheel)
                         .frame(maxWidth: .infinity)
                         .colorScheme(.dark)
+                        // PERFORMANCE FIX: Remove onChange handler to prevent lag during scrolling
                     }
                     .frame(height: 216) // Standard iOS picker height
                     .padding(.horizontal, 24)
@@ -141,7 +128,11 @@ struct QuestionViews {
 
                     // Continue button with increased spacing
                     VStack(spacing: 12) {
-                        Button(action: handleContinue) {
+                        Button(action: {
+                            // PERFORMANCE FIX: Update birthdate only when user taps continue
+                            viewModel.updateBirthdateFromMonthYear()
+                            handleContinue()
+                        }) {
                             Text("Continue")
                         }
                         .questionnaireButtonStyle(isSelected: false)
@@ -163,19 +154,9 @@ struct QuestionViews {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @FocusState private var isTextFieldFocused: Bool
         
-        // STEVE JOBS OPTIMIZATION: Local state eliminates @Published updates during typing
-        @State private var localUserName: String = ""
-        // STEVE JOBS OPTIMIZATION: Eliminate timer overhead - commit only on submit/continue
-        @State private var hasCommittedName: Bool = false
-        // INSTANT TAP RESPONSE: Removed complex focus timing - direct user control
-        
-        // ULTRA OPTIMIZATION: Cache button state to prevent constant recalculation
-        @State private var isButtonEnabled: Bool = false
-        
         var body: some View {
-            // ULTRA OPTIMIZATION: Fixed layout structure to prevent recalculations during typing
             VStack(alignment: .center, spacing: 0) {
-                // Question placed higher - fixed height to prevent layout shifts
+                // Question placed higher
                 Text("What's your first name?")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
@@ -183,20 +164,20 @@ struct QuestionViews {
                     .lineLimit(nil)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity, minHeight: 40) // Fixed minimum height
+                    .frame(maxWidth: .infinity)
                 
                 Spacer()
                 
-                // ULTRA OPTIMIZATION: Fixed input container to prevent layout recalculations
+                // Simplified input container
                 VStack(spacing: 12) {
-                    // INSTANT TAP RESPONSE: Ultra-streamlined TextField for zero lag on tap
-                    TextField("Enter your name", text: $localUserName)
+                    // PERFORMANCE FIX: Ultra-fast TextField with NO animated background
+                    TextField("Enter your name", text: $viewModel.userName)
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                         .padding(16)
                         .background(
-                            // INSTANT TAP RESPONSE: Minimal background for instant focus response
+                            // PERFORMANCE FIX: Simple static background - no animation lag
                             RoundedRectangle(cornerRadius: 16)
                                 .fill(Color.white.opacity(0.1))
                                 .overlay(
@@ -208,77 +189,41 @@ struct QuestionViews {
                         .textInputAutocapitalization(.words)
                         .disableAutocorrection(true)
                         .onSubmit {
-                            commitNameIfNeeded()
-                            if isButtonEnabled {
+                            if viewModel.canProceed {
                                 proceedToNext()
                             }
                         }
-                        // ULTRA OPTIMIZATION: Batch state updates to minimize re-renders
-                        .onChange(of: localUserName) { newValue in
-                            let wasEmpty = isButtonEnabled == false
-                            let isEmpty = newValue.isEmpty
-                            
-                            // Only update states if they actually changed
-                            if wasEmpty != isEmpty {
-                                isButtonEnabled = !isEmpty
-                            }
-                            if hasCommittedName {
-                                hasCommittedName = false
-                            }
-                        }
                     
-                    // ULTRA OPTIMIZATION: Maximum performance button with zero complex rendering
+                    // CONSISTENCY FIX: Match birthdate selector button style exactly
                     Button(action: {
-                        commitNameIfNeeded()
-                        if isButtonEnabled {
+                        if viewModel.canProceed {
                             proceedToNext()
                         }
                     }) {
                         Text("Continue")
                     }
-                    .ultraOptimizedNameButtonStyle(isEnabled: isButtonEnabled)
-                    .opacity(isButtonEnabled ? 1.0 : 0.6)
-                    .disabled(!isButtonEnabled)
+                    .questionnaireButtonStyle(isSelected: false)
+                    .opacity(viewModel.canProceed ? 1.0 : 0.6)
+                    .disabled(!viewModel.canProceed)
                     .hapticFeedback(.light)
                 }
                 .padding(.bottom, 30)
-                .frame(maxWidth: .infinity) // ULTRA OPTIMIZATION: Fixed width to prevent layout shifts
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
             .onAppear {
-                // ULTRA OPTIMIZATION: Initialize all cached states in single batch
-                localUserName = viewModel.userName
-                hasCommittedName = true // Mark as committed since we're syncing with ViewModel
-                isButtonEnabled = !viewModel.userName.isEmpty // Initialize button state cache
-                
-                // INSTANT TAP RESPONSE: Eliminate automatic focus delays - let user tap when ready
-                // No automatic keyboard triggering - responds instantly to user tap
-            }
-            .onDisappear {
-                // STEVE JOBS OPTIMIZATION: Only commit if name was actually changed
-                commitNameIfNeeded()
-                isTextFieldFocused = false
+                // UX FIX: Immediate focus for snappy response - no delay
+                // The previous 0.1 second delay was contributing to laggy feeling
+                isTextFieldFocused = true
             }
         }
         
-        // STEVE JOBS OPTIMIZATION: Efficient commit only when needed, zero Task overhead
-        private func commitNameIfNeeded() {
-            if !hasCommittedName && localUserName != viewModel.userName {
-                viewModel.userName = localUserName
-                hasCommittedName = true
-            }
-        }
-        
-        // STEVE JOBS OPTIMIZATION: Instant navigation with guaranteed commit
+        // PERFORMANCE FIX: Simplified navigation with no unnecessary state management
         private func proceedToNext() {
-            // Ensure name is committed before proceeding
-            commitNameIfNeeded()
-            
             // Dismiss keyboard first
             isTextFieldFocused = false
             
-            // Immediate navigation for responsive feel
+            // Navigate immediately
             viewModel.proceedToNextQuestion()
         }
     }

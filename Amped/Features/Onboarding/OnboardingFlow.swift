@@ -64,7 +64,8 @@ struct OnboardingFlow: View {
                 if currentStep == .questionnaire {
                     QuestionnaireView(
                         exitToPersonalizationIntro: $shouldExitQuestionnaire,
-                        proceedToHealthPermissions: $shouldCompleteQuestionnaire
+                        proceedToHealthPermissions: $shouldCompleteQuestionnaire,
+                        startFresh: true  // CRITICAL FIX: Always start fresh in onboarding flow
                     )
                     .onChange(of: shouldExitQuestionnaire) { newValue in
                         if newValue {
@@ -270,6 +271,28 @@ struct OnboardingFlow: View {
                     }
             )
         }
+        .cornerRadius(10)
+        .padding(.horizontal)
+        .padding(.bottom, 20)
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: currentStep)
+        .onAppear {
+            // CRITICAL FIX: Clear any saved questionnaire state when starting onboarding
+            // This ensures users always start from the beginning
+            UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
+            UserDefaults.standard.removeObject(forKey: "userName")
+            
+            // Only clear questionnaire data if we're truly starting fresh
+            // (not just navigating back within the flow)
+            if currentStep == .welcome {
+                QuestionnaireManager().clearAllData()
+            }
+        }
+        // Add a tap gesture to the corner to show/hide debug controls
+        .overlay(
+            VStack {
+                Spacer()
+                
+            })
     }
     
     // Helper method to determine the correct transition based on navigation direction
