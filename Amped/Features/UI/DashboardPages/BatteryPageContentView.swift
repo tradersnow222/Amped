@@ -17,7 +17,7 @@ struct BatteryPageContentView: View {
                     loadingType: .lifeProjection,
                     onComplete: {
                         // Complete the life projection calculation with haptic feedback
-                        withAnimation(.easeInOut(duration: 0.4)) {
+                        withAnimation(.interpolatingSpring(mass: 1.0, stiffness: 200, damping: 25, initialVelocity: 0)) {
                             isCalculatingLifespan = false
                             hasInitiallyCalculated = true
                         }
@@ -33,7 +33,7 @@ struct BatteryPageContentView: View {
                     currentUserAge: viewModel.currentUserAge,
                     selectedTab: selectedLifestyleTab,
                     onProjectionHelpTapped: { 
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(.interpolatingSpring(mass: 1.0, stiffness: 200, damping: 25, initialVelocity: 0)) {
                             showingProjectionHelp = true
                         }
                     },

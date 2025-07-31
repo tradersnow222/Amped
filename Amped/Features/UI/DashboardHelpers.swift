@@ -144,10 +144,6 @@ struct PeriodSelectorView: View {
                 }
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.black.opacity(0.3))
-        )
         .padding(.horizontal, 16)
     }
 }
@@ -184,7 +180,7 @@ struct BatterySystemView: View {
                 Spacer()
                 
                 if let lifeProjection = lifeProjection {
-                    BatteryIndicatorView(
+                    Enhanced3DBatteryIndicatorView(
                         title: "Lifespan remaining",
                         value: lifeProjection.formattedProjectionValue(currentUserAge: currentUserAge) + " years",
                         chargeLevel: lifeProjection.projectionPercentage(currentUserAge: currentUserAge),

@@ -25,6 +25,8 @@ struct ImpactPageView: View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 0) {
+                    // Period selector moved to top level - removed from here
+                    
                     // Prominent Total Impact Display - Rules: Enhanced loading experience
                     if isCalculatingImpact && !hasInitiallyCalculated {
                         // Enhanced calculating state with Apple-quality UX
@@ -86,7 +88,7 @@ struct ImpactPageView: View {
                                 selectedPeriod: selectedPeriod,
                                 onTapToDrillIn: {
                                     // Navigate to Today's metrics page (LifespanFactorsPageView)
-                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                    withAnimation(.interpolatingSpring(mass: 1.0, stiffness: 200, damping: 25, initialVelocity: 0)) {
                                         currentPage = 1
                                     }
                                 }

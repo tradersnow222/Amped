@@ -49,7 +49,6 @@ struct DashboardView: View {
     // State for lifestyle tabs
     @State private var selectedLifestyleTab = 0 // 0 = Current lifestyle, 1 = Better habits
     @State private var shouldPulseTabsForNewUsers = true // Pulse animation for better discoverability
-
     
     // MARK: - Computed Properties
     
@@ -264,42 +263,22 @@ struct DashboardView: View {
             ZStack {
                                 // Main content
                 VStack(spacing: 0) {
-                    // Fixed header section with period selector on impact and metrics pages (pages 0 and 1)
-                    if currentPage <= 1 {
-                        PeriodSelectorView(
-                            selectedPeriod: $selectedPeriod,
-                            onPeriodChanged: { period in
-                                // Update the view model's selected time period with smooth animation
-                                withAnimation(.interpolatingSpring(
-                                    mass: 1.8,
-                                    stiffness: 80,
-                                    damping: 25,
-                                    initialVelocity: 0
-                                )) {
-                                    let timePeriod = TimePeriod(from: period)
-                                    viewModel.selectedTimePeriod = timePeriod
-                                }
-                            }
-                        )
-                        .padding(.top, 8)
-                        .padding(.bottom, 16)
-                    }
+                    // Top-level selectors positioned at the top of the screen
+                    topLevelSelectors
                     
-                    // Apple-standard refresh indicator positioned below tabs/selectors
-                    // Shows on pages 0 & 1 below PeriodSelector (page 2 has its own in batteryPageWithRefresh)
-                    if currentPage <= 1 {
-                        AppleStandardRefreshIndicator(
-                            isRefreshing: isRefreshing,
-                            pullDistance: pullDistance,
-                            opacity: refreshIndicatorOpacity,
-                            rotation: refreshIndicatorRotation,
-                            threshold: refreshThreshold
-                        )
-                        .transition(.opacity.combined(with: .scale))
-                    }
+                    // Apple-standard refresh indicator positioned below tabs/selectors  
+                    // Always present to avoid layout shifts during transitions
+                    AppleStandardRefreshIndicator(
+                        isRefreshing: isRefreshing,
+                        pullDistance: pullDistance,
+                        opacity: currentPage <= 1 ? refreshIndicatorOpacity : 0,
+                        rotation: refreshIndicatorRotation,
+                        threshold: refreshThreshold
+                    )
+                    .animation(.interpolatingSpring(mass: 1.0, stiffness: 200, damping: 25, initialVelocity: 0), value: currentPage)
                     
-                    // Swipeable content pages using custom 3-page container
-                    ThreePageDashboardContainer(
+                    // Swipeable content pages with consistent 3D Y-axis rotation
+                    Enhanced3DPageContainer(
                         currentPage: $currentPage,
                         impactPage: AnyView(impactPage),
                         lifespanFactorsPage: AnyView(lifespanFactorsPage), 
@@ -442,31 +421,14 @@ struct DashboardView: View {
     
     // MARK: - Battery Page with Refresh Indicator
     
-    /// Page 3: Battery page - with positioned refresh indicator below lifestyle tabs
+    /// Page 3: Battery page - content only (lifestyle tabs now at top level)
     private var batteryPageWithRefresh: some View {
         VStack(spacing: 0) {
-            // Minimalist lifestyle tabs - centered and compact (OUTSIDE ScrollView)
-            lifestyleTabs
-                .padding(.top, 8)
-                .padding(.bottom, 24)
-            
-            // Apple-standard refresh indicator positioned below lifestyle tabs
-            if currentPage == 2 {
-                AppleStandardRefreshIndicator(
-                    isRefreshing: isRefreshing,
-                    pullDistance: pullDistance,
-                    opacity: refreshIndicatorOpacity,
-                    rotation: refreshIndicatorRotation,
-                    threshold: refreshThreshold
-                )
-                .transition(.opacity.combined(with: .scale))
-            }
-            
-            // ScrollView with battery content only
+            // ScrollView with battery content only (for 3D rotation)
             GeometryReader { geometry in
                 ScrollView {
                     VStack(spacing: 0) {
-                        // Main battery content (without the tabs since they're above)
+                        // Main battery content (lifestyle tabs now at top level)
                         batteryPageContent
                         
                         // Add padding at bottom to ensure consistent scrolling behavior
@@ -483,7 +445,7 @@ struct DashboardView: View {
                     HapticManager.shared.playNotification(.success)
                     
                     // Reset state
-                    withAnimation(.easeInOut(duration: 0.4)) {
+                    withAnimation(.interpolatingSpring(mass: 1.0, stiffness: 200, damping: 25, initialVelocity: 0)) {
                         isRefreshing = false
                         pullDistance = 0
                         refreshIndicatorOpacity = 0
@@ -554,6 +516,51 @@ struct DashboardView: View {
             selectedLifestyleTab: $selectedLifestyleTab,
             shouldPulseTabsForNewUsers: $shouldPulseTabsForNewUsers
         )
+    }
+    
+    /// Top-level selectors that appear at the top of the screen based on current page
+    private var topLevelSelectors: some View {
+        VStack(spacing: 0) {
+            // Show appropriate selector based on current page
+            Group {
+                if currentPage == 0 { // Impact page
+                    PeriodSelectorView(
+                        selectedPeriod: $selectedPeriod,
+                        onPeriodChanged: { period in
+                            withAnimation(.interpolatingSpring(
+                                mass: 1.8,
+                                stiffness: 80,
+                                damping: 25,
+                                initialVelocity: 0
+                            )) {
+                                let timePeriod = TimePeriod(from: period)
+                                viewModel.selectedTimePeriod = timePeriod
+                            }
+                        }
+                    )
+                } else if currentPage == 1 { // Lifespan factors page
+                    PeriodSelectorView(
+                        selectedPeriod: $selectedPeriod,
+                        onPeriodChanged: { period in
+                            withAnimation(.interpolatingSpring(
+                                mass: 1.8,
+                                stiffness: 80,
+                                damping: 25,
+                                initialVelocity: 0
+                            )) {
+                                let timePeriod = TimePeriod(from: period)
+                                viewModel.selectedTimePeriod = timePeriod
+                            }
+                        }
+                    )
+                } else if currentPage == 2 { // Battery page
+                    lifestyleTabs
+                }
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 8)
+        }
+        .frame(height: 48) // Consistent height for all selectors
     }
     
     // MARK: - UI Components

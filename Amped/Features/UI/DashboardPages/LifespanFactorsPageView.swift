@@ -29,6 +29,8 @@ struct LifespanFactorsPageView: View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 0) {
+                    // Period selector moved to top level - removed from here
+                    
                     // Health factors header
                     HStack(alignment: .center, spacing: 8) {
                         // Battery icon with animation
@@ -37,7 +39,7 @@ struct LifespanFactorsPageView: View {
                                 .font(.title2)
                                 .foregroundColor(.fullPower)
                                 .scaleEffect(isBatteryAnimating ? 1.1 : 1.0)
-                                .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isBatteryAnimating)
+                                .animation(nil, value: isBatteryAnimating)
                         }
                         
                         VStack(alignment: .leading, spacing: 2) {
