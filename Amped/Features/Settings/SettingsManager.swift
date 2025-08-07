@@ -15,7 +15,7 @@ final class SettingsManager: ObservableObject {
         case reminderTime
         case showUnavailableMetrics
         case showRealtimeCountdown
-        case showLifeProjectionAsPercentage
+        // Removed: showLifeProjectionAsPercentage
         case backgroundRefreshEnabled
     }
     
@@ -96,12 +96,7 @@ final class SettingsManager: ObservableObject {
         }
     }
     
-    /// Whether to show life projection as percentage instead of years
-    @Published var showLifeProjectionAsPercentage: Bool {
-        didSet {
-            UserDefaults.standard.set(showLifeProjectionAsPercentage, forKey: SettingKey.showLifeProjectionAsPercentage.rawValue)
-        }
-    }
+    // Removed: showLifeProjectionAsPercentage setting
     
     /// Whether background app refresh is enabled
     @Published var backgroundRefreshEnabled: Bool {
@@ -130,7 +125,7 @@ final class SettingsManager: ObservableObject {
         self.reminderTime = Date() // Default value
         self.showUnavailableMetrics = false // Default value
         self.showRealtimeCountdown = true // Default value
-        self.showLifeProjectionAsPercentage = false // Default value
+        // Removed: showLifeProjectionAsPercentage default
         self.backgroundRefreshEnabled = true // Default value - enabled by default
         
         // Defer loading non-critical settings
@@ -165,7 +160,7 @@ final class SettingsManager: ObservableObject {
         
         self.showUnavailableMetrics = defaults.bool(forKey: SettingKey.showUnavailableMetrics.rawValue, defaultValue: false)
         self.showRealtimeCountdown = defaults.bool(forKey: SettingKey.showRealtimeCountdown.rawValue, defaultValue: true)
-        self.showLifeProjectionAsPercentage = defaults.bool(forKey: SettingKey.showLifeProjectionAsPercentage.rawValue, defaultValue: false)
+        // Removed: showLifeProjectionAsPercentage load
         self.backgroundRefreshEnabled = defaults.bool(forKey: SettingKey.backgroundRefreshEnabled.rawValue, defaultValue: true)
     }
     
@@ -186,7 +181,7 @@ final class SettingsManager: ObservableObject {
         
         showUnavailableMetrics = false
         showRealtimeCountdown = true
-        showLifeProjectionAsPercentage = false
+        // Removed: showLifeProjectionAsPercentage reset
         backgroundRefreshEnabled = true
     }
 }

@@ -66,24 +66,8 @@ struct BottomPricingSection: View {
                 .multilineTextAlignment(.center)
                 .padding(.top, 8)  // Increased padding for better spacing
             
-            // Legal links
-            HStack(spacing: 16) {
-                Button("Privacy Policy") {
-                    // Open privacy policy
-                }
-                .font(.system(size: 12))
-                .foregroundColor(.secondary.opacity(0.6))
-                
-                Text("•")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary.opacity(0.4))
-                
-                Button("Terms of Use") {
-                    // Open terms
-                }
-                .font(.system(size: 12))
-                .foregroundColor(.secondary.opacity(0.6))
-            }
+            // Legal links (open hosted URLs if available; fallback to in-app views)
+            LegalLinksInlineView()
             .padding(.bottom, 20)  // Increased from 16 for better spacing
         }
         .background(
@@ -92,3 +76,47 @@ struct BottomPricingSection: View {
         )
     }
 } 
+
+// MARK: - Legal Links Inline Component
+
+private struct LegalLinksInlineView: View {
+    // Placeholder URLs: replace with hosted links when available
+    private let privacyURLString: String? = nil
+    private let termsURLString: String? = nil
+    @State private var showPrivacy = false
+    @State private var showTerms = false
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            Button("Privacy Policy") {
+                if let urlString = privacyURLString, let url = URL(string: urlString) {
+                    UIApplication.shared.open(url)
+                } else {
+                    showPrivacy = true
+                }
+            }
+            .font(.system(size: 12))
+            .foregroundColor(.secondary.opacity(0.6))
+            .sheet(isPresented: $showPrivacy) {
+                NavigationStack { PrivacyPolicyView() }
+            }
+            
+            Text("•")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary.opacity(0.4))
+            
+            Button("Terms of Use") {
+                if let urlString = termsURLString, let url = URL(string: urlString) {
+                    UIApplication.shared.open(url)
+                } else {
+                    showTerms = true
+                }
+            }
+            .font(.system(size: 12))
+            .foregroundColor(.secondary.opacity(0.6))
+            .sheet(isPresented: $showTerms) {
+                NavigationStack { TermsOfServiceView() }
+            }
+        }
+    }
+}

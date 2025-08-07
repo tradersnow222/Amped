@@ -7,7 +7,6 @@ struct SettingsView: View {
     @EnvironmentObject private var settingsManager: SettingsManager
     @State private var showResetConfirmation = false
     @State private var showingHealthDetails = false
-    @State private var searchText = ""
     @Environment(\.dismiss) private var dismiss
     
     private let logger = Logger(subsystem: "ai.ampedlife.amped", category: "SettingsView")
@@ -65,13 +64,7 @@ struct SettingsView: View {
                         )
                     }
                     
-                    // Show Life as Percentage - toggle like Airplane Mode
-                    SettingsToggleRowView(
-                        icon: "percent",
-                        iconColor: .blue,
-                        title: "Show Life as Percentage",
-                        isOn: $settingsManager.showLifeProjectionAsPercentage
-                    )
+                    // Removed "Show Life as Percentage" per simplicity rule
                     
                     // Use Metric Units - toggle 
                     SettingsToggleRowView(
@@ -84,42 +77,24 @@ struct SettingsView: View {
                 
                 // Additional Settings Section - grouped section with footer
                 Section {
-                    // Privacy Policy
+                    // Research Studies (opens grouped list of all studies used)
                     NavigationLink {
-                        PrivacyPolicyView()
+                        ResearchStudiesView()
                     } label: {
                         SettingsRowView(
-                            icon: "hand.raised.fill",
-                            iconColor: .blue,
-                            title: "Privacy Policy",
-                            showChevron: false
+                            icon: "book.pages.fill",
+                            iconColor: .purple,
+                            title: "Research Studies"
                         )
                     }
+
+                    // Privacy Policy (opens hosted URL if available; fallback to in-app view)
+                    LegalRow(label: "Privacy Policy", icon: "hand.raised.fill", iconColor: .blue, isPrivacy: true)
                     
-                    // Terms of Service
-                    NavigationLink {
-                        TermsOfServiceView()
-                    } label: {
-                        SettingsRowView(
-                            icon: "doc.text.fill",
-                            iconColor: .blue,
-                            title: "Terms of Service",
-                            showChevron: false
-                        )
-                    }
+                    // Terms of Service (opens hosted URL if available; fallback to in-app view)
+                    LegalRow(label: "Terms of Service", icon: "doc.text.fill", iconColor: .blue, isPrivacy: false)
                     
-                    // Export Health Data
-                    Button {
-                        // Future: Implement export functionality
-                    } label: {
-                        SettingsRowView(
-                            icon: "square.and.arrow.up.fill",
-                            iconColor: .blue,
-                            title: "Export All Health Data",
-                            showChevron: false
-                        )
-                    }
-                    .buttonStyle(.plain)
+                    // Export All Health Data hidden until implemented (Simplicity)
                     
                     // Reset All Data (destructive action in red)
                     Button {
@@ -154,7 +129,6 @@ struct SettingsView: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
-            .searchable(text: $searchText, prompt: "Search")
         }
         // FINAL FIX: Override the inherited environment from withDeepBackground()
         .preferredColorScheme(nil) // Allow automatic light/dark switching based on system
@@ -180,41 +154,7 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Search Bar (exactly like iOS Settings)
-
-struct SearchBarView: View {
-    @Binding var text: String
-    
-    var body: some View {
-        HStack {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(Color(.systemGray))
-                    .font(.system(size: 16, weight: .medium))
-                
-                TextField("Search", text: $text)
-                    .textFieldStyle(.plain)
-                    .foregroundColor(.primary)
-                
-                if !text.isEmpty {
-                    Button {
-                        text = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(Color(.systemGray))
-                            .font(.system(size: 16))
-                    }
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(Color(.systemGray5))
-            .cornerRadius(10)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-    }
-}
+// SearchBarView removed (unused)
 
 // MARK: - Settings Row Components (exactly like iOS Settings)
 
@@ -301,6 +241,55 @@ struct SettingsToggleRowView: View {
     }
 }
 
+
+// MARK: - Legal Row (URL with fallback)
+
+private struct LegalRow: View {
+    let label: String
+    let icon: String
+    let iconColor: Color
+    let isPrivacy: Bool
+    @State private var showSheet = false
+    
+    // Placeholder URLs: replace with hosted links when available
+    private let privacyURLString: String? = nil
+    private let termsURLString: String? = nil
+    
+    var body: some View {
+        Button {
+            if isPrivacy {
+                if let urlString = privacyURLString, let url = URL(string: urlString) {
+                    UIApplication.shared.open(url)
+                } else {
+                    showSheet = true
+                }
+            } else {
+                if let urlString = termsURLString, let url = URL(string: urlString) {
+                    UIApplication.shared.open(url)
+                } else {
+                    showSheet = true
+                }
+            }
+        } label: {
+            SettingsRowView(
+                icon: icon,
+                iconColor: iconColor,
+                title: label,
+                showChevron: false
+            )
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showSheet) {
+            NavigationStack {
+                if isPrivacy {
+                    PrivacyPolicyView()
+                } else {
+                    TermsOfServiceView()
+                }
+            }
+        }
+    }
+}
 
 // MARK: - Profile Details View (Comprehensive Editable Profile)
 
@@ -862,72 +851,9 @@ class ProfileDetailsViewModel: ObservableObject {
 
 // MARK: - Picker Views
 
-struct SettingsDatePickerView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var selectedDate = Date()
-    
-    var body: some View {
-        NavigationView {
-            VStack {
-                DatePicker("Birth Date", 
-                          selection: $selectedDate, 
-                          displayedComponents: [.date])
-                    .datePickerStyle(.wheel)
-                    .labelsHidden()
-                
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("Date of Birth")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(.accentColor)
-                }
-            }
-        }
-    }
-}
+// SettingsDatePickerView removed (unused)
 
-struct SettingsGenderPickerView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var selectedGender: UserProfile.Gender = .male
-    
-    var body: some View {
-        NavigationView {
-            List {
-                ForEach(UserProfile.Gender.allCases, id: \.self) { gender in
-                    HStack {
-                        Text(gender.displayName)
-                        Spacer()
-                        if selectedGender == gender {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.accentColor)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        selectedGender = gender
-                        dismiss()
-                    }
-                }
-            }
-            .navigationTitle("Sex")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(.accentColor)
-                }
-            }
-        }
-    }
-}
+// SettingsGenderPickerView removed (unused)
 
 // MARK: - Privacy Views
 
@@ -952,11 +878,18 @@ struct PrivacyPolicyView: View {
                     Text("With your explicit permission, we may collect anonymous usage data to improve the app experience. This data is never linked to your personal identity.")
                         .foregroundColor(.secondary)
                     
-                    Text("Analytics")
+                    Text("User Rights & Data Deletion")
                         .font(.headline)
                         .foregroundColor(.primary)
                     
-                    Text("If you opt in to analytics, we collect anonymized information about app usage, features used, and performance metrics. You can disable this at any time in settings.")
+                    Text("You can delete your profile and related app data at any time from Settings → Reset All Data. This removes your on-device profile, questionnaire responses, and manual metrics. For additional assistance, contact support at support@ampedlife.ai.")
+                        .foregroundColor(.secondary)
+
+                    Text("Analytics")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+
+                    Text("If you opt in to analytics, we collect anonymized information about app usage, features used, and performance metrics. You can disable this at any time in Settings.")
                         .foregroundColor(.secondary)
                 }
                 
@@ -985,7 +918,7 @@ struct TermsOfServiceView: View {
                         .font(.headline)
                         .foregroundColor(.primary)
                     
-                    Text("By using Amped, you agree to these terms of service. The app provides health insights based on scientific research but is not a medical device or a substitute for professional medical advice.")
+                    Text("By using Amped, you agree to these terms of service. Amped provides general wellness insights based on scientific research and your device data. Amped is not a medical device and does not diagnose, treat, cure, or prevent any disease. Amped is intended for users aged 16+.")
                         .foregroundColor(.secondary)
                     
                     Text("Limitations of Liability")

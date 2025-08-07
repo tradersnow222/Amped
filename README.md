@@ -150,9 +150,8 @@ Unlock the full power of Amped with premium features:
 
 ## 📜 Legal & Compliance
 
-- **Medical Disclaimer**: Amped is for informational purposes only and not intended as medical advice
-- **HIPAA Compliant**: Your health data privacy is our top priority  
-- **App Store Guidelines**: Fully compliant with Apple's health app requirements
+- **Medical Disclaimer**: Amped provides general wellness insights and is not a medical device. It does not diagnose, treat, cure, or prevent any disease. Always seek the advice of your physician or other qualified health provider with any questions regarding a medical condition. Amped is intended for users aged 16+.
+- **App Store Guidelines**: Designed to comply with Apple's health app requirements
 
 ---
 
