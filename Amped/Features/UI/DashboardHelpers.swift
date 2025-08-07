@@ -205,7 +205,7 @@ struct BatterySystemView: View {
     }
 } 
 
-/// Enhanced view for the life projection with interactive timeline slider - Rule: Simplicity is KING
+/// Enhanced view for the life projection with Real-Time Life Progress Bar and Lifespan Comparison Card
 struct EnhancedBatterySystemView: View {
     let lifeProjection: LifeProjection?
     let optimalProjection: LifeProjection?
@@ -224,120 +224,64 @@ struct EnhancedBatterySystemView: View {
     @State private var secondsPulse = false
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Main content area with improved spacing
-            VStack(spacing: 32) {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Main lifespan display
                 if let lifeProjection = lifeProjection {
-                    // Main content section
-                    VStack(spacing: 28) {
-                        // Main message with better spacing
-                        VStack(spacing: 16) {
-                            // Top text
-                            VStack(spacing: 8) {
-                                Text(selectedTab == 0 ? "With your current habits" : "With better habits")
-                                    .font(.system(size: 20, weight: .medium, design: .rounded))
-                                    .foregroundColor(.white.opacity(0.9))
-                                    .multilineTextAlignment(.center)
-                                
-                                Text("you have")
-                                    .font(.system(size: 20, weight: .medium, design: .rounded))
-                                    .foregroundColor(.white.opacity(0.9))
-                            }
-                            
-                            // Large years display with better spacing
-                            VStack(spacing: 12) {
-                                HStack(alignment: .lastTextBaseline, spacing: 8) {
-                                    Text(formattedYears(for: lifeProjection))
-                                        .font(.system(size: 72, weight: .bold, design: .rounded))
-                                        .foregroundColor(.ampedYellow)
-                                        .contentTransition(.numericText())
-                                    
-                                    Text("years")
-                                        .font(.system(size: 28, weight: .medium, design: .rounded))
-                                        .foregroundColor(.white.opacity(0.9))
-                                        .offset(y: -4)
-                                }
-                                
-                                // Real-time countdown with improved spacing
-                                VStack(spacing: 6) {
-                                    Text(countdownDisplay(for: lifeProjection))
-                                        .font(.system(size: 24, weight: .semibold, design: .rounded))
-                                        .foregroundColor(.white.opacity(0.85))
-                                        .monospacedDigit()
-                                        .opacity(secondsPulse ? 0.7 : 1.0)
-                                        .animation(.easeInOut(duration: 0.5), value: secondsPulse)
-                                    
-                                    Text("of life ahead")
-                                        .font(.system(size: 20, weight: .medium, design: .rounded))
-                                        .foregroundColor(.white.opacity(0.9))
-                                }
-                            }
-                            
-                            // Extra years gained message for better habits tab
-                            if selectedTab == 1, let optimalProjection = optimalProjection {
-                                let extraYears = optimalProjection.adjustedLifeExpectancyYears - lifeProjection.adjustedLifeExpectancyYears
-                                if extraYears > 0 {
-                                    VStack(spacing: 8) {
-                                        Text("That's")
-                                            .font(.system(size: 18, weight: .medium, design: .rounded))
-                                            .foregroundColor(.white.opacity(0.8))
-                                        
-                                        HStack(alignment: .lastTextBaseline, spacing: 6) {
-                                            Text(String(format: "%.1f", extraYears))
-                                                .font(.system(size: 48, weight: .bold, design: .rounded))
-                                                .foregroundColor(.ampedGreen)
-                                            
-                                            Text("extra years")
-                                                .font(.system(size: 20, weight: .medium, design: .rounded))
-                                                .foregroundColor(.white.opacity(0.9))
-                                        }
-                                        
-                                        Text("by improving your habits")
-                                            .font(.system(size: 18, weight: .medium, design: .rounded))
-                                            .foregroundColor(.white.opacity(0.8))
-                                            .multilineTextAlignment(.center)
-                                    }
-                                    .padding(.top, 16)
-                                }
-                            }
-                        }
-                        
-                        // Interactive lifespan timeline slider - moved further down, without labels
-                        LifespanTimelineSlider(
-                            lifeProjection: lifeProjection,
-                            userProfile: viewModel.userProfile,
-                            healthMetrics: viewModel.healthMetrics,
-                            onTapForDetails: onProjectionHelpTapped,
-                            showLabels: false
-                        )
-                        .frame(height: 50) // Reduced height since no labels
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 20)
+                    mainLifespanDisplay(lifeProjection: lifeProjection)
                 }
+                
+                // Real-Time Life Progress Bar (moved below the main display)
+                RealTimeLifeProgressBar(
+                    userProfile: viewModel.userProfile,
+                    currentProjection: lifeProjection,
+                    potentialProjection: optimalProjection,
+                    selectedTab: selectedTab
+                )
+                
+                // Extra years gained message for better habits tab (moved below progress bar)
+                if selectedTab == 1, let optimalProjection = optimalProjection, let currentProjection = lifeProjection {
+                    let extraYears = optimalProjection.adjustedLifeExpectancyYears - currentProjection.adjustedLifeExpectancyYears
+                    if extraYears > 0 {
+                        VStack(spacing: 8) {
+                            Text("That's")
+                                .font(.system(size: 18, weight: .medium, design: .rounded))
+                                .foregroundColor(.white.opacity(0.8))
+                            
+                            HStack(alignment: .lastTextBaseline, spacing: 6) {
+                                Text(String(format: "%.1f", extraYears))
+                                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                                    .foregroundColor(.ampedGreen)
+                                
+                                Text("extra years")
+                                    .font(.system(size: 20, weight: .medium, design: .rounded))
+                                    .foregroundColor(.white.opacity(0.9))
+                            }
+                            
+                            Text("by improving your habits")
+                                .font(.system(size: 18, weight: .medium, design: .rounded))
+                                .foregroundColor(.white.opacity(0.8))
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(.top, 16)
+                        .padding(.horizontal, 24)
+                    }
+                }
+                
+                
+                // Scientific attribution
+                VStack(spacing: 4) {
+                    Text("Based on 45+ peer-reviewed studies from")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.6))
+                    Text("Harvard, AHA, & Mayo Clinic")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 24)
             }
-            
-            Spacer(minLength: 20)
-            
-            // Timeline labels positioned at the bottom
-            if let _ = lifeProjection {
-                TimelineLabels()
-                    .padding(.horizontal, 56) // Match slider padding
-                    .padding(.bottom, 8)
-            }
-            
-            // Scientific attribution - positioned at the very bottom above page indicators
-            VStack(spacing: 4) {
-                Text("Based on 45+ peer-reviewed studies from")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundColor(.white.opacity(0.6))
-                Text("Harvard, AHA, & Mayo Clinic")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.7))
-            }
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 24) // Space above page indicators
         }
         .onReceive(timer) { _ in
             currentTime = Date()
@@ -353,6 +297,60 @@ struct EnhancedBatterySystemView: View {
                 previousTab = selectedTab
             }
         }
+    }
+    
+    // MARK: - Main Lifespan Display
+    
+    private func mainLifespanDisplay(lifeProjection: LifeProjection) -> some View {
+        VStack(spacing: 28) {
+            // Main message with better spacing
+            VStack(spacing: 16) {
+                // Top text
+                VStack(spacing: 8) {
+                    Text(selectedTab == 0 ? "With your current habits" : "With better habits")
+                        .font(.system(size: 20, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.9))
+                        .multilineTextAlignment(.center)
+                    
+                    Text("you have")
+                        .font(.system(size: 20, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+                
+                // Large years display with better spacing
+                VStack(spacing: 12) {
+                    HStack(alignment: .lastTextBaseline, spacing: 8) {
+                        Text(formattedYears(for: lifeProjection))
+                            .font(.system(size: 72, weight: .bold, design: .rounded))
+                            .foregroundColor(.ampedYellow)
+                            .contentTransition(.numericText())
+                        
+                        Text("years")
+                            .font(.system(size: 28, weight: .medium, design: .rounded))
+                            .foregroundColor(.white.opacity(0.9))
+                            .offset(y: -4)
+                    }
+                    
+                    // Real-time countdown with improved spacing
+                    VStack(spacing: 6) {
+                        Text(countdownDisplay(for: lifeProjection))
+                            .font(.system(size: 24, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.85))
+                            .monospacedDigit()
+                            .opacity(secondsPulse ? 0.7 : 1.0)
+                            .animation(.easeInOut(duration: 0.5), value: secondsPulse)
+                        
+                        Text("of life ahead")
+                            .font(.system(size: 20, weight: .medium, design: .rounded))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                }
+                
+            }
+            
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 20)
     }
     
     // MARK: - Helper Methods
@@ -389,11 +387,234 @@ struct EnhancedBatterySystemView: View {
         
         guard remainingSeconds > 0 else { return "0d · 0h · 0m · 0s" }
         
-        let days = Int(remainingSeconds) / (24 * 3600)
-        let hours = (Int(remainingSeconds) % (24 * 3600)) / 3600
-        let minutes = (Int(remainingSeconds) % 3600) / 60
-        let seconds = Int(remainingSeconds) % 60
+        // Calculate complete years and remainder
+        let completeYears = Int(yearsAhead)
+        let remainderSeconds = remainingSeconds - Double(completeYears) * 365.25 * 24 * 3600
+        
+        // Calculate days, hours, minutes, seconds from the remainder only
+        let days = Int(remainderSeconds) / (24 * 3600)
+        let hours = (Int(remainderSeconds) % (24 * 3600)) / 3600
+        let minutes = (Int(remainderSeconds) % 3600) / 60
+        let seconds = Int(remainderSeconds) % 60
         
         return "\(days)d · \(hours)h · \(minutes)m · \(seconds)s"
     }
-} 
+    
+    /// Get the active projection based on selected tab
+    private func getActiveProjection() -> LifeProjection? {
+        if selectedTab == 0 {
+            return lifeProjection
+        } else {
+            return optimalProjection
+        }
+    }
+    
+    /// Calculate daily impact for the currently active tab (current habits vs ideal habits)
+    private func calculateDailyImpactForActiveTab() -> Double {
+        if selectedTab == 0 {
+            return calculateDailyImpact()
+        } else {
+            return calculateIdealDailyImpact()
+        }
+    }
+    
+    /// Calculate daily impact from user's recent health data (current habits)
+    private func calculateDailyImpact() -> Double {
+        // Use the most recent daily impact calculation from the view model
+        if let lifeImpactData = viewModel.lifeImpactData {
+            let recentImpact = lifeImpactData.totalImpact
+            // Convert to daily impact if needed
+                switch lifeImpactData.timePeriod {
+            case .day:
+                return recentImpact.value * (recentImpact.direction == .positive ? 1.0 : -1.0)
+            case .month:
+                return (recentImpact.value * (recentImpact.direction == .positive ? 1.0 : -1.0)) / 30.0
+            case .year:
+                return (recentImpact.value * (recentImpact.direction == .positive ? 1.0 : -1.0)) / 365.0
+            }
+        }
+        
+        // Fallback: Calculate from current health metrics using LifeImpactService
+        let lifeImpactService = LifeImpactService(userProfile: viewModel.userProfile)
+        let dailyImpactDataPoint = lifeImpactService.calculateTotalImpact(
+            from: viewModel.healthMetrics,
+            for: .day
+        )
+        
+        return dailyImpactDataPoint.totalImpactMinutes
+    }
+    
+    /// Calculate ideal daily impact based on optimal health metrics
+    private func calculateIdealDailyImpact() -> Double {
+        // Create ideal metrics based on scientific research optimal values
+        let idealMetrics = createIdealHealthMetrics()
+        
+        // Calculate daily impact using the same LifeImpactService with ideal metrics
+        let lifeImpactService = LifeImpactService(userProfile: viewModel.userProfile)
+        let idealImpactDataPoint = lifeImpactService.calculateTotalImpact(
+            from: idealMetrics,
+            for: .day
+        )
+        
+        return idealImpactDataPoint.totalImpactMinutes
+    }
+    
+    /// Create ideal health metrics based on scientific research optimal values
+    private func createIdealHealthMetrics() -> [HealthMetric] {
+        var idealMetrics: [HealthMetric] = []
+        let now = Date()
+        
+        // Physical Activity Metrics - Optimal values from scientific research
+        idealMetrics.append(HealthMetric(
+            id: "ideal_steps",
+            type: .steps,
+            value: 10000, // Saint-Maurice et al. 2020 JAMA - optimal steps per day
+            date: now,
+            source: .calculated
+        ))
+        
+        idealMetrics.append(HealthMetric(
+            id: "ideal_exercise",
+            type: .exerciseMinutes,
+            value: 30, // WHO/AHA guidelines - 30 minutes daily
+            date: now,
+            source: .calculated
+        ))
+        
+        // Cardiovascular Metrics - Optimal values
+        idealMetrics.append(HealthMetric(
+            id: "ideal_sleep",
+            type: .sleepHours,
+            value: 7.5, // Jike et al. 2018 meta-analysis - optimal 7-8 hours
+            date: now,
+            source: .calculated
+        ))
+        
+        idealMetrics.append(HealthMetric(
+            id: "ideal_rhr",
+            type: .restingHeartRate,
+            value: 60, // Aune et al. 2013 CMAJ - optimal RHR
+            date: now,
+            source: .calculated
+        ))
+        
+        idealMetrics.append(HealthMetric(
+            id: "ideal_hrv",
+            type: .heartRateVariability,
+            value: 50, // Higher HRV is better, age-adjusted optimal
+            date: now,
+            source: .calculated
+        ))
+        
+        // Lifestyle Metrics - Ideal questionnaire values (scale 1-10)
+        idealMetrics.append(HealthMetric(
+            id: "ideal_smoking",
+            type: .smokingStatus,
+            value: 10, // Never smoked (best possible score)
+            date: now,
+            source: .calculated
+        ))
+        
+        idealMetrics.append(HealthMetric(
+            id: "ideal_alcohol",
+            type: .alcoholConsumption,
+            value: 9, // Minimal alcohol consumption
+            date: now,
+            source: .calculated
+        ))
+        
+        idealMetrics.append(HealthMetric(
+            id: "ideal_stress",
+            type: .stressLevel,
+            value: 2, // Very low stress level
+            date: now,
+            source: .calculated
+        ))
+        
+        idealMetrics.append(HealthMetric(
+            id: "ideal_nutrition",
+            type: .nutritionQuality,
+            value: 9, // Excellent nutrition quality
+            date: now,
+            source: .calculated
+        ))
+        
+        idealMetrics.append(HealthMetric(
+            id: "ideal_social",
+            type: .socialConnectionsQuality,
+            value: 8, // Strong social connections
+            date: now,
+            source: .calculated
+        ))
+        
+        // Body Mass - Use healthy weight for user's profile
+        let idealWeight = calculateIdealWeight()
+        idealMetrics.append(HealthMetric(
+            id: "ideal_weight",
+            type: .bodyMass,
+            value: idealWeight,
+            date: now,
+            source: .calculated
+        ))
+        
+        // VO2 Max - Age and gender adjusted optimal
+        let idealVO2Max = calculateIdealVO2Max()
+        idealMetrics.append(HealthMetric(
+            id: "ideal_vo2max",
+            type: .vo2Max,
+            value: idealVO2Max,
+            date: now,
+            source: .calculated
+        ))
+        
+        // Active Energy - Optimal daily burn
+        idealMetrics.append(HealthMetric(
+            id: "ideal_energy",
+            type: .activeEnergyBurned,
+            value: 500, // Optimal active calories per day
+            date: now,
+            source: .calculated
+        ))
+        
+        // Oxygen Saturation - Optimal
+        idealMetrics.append(HealthMetric(
+            id: "ideal_oxygen",
+            type: .oxygenSaturation,
+            value: 98, // Optimal oxygen saturation
+            date: now,
+            source: .calculated
+        ))
+        
+        return idealMetrics
+    }
+    
+    /// Calculate ideal weight based on user profile (BMI ~22-23)
+    private func calculateIdealWeight() -> Double {
+        // Use current user weight as reference, or calculate healthy BMI if height available
+        if let currentWeightMetric = viewModel.healthMetrics.first(where: { $0.type == .bodyMass }) {
+            // If current weight is already healthy (BMI 18.5-24.9), keep it
+            // Otherwise, adjust toward healthy range
+            return min(max(currentWeightMetric.value, 120), 180) // Reasonable healthy range
+        }
+        
+        // Default healthy weight reference
+        return 160 // Reference weight used in calculations (~24.5 BMI)
+    }
+    
+    /// Calculate ideal VO2 Max based on user's age and gender
+    private func calculateIdealVO2Max() -> Double {
+        let age = Double(viewModel.userProfile.age ?? 30)
+        let gender = viewModel.userProfile.gender ?? .male
+        
+        // Base excellent VO2 max values
+        var baseVO2Max: Double = gender == .male ? 50.0 : 44.0 // Excellent fitness levels
+        
+        // Age adjustment - VO2 max declines with age but we use "excellent for age" values
+        if age > 30 {
+            let ageDecline = (age - 30) * 0.3 // Slower decline for fit individuals
+            baseVO2Max = max(baseVO2Max - ageDecline, gender == .male ? 35.0 : 30.0)
+        }
+        
+        return baseVO2Max
+    }
+}
