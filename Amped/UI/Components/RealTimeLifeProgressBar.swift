@@ -4,12 +4,19 @@ import OSLog
 /// Simplified real-time life progress bar showing essential life progress information
 /// Clean design inspired by the second screenshot with minimal redundancy
 struct RealTimeLifeProgressBar: View {
-    let userProfile: UserProfile
+    @State private var userProfile: UserProfile
     let currentProjection: LifeProjection?
     let potentialProjection: LifeProjection?
     let selectedTab: Int // 0 = Current Lifespan, 1 = Potential Lifespan
     
     private let logger = Logger(subsystem: "Amped", category: "RealTimeLifeProgressBar")
+    
+    init(userProfile: UserProfile, currentProjection: LifeProjection?, potentialProjection: LifeProjection?, selectedTab: Int) {
+        self._userProfile = State(initialValue: userProfile)
+        self.currentProjection = currentProjection
+        self.potentialProjection = potentialProjection
+        self.selectedTab = selectedTab
+    }
     
     // MARK: - Computed Properties
     
@@ -39,18 +46,27 @@ struct RealTimeLifeProgressBar: View {
     }
     
     private var lifestyleAdjustmentPercentage: Double {
-        // Calculate lifestyle adjustment as percentage of remaining life
-        // This represents the green section showing potential gains
-        guard let projection = activeProjection,
-              let currentAge = userProfile.age else { return 0.0 }
+        // Only show for Potential Lifespan tab
+        guard selectedTab == 1,
+              let potentialProj = potentialProjection,
+              let currentProj = currentProjection else { return 0.0 }
         
-        let baselineLife = 78.0 // Standard baseline
-        let adjustedLife = projection.adjustedLifeExpectancyYears
-        let adjustment = adjustedLife - baselineLife
-        
-        // Convert adjustment to percentage of total projected life
-        let adjustmentPercentage = (adjustment / adjustedLife) * 100
+        let additionalYears = potentialProj.adjustedLifeExpectancyYears - currentProj.adjustedLifeExpectancyYears
+        let adjustmentPercentage = (additionalYears / potentialProj.adjustedLifeExpectancyYears) * 100
         return max(0.0, min(15.0, adjustmentPercentage)) // Cap at 15% for visual balance
+    }
+    
+    private var lifestyleAdjustmentYears: Double {
+        guard selectedTab == 1,
+              let potentialProj = potentialProjection,
+              let currentProj = currentProjection else { return 0.0 }
+        
+        return max(0.0, potentialProj.adjustedLifeExpectancyYears - currentProj.adjustedLifeExpectancyYears)
+    }
+    
+    private var lifestyleAdjustmentPercentageText: String {
+        guard selectedTab == 1 && lifestyleAdjustmentYears > 0 else { return "" }
+        return "+\(String(format: "%.1f", lifestyleAdjustmentPercentage))% from optimal habits"
     }
     
     // MARK: - Body
@@ -93,9 +109,43 @@ struct RealTimeLifeProgressBar: View {
             
             // Bottom legend
             legendView
+            
+            // Lifestyle adjustment text (only for Potential Lifespan)
+            if selectedTab == 1 && !lifestyleAdjustmentPercentageText.isEmpty {
+                Text(lifestyleAdjustmentPercentageText)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(.ampedGreen)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 4)
+            }
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 20) // Increased padding to make component narrower
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ProfileDataUpdated"))) { _ in
+            // Reload user profile when it's updated in settings
+            loadUpdatedUserProfile()
+        }
+    }
+    
+    private func loadUpdatedUserProfile() {
+        print("🔍 BAR DEBUG: Received ProfileDataUpdated notification")
+        print("🔍 BAR DEBUG: Current userProfile birthYear: \(userProfile.birthYear ?? -1)")
+        
+        // Load updated profile from UserDefaults
+        if let data = UserDefaults.standard.data(forKey: "user_profile") {
+            print("🔍 BAR DEBUG: Found profile data in UserDefaults")
+            do {
+                let updatedProfile = try JSONDecoder().decode(UserProfile.self, from: data)
+                print("🔍 BAR DEBUG: Successfully decoded profile with birthYear: \(updatedProfile.birthYear ?? -1)")
+                userProfile = updatedProfile
+                print("🔍 BAR DEBUG: Updated userProfile state, new birthYear: \(userProfile.birthYear ?? -1)")
+            } catch {
+                print("🔍 BAR DEBUG: Failed to decode profile: \(error)")
+            }
+        } else {
+            print("🔍 BAR DEBUG: No profile data found in UserDefaults")
+        }
     }
     
     // MARK: - Sub Views
@@ -114,12 +164,12 @@ struct RealTimeLifeProgressBar: View {
                         .fill(Color.blue)
                         .frame(width: geometry.size.width * (lifeProgressPercentage / 100.0), height: 12)
                     
-                    // Lifestyle adjustment (green section at the end)
-                    if lifestyleAdjustmentPercentage > 0 {
+                    // Lifestyle adjustment (green section at the end) - Only for Potential Lifespan
+                    if selectedTab == 1 && lifestyleAdjustmentPercentage > 0 {
                         RoundedRectangle(cornerRadius: 6)
                             .fill(Color.ampedGreen)
                             .frame(width: geometry.size.width * (lifestyleAdjustmentPercentage / 100.0), height: 12)
-                            .offset(x: geometry.size.width * 0.85) // Position near the end
+                            .offset(x: geometry.size.width * (1.0 - lifestyleAdjustmentPercentage / 100.0)) // Position at the end
                     }
                     
                     // Progress indicator dot

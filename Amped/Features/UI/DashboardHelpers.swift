@@ -357,27 +357,40 @@ struct EnhancedBatterySystemView: View {
     
     /// Format years display based on selected tab
     private func formattedYears(for lifeProjection: LifeProjection) -> String {
+        // Debug: derive age from the authoritative viewModel profile to avoid stale values
+        let liveUserAge = Double(viewModel.userProfile.age ?? Int(currentUserAge))
+
+        let yearsRemaining: Double
         if selectedTab == 0 {
-            return String(format: "%.0f", lifeProjection.adjustedLifeExpectancyYears - currentUserAge)
+            yearsRemaining = lifeProjection.adjustedLifeExpectancyYears - liveUserAge
         } else if let optimalProjection = optimalProjection {
-            return String(format: "%.0f", optimalProjection.adjustedLifeExpectancyYears - currentUserAge)
+            yearsRemaining = optimalProjection.adjustedLifeExpectancyYears - liveUserAge
         } else {
-            return String(format: "%.0f", lifeProjection.adjustedLifeExpectancyYears - currentUserAge)
+            yearsRemaining = lifeProjection.adjustedLifeExpectancyYears - liveUserAge
         }
+
+        // DEBUG LOGS
+        os_log("[LifespanUI] formattedYears - userAge=%{public}.1f, adjusted=%{public}.1f, remaining=%{public}.1f",
+               log: .default, type: .info, liveUserAge, lifeProjection.adjustedLifeExpectancyYears, yearsRemaining)
+
+        return String(format: "%.0f", max(0, yearsRemaining))
     }
     
     /// Real-time countdown display
     private func countdownDisplay(for lifeProjection: LifeProjection) -> String {
+        // Derive age from authoritative source to avoid stale values
+        let liveUserAge = Double(viewModel.userProfile.age ?? Int(currentUserAge))
         let yearsAhead: Double
+
         if selectedTab == 0 {
-            yearsAhead = lifeProjection.adjustedLifeExpectancyYears - currentUserAge
+            yearsAhead = lifeProjection.adjustedLifeExpectancyYears - liveUserAge
         } else if let optimalProjection = optimalProjection {
-            yearsAhead = optimalProjection.adjustedLifeExpectancyYears - currentUserAge
+            yearsAhead = optimalProjection.adjustedLifeExpectancyYears - liveUserAge
         } else {
-            yearsAhead = lifeProjection.adjustedLifeExpectancyYears - currentUserAge
+            yearsAhead = lifeProjection.adjustedLifeExpectancyYears - liveUserAge
         }
         
-        return calculateRemainingTime(yearsAhead: yearsAhead)
+        return calculateRemainingTime(yearsAhead: max(0, yearsAhead))
     }
     
     /// Calculate remaining time string

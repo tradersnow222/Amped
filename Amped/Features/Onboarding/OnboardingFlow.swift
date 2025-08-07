@@ -135,12 +135,7 @@ struct OnboardingFlow: View {
                     }
                 }
             }
-            .animation((isProgrammaticNavigation || dragDirection == nil ? .interpolatingSpring(
-                mass: 1.0,
-                stiffness: 200,
-                damping: 25,
-                initialVelocity: 0
-            ) : nil), value: currentStep)
+            .animation(.easeInOut(duration: 0.35), value: currentStep) // iOS-STANDARD: Simple, fast transition
             .gesture(
                 // iOS-STANDARD: Improved gesture handling with proper thresholds and physics
                 DragGesture(minimumDistance: 8, coordinateSpace: .local) // iOS-standard minimum distance
@@ -215,8 +210,8 @@ struct OnboardingFlow: View {
                             if let nextStep = getNextStep(after: currentStep) {
                                 withAnimation(.interpolatingSpring(
                                     mass: 1.0,
-                                    stiffness: 200,
-                                    damping: 25,
+                                    stiffness: 120,  // iOS-STANDARD: Gentler spring
+                                    damping: 28,     // iOS-STANDARD: More controlled
                                     initialVelocity: 0
                                 )) {
                                     dragOffset = 0
@@ -238,8 +233,8 @@ struct OnboardingFlow: View {
                             if let previousStep = getPreviousStep(before: currentStep), previousStep != .welcome {
                                 withAnimation(.interpolatingSpring(
                                     mass: 1.0,
-                                    stiffness: 200,
-                                    damping: 25,
+                                    stiffness: 120,  // iOS-STANDARD: Gentler spring
+                                    damping: 28,     // iOS-STANDARD: More controlled
                                     initialVelocity: 0
                                 )) {
                                     dragOffset = 0
@@ -260,8 +255,8 @@ struct OnboardingFlow: View {
                             // iOS-STANDARD: Spring back if threshold not met
                             withAnimation(.interpolatingSpring(
                                 mass: 1.0,
-                                stiffness: 200,
-                                damping: 25,
+                                stiffness: 120,  // iOS-STANDARD: Gentler spring
+                                damping: 28,     // iOS-STANDARD: More controlled
                                 initialVelocity: 0
                             )) {
                                 dragOffset = 0
@@ -271,10 +266,13 @@ struct OnboardingFlow: View {
                     }
             )
         }
-        .cornerRadius(10)
-        .padding(.horizontal)
-        .padding(.bottom, 20)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: currentStep)
+        // iOS-STANDARD: Use consistent spring animation for all step changes
+        .animation(.interpolatingSpring(
+            mass: 1.0,
+            stiffness: 100,
+            damping: 25,
+            initialVelocity: 0
+        ), value: currentStep)
         .onAppear {
             // CRITICAL FIX: Clear any saved questionnaire state when starting onboarding
             // This ensures users always start from the beginning
@@ -369,7 +367,13 @@ struct OnboardingFlow: View {
             print("🔍 DEBUG: Using DEFAULT transition - current screen should exit LEFT")
         }
         
-        withAnimation(.interpolatingSpring(stiffness: 250, damping: 35)) {
+        // iOS-STANDARD: Use proper timing for screen transitions
+        withAnimation(.interpolatingSpring(
+            mass: 1.0,
+            stiffness: 100,  // iOS-STANDARD: Much gentler for screen transitions
+            damping: 25,     // iOS-STANDARD: Smooth, controlled movement
+            initialVelocity: 0
+        )) {
             currentStep = step
         }
     }
@@ -407,4 +411,4 @@ struct OnboardingFlow_Previews: PreviewProvider {
         OnboardingFlow()
             .environmentObject(AppState())
     }
-} 
+}

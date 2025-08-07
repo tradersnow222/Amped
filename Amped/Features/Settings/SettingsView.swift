@@ -730,24 +730,57 @@ class ProfileDetailsViewModel: ObservableObject {
     }
     
     private func updateUserProfile() {
+        print("🔍 SETTINGS DEBUG: updateUserProfile called")
+        
         // Update the user profile with new birth year and gender
         let birthYear = Calendar.current.component(.year, from: birthDate)
+        print("🔍 SETTINGS DEBUG: Calculated birthYear: \(birthYear)")
         
         if var profile = questionnaireManager.getCurrentUserProfile() {
+            print("🔍 SETTINGS DEBUG: Found existing profile with birthYear: \(profile.birthYear ?? -1)")
             profile.birthYear = birthYear
             profile.gender = gender
+            print("🔍 SETTINGS DEBUG: Updated profile to birthYear: \(profile.birthYear ?? -1)")
             
             // Save updated profile
             do {
                 let data = try JSONEncoder().encode(profile)
                 UserDefaults.standard.set(data, forKey: "user_profile")
+                print("🔍 SETTINGS DEBUG: Successfully saved profile to UserDefaults")
             } catch {
-                print("Failed to save updated profile: \(error)")
+                print("🔍 SETTINGS DEBUG: Failed to save updated profile: \(error)")
+            }
+        } else {
+            // Create a new minimal profile if none exists yet
+            print("🔍 SETTINGS DEBUG: No existing profile found — creating a new one")
+            let newProfile = UserProfile(
+                id: UUID().uuidString,
+                birthYear: birthYear,
+                gender: gender,
+                height: nil,
+                weight: nil,
+                isSubscribed: false,
+                hasCompletedOnboarding: false,
+                hasCompletedQuestionnaire: false,
+                hasGrantedHealthKitPermissions: false,
+                createdAt: Date(),
+                lastActive: Date()
+            )
+            do {
+                let data = try JSONEncoder().encode(newProfile)
+                UserDefaults.standard.set(data, forKey: "user_profile")
+                print("🔍 SETTINGS DEBUG: Created and saved new profile to UserDefaults")
+            } catch {
+                print("🔍 SETTINGS DEBUG: Failed to save new profile: \(error)")
             }
         }
         
         // Trigger recalculation
+        // Ensure any cached questionnaire data is invalidated so updated manual/profile data is reloaded
+        QuestionnaireManager.invalidateCache()
+        print("🔍 SETTINGS DEBUG: Posting ProfileDataUpdated notification")
         NotificationCenter.default.post(name: NSNotification.Name("ProfileDataUpdated"), object: nil)
+        print("🔍 SETTINGS DEBUG: Notification posted")
     }
     
     private func updateManualMetrics() {
@@ -1026,27 +1059,74 @@ struct EditDatePickerView: View {
     let onSave: (Date) -> Void
     
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedDate: Date
+    @State private var selectedMonth: Int
+    @State private var selectedYear: Int
+    
+    // Month names for display (exactly like onboarding)
+    private static let monthNames: [String] = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ]
+    
+    // Year range (ascending for natural wheel direction)
+    private static let yearRange: [Int] = {
+        let currentYear = Calendar.current.component(.year, from: Date())
+        let minYear = currentYear - 100  // 100 years old max  
+        let maxYear = currentYear - 5    // 5 years old min
+        return Array(minYear...maxYear)
+    }()
     
     init(currentDate: Date, onSave: @escaping (Date) -> Void) {
         self.currentDate = currentDate
         self.onSave = onSave
-        self._selectedDate = State(initialValue: currentDate)
+        print("🔍 DATE PICKER DEBUG: Initializing with date: \(currentDate)")
+        
+        let calendar = Calendar.current
+        let month = calendar.component(.month, from: currentDate)
+        var year = calendar.component(.year, from: currentDate)
+        // Clamp initial year into range to prevent out-of-range like 2025 showing in wheel
+        if let minYearAllowed = Self.yearRange.first, let maxYearAllowed = Self.yearRange.last {
+            year = Swift.max(minYearAllowed, Swift.min(year, maxYearAllowed))
+        }
+        
+        self._selectedMonth = State(initialValue: month)
+        self._selectedYear = State(initialValue: year)
+        print("🔍 DATE PICKER DEBUG: Initial month: \(month), year: \(year)")
     }
     
     var body: some View {
-        // Exact iOS Settings style - date picker with auto-save
         List {
             Section {
-                DatePicker("Birth Date", 
-                          selection: $selectedDate,
-                          in: ...Date(),
-                          displayedComponents: [.date])
-                    .datePickerStyle(.wheel)
-                    .labelsHidden()
-                    .onChange(of: selectedDate) { newDate in
-                        onSave(newDate)
+                HStack(spacing: 0) {
+                    // Month Picker (exactly like onboarding)
+                    Picker("Month", selection: $selectedMonth) {
+                        ForEach(1...12, id: \.self) { month in
+                            Text(Self.monthNames[month - 1])
+                                .tag(month)
+                        }
                     }
+                    .pickerStyle(.wheel)
+                    .frame(maxWidth: .infinity)
+                    .onChange(of: selectedMonth) { newMonth in
+                        print("🔍 DATE PICKER DEBUG: Month changed to: \(newMonth)")
+                        updateDate()
+                    }
+                    
+                    // Year Picker (ascending order)
+                    Picker("Year", selection: $selectedYear) {
+                        ForEach(Self.yearRange, id: \.self) { year in
+                            Text(String(year))
+                                .tag(year)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(maxWidth: .infinity)
+                    .onChange(of: selectedYear) { newYear in
+                        print("🔍 DATE PICKER DEBUG: Year changed to: \(newYear)")
+                        updateDate()
+                    }
+                }
+                .frame(height: 200)
             }
             .listRowBackground(Color.clear)
         }
@@ -1054,8 +1134,25 @@ struct EditDatePickerView: View {
         .navigationTitle("Date of Birth")
         .navigationBarTitleDisplayMode(.inline)
         .onDisappear {
-            // Final save when leaving the view
-            onSave(selectedDate)
+            print("🔍 DATE PICKER DEBUG: View disappearing, calling updateDate()")
+            updateDate()
+        }
+    }
+    
+    private func updateDate() {
+        print("🔍 DATE PICKER DEBUG: updateDate called with month: \(selectedMonth), year: \(selectedYear)")
+        
+        var components = DateComponents()
+        components.year = selectedYear
+        components.month = selectedMonth
+        components.day = 1 // Default to first day of month
+        
+        if let newDate = Calendar.current.date(from: components) {
+            print("🔍 DATE PICKER DEBUG: Created new date: \(newDate)")
+            onSave(newDate)
+            print("🔍 DATE PICKER DEBUG: Called onSave with new date")
+        } else {
+            print("🔍 DATE PICKER DEBUG: Failed to create date from components")
         }
     }
 }

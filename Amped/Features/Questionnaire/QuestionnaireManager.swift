@@ -130,7 +130,7 @@ final class QuestionnaireManager: ObservableObject {
     }
     
     /// ULTRA-FAST: Invalidate cache when data changes
-    private static func invalidateCache() {
+    static func invalidateCache() {
         dataCache = nil
         isCacheValid = false
     }
@@ -144,9 +144,8 @@ final class QuestionnaireManager: ObservableObject {
         // Save user's name to UserDefaults
         UserDefaults.standard.set(viewModel.userName, forKey: "userName")
         
-        // Calculate birth year from birthdate
-        let calendar = Calendar.current
-        let birthYear = calendar.component(.year, from: viewModel.birthdate)
+        // Use the selected birth year directly from the questionnaire
+        let birthYear = viewModel.selectedBirthYear
         
         // Create or update user profile
         let profile = UserProfile(
@@ -163,8 +162,9 @@ final class QuestionnaireManager: ObservableObject {
             lastActive: Date()
         )
         
-        // Save to UserDefaults
+        // Save to UserDefaults and invalidate cache
         saveUserProfile(profile)
+        Self.invalidateCache()
         
         // Save questionnaire-specific data
         let questionnaireData = QuestionnaireData(

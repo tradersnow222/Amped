@@ -18,8 +18,8 @@ final class DashboardViewModel: ObservableObject {
     // MARK: - Dependencies
     
     private let healthKitManager: HealthKitManaging
-    private let healthDataService: HealthDataServicing
-    private let lifeImpactService: LifeImpactService
+    private var healthDataService: HealthDataServicing
+    private var lifeImpactService: LifeImpactService
     private let lifeProjectionService: LifeProjectionService
     private let questionnaireManager: QuestionnaireManager
     
@@ -47,7 +47,7 @@ final class DashboardViewModel: ObservableObject {
     }
     
     // User profile for calculations
-    internal let userProfile: UserProfile
+    @Published private(set) var userProfile: UserProfile
     
     /// Computed property to expose user's current age
     var currentUserAge: Double {
@@ -76,24 +76,30 @@ final class DashboardViewModel: ObservableObject {
         questionnaireManager: QuestionnaireManager? = nil,
         userProfile: UserProfile? = nil
     ) {
+        // Local logger to allow logging before all stored properties are initialized
+        let initLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.amped.Amped", category: "DashboardViewModel.init")
+
         // Initialize QuestionnaireManager first
         let questionnaireManager = questionnaireManager ?? QuestionnaireManager()
         
-        // Use profile from questionnaire if available, otherwise create default
+        // CRITICAL FIX: Load questionnaire data synchronously to get the correct user profile
+        // This prevents falling back to default profile with wrong birth year
+        let savedProfile = Self.loadUserProfileSynchronously()
+        
+        // Choose profile without touching self, then assign
+        let chosenProfile: UserProfile
         if let profile = userProfile {
-            self.userProfile = profile
-            logger.info("✅ Using provided user profile: Age \(profile.age ?? 0), Gender: \(profile.gender?.rawValue ?? "none")")
-        } else if let savedProfile = questionnaireManager.getCurrentUserProfile() {
-            self.userProfile = savedProfile
-            logger.info("✅ Using saved user profile from questionnaire: Age \(savedProfile.age ?? 0), Gender: \(savedProfile.gender?.rawValue ?? "none")")
+            chosenProfile = profile
+            initLogger.info("✅ Using provided user profile: Age \(profile.age ?? 0), Gender: \(profile.gender?.rawValue ?? "none"), Birth Year: \(profile.birthYear ?? 0)")
+        } else if let saved = savedProfile {
+            chosenProfile = saved
+            initLogger.info("✅ Using saved user profile from questionnaire: Age \(saved.age ?? 0), Gender: \(saved.gender?.rawValue ?? "none"), Birth Year: \(saved.birthYear ?? 0)")
         } else {
-            // CRITICAL FIX: Create a temporary profile with sensible defaults for impact calculations
-            // This ensures health metrics can still show impact data even before onboarding completion
             let currentYear = Calendar.current.component(.year, from: Date())
-            self.userProfile = UserProfile(
+            let defaultProfile = UserProfile(
                 id: UUID().uuidString,
-                birthYear: currentYear - 30, // Default to 30 years old for reasonable baseline calculations
-                gender: nil, // Use nil as default neutral gender
+                birthYear: currentYear - 30,
+                gender: nil,
                 height: nil,
                 weight: nil,
                 isSubscribed: false,
@@ -103,8 +109,10 @@ final class DashboardViewModel: ObservableObject {
                 createdAt: Date(),
                 lastActive: Date()
             )
-            logger.info("⚠️ Using default user profile: Age \(self.userProfile.age ?? 0)")
+            chosenProfile = defaultProfile
+            initLogger.info("⚠️ Using default user profile: Age \(defaultProfile.age ?? 0), Birth Year: \(defaultProfile.birthYear ?? 0)")
         }
+        self.userProfile = chosenProfile
         
         // Create questionnaire manager first to ensure same instance is used everywhere
         self.questionnaireManager = questionnaireManager
@@ -114,10 +122,10 @@ final class DashboardViewModel: ObservableObject {
         self.healthKitManager = healthKitManager
         self.healthDataService = healthDataService ?? HealthDataService(
             healthKitManager: healthKitManager,
-            userProfile: self.userProfile,
+            userProfile: chosenProfile,
             questionnaireManager: self.questionnaireManager  // Use the same instance
         )
-        self.lifeImpactService = lifeImpactService ?? LifeImpactService(userProfile: self.userProfile)
+        self.lifeImpactService = lifeImpactService ?? LifeImpactService(userProfile: chosenProfile)
         self.lifeProjectionService = lifeProjectionService ?? LifeProjectionService()
         
         // Ensure questionnaire data is loaded
@@ -196,6 +204,65 @@ final class DashboardViewModel: ObservableObject {
                 self?.isAppInForeground = false
             }
             .store(in: &cancellables)
+
+        // Listen for profile updates coming from Settings to refresh calculations
+        NotificationCenter.default.publisher(for: NSNotification.Name("ProfileDataUpdated"))
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.logger.info("👤 Profile updated. Reloading profile and recalculating data")
+                self.handleProfileOrManualMetricsUpdate()
+            }
+            .store(in: &cancellables)
+
+        // Listen for manual metrics updates from Settings
+        NotificationCenter.default.publisher(for: NSNotification.Name("ManualMetricsUpdated"))
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                self.logger.info("📝 Manual metrics updated. Recalculating data")
+                self.handleProfileOrManualMetricsUpdate(updateProfile: false)
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Reload profile from UserDefaults (synchronous) and rebuild dependent services
+    private func reloadUserProfileFromDefaults() -> UserProfile? {
+        guard let data = UserDefaults.standard.data(forKey: "user_profile") else { return nil }
+        do {
+            let profile = try JSONDecoder().decode(UserProfile.self, from: data)
+            return profile
+        } catch {
+            logger.error("❌ Failed to decode updated user profile: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    /// Handle profile or manual metric updates by refreshing services and recalculations
+    private func handleProfileOrManualMetricsUpdate(updateProfile: Bool = true) {
+        // Always invalidate questionnaire cache so manual metrics reload from disk
+        QuestionnaireManager.invalidateCache() // Rule: ensure ALL calculations use latest manual data
+
+        if updateProfile, let updated = reloadUserProfileFromDefaults() {
+            // Update stored profile and rebuild services that depend on it
+            self.userProfile = updated
+            self.lifeImpactService = LifeImpactService(userProfile: updated)
+
+            // Rebuild health data service so impact details use updated age/gender
+            let newHealthDataService = HealthDataService(
+                healthKitManager: self.healthKitManager,
+                userProfile: updated,
+                questionnaireManager: self.questionnaireManager
+            )
+            self.healthDataService = newHealthDataService
+        }
+
+        // Force questionnaire manager to reload fresh values before recalculation
+        Task {
+            await self.questionnaireManager.loadDataIfNeeded()
+        }
+
+        // Recalculate for currently selected period and projections
+        loadDataForPeriod(selectedTimePeriod)
+        calculateLifeProjection()
     }
     
     /// Load data for a specific time period (both metrics and impact calculations)
@@ -323,54 +390,193 @@ final class DashboardViewModel: ObservableObject {
         }
     }
     
-    /// Calculate personalized better habits lifespan projection using user's actual data
-    /// This starts with real metrics and only improves suboptimal ones, keeping good metrics unchanged
+    /// Calculate optimal habits lifespan projection using scientifically-backed optimal values
+    /// This represents what the user could achieve with perfect health habits based on research
     func calculateOptimalHabitsProjection() -> LifeProjection? {
-        logger.info("🎯 Calculating personalized better habits projection using user's actual metrics")
+        logger.info("🎯 Calculating OPTIMAL habits projection using scientifically-backed perfect values")
         
-        // Create personalized improved metrics based on user's current data
-        let improvedMetrics = createPersonalizedImprovedMetrics()
+        // Create truly optimal metrics based on scientific research (not just improved current metrics)
+        let optimalMetrics = createScientificallyOptimalMetrics()
         
         // Use the same scientific pipeline as current habits calculation
-        let improvedProjection = lifeProjectionService.calculateLifeProjection(
-            from: improvedMetrics,
+        let optimalProjection = lifeProjectionService.calculateLifeProjection(
+            from: optimalMetrics,
             userProfile: userProfile
         )
         
-        if let projection = improvedProjection {
-            logger.info("✅ Personalized better habits projection calculated:")
-            logger.info("  - Baseline expectancy: \(String(format: "%.1f", projection.baselineLifeExpectancy)) years")
-            logger.info("  - Improved projected expectancy: \(String(format: "%.1f", projection.adjustedLifeExpectancyYears)) years")
-            logger.info("  - Personal improvement potential: \(String(format: "%.1f", projection.adjustedLifeExpectancyYears - (self.lifeProjection?.adjustedLifeExpectancyYears ?? projection.baselineLifeExpectancyYears))) years")
+        if let projection = optimalProjection {
+            let currentProjectedYears = self.lifeProjection?.adjustedLifeExpectancyYears ?? projection.baselineLifeExpectancyYears
+            let potentialGain = projection.adjustedLifeExpectancyYears - currentProjectedYears
+            
+            logger.info("✅ OPTIMAL habits projection calculated:")
+            logger.info("  - Baseline expectancy: \(String(format: "%.1f", projection.baselineLifeExpectancyYears)) years")
+            logger.info("  - OPTIMAL projected expectancy: \(String(format: "%.1f", projection.adjustedLifeExpectancyYears)) years")
+            logger.info("  - MAXIMUM improvement potential: \(String(format: "%.1f", potentialGain)) years")
             
             return projection
         } else {
-            logger.warning("⚠️ Failed to calculate personalized better habits projection")
+            logger.warning("⚠️ Failed to calculate optimal habits projection")
             return nil
         }
     }
     
-    /// Create personalized improved health metrics by starting with user's actual data
-    /// and only improving metrics that are currently suboptimal
-    private func createPersonalizedImprovedMetrics() -> [HealthMetric] {
-        logger.info("🔄 Creating personalized improved metrics from user's actual data")
+    /// Create scientifically optimal health metrics based on peer-reviewed research
+    /// This represents the absolute best possible values a person could achieve
+    private func createScientificallyOptimalMetrics() -> [HealthMetric] {
+        logger.info("🔄 Creating SCIENTIFICALLY OPTIMAL metrics based on research")
         
-        var improvedMetrics: [HealthMetric] = []
+        var optimalMetrics: [HealthMetric] = []
+        let now = Date()
         
-        // Start with current user metrics and improve only suboptimal ones
-        for currentMetric in self.healthMetrics {
-            let improvedMetric = improveMetricIfSuboptimal(currentMetric)
-            improvedMetrics.append(improvedMetric)
-            
-            if improvedMetric.value != currentMetric.value {
-                logger.info("📈 Improved \(currentMetric.type.displayName): \(String(format: "%.1f", currentMetric.value)) → \(String(format: "%.1f", improvedMetric.value))")
-            } else {
-                logger.info("✅ Kept optimal \(currentMetric.type.displayName): \(String(format: "%.1f", currentMetric.value))")
-            }
+        // PHYSICAL ACTIVITY METRICS - Research-backed optimal values
+        
+        // Steps: Saint-Maurice et al. (2020) JAMA - 10,000 steps optimal
+        optimalMetrics.append(HealthMetric(
+            id: "optimal_steps",
+            type: .steps,
+            value: 12000, // Slightly above optimal to maximize benefit
+            date: now,
+            source: .calculated
+        ))
+        
+        // Exercise: WHO/AHA guidelines + research - 150-300 min/week optimal
+        optimalMetrics.append(HealthMetric(
+            id: "optimal_exercise",
+            type: .exerciseMinutes,
+            value: 45, // 45 min/day = 315 min/week (above WHO optimal)
+            date: now,
+            source: .calculated
+        ))
+        
+        // CARDIOVASCULAR METRICS - Research-backed optimal values
+        
+        // Sleep: Jike et al. (2018) meta-analysis - 7-8 hours optimal
+        optimalMetrics.append(HealthMetric(
+            id: "optimal_sleep",
+            type: .sleepHours,
+            value: 7.5, // Perfect middle of optimal range
+            date: now,
+            source: .calculated
+        ))
+        
+        // Resting Heart Rate: Aune et al. (2013) CMAJ - 60 bpm optimal
+        optimalMetrics.append(HealthMetric(
+            id: "optimal_rhr",
+            type: .restingHeartRate,
+            value: 55, // Excellent athlete-level RHR
+            date: now,
+            source: .calculated
+        ))
+        
+        // HRV: Higher is better, age-adjusted excellent value
+        let age = Double(userProfile.age ?? 30)
+        let optimalHRV = max(50.0, 60.0 - (age - 30) * 0.5) // Age-adjusted excellent HRV
+        optimalMetrics.append(HealthMetric(
+            id: "optimal_hrv",
+            type: .heartRateVariability,
+            value: optimalHRV,
+            date: now,
+            source: .calculated
+        ))
+        
+        // LIFESTYLE METRICS - Perfect questionnaire values (scale 1-10)
+        
+        // Smoking: Perfect score (never smoked)
+        optimalMetrics.append(HealthMetric(
+            id: "optimal_smoking",
+            type: .smokingStatus,
+            value: 10, // Never smoked (best possible)
+            date: now,
+            source: .calculated
+        ))
+        
+        // Alcohol: Wood et al. (2018) Lancet - minimal consumption optimal
+        optimalMetrics.append(HealthMetric(
+            id: "optimal_alcohol",
+            type: .alcoholConsumption,
+            value: 9, // Very minimal alcohol consumption
+            date: now,
+            source: .calculated
+        ))
+        
+        // Stress: Chronic stress research - very low stress optimal
+        optimalMetrics.append(HealthMetric(
+            id: "optimal_stress",
+            type: .stressLevel,
+            value: 2, // Very low stress level
+            date: now,
+            source: .calculated
+        ))
+        
+        // Nutrition: Mediterranean diet research - excellent quality
+        optimalMetrics.append(HealthMetric(
+            id: "optimal_nutrition",
+            type: .nutritionQuality,
+            value: 9, // Excellent Mediterranean-style nutrition
+            date: now,
+            source: .calculated
+        ))
+        
+        // Social Connections: Loneliness mortality research - strong connections
+        optimalMetrics.append(HealthMetric(
+            id: "optimal_social",
+            type: .socialConnectionsQuality,
+            value: 8, // Strong social connections
+            date: now,
+            source: .calculated
+        ))
+        
+        // BODY COMPOSITION METRICS
+        
+        // Body Mass: BMI research - optimal BMI ~22-23
+        let gender = userProfile.gender ?? .male
+        let optimalWeight = gender == .male ? 155.0 : 135.0 // Healthy BMI for average height
+        optimalMetrics.append(HealthMetric(
+            id: "optimal_weight",
+            type: .bodyMass,
+            value: optimalWeight,
+            date: now,
+            source: .calculated
+        ))
+        
+        // VO2 Max: Cardiovascular fitness research - excellent for age/gender
+        let genderMultiplier = gender == .male ? 1.0 : 0.88
+        let baseVO2Max = 50.0 * genderMultiplier // Excellent fitness level
+        let ageAdjustedVO2Max = max(baseVO2Max - max(0, age - 30) * 0.3, 35.0 * genderMultiplier)
+        optimalMetrics.append(HealthMetric(
+            id: "optimal_vo2max",
+            type: .vo2Max,
+            value: ageAdjustedVO2Max,
+            date: now,
+            source: .calculated
+        ))
+        
+        // Active Energy: Calorie expenditure research - excellent daily burn
+        optimalMetrics.append(HealthMetric(
+            id: "optimal_energy",
+            type: .activeEnergyBurned,
+            value: 600, // Excellent active calories per day
+            date: now,
+            source: .calculated
+        ))
+        
+        // Oxygen Saturation: Optimal healthy level
+        optimalMetrics.append(HealthMetric(
+            id: "optimal_oxygen",
+            type: .oxygenSaturation,
+            value: 98, // Perfect oxygen saturation
+            date: now,
+            source: .calculated
+        ))
+        
+        logger.info("🎯 Created \(optimalMetrics.count) scientifically optimal metrics")
+        
+        // Log each optimal metric for debugging
+        for metric in optimalMetrics {
+            logger.info("  🔬 Optimal \(metric.type.displayName): \(String(format: "%.1f", metric.value))")
         }
         
-        logger.info("🎯 Created \(improvedMetrics.count) personalized improved metrics")
-        return improvedMetrics
+        return optimalMetrics
     }
     
     /// Improve a metric only if it's currently suboptimal, otherwise keep it unchanged
@@ -1017,6 +1223,22 @@ final class DashboardViewModel: ObservableObject {
         }
     }
     
+    /// Load user profile synchronously from UserDefaults to prevent fallback to default profile
+    /// This ensures we get the correct birth year immediately without async delays
+    private static func loadUserProfileSynchronously() -> UserProfile? {
+        guard let data = UserDefaults.standard.data(forKey: "user_profile") else {
+            return nil
+        }
+        
+        do {
+            let profile = try JSONDecoder().decode(UserProfile.self, from: data)
+            return profile
+        } catch {
+            print("Failed to decode user profile synchronously: \(error)")
+            return nil
+        }
+    }
+    
     /// Cleanup when view model is deallocated
     deinit {
         // Direct timer cleanup is synchronous and safe in deinit
@@ -1024,4 +1246,4 @@ final class DashboardViewModel: ObservableObject {
         foregroundRefreshTimer = nil
         logger.info("🗑️ DashboardViewModel deallocated - stopped foreground refresh timer")
     }
-} 
+}

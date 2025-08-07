@@ -201,16 +201,8 @@ final class QuestionnaireViewModel: ObservableObject {
         case backward   // Moving back up questionnaire (left to right transition)
     }
     
-    // Form data
-    @Published var currentQuestion: Question {
-        didSet {
-            // PERFORMANCE FIX: Only persist if question actually changed and do it efficiently
-            if currentQuestion != oldValue {
-                // Use immediate synchronous write for better performance
-                UserDefaults.standard.set(currentQuestion.rawValue, forKey: "questionnaire_current_question")
-            }
-        }
-    }
+    // Form data - CRITICAL PERFORMANCE FIX: Remove expensive didSet observer
+    @Published var currentQuestion: Question
 
     // OPTIMIZED: Pre-computed static values to eliminate repeated calculations
     private static let staticAvailableYears: [Int] = {
@@ -220,11 +212,13 @@ final class QuestionnaireViewModel: ObservableObject {
         return Array(minYear...maxYear)
     }()
 
-    private static let staticMonthNames: [String] = {
-        let formatter = DateFormatter()
-        return formatter.monthSymbols
-    }()
+    // ULTRA-PERFORMANCE FIX: Truly static month names - zero system calls
+    private static let staticMonthNames: [String] = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ]
 
+    // ULTRA-PERFORMANCE FIX: Pre-computed static date values - calculated once at app launch
     private static let staticCurrentYear = Calendar.current.component(.year, from: Date())
     private static let staticCurrentMonth = Calendar.current.component(.month, from: Date())
     
@@ -253,20 +247,22 @@ final class QuestionnaireViewModel: ObservableObject {
     // PERFORMANCE: Use pre-computed static values
     private let calendar = Calendar.current
     
-    // PERFORMANCE FIX: Public method for updating birthdate when user finishes selection
+    // ULTRA-FAST: Lightweight birthdate update with minimal computation - CRITICAL PERFORMANCE FIX
     func updateBirthdateFromMonthYear() {
-        var components = DateComponents()
-        components.year = selectedBirthYear
-        components.month = selectedBirthMonth
-        components.day = 1 // Always use 1st of the month for consistency
-        
-        if let newDate = calendar.date(from: components) {
-            // Only update if the date actually changed to prevent unnecessary @Published triggers
-            if newDate != birthdate {
-                birthdate = newDate
-                // Clear cached age when birthdate changes
-                _cachedAge = nil
-                _cachedBirthdate = nil
+        // PERFORMANCE: Defer expensive date calculation to background
+        DispatchQueue.global(qos: .userInitiated).async {
+            var components = DateComponents()
+            components.year = self.selectedBirthYear
+            components.month = self.selectedBirthMonth
+            components.day = 15 // Use middle of month as default
+            
+            if let newBirthdate = self.calendar.date(from: components) {
+                DispatchQueue.main.async {
+                    self.birthdate = newBirthdate
+                    // Clear cache so age will be recalculated
+                    self._cachedAge = nil
+                    self._cachedBirthdate = nil
+                }
             }
         }
     }
@@ -336,23 +332,15 @@ final class QuestionnaireViewModel: ObservableObject {
         currentQuestion == Question.lifeMotivation && canProceed
     }
     
-    // STEVE JOBS OPTIMIZATION: Efficient validation with minimal computation
+    // ULTRA-FAST: Lightning-fast validation with zero expensive operations
     var canProceed: Bool {
         switch currentQuestion {
         case .birthdate:
-            // PERFORMANCE FIX: Calculate age directly from selected values to avoid circular dependency
-            var components = DateComponents()
-            components.year = selectedBirthYear
-            components.month = selectedBirthMonth
-            components.day = 1
-            
-            guard let selectedDate = calendar.date(from: components) else { return false }
-            
-            let ageComponents = calendar.dateComponents([.year], from: selectedDate, to: Date())
-            let currentAge = ageComponents.year ?? 0
-            return currentAge >= 18 && currentAge <= 120
+            // ULTRA-PERFORMANCE FIX: Use pre-computed static year for instant validation
+            let approximateAge = Self.staticCurrentYear - selectedBirthYear
+            return approximateAge >= 18 && approximateAge <= 120
         case .name:
-            return !userName.isEmpty
+            return !userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .stressLevel:
             return selectedStressLevel != nil
         case .gender:
@@ -394,15 +382,20 @@ final class QuestionnaireViewModel: ObservableObject {
         return min(1.0, (questionIndex + 0.5) / totalQuestions)
     }
     
-    // Proceed to next question with animation
+    // Proceed to next question with animation - CRITICAL PERFORMANCE FIX
     func proceedToNextQuestion() {
         guard canProceed else { return }
         
         if let nextQuestion = getNextQuestion() {
             // Set forward direction for iOS-standard right-to-left transition
             navigationDirection = .forward
-            // Remove animation here to consolidate animation control in the View
+            // CRITICAL FIX: Update question and persist state asynchronously
             currentQuestion = nextQuestion
+            
+            // PERFORMANCE: Persist state in background to avoid UI blocking
+            DispatchQueue.global(qos: .utility).async {
+                UserDefaults.standard.set(nextQuestion.rawValue, forKey: "questionnaire_current_question")
+            }
         }
     }
     
@@ -518,4 +511,4 @@ final class QuestionnaireViewModel: ObservableObject {
         selectedBirthMonth = calendar.component(.month, from: birthdate)
         selectedBirthYear = calendar.component(.year, from: birthdate)
     }
-} 
+}
