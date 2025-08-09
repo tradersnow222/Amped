@@ -48,37 +48,33 @@ struct QuestionnaireView: View {
                 Color.clear.withDeepBackground()
                 
                 VStack(spacing: 0) {
-                    // Category header at the very top - CRITICAL FIX: Prevent wrapping with fixed positioning
-                    if viewModel.shouldShowCategoryHeader {
-                        CategoryHeader(category: viewModel.currentQuestionCategory)
-                            .padding(.top, 16)
-                            .frame(maxWidth: .infinity)
-                            .fixedSize(horizontal: false, vertical: true) // Prevent wrapping
-                    }
-                    
-                    // Navigation header with back button - Rules: Using consistent BackButton component
+                    // Back button should always be above the category text (User rule: Simplicity is KING)
                     if viewModel.canMoveBack {
                         HStack {
                             BackButton(action: {
                                 gestureHandler.handleBackNavigation()
                             }, showText: false)
-                            
                             Spacer()
                         }
-                        .padding(.top, viewModel.shouldShowCategoryHeader ? 12 : 16)
+                        .padding(.top, 16)
                         .padding(.leading, 8)
                     } else {
-                        // Empty space for consistent layout
-                        HStack {
-                            Spacer()
-                        }
-                        .frame(height: viewModel.shouldShowCategoryHeader ? 54 : 42)
+                        // Keep layout consistent when back button is hidden
+                        HStack { Spacer() }
+                            .frame(height: 42)
+                            .padding(.top, 16)
                     }
+
+                    // Category header shown for EVERY question (Always-applied rule)
+                    CategoryHeader(category: viewModel.currentQuestionCategory)
+                        .padding(.top, 8)
+                        .frame(maxWidth: .infinity)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    // Add spacer to push question down - adjusted for always-present category header
+                    Spacer().frame(height: geometry.size.height * 0.08)
                     
-                    // Add spacer to push question down - adjusted for category header
-                    Spacer().frame(height: geometry.size.height * (viewModel.shouldShowCategoryHeader ? 0.08 : 0.15))
-                    
-                    // Current question view - CRITICAL PERFORMANCE FIX: Ultra-smooth transitions
+                    // Current question view — transitions now "materialize" (fade + subtle scale)
                     ZStack {
                         questionView(for: viewModel.currentQuestion)
                             .padding()
@@ -86,10 +82,7 @@ struct QuestionnaireView: View {
                             .transition(getDirectionalTransition())
                     }
                     .clipped() // Ensure off-screen content doesn't show
-                    .animation(
-                        .easeInOut(duration: 0.15), // ULTRA-PERFORMANCE: Even shorter duration for zero-lag feel
-                        value: viewModel.currentQuestion
-                    )
+                    // UX RULE: Remove global animation; transitions are driven by explicit springs
                     
                     Spacer()
                     
@@ -139,19 +132,15 @@ struct QuestionnaireView: View {
         }
     }
     
-    // MARK: - Direction-Aware Transitions
-    
-    /// Get the appropriate transition based on navigation direction (iOS standard)
+    // MARK: - Direction-aware Transition (prevents overlap and reduces perceived lag)
     private func getDirectionalTransition() -> AnyTransition {
         switch viewModel.navigationDirection {
         case .forward:
-            // Forward navigation: new content slides in from right, old content exits to left
             return .asymmetric(
                 insertion: .move(edge: .trailing).combined(with: .opacity),
                 removal: .move(edge: .leading).combined(with: .opacity)
             )
         case .backward:
-            // Backward navigation: new content slides in from left, old content exits to right
             return .asymmetric(
                 insertion: .move(edge: .leading).combined(with: .opacity),
                 removal: .move(edge: .trailing).combined(with: .opacity)
@@ -247,8 +236,8 @@ struct QuestionnaireView: View {
         // Set forward direction for proper iOS-standard transition
         viewModel.navigationDirection = .forward
         
-        // iOS-STANDARD: Move to life motivation with proper timing
-        withAnimation(.easeInOut(duration: 0.35)) {
+        // UX: Luxury slow spring to match onboarding transitions
+        withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
             viewModel.currentQuestion = .lifeMotivation
         }
         
@@ -261,8 +250,8 @@ struct QuestionnaireView: View {
         // Set forward direction for proper iOS-standard transition
         viewModel.navigationDirection = .forward
         
-        // iOS-STANDARD: Use proper timing for smooth transitions
-        withAnimation(.easeInOut(duration: 0.35)) {
+        // UX: Luxury slow spring to match onboarding transitions
+        withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
             viewModel.currentQuestion = .lifeMotivation
         }
         
@@ -306,8 +295,8 @@ struct QuestionnaireView: View {
         // Set forward direction for proper iOS-standard transition
         viewModel.navigationDirection = .forward
         
-        // iOS-STANDARD: Proper timing for smooth, natural feeling transitions
-        withAnimation(.easeInOut(duration: 0.35)) {
+        // UX: Luxury slow spring to match onboarding transitions
+        withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
             viewModel.proceedToNextQuestion()
         }
     }

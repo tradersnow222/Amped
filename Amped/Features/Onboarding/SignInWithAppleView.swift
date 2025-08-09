@@ -62,7 +62,7 @@ struct SignInWithAppleView: View {
                     // Subtle highlight around the button
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.white.opacity(0.08))
-                        .frame(height: 60)
+                        .frame(height: 44)
                         .padding(.horizontal, 36)
                     
                     SignInWithAppleButton(

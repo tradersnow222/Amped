@@ -74,13 +74,13 @@ struct ScientificLoadingView: View {
                                 .foregroundColor(.ampedGreen)
                                 .opacity(index <= currentStatIndex ? 1.0 : 0.3)
                                 .scaleEffect(index == currentStatIndex ? 1.2 : 1.0)
-                                .animation(.easeInOut(duration: 0.3), value: currentStatIndex)
+                                .animation(.easeInOut(duration: 0.45), value: currentStatIndex)
                             
                             Text(stat)
                                 .font(.system(size: 16, weight: .medium))
                                 .foregroundColor(.white)
                                 .opacity(index <= currentStatIndex ? 1.0 : 0.5)
-                                .animation(.easeInOut(duration: 0.3), value: currentStatIndex)
+                                .animation(.easeInOut(duration: 0.45), value: currentStatIndex)
                             
                             Spacer()
                         }
@@ -98,12 +98,12 @@ struct ScientificLoadingView: View {
     
     private func startLoadingAnimation() {
         // Animate progress bar
-        withAnimation(.easeInOut(duration: 2.5)) {
+        withAnimation(.easeInOut(duration: 3.0)) {
             progress = 1.0
         }
         
         // Animate statistics appearance
-        Timer.scheduledTimer(withTimeInterval: 0.6, repeats: true) { timer in
+        Timer.scheduledTimer(withTimeInterval: 0.75, repeats: true) { timer in
             if currentStatIndex < statistics.count - 1 {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     currentStatIndex += 1

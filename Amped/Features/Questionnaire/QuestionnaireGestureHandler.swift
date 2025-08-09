@@ -68,20 +68,20 @@ class QuestionnaireGestureHandler {
                 // If at first question, signal parent to navigate back to personalization intro
                 // Set backward direction for proper iOS-standard transition
                 viewModel?.navigationDirection = .backward
-                withAnimation(.easeInOut(duration: 0.25)) { // OPTIMIZED: Faster animation
+                withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
                     exitToPersonalizationIntro.wrappedValue = true
                 }
             } else {
                 // For any other question, navigate internally
                 // Direction is set automatically in moveBackToPreviousQuestion()
-                withAnimation(.easeInOut(duration: 0.25)) { // OPTIMIZED: Faster animation
+                withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
                     viewModel?.moveBackToPreviousQuestion()
                 }
             }
         }
         
-        // OPTIMIZED: Reset drag state with faster animation
-        withAnimation(.easeInOut(duration: 0.2)) {
+        // Reset drag state using the unified luxury slow spring for consistency
+        withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
             dragOffset = 0
         }
         
@@ -103,8 +103,8 @@ class QuestionnaireGestureHandler {
             // Set backward direction for proper iOS-standard transition
             viewModel?.navigationDirection = .backward
             
-            // Signal to parent to navigate back
-            withAnimation(.easeInOut(duration: 0.25)) { // OPTIMIZED: Faster animation
+            // Signal to parent to navigate back with unified spring
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
                 exitToPersonalizationIntro.wrappedValue = true
             }
             
@@ -118,9 +118,8 @@ class QuestionnaireGestureHandler {
             isBackButtonTapped = true
             print("🔍 QUESTIONNAIRE: Back to previous question - CURRENT QUESTION SHOULD EXIT RIGHT")
             
-            // Direction is set automatically in moveBackToPreviousQuestion()
-            // Use view model with animation
-            withAnimation(.easeInOut(duration: 0.25)) { // OPTIMIZED: Faster animation
+            // Direction is set automatically in moveBackToPreviousQuestion(); use unified spring
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
                 viewModel?.moveBackToPreviousQuestion()
             }
             

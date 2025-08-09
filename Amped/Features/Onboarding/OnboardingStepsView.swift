@@ -60,7 +60,7 @@ struct OnboardingStepsView: View {
                         Capsule()
                             .fill(Color("ampedGreen").opacity(0.2))
                     )
-                    .frame(height: 54) // Larger touch target for better UX
+                    .frame(height: 42) // Compact touch target for better UX
                 }
                 .padding(.horizontal, 32)
                 

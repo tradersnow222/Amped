@@ -556,8 +556,15 @@ final class QuestionnaireViewModel: ObservableObject {
         if let nextQuestion = getNextQuestion() {
             // Set forward direction for iOS-standard right-to-left transition
             navigationDirection = .forward
-            // CRITICAL FIX: Update question and persist state asynchronously
-            currentQuestion = nextQuestion
+            // CRITICAL FIX (Applied rule: Simplicity is KING):
+            // Ensure the transition direction is applied to the CURRENT view before it's removed.
+            // We set the direction first, then update the question on the next run loop so the
+            // outgoing view uses the correct removal edge on the first transition.
+            DispatchQueue.main.async {
+                withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
+                    self.currentQuestion = nextQuestion
+                }
+            }
             
             // PERFORMANCE: Persist state in background to avoid UI blocking
             DispatchQueue.global(qos: .utility).async {
@@ -571,7 +578,12 @@ final class QuestionnaireViewModel: ObservableObject {
     func proceedToNextQuestionAllowingNil() {
         if let nextQuestion = getNextQuestion() {
             navigationDirection = .forward
-            currentQuestion = nextQuestion
+            // Apply same fix as standard proceed for consistent first-transition behavior
+            DispatchQueue.main.async {
+                withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
+                    self.currentQuestion = nextQuestion
+                }
+            }
             DispatchQueue.global(qos: .utility).async {
                 UserDefaults.standard.set(nextQuestion.rawValue, forKey: "questionnaire_current_question")
             }
@@ -583,7 +595,12 @@ final class QuestionnaireViewModel: ObservableObject {
         if let prevQuestion = getPreviousQuestion() {
             // Set backward direction for iOS-standard left-to-right transition
             navigationDirection = .backward
-            currentQuestion = prevQuestion
+            // CRITICAL FIX: Defer question change so the outgoing view updates its transition first
+            DispatchQueue.main.async {
+                withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
+                    self.currentQuestion = prevQuestion
+                }
+            }
         }
     }
     

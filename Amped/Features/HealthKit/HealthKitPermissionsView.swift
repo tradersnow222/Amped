@@ -100,7 +100,7 @@ struct HealthKitPermissionsView: View {
                             .foregroundColor(.white)
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 56)
+                    .frame(height: 40)
                     .background(
                         Capsule()
                             .fill(viewModel.isRequestingPermissions ? Color.gray : Color.ampedGreen)

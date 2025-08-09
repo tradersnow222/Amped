@@ -41,7 +41,7 @@ struct BottomPricingSection: View {
                         }
                         .frame(maxWidth: .infinity)
                     }
-                    .frame(height: 60)
+                    .frame(height: 42)
                     .frame(maxWidth: .infinity)
                     .background(
                         LinearGradient(

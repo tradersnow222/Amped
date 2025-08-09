@@ -17,10 +17,10 @@ struct OnboardingTransitionModifier: ViewModifier {
     func body(content: Content) -> some View {
         switch type {
         case .welcome:
-            // Initial fade in for welcome screen
+            // Initial fade in for welcome screen — match luxury slow feel
             content
                 .opacity(isPresented ? 1 : 0)
-                .animation(.easeIn(duration: 2.5), value: isPresented)
+                .animation(.easeIn(duration: 3.0), value: isPresented)
                 
         case .onboarding:
             // Horizontal slide for transitions between onboarding screens
@@ -32,9 +32,9 @@ struct OnboardingTransitionModifier: ViewModifier {
                 ))
                 
         case .dashboard:
-            // Fade transition to dashboard
+            // Fade/scale transition to dashboard to match materialize feel
             content
-                .transition(.opacity.animation(.easeInOut(duration: 0.5)))
+                .transition(.opacity.animation(.easeInOut(duration: 0.7)))
                 
         case .buttonInitiated:
             // Slightly slower transition for button-initiated navigation with spring animation
@@ -44,7 +44,7 @@ struct OnboardingTransitionModifier: ViewModifier {
                     insertion: .move(edge: .trailing).combined(with: .opacity),
                     removal: .move(edge: .leading).combined(with: .opacity)
                 ))
-                .animation(.interpolatingSpring(stiffness: 300, damping: 30), value: isPresented)
+                .animation(.spring(response: 0.72, dampingFraction: 0.978, blendDuration: 0.16), value: isPresented)
                 
         case .backButtonInitiated:
             // Back button transition (left to right)
@@ -53,7 +53,7 @@ struct OnboardingTransitionModifier: ViewModifier {
                     insertion: .move(edge: .leading).combined(with: .opacity),
                     removal: .move(edge: .trailing).combined(with: .opacity)
                 ))
-                .animation(.interpolatingSpring(stiffness: 300, damping: 30), value: isPresented)
+                .animation(.spring(response: 0.72, dampingFraction: 0.978, blendDuration: 0.16), value: isPresented)
         }
     }
 }

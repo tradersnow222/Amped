@@ -12,7 +12,7 @@ struct WelcomeView: View {
     @State private var autoAdvanceTask: Task<Void, Never>? = nil
     
     // Animation constants
-    private let pulseAnimationDuration: Double = 1.0
+    private let pulseAnimationDuration: Double = 1.4
     
     // Callback to proceed to next step
     var onContinue: (() -> Void)?
@@ -135,7 +135,7 @@ struct WelcomeView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                     withAnimation(.easeInOut(duration: pulseAnimationDuration).repeatForever(autoreverses: true)) {
                         glowOpacity = 0.95
-                        scale = 1.15
+                        scale = 1.12
                     }
                 }
                 

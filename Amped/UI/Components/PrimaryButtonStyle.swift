@@ -18,8 +18,9 @@ struct PrimaryButtonStyle: ButtonStyle {
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
             .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding()
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 16)
             .background(
                 RoundedRectangle(cornerRadius: 14)
                     .fill(backgroundColor(configuration: configuration).opacity(0.85))
@@ -76,10 +77,10 @@ struct QuestionnaireButtonStyle: ButtonStyle {
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
             .multilineTextAlignment(.center)
-            // Uniform sizing for all answer buttons, including "Not sure"
-            .frame(maxWidth: .infinity, minHeight: 58)
-            .padding(.vertical, 16)
-            .padding(.horizontal, 20)
+            // Compact iOS button sizing for all answer buttons
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
             .background(
                 // PERFORMANCE FIX: Single background layer, no complex ZStack
                 RoundedRectangle(cornerRadius: 12)
@@ -138,8 +139,9 @@ struct ContinueButtonStyle: ButtonStyle {
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
             .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding()
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 16)
             .background(
                 RoundedRectangle(cornerRadius: 14)
                     .fill(
@@ -201,9 +203,9 @@ struct UltraOptimizedNameButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 17, weight: .medium, design: .rounded))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .padding(.horizontal, 20)
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 16)
             .background(
                 // PERFORMANCE FIX: Single background with state-based opacity
                 RoundedRectangle(cornerRadius: 12)

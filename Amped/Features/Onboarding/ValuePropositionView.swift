@@ -36,7 +36,7 @@ struct ValuePropositionView: View {
                         }
                         .opacity(animateElements ? 1 : 0)
                         .offset(y: animateElements ? 0 : 20)
-                        .animation(.easeOut(duration: 0.6), value: animateElements)
+                        .animation(.easeOut(duration: 0.9), value: animateElements)
                         
                         Text("See exactly how your habits affect your lifespan.")
                             .font(.system(size: 18, weight: .regular, design: .rounded))
@@ -44,7 +44,7 @@ struct ValuePropositionView: View {
                             .multilineTextAlignment(.center)
                             .opacity(animateElements ? 1 : 0)
                             .offset(y: animateElements ? 0 : 15)
-                            .animation(.easeOut(duration: 0.6).delay(0.1), value: animateElements)
+                            .animation(.easeOut(duration: 0.9).delay(0.15), value: animateElements)
                     }
                     .padding(.top, 80)
                     
@@ -52,7 +52,7 @@ struct ValuePropositionView: View {
                     batteryVisualizationView
                         .opacity(animateElements ? 1 : 0)
                         .scaleEffect(animateElements ? 1 : 0.8)
-                        .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.2), value: animateElements)
+                        .animation(.spring(response: 0.72, dampingFraction: 0.978).delay(0.25), value: animateElements)
                     
                     // Value propositions - simplified
                     VStack(spacing: 24) {
@@ -91,8 +91,9 @@ struct ValuePropositionView: View {
                         Text("Get Started")
                             .fontWeight(.bold)
                             .font(.system(.title3, design: .rounded))
-                            .frame(maxWidth: .infinity)
-                            .padding()
+                            .frame(maxWidth: .infinity, minHeight: 40)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 16)
                             .background(Color.ampedGreen)
                             .foregroundColor(.white)
                             .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
@@ -103,7 +104,7 @@ struct ValuePropositionView: View {
                     .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
                     .opacity(animateElements ? 1 : 0)
                     .scaleEffect(animateElements ? 1 : 0.9)
-                    .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.6), value: animateElements)
+                    .animation(.spring(response: 0.72, dampingFraction: 0.978).delay(0.7), value: animateElements)
                     .withButtonInitiatedTransition()
                     
                     // Add spacer to match other onboarding screens
@@ -121,12 +122,12 @@ struct ValuePropositionView: View {
             
             // Start battery fill animation after a delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                withAnimation(.easeInOut(duration: 2.0)) {
+                withAnimation(.easeInOut(duration: 2.8)) {
                     batteryFillLevel = 0.85
                 }
                 
                 // Add subtle glow pulse animation
-                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
                     glowOpacity = 0.7
                     iconScale = 1.1
                 }
@@ -200,7 +201,7 @@ struct ValuePropositionView: View {
                     .foregroundColor(.ampedGreen)
             }
             .scaleEffect(animateElements ? 1 : 0.8)
-            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(delay), value: animateElements)
+            .animation(.spring(response: 0.72, dampingFraction: 0.978).delay(delay), value: animateElements)
             
             VStack(alignment: .leading, spacing: 8) {
                 Text(title)
@@ -214,7 +215,7 @@ struct ValuePropositionView: View {
             }
             .opacity(animateElements ? 1 : 0)
             .offset(x: animateElements ? 0 : 20)
-            .animation(.easeOut(duration: 0.6).delay(delay + 0.1), value: animateElements)
+            .animation(.easeOut(duration: 0.9).delay(delay + 0.15), value: animateElements)
             
             Spacer()
         }

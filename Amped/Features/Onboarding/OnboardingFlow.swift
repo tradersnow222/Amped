@@ -5,11 +5,10 @@ enum OnboardingStep: Equatable {
     case welcome
     case valueProposition
     case personalizationIntro
-    case scientificLoading
     case questionnaire
-    case batteryPreview
     case healthKitPermissions
     case signInWithApple
+    case prePaywallTease
     case payment
     case dashboard
 }
@@ -42,7 +41,7 @@ struct OnboardingFlow: View {
                         dragDirection = nil
                         navigateTo(.valueProposition) 
                     })
-                    .transition(.opacity)
+                    .transition(getMaterializeTransition())
                     .zIndex(currentStep == .welcome ? 1 : 0)
                 }
                 
@@ -52,8 +51,7 @@ struct OnboardingFlow: View {
                         dragDirection = nil
                         navigateTo(.personalizationIntro) 
                     })
-                    .offset(x: dragDirection == .leading ? dragOffset : (dragDirection == .trailing ? dragOffset : 0))
-                    .transition(getTransition(forNavigatingTo: .valueProposition))
+                    .transition(getMaterializeTransition())
                     .zIndex(currentStep == .valueProposition ? 1 : 0)
                 }
                 
@@ -61,21 +59,10 @@ struct OnboardingFlow: View {
                     PersonalizationIntroView(onContinue: { 
                         isButtonNavigating = true
                         dragDirection = nil
-                        navigateTo(.scientificLoading) 
+                        navigateTo(.questionnaire) 
                     })
-                    .offset(x: dragDirection == .leading ? dragOffset : 0)
-                    .transition(getTransition(forNavigatingTo: .personalizationIntro))
+                    .transition(getMaterializeTransition())
                     .zIndex(currentStep == .personalizationIntro ? 1 : 0)
-                }
-                
-                if currentStep == .scientificLoading {
-                    ScientificLoadingView(onComplete: {
-                        isButtonNavigating = true
-                        dragDirection = nil
-                        navigateTo(.questionnaire)
-                    })
-                    .transition(.opacity)
-                    .zIndex(currentStep == .scientificLoading ? 1 : 0)
                 }
                 
                 if currentStep == .questionnaire {
@@ -114,9 +101,9 @@ struct OnboardingFlow: View {
                             isButtonNavigating = false
                             dragDirection = .leading
                             
-                            // Questionnaire completed - go to battery preview
+                            // Questionnaire completed - go to Health permissions
                             DispatchQueue.main.async {
-                                navigateTo(.batteryPreview)
+                                navigateTo(.healthKitPermissions)
                                 
                                 // Reset drag direction after animation
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
@@ -125,21 +112,8 @@ struct OnboardingFlow: View {
                             }
                         }
                     }
-                    .transition(getTransition(forNavigatingTo: .questionnaire))
+                    .transition(getMaterializeTransition())
                     .zIndex(currentStep == .questionnaire ? 1 : 0)
-                }
-                
-                if currentStep == .batteryPreview {
-                    BatteryScorePreviewView(
-                        viewModel: questionnaireViewModel,
-                        onContinue: {
-                            isButtonNavigating = true
-                            dragDirection = nil
-                            navigateTo(.healthKitPermissions)
-                        }
-                    )
-                    .transition(.opacity)
-                    .zIndex(currentStep == .batteryPreview ? 1 : 0)
                 }
                 
                 if currentStep == .healthKitPermissions {
@@ -150,7 +124,7 @@ struct OnboardingFlow: View {
                             navigateTo(.signInWithApple)
                         }
                     )
-                    .transition(.opacity)
+                    .transition(getMaterializeTransition())
                     .zIndex(currentStep == .healthKitPermissions ? 1 : 0)
                 }
                 
@@ -159,21 +133,33 @@ struct OnboardingFlow: View {
                         onContinue: {
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.payment)
+                            navigateTo(.prePaywallTease)
                         }
                     )
-                    .transition(.opacity)
+                    .transition(getMaterializeTransition())
                     .zIndex(currentStep == .signInWithApple ? 1 : 0)
                 }
                 
+                if currentStep == .prePaywallTease {
+                    PrePaywallTeaserView(
+                        viewModel: questionnaireViewModel,
+                        onContinue: {
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.payment)
+                        }
+                    )
+                    .transition(getMaterializeTransition())
+                    .zIndex(currentStep == .prePaywallTease ? 1 : 0)
+                }
+
                 if currentStep == .payment {
                     PaymentView(onContinue: { 
                         isButtonNavigating = true
                         dragDirection = nil
                         navigateTo(.dashboard) 
                     })
-                    .offset(x: dragDirection == .leading ? dragOffset : (dragDirection == .trailing ? dragOffset : 0))
-                    .transition(getTransition(forNavigatingTo: .payment))
+                    .transition(getMaterializeTransition())
                     .zIndex(currentStep == .payment ? 1 : 0)
                 }
                 
@@ -181,7 +167,7 @@ struct OnboardingFlow: View {
                     NavigationView {
                         DashboardView()
                     }
-                    .transition(.opacity)
+                    .transition(getMaterializeTransition())
                     .zIndex(currentStep == .dashboard ? 1 : 0)
                     .onAppear {
                         // Mark onboarding as complete once dashboard is shown
@@ -189,7 +175,8 @@ struct OnboardingFlow: View {
                     }
                 }
             }
-            .animation(.easeInOut(duration: 0.35), value: currentStep) // iOS-STANDARD: Simple, fast transition
+            // UX RULE: Simplicity is KING — remove extra global animation to avoid double-animating.
+            // Transitions are now driven only by explicit withAnimation calls for smoother control.
             .gesture(
                 // iOS-STANDARD: Improved gesture handling with proper thresholds and physics
                 DragGesture(minimumDistance: 8, coordinateSpace: .local) // iOS-standard minimum distance
@@ -262,12 +249,8 @@ struct OnboardingFlow: View {
                         if dragDirection == .leading && abs(dragOffset) > threshold {
                             // Dragged left past threshold - move forward
                             if let nextStep = getNextStep(after: currentStep) {
-                                withAnimation(.interpolatingSpring(
-                                    mass: 1.0,
-                                    stiffness: 120,  // iOS-STANDARD: Gentler spring
-                                    damping: 28,     // iOS-STANDARD: More controlled
-                                    initialVelocity: 0
-                                )) {
+                                // UX: Luxury slow — softer/longer spring (User Rule: Simplicity is KING)
+                                withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
                                     dragOffset = 0
                                 }
                                 
@@ -285,12 +268,8 @@ struct OnboardingFlow: View {
                         } else if dragDirection == .trailing && abs(dragOffset) > threshold {
                             // Dragged right past threshold - move backward
                             if let previousStep = getPreviousStep(before: currentStep), previousStep != .welcome {
-                                withAnimation(.interpolatingSpring(
-                                    mass: 1.0,
-                                    stiffness: 120,  // iOS-STANDARD: Gentler spring
-                                    damping: 28,     // iOS-STANDARD: More controlled
-                                    initialVelocity: 0
-                                )) {
+                                // UX: Luxury slow — softer/longer spring
+                                withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
                                     dragOffset = 0
                                 }
                                 
@@ -307,12 +286,8 @@ struct OnboardingFlow: View {
                             }
                         } else {
                             // iOS-STANDARD: Spring back if threshold not met
-                            withAnimation(.interpolatingSpring(
-                                mass: 1.0,
-                                stiffness: 120,  // iOS-STANDARD: Gentler spring
-                                damping: 28,     // iOS-STANDARD: More controlled
-                                initialVelocity: 0
-                            )) {
+                            // UX: Luxury slow — softer/longer spring
+                            withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
                                 dragOffset = 0
                             }
                             dragDirection = nil
@@ -320,13 +295,7 @@ struct OnboardingFlow: View {
                     }
             )
         }
-        // iOS-STANDARD: Use consistent spring animation for all step changes
-        .animation(.interpolatingSpring(
-            mass: 1.0,
-            stiffness: 100,
-            damping: 25,
-            initialVelocity: 0
-        ), value: currentStep)
+        // Removed global animation on currentStep; rely on explicit animations to prevent abruptness
         .onAppear {
             // CRITICAL FIX: Clear any saved questionnaire state when starting onboarding
             // This ensures users always start from the beginning
@@ -347,18 +316,11 @@ struct OnboardingFlow: View {
             })
     }
     
-    // Helper method to determine the correct transition based on navigation direction
+        // Helper method to determine the correct transition based on navigation direction
     private func getTransition(forNavigatingTo step: OnboardingStep) -> AnyTransition {
         print("🔍 DEBUG: Getting transition for navigating to \(step), isButtonNavigating=\(isButtonNavigating), dragDirection=\(String(describing: dragDirection))")
         
-        // Special case: When transitioning FROM welcome screen, use fade transition
-        if step == .valueProposition {
-            print("🔍 DEBUG: Using fade transition from welcome to value proposition")
-            return .asymmetric(
-                insertion: .opacity,
-                removal: .opacity
-            )
-        }
+        // Use consistent slide + opacity across onboarding for a premium, unified feel
         
         // For button-initiated navigation
         if isButtonNavigating {
@@ -396,7 +358,7 @@ struct OnboardingFlow: View {
             }
         }
         
-        // Default transition for programmatic navigation
+        // Default transition for programmatic navigation (forward)
         print("🔍 DEBUG: Using default transition (no drag direction)")
         return .asymmetric(
             insertion: .move(edge: .trailing).combined(with: .opacity),
@@ -421,15 +383,19 @@ struct OnboardingFlow: View {
             print("🔍 DEBUG: Using DEFAULT transition - current screen should exit LEFT")
         }
         
-        // iOS-STANDARD: Use proper timing for screen transitions
-        withAnimation(.interpolatingSpring(
-            mass: 1.0,
-            stiffness: 100,  // iOS-STANDARD: Much gentler for screen transitions
-            damping: 25,     // iOS-STANDARD: Smooth, controlled movement
-            initialVelocity: 0
-        )) {
+        // Luxury slow — softer/longer spring for materialize transitions across onboarding
+        withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
             currentStep = step
         }
+    }
+
+    // MARK: - Materialize Transition (Luxury feel)
+    private func getMaterializeTransition() -> AnyTransition {
+        let insertion = AnyTransition.opacity
+            .combined(with: .scale(scale: 0.97, anchor: .center))
+        let removal = AnyTransition.opacity
+            .combined(with: .scale(scale: 1.03, anchor: .center))
+        return .asymmetric(insertion: insertion, removal: removal)
     }
     
     /// Get the next step in the onboarding flow - Rules: Updated to skip sign-in
@@ -437,12 +403,11 @@ struct OnboardingFlow: View {
         switch step {
         case .welcome: return .valueProposition
         case .valueProposition: return .personalizationIntro
-        case .personalizationIntro: return .scientificLoading
-        case .scientificLoading: return .questionnaire
-        case .questionnaire: return .batteryPreview
-        case .batteryPreview: return .healthKitPermissions
+        case .personalizationIntro: return .questionnaire
+        case .questionnaire: return .healthKitPermissions
         case .healthKitPermissions: return .signInWithApple
-        case .signInWithApple: return .payment
+        case .signInWithApple: return .prePaywallTease
+        case .prePaywallTease: return .payment
         case .payment: return .dashboard
         case .dashboard: return nil
         }
@@ -454,11 +419,10 @@ struct OnboardingFlow: View {
         case .welcome: return nil
         case .valueProposition: return .welcome
         case .personalizationIntro: return .valueProposition
-        case .scientificLoading: return .personalizationIntro
-        case .questionnaire: return .scientificLoading
-        case .batteryPreview: return .questionnaire
-        case .healthKitPermissions: return .batteryPreview
+        case .questionnaire: return .personalizationIntro
+        case .healthKitPermissions: return .questionnaire
         case .signInWithApple: return .healthKitPermissions
+        case .prePaywallTease: return .signInWithApple
         case .payment: return .signInWithApple
         case .dashboard: return .payment
         }

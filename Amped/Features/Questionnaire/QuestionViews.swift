@@ -226,6 +226,9 @@ struct QuestionViews {
     struct NameQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @FocusState private var isTextFieldFocused: Bool
+        // Applied rule: Simplicity is KING — defer keyboard until transition completes to avoid overlap/lag
+        @State private var didAppear: Bool = false
+        @State private var focusWorkItem: DispatchWorkItem?
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -281,8 +284,24 @@ struct QuestionViews {
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
             .onAppear {
-                // INSTANT FOCUS: Zero-delay focus for maximum responsiveness
-                isTextFieldFocused = true
+                // Defer focus slightly so birthdate picker can fully disappear first
+                // Keeps UI smooth and avoids heavy keyboard animation during removal
+                didAppear = true
+                let work = DispatchWorkItem {
+                    if didAppear {
+                        isTextFieldFocused = true
+                    }
+                }
+                focusWorkItem?.cancel()
+                focusWorkItem = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: work)
+            }
+            .onDisappear {
+                // Cancel any pending focus if view is leaving; ensure keyboard is dismissed
+                didAppear = false
+                focusWorkItem?.cancel()
+                focusWorkItem = nil
+                isTextFieldFocused = false
             }
         }
         
@@ -302,7 +321,6 @@ struct QuestionViews {
     
     struct StressQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
-        @State private var notSureInsertIndex: Int = 0 // User rule: Simplicity is KING; randomize only Not sure placement
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -324,45 +342,38 @@ struct QuestionViews {
                 
                 // Options at bottom for thumb access
                 VStack(spacing: 12) {
-                    let options = QuestionnaireViewModel.StressLevel.allCases
-                    ForEach(0..<(options.count + 1), id: \.self) { index in
-                        if index == notSureInsertIndex {
-                            Button(action: {
-                                viewModel.selectedStressLevel = nil
-                                viewModel.proceedToNextQuestionAllowingNil()
-                            }) {
-                                Text("Not sure")
-                                    .font(.system(size: 16, weight: .regular))
-                                    .foregroundColor(.white.opacity(0.9))
-                            }
-                            // Applied rule: Simplicity is KING — do not pre-highlight Not sure
-                            .questionnaireButtonStyle(isSelected: false)
-                            .hapticFeedback(.light)
-                        } else {
-                            let optionIndex = index > notSureInsertIndex ? index - 1 : index
-                            let stressLevel = options[optionIndex]
-                            Button(action: {
-                                viewModel.selectedStressLevel = stressLevel
-                                viewModel.proceedToNextQuestion()
-                            }) {
-                                FormattedButtonText(
-                                    text: stressLevel.displayName,
-                                    subtitle: nil
-                                )
-                            }
-                            .questionnaireButtonStyle(isSelected: viewModel.selectedStressLevel == stressLevel)
-                            .hapticFeedback(.light)
+                    // Show all regular options first
+                    ForEach(QuestionnaireViewModel.StressLevel.allCases, id: \.self) { stressLevel in
+                        Button(action: {
+                            viewModel.selectedStressLevel = stressLevel
+                            viewModel.proceedToNextQuestion()
+                        }) {
+                            FormattedButtonText(
+                                text: stressLevel.displayName,
+                                subtitle: nil
+                            )
                         }
+                        .questionnaireButtonStyle(isSelected: viewModel.selectedStressLevel == stressLevel)
+                        .hapticFeedback(.light)
                     }
+                    
+                    // "Not sure" button at the bottom
+                    Button(action: {
+                        viewModel.selectedStressLevel = nil
+                        viewModel.proceedToNextQuestionAllowingNil()
+                    }) {
+                        Text("Not sure")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    // Applied rule: Simplicity is KING — do not pre-highlight Not sure
+                    .questionnaireButtonStyle(isSelected: false)
+                    .hapticFeedback(.light)
                 }
                 .padding(.bottom, 30)
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
-            .onAppear {
-                // Randomize Not sure placement; never first or second
-                notSureInsertIndex = Int.random(in: 2...QuestionnaireViewModel.StressLevel.allCases.count)
-            }
         }
     }
     
@@ -370,7 +381,6 @@ struct QuestionViews {
     
     struct AnxietyQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
-        @State private var notSureInsertIndex: Int = 0 // Enforce max 5 (4 base + Not sure)
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -394,44 +404,39 @@ struct QuestionViews {
                 VStack(spacing: 12) {
                     // Limit to 4 base options to keep total <= 5 with Not sure
                     let baseOptions = Array(QuestionnaireViewModel.AnxietyLevel.allCases.prefix(4))
-                    ForEach(0..<(baseOptions.count + 1), id: \.self) { index in
-                        if index == notSureInsertIndex {
-                            Button(action: {
-                                viewModel.selectedAnxietyLevel = nil
-                                viewModel.proceedToNextQuestionAllowingNil()
-                            }) {
-                                Text("Not sure")
-                                    .font(.system(size: 16, weight: .regular))
-                                    .foregroundColor(.white.opacity(0.9))
-                            }
-                            // Applied rule: Simplicity is KING — do not pre-highlight Not sure
-                            .questionnaireButtonStyle(isSelected: false)
-                            .hapticFeedback(.light)
-                        } else {
-                            let optionIndex = index > notSureInsertIndex ? index - 1 : index
-                            let anxietyLevel = baseOptions[optionIndex]
-                            Button(action: {
-                                viewModel.selectedAnxietyLevel = anxietyLevel
-                                viewModel.proceedToNextQuestion()
-                            }) {
-                                FormattedButtonText(
-                                    text: anxietyLevel.displayName,
-                                    subtitle: nil
-                                )
-                            }
-                            .questionnaireButtonStyle(isSelected: viewModel.selectedAnxietyLevel == anxietyLevel)
-                            .hapticFeedback(.light)
+                    
+                    // Show all regular options first
+                    ForEach(baseOptions, id: \.self) { anxietyLevel in
+                        Button(action: {
+                            viewModel.selectedAnxietyLevel = anxietyLevel
+                            viewModel.proceedToNextQuestion()
+                        }) {
+                            FormattedButtonText(
+                                text: anxietyLevel.displayName,
+                                subtitle: nil
+                            )
                         }
+                        .questionnaireButtonStyle(isSelected: viewModel.selectedAnxietyLevel == anxietyLevel)
+                        .hapticFeedback(.light)
                     }
+                    
+                    // "Not sure" button at the bottom
+                    Button(action: {
+                        viewModel.selectedAnxietyLevel = nil
+                        viewModel.proceedToNextQuestionAllowingNil()
+                    }) {
+                        Text("Not sure")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    // Applied rule: Simplicity is KING — do not pre-highlight Not sure
+                    .questionnaireButtonStyle(isSelected: false)
+                    .hapticFeedback(.light)
                 }
                 .padding(.bottom, 30)
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
-            .onAppear {
-                // Ensure Not sure is never the first or second answer
-                notSureInsertIndex = Int.random(in: 2...4)
-            }
         }
     }
     
@@ -617,7 +622,6 @@ struct QuestionViews {
     
     struct SocialConnectionsQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
-        @State private var notSureInsertIndex: Int = 0
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -635,51 +639,42 @@ struct QuestionViews {
                     ScientificCitation(text: "Based on 39 studies, 140 meta-analyses")
                 }
                 
-
-                
                 Spacer()
                 
                 // Options at bottom for thumb access
                 VStack(spacing: 12) {
-                    let options = QuestionnaireViewModel.SocialConnectionsQuality.allCases
-                    ForEach(0..<(options.count + 1), id: \.self) { index in
-                        if index == notSureInsertIndex {
-                            Button(action: {
-                                viewModel.selectedSocialConnectionsQuality = nil
-                                viewModel.proceedToNextQuestionAllowingNil()
-                            }) {
-                                Text("Not sure")
-                                    .font(.system(size: 16, weight: .regular))
-                                    .foregroundColor(.white.opacity(0.9))
-                            }
-                            // Applied rule: Simplicity is KING — do not pre-highlight Not sure
-                            .questionnaireButtonStyle(isSelected: false)
-                            .hapticFeedback(.light)
-                        } else {
-                            let optionIndex = index > notSureInsertIndex ? index - 1 : index
-                            let quality = options[optionIndex]
-                            Button(action: {
-                                viewModel.selectedSocialConnectionsQuality = quality
-                                viewModel.proceedToNextQuestion()
-                            }) {
-                                FormattedButtonText(
-                                    text: quality.displayName,
-                                    subtitle: nil
-                                )
-                            }
-                            .questionnaireButtonStyle(isSelected: viewModel.selectedSocialConnectionsQuality == quality)
-                            .hapticFeedback(.light)
+                    // Show all regular options first
+                    ForEach(QuestionnaireViewModel.SocialConnectionsQuality.allCases, id: \.self) { quality in
+                        Button(action: {
+                            viewModel.selectedSocialConnectionsQuality = quality
+                            viewModel.proceedToNextQuestion()
+                        }) {
+                            FormattedButtonText(
+                                text: quality.displayName,
+                                subtitle: nil
+                            )
                         }
+                        .questionnaireButtonStyle(isSelected: viewModel.selectedSocialConnectionsQuality == quality)
+                        .hapticFeedback(.light)
                     }
+                    
+                    // "Not sure" button at the bottom
+                    Button(action: {
+                        viewModel.selectedSocialConnectionsQuality = nil
+                        viewModel.proceedToNextQuestionAllowingNil()
+                    }) {
+                        Text("Not sure")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    // Applied rule: Simplicity is KING — do not pre-highlight Not sure
+                    .questionnaireButtonStyle(isSelected: false)
+                    .hapticFeedback(.light)
                 }
                 .padding(.bottom, 30)
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
-            .onAppear {
-                // Never first or second
-                notSureInsertIndex = Int.random(in: 2...QuestionnaireViewModel.SocialConnectionsQuality.allCases.count)
-            }
         }
     }
     
@@ -687,7 +682,6 @@ struct QuestionViews {
     
     struct SleepQualityQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
-        @State private var notSureInsertIndex: Int = 0
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -711,51 +705,45 @@ struct QuestionViews {
                 VStack(spacing: 12) {
                     // Limit to 4 base options to keep total <= 5 with Not sure
                     let baseOptions = Array(QuestionnaireViewModel.SleepQuality.allCases.prefix(4))
-                    ForEach(0..<(baseOptions.count + 1), id: \.self) { index in
-                        if index == notSureInsertIndex {
-                            Button(action: {
-                                viewModel.selectedSleepQuality = nil
-                                viewModel.proceedToNextQuestionAllowingNil()
-                            }) {
-                                Text("Not sure")
-                                    .font(.system(size: 16, weight: .regular))
-                                    .foregroundColor(.white.opacity(0.9))
-                            }
-                            // Applied rule: Simplicity is KING — do not pre-highlight Not sure
-                            .questionnaireButtonStyle(isSelected: false)
-                            .hapticFeedback(.light)
-                        } else {
-                            let optionIndex = index > notSureInsertIndex ? index - 1 : index
-                            let quality = baseOptions[optionIndex]
-                            Button(action: {
-                                viewModel.selectedSleepQuality = quality
-                                viewModel.proceedToNextQuestion()
-                            }) {
-                                FormattedButtonText(
-                                    text: quality.displayName,
-                                    subtitle: nil
-                                )
-                            }
-                            .questionnaireButtonStyle(isSelected: viewModel.selectedSleepQuality == quality)
-                            .hapticFeedback(.light)
+                    
+                    // Show all regular options first
+                    ForEach(baseOptions, id: \.self) { quality in
+                        Button(action: {
+                            viewModel.selectedSleepQuality = quality
+                            viewModel.proceedToNextQuestion()
+                        }) {
+                            FormattedButtonText(
+                                text: quality.displayName,
+                                subtitle: nil
+                            )
                         }
+                        .questionnaireButtonStyle(isSelected: viewModel.selectedSleepQuality == quality)
+                        .hapticFeedback(.light)
                     }
+                    
+                    // "Not sure" button at the bottom
+                    Button(action: {
+                        viewModel.selectedSleepQuality = nil
+                        viewModel.proceedToNextQuestionAllowingNil()
+                    }) {
+                        Text("Not sure")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    // Applied rule: Simplicity is KING — do not pre-highlight Not sure
+                    .questionnaireButtonStyle(isSelected: false)
+                    .hapticFeedback(.light)
                 }
                 .padding(.bottom, 30)
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
-            .onAppear {
-                // 4 base options -> indices 0...4, never place Not sure at 0 or 1
-                notSureInsertIndex = Int.random(in: 2...4)
-            }
         }
     }
     
     // MARK: - Blood Pressure Awareness Question
     struct BloodPressureAwarenessQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
-        @State private var notSureInsertIndex: Int = 0 // Randomize Not sure placement, keep total answers <= 5
 
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -775,53 +763,48 @@ struct QuestionViews {
 
                 Spacer()
 
-                // Options (randomize Not sure placement)
+                // Options at bottom for thumb access
                 VStack(spacing: 12) {
                     let nonUnknown: [QuestionnaireViewModel.BloodPressureCategory] = [.normal, .elevatedToStage1, .high]
-                    ForEach(0..<(nonUnknown.count + 1), id: \.self) { index in
-                        if index == notSureInsertIndex {
-                            Button(action: {
-                                viewModel.selectedBloodPressureCategory = .unknown
-                                viewModel.proceedToNextQuestionAllowingNil()
-                            }) {
-                                Text("Not sure")
-                                    .font(.system(size: 16, weight: .regular))
-                                    .foregroundColor(.white.opacity(0.9))
+                    
+                    // Show all regular options first
+                    ForEach(nonUnknown, id: \.self) { category in
+                        Button(action: {
+                            viewModel.selectedBloodPressureCategory = category
+                            viewModel.proceedToNextQuestion()
+                        }) {
+                            switch category {
+                            case .normal:
+                                FormattedButtonText(text: "Below 120/80 (Normal)")
+                            case .elevatedToStage1:
+                                FormattedButtonText(text: "120/80 to 139/89 (Elevated)")
+                            case .high:
+                                FormattedButtonText(text: "140/90 or higher (High)")
+                            default:
+                                EmptyView()
                             }
-                            // Applied rule: Simplicity is KING — do not pre-highlight Not sure
-                            .questionnaireButtonStyle(isSelected: false)
-                            .hapticFeedback(.light)
-                        } else {
-                            let optionIndex = index > notSureInsertIndex ? index - 1 : index
-                            let category = nonUnknown[optionIndex]
-                            Button(action: {
-                                viewModel.selectedBloodPressureCategory = category
-                                viewModel.proceedToNextQuestion()
-                            }) {
-                                switch category {
-                                case .normal:
-                                    FormattedButtonText(text: "Below 120/80 (Normal)")
-                                case .elevatedToStage1:
-                                    FormattedButtonText(text: "120/80 to 139/89 (Elevated)")
-                                case .high:
-                                    FormattedButtonText(text: "140/90 or higher (High)")
-                                default:
-                                    EmptyView()
-                                }
-                            }
-                            .questionnaireButtonStyle(isSelected: viewModel.selectedBloodPressureCategory == category)
-                            .hapticFeedback(.light)
                         }
+                        .questionnaireButtonStyle(isSelected: viewModel.selectedBloodPressureCategory == category)
+                        .hapticFeedback(.light)
                     }
+                    
+                    // "Not sure" button at the bottom
+                    Button(action: {
+                        viewModel.selectedBloodPressureCategory = .unknown
+                        viewModel.proceedToNextQuestionAllowingNil()
+                    }) {
+                        Text("Not sure")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                    // Applied rule: Simplicity is KING — do not pre-highlight Not sure
+                    .questionnaireButtonStyle(isSelected: false)
+                    .hapticFeedback(.light)
                 }
                 .padding(.bottom, 30)
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
-            .onAppear {
-                // nonUnknown count is 3 -> valid indices 0...3; never 0 or 1
-                notSureInsertIndex = Int.random(in: 2...3)
-            }
         }
     }
 

@@ -43,7 +43,7 @@ struct ExitOfferModal: View {
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 52)
+                            .frame(height: 42)
                             .background(
                                 LinearGradient(
                                     colors: [Color.ampedGreen, Color.ampedGreen.opacity(0.85)],

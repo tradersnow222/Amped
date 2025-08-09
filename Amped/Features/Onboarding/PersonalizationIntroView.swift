@@ -30,7 +30,7 @@ struct PersonalizationIntroView: View {
                                 .multilineTextAlignment(.center)
                                 .opacity(animateElements ? 1 : 0)
                                 .offset(y: animateElements ? 0 : 20)
-                                .animation(.easeOut(duration: 0.6), value: animateElements)
+                                .animation(.easeOut(duration: 0.9), value: animateElements)
                         }
                         .padding(.top, 100)
                         
@@ -41,7 +41,7 @@ struct PersonalizationIntroView: View {
                                 .foregroundColor(.white.opacity(0.7))
                                 .multilineTextAlignment(.center)
                                 .opacity(animateElements ? 1 : 0)
-                                .animation(.easeOut(duration: 0.6).delay(0.1), value: animateElements)
+                                .animation(.easeOut(duration: 0.9).delay(0.15), value: animateElements)
                             
                             VStack(spacing: 8) {
                             HStack(spacing: 8) {
@@ -69,14 +69,14 @@ struct PersonalizationIntroView: View {
                         }
                         .opacity(animateElements ? 1 : 0)
                         .scaleEffect(animateElements ? 1 : 0.9)
-                        .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2), value: animateElements)
+                        .animation(.spring(response: 0.72, dampingFraction: 0.978).delay(0.25), value: animateElements)
                         
                         // Visual element - Battery with scientific symbols
                         scientificBatteryView
                             .padding(.vertical, 20)
                             .opacity(animateElements ? 1 : 0)
                             .scaleEffect(animateElements ? 1 : 0.8)
-                            .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.3), value: animateElements)
+                            .animation(.spring(response: 0.72, dampingFraction: 0.978).delay(0.3), value: animateElements)
                         
                         // University partnerships
                         VStack(spacing: 24) {
@@ -93,7 +93,7 @@ struct PersonalizationIntroView: View {
                             .fixedSize(horizontal: true, vertical: false) // Prevent horizontal wrapping
                         }
                         .opacity(animateElements ? 1 : 0)
-                        .animation(.easeOut(duration: 0.6).delay(0.4), value: animateElements)
+                        .animation(.easeOut(duration: 0.9).delay(0.45), value: animateElements)
                         
                         Spacer(minLength: 48)
                     }
@@ -108,8 +108,9 @@ struct PersonalizationIntroView: View {
                         Text("Continue")
                             .fontWeight(.bold)
                             .font(.system(.title3, design: .rounded))
-                            .frame(maxWidth: .infinity)
-                            .padding()
+                            .frame(maxWidth: .infinity, minHeight: 40)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 16)
                             .background(Color.ampedGreen)
                             .foregroundColor(.white)
                             .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
@@ -119,7 +120,7 @@ struct PersonalizationIntroView: View {
                     .padding(.horizontal, 40)
                     .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
                     .opacity(animateElements ? 1 : 0)
-                    .animation(.easeOut(duration: 0.6).delay(0.5), value: animateElements)
+                    .animation(.easeOut(duration: 0.9).delay(0.55), value: animateElements)
                     
                     // Add spacer to match WelcomeView button position
                     Spacer().frame(height: 120)
