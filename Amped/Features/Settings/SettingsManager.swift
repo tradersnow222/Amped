@@ -17,6 +17,8 @@ final class SettingsManager: ObservableObject {
         case showRealtimeCountdown
         // Removed: showLifeProjectionAsPercentage
         case backgroundRefreshEnabled
+        // New: Lifespan display style
+        case lifespanDisplayStyle
     }
     
     // MARK: - Enums
@@ -34,6 +36,25 @@ final class SettingsManager: ObservableObject {
             case .system: return "System"
             case .light: return "Light"
             case .dark: return "Dark"
+            }
+        }
+    }
+
+    /// Lifespan projection display style for adaptive UI
+    enum LifespanDisplayStyle: String, CaseIterable, Identifiable {
+        case auto
+        case fullProjection      // Show total lifespan and remaining time
+        case impactOnly          // Show time gained/lost from habits only
+        case positiveOnly        // Show time gained only
+
+        var id: String { rawValue }
+
+        var displayName: String {
+            switch self {
+            case .auto: return "Auto (recommended)"
+            case .fullProjection: return "Full projection"
+            case .impactOnly: return "Impact only"
+            case .positiveOnly: return "Positive only"
             }
         }
     }
@@ -104,6 +125,13 @@ final class SettingsManager: ObservableObject {
             UserDefaults.standard.set(backgroundRefreshEnabled, forKey: SettingKey.backgroundRefreshEnabled.rawValue)
         }
     }
+
+    /// User preference for lifespan display style
+    @Published var lifespanDisplayStyle: LifespanDisplayStyle {
+        didSet {
+            UserDefaults.standard.set(lifespanDisplayStyle.rawValue, forKey: SettingKey.lifespanDisplayStyle.rawValue)
+        }
+    }
     
     // MARK: - Initialization
     
@@ -127,6 +155,7 @@ final class SettingsManager: ObservableObject {
         self.showRealtimeCountdown = true // Default value
         // Removed: showLifeProjectionAsPercentage default
         self.backgroundRefreshEnabled = true // Default value - enabled by default
+        self.lifespanDisplayStyle = .auto // Default value
         
         // Defer loading non-critical settings
         Task { @MainActor in
@@ -162,6 +191,14 @@ final class SettingsManager: ObservableObject {
         self.showRealtimeCountdown = defaults.bool(forKey: SettingKey.showRealtimeCountdown.rawValue, defaultValue: true)
         // Removed: showLifeProjectionAsPercentage load
         self.backgroundRefreshEnabled = defaults.bool(forKey: SettingKey.backgroundRefreshEnabled.rawValue, defaultValue: true)
+
+        // Load lifespan display style
+        if let styleRaw = defaults.string(forKey: SettingKey.lifespanDisplayStyle.rawValue),
+           let style = LifespanDisplayStyle(rawValue: styleRaw) {
+            self.lifespanDisplayStyle = style
+        } else {
+            self.lifespanDisplayStyle = .auto
+        }
     }
     
     // MARK: - Methods
@@ -183,6 +220,67 @@ final class SettingsManager: ObservableObject {
         showRealtimeCountdown = true
         // Removed: showLifeProjectionAsPercentage reset
         backgroundRefreshEnabled = true
+        lifespanDisplayStyle = .auto
+    }
+
+    // MARK: - Resolver
+    /// Resolve the effective display style given age, years remaining, and soft cues from questionnaire.
+    /// - Parameters:
+    ///   - age: User age in years (optional).
+    ///   - yearsRemaining: Computed years remaining from projection (optional).
+    ///   - stressLevel10: Optional stress level on 1–10 (higher = worse) from questionnaire.
+    ///   - deviceTracking: Optional device tracking status (e.g., more engaged users tend to like full view).
+    /// - Returns: The effective style to use for UI rendering.
+    func effectiveLifespanDisplayStyle(
+        age: Double?,
+        yearsRemaining: Double?,
+        stressLevel10: Double? = nil,
+        deviceTracking: String? = nil,
+        emotionalSensitivity10: Double? = nil,
+        framingComfortScore10: Double? = nil,
+        urgencyResponseScore10: Double? = nil
+    ) -> LifespanDisplayStyle {
+        // If user explicitly chose a non-auto style, honor it.
+        switch lifespanDisplayStyle {
+        case .fullProjection, .impactOnly, .positiveOnly:
+            return lifespanDisplayStyle
+        case .auto:
+            break
+        }
+
+        // Auto: choose based on age brackets and sensitive edge cases
+        let ageValue = age ?? 30.0
+        if let yearsLeft = yearsRemaining, yearsLeft <= 3.0 {
+            // Edge case: very low remaining years → avoid countdown by default
+            return .impactOnly
+        }
+
+        // Personality cues from questionnaire (soft signals)
+        // Build a simple sensitivity index 0..10. Higher => prefers gentler framing.
+        let highStress = (stressLevel10 ?? 0) >= 7.0
+        let tracksDevice = (deviceTracking ?? "").lowercased().contains("yes")
+        let components: [Double] = [
+            stressLevel10 ?? -1,
+            emotionalSensitivity10 ?? -1,
+            framingComfortScore10 ?? -1,
+            urgencyResponseScore10 ?? -1
+        ].filter { $0 >= 0 }
+        let sensitivityIndex = components.isEmpty ? nil : (components.reduce(0, +) / Double(components.count))
+        let isSensitive = (sensitivityIndex ?? (highStress ? 8.0 : 0.0)) >= 7.0
+
+        if ageValue < 65 {
+            // Younger users: full projection unless sensitive and not tracking → impact only
+            if isSensitive && !tracksDevice { return .impactOnly }
+            return .fullProjection
+        }
+        if ageValue < 80 {
+            // Mid-older: impact only, but allow full if engaged (tracking) and not sensitive
+            if tracksDevice && !isSensitive { return .fullProjection }
+            return .impactOnly
+        }
+        // 80+: positive only by default; if highly engaged and not sensitive, allow impact-only
+        if tracksDevice && !isSensitive { return .impactOnly }
+        return .positiveOnly
     }
 }
 

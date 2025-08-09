@@ -185,7 +185,7 @@ private extension StudyReference {
 
 // Enable data-driven sheet presentation using the URL itself.
 // Applied rules: Simplicity is KING; Debugger Mode logging; files under 300 lines.
-extension URL: Identifiable {
+extension URL: @retroactive Identifiable {
     public var id: String { absoluteString }
 }
 

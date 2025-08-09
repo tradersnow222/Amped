@@ -5,7 +5,11 @@ enum OnboardingStep: Equatable {
     case welcome
     case valueProposition
     case personalizationIntro
+    case scientificLoading
     case questionnaire
+    case batteryPreview
+    case healthKitPermissions
+    case signInWithApple
     case payment
     case dashboard
 }
@@ -22,6 +26,9 @@ struct OnboardingFlow: View {
     // Add binding for questionnaire navigation
     @State private var shouldExitQuestionnaire: Bool = false
     @State private var shouldCompleteQuestionnaire: Bool = false
+    
+    // Shared questionnaire view model
+    @StateObject private var questionnaireViewModel = QuestionnaireViewModel()
     
 
     
@@ -54,11 +61,21 @@ struct OnboardingFlow: View {
                     PersonalizationIntroView(onContinue: { 
                         isButtonNavigating = true
                         dragDirection = nil
-                        navigateTo(.questionnaire) 
+                        navigateTo(.scientificLoading) 
                     })
                     .offset(x: dragDirection == .leading ? dragOffset : 0)
                     .transition(getTransition(forNavigatingTo: .personalizationIntro))
                     .zIndex(currentStep == .personalizationIntro ? 1 : 0)
+                }
+                
+                if currentStep == .scientificLoading {
+                    ScientificLoadingView(onComplete: {
+                        isButtonNavigating = true
+                        dragDirection = nil
+                        navigateTo(.questionnaire)
+                    })
+                    .transition(.opacity)
+                    .zIndex(currentStep == .scientificLoading ? 1 : 0)
                 }
                 
                 if currentStep == .questionnaire {
@@ -97,9 +114,9 @@ struct OnboardingFlow: View {
                             isButtonNavigating = false
                             dragDirection = .leading
                             
-                            // Questionnaire completed - go directly to Payment (skipping sign-in) - Rules: Skip sign-in until after payment
+                            // Questionnaire completed - go to battery preview
                             DispatchQueue.main.async {
-                                navigateTo(.payment)
+                                navigateTo(.batteryPreview)
                                 
                                 // Reset drag direction after animation
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
@@ -110,6 +127,43 @@ struct OnboardingFlow: View {
                     }
                     .transition(getTransition(forNavigatingTo: .questionnaire))
                     .zIndex(currentStep == .questionnaire ? 1 : 0)
+                }
+                
+                if currentStep == .batteryPreview {
+                    BatteryScorePreviewView(
+                        viewModel: questionnaireViewModel,
+                        onContinue: {
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.healthKitPermissions)
+                        }
+                    )
+                    .transition(.opacity)
+                    .zIndex(currentStep == .batteryPreview ? 1 : 0)
+                }
+                
+                if currentStep == .healthKitPermissions {
+                    HealthKitPermissionsView(
+                        onContinue: {
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.signInWithApple)
+                        }
+                    )
+                    .transition(.opacity)
+                    .zIndex(currentStep == .healthKitPermissions ? 1 : 0)
+                }
+                
+                if currentStep == .signInWithApple {
+                    SignInWithAppleView(
+                        onContinue: {
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.payment)
+                        }
+                    )
+                    .transition(.opacity)
+                    .zIndex(currentStep == .signInWithApple ? 1 : 0)
                 }
                 
                 if currentStep == .payment {
@@ -383,8 +437,12 @@ struct OnboardingFlow: View {
         switch step {
         case .welcome: return .valueProposition
         case .valueProposition: return .personalizationIntro
-        case .personalizationIntro: return .questionnaire
-        case .questionnaire: return .payment // Skip sign-in, go directly to payment
+        case .personalizationIntro: return .scientificLoading
+        case .scientificLoading: return .questionnaire
+        case .questionnaire: return .batteryPreview
+        case .batteryPreview: return .healthKitPermissions
+        case .healthKitPermissions: return .signInWithApple
+        case .signInWithApple: return .payment
         case .payment: return .dashboard
         case .dashboard: return nil
         }
@@ -396,8 +454,12 @@ struct OnboardingFlow: View {
         case .welcome: return nil
         case .valueProposition: return .welcome
         case .personalizationIntro: return .valueProposition
-        case .questionnaire: return .personalizationIntro
-        case .payment: return .questionnaire // Skip sign-in when going back
+        case .scientificLoading: return .personalizationIntro
+        case .questionnaire: return .scientificLoading
+        case .batteryPreview: return .questionnaire
+        case .healthKitPermissions: return .batteryPreview
+        case .signInWithApple: return .healthKitPermissions
+        case .payment: return .signInWithApple
         case .dashboard: return .payment
         }
     }

@@ -557,10 +557,10 @@ struct DashboardView: View {
                     lifestyleTabs
                 }
             }
-            .padding(.top, 8)
-            .padding(.bottom, 8)
+            .padding(.top, 12)
+            .padding(.bottom, 12)
         }
-        .frame(height: 48) // Consistent height for all selectors
+        .frame(height: 56) // Consistent height for all selectors (slightly increased for breathing room)
     }
     
     // MARK: - UI Components

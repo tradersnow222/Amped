@@ -213,6 +213,7 @@ struct EnhancedBatterySystemView: View {
     let selectedTab: Int // 0 = Current lifestyle, 1 = Better habits
     let onProjectionHelpTapped: () -> Void
     let viewModel: DashboardViewModel
+    let effectiveStyle: SettingsManager.LifespanDisplayStyle
     
     @State private var currentTime = Date()
     @Environment(\.glassTheme) private var glassTheme
@@ -226,21 +227,32 @@ struct EnhancedBatterySystemView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // Main lifespan display
+                // Main display varies by effective style
                 if let lifeProjection = lifeProjection {
-                    mainLifespanDisplay(lifeProjection: lifeProjection)
+                    switch effectiveStyle {
+                    case .fullProjection:
+                        mainLifespanDisplay(lifeProjection: lifeProjection)
+                    case .impactOnly:
+                        impactOnlyDisplay()
+                    case .positiveOnly:
+                        positiveOnlyDisplay()
+                    case .auto:
+                        impactOnlyDisplay()
+                    }
                 }
                 
-                // Real-Time Life Progress Bar (moved below the main display)
-                RealTimeLifeProgressBar(
-                    userProfile: viewModel.userProfile,
-                    currentProjection: lifeProjection,
-                    potentialProjection: optimalProjection,
-                    selectedTab: selectedTab
-                )
+                // Real-Time bar only in full projection style
+                if effectiveStyle == .fullProjection {
+                    RealTimeLifeProgressBar(
+                        userProfile: viewModel.userProfile,
+                        currentProjection: lifeProjection,
+                        potentialProjection: optimalProjection,
+                        selectedTab: selectedTab
+                    )
+                }
                 
-                // Extra years gained message for better habits tab (moved below progress bar)
-                if selectedTab == 1, let optimalProjection = optimalProjection, let currentProjection = lifeProjection {
+                // Extra years message only in full projection style
+                if effectiveStyle == .fullProjection, selectedTab == 1, let optimalProjection = optimalProjection, let currentProjection = lifeProjection {
                     let extraYears = optimalProjection.adjustedLifeExpectancyYears - currentProjection.adjustedLifeExpectancyYears
                     if extraYears > 0 {
                         VStack(spacing: 8) {
@@ -351,6 +363,71 @@ struct EnhancedBatterySystemView: View {
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 20)
+    }
+
+    // MARK: - Alternative Displays
+    @ViewBuilder
+    private func impactOnlyDisplay() -> some View {
+        VStack(spacing: 16) {
+            InteractiveBatteryContainer(
+                viewModel: viewModel,
+                selectedPeriod: viewModel.selectedTimePeriod.impactDataPointPeriodType,
+                onTapToDrillIn: nil
+            )
+            .frame(height: 280)
+
+            if let impact = viewModel.lifeImpactData?.totalImpact {
+                let signedMinutes = impact.value * (impact.direction == .positive ? 1 : -1)
+                Text(impactCopy(for: signedMinutes))
+                    .font(.system(size: 18, weight: .medium, design: .rounded))
+                    .foregroundColor(.white.opacity(0.9))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func positiveOnlyDisplay() -> some View {
+        VStack(spacing: 16) {
+            InteractiveBatteryContainer(
+                viewModel: viewModel,
+                selectedPeriod: viewModel.selectedTimePeriod.impactDataPointPeriodType,
+                onTapToDrillIn: nil
+            )
+            .frame(height: 280)
+
+            if let impact = viewModel.lifeImpactData?.totalImpact {
+                let signedMinutes = max(0, impact.value * (impact.direction == .positive ? 1 : -1))
+                Text(positiveOnlyCopy(for: signedMinutes))
+                    .font(.system(size: 18, weight: .medium, design: .rounded))
+                    .foregroundColor(.white.opacity(0.9))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+        }
+    }
+
+    private func impactCopy(for minutes: Double) -> String {
+        let periodText = viewModel.selectedTimePeriod.displayName.lowercased()
+        let absMinutes = abs(minutes)
+        let formatted: String
+        if absMinutes < 60 { formatted = "\(Int(absMinutes)) minute\(Int(absMinutes) == 1 ? "" : "s")" }
+        else if absMinutes < 1440 { formatted = String(format: "%.1f hours", absMinutes/60) }
+        else { formatted = String(format: "%.1f days", absMinutes/1440) }
+        if minutes >= 0 { return "You added \(formatted) to your life \(periodText)." }
+        return "You lost \(formatted) \(periodText)."
+    }
+
+    private func positiveOnlyCopy(for minutes: Double) -> String {
+        let periodText = viewModel.selectedTimePeriod.displayName.lowercased()
+        if minutes < 1 { return "Small steps today still help. Keep going." }
+        let absMinutes = minutes
+        let formatted: String
+        if absMinutes < 60 { formatted = "\(Int(absMinutes)) minute\(Int(absMinutes) == 1 ? "" : "s")" }
+        else if absMinutes < 1440 { formatted = String(format: "%.1f hours", absMinutes/60) }
+        else { formatted = String(format: "%.1f days", absMinutes/1440) }
+        return "You gained \(formatted) \(periodText)."
     }
     
     // MARK: - Helper Methods

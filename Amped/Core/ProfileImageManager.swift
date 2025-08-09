@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import SwiftUI
+import OSLog
 
 /// Centralized manager for handling user profile images throughout the app
 /// Following Apple guidelines for consistent UI and proper storage
@@ -11,6 +12,7 @@ class ProfileImageManager: ObservableObject {
     @Published var profileImage: UIImage?
     
     private let userDefaultsKey = "userProfileImage"
+    private let logger = Logger(subsystem: "ai.ampedlife.amped", category: "ProfileImageManager")
     
     private init() {
         loadProfileImage()
@@ -21,8 +23,10 @@ class ProfileImageManager: ObservableObject {
         if let imageData = UserDefaults.standard.data(forKey: userDefaultsKey),
            let savedImage = UIImage(data: imageData) {
             profileImage = savedImage
+            logger.debug("Loaded existing profile image from UserDefaults (")
         } else {
             profileImage = nil
+            logger.debug("No existing profile image found; defaulting to nil")
         }
     }
     
@@ -31,10 +35,12 @@ class ProfileImageManager: ObservableObject {
         // Resize image to standard size for consistency
         let resizedImage = resizeImage(image, to: CGSize(width: 200, height: 200))
         profileImage = resizedImage
+        logger.info("Profile image updated in-memory and will be saved to UserDefaults")
         
         // Save to UserDefaults
         if let imageData = resizedImage.jpegData(compressionQuality: 0.8) {
             UserDefaults.standard.set(imageData, forKey: userDefaultsKey)
+            logger.debug("Profile image saved to UserDefaults (")
         }
         
         // Post notification to refresh any UI displaying the profile image
@@ -48,6 +54,7 @@ class ProfileImageManager: ObservableObject {
     func removeProfileImage() {
         profileImage = nil
         UserDefaults.standard.removeObject(forKey: userDefaultsKey)
+        logger.info("Profile image removed from memory and UserDefaults")
         
         // Post notification to refresh any UI displaying the profile image
         NotificationCenter.default.post(

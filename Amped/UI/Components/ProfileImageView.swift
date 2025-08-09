@@ -2,6 +2,9 @@ import SwiftUI
 
 /// Profile image view that matches Apple's standard design with optional edit indicator
 struct ProfileImageView: View {
+    // DEBUGGER MODE: Observe shared manager so UI refreshes immediately after first upload.
+    // Applies rules: Simplicity is KING, MVVM + SwiftUI state management (@ObservedObject)
+    @ObservedObject private var profileManager = ProfileImageManager.shared
     let size: CGFloat
     let showBorder: Bool
     let showEditIndicator: Bool
@@ -15,7 +18,7 @@ struct ProfileImageView: View {
     var body: some View {
         ZStack {
             // Main profile image circle
-            if let profileImage = ProfileImageManager.shared.profileImage {
+            if let profileImage = profileManager.profileImage {
                 Image(uiImage: profileImage)
                     .resizable()
                     .aspectRatio(contentMode: .fill)

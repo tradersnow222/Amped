@@ -76,7 +76,8 @@ struct QuestionnaireButtonStyle: ButtonStyle {
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
             .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
+            // Uniform sizing for all answer buttons, including "Not sure"
+            .frame(maxWidth: .infinity, minHeight: 58)
             .padding(.vertical, 16)
             .padding(.horizontal, 20)
             .background(

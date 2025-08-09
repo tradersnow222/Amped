@@ -10,6 +10,10 @@ struct QuestionnaireData: Codable {
     let alcoholConsumption: Double?
     let socialConnectionsQuality: Double?
     let stressLevel: Double?
+    let emotionalSensitivity: Double?
+    let framingComfortScore: Double?
+    let urgencyResponseScore: Double?
+    let bloodPressureCategory: QuestionnaireViewModel.BloodPressureCategory?
     let savedDate: Date
 }
 
@@ -167,6 +171,37 @@ final class QuestionnaireManager: ObservableObject {
         Self.invalidateCache()
         
         // Save questionnaire-specific data
+        // Derive combined emotional sensitivity from stress + anxiety
+        let stress = viewModel.selectedStressLevel?.stressValue // 2..9 where higher worse
+        let anxiety = viewModel.selectedAnxietyLevel?.anxietyValue // 1..10 where lower worse
+        // Normalize to 0..10 where higher = more sensitive
+        let normalizedStress: Double? = stress.map { min(max(($0 - 2.0) / (10.0 - 2.0) * 10.0, 0.0), 10.0) }
+        let normalizedAnxiety: Double? = anxiety.map { 10.0 - $0 } // 10 minimal anxiety -> 0 sensitivity
+        let combinedSensitivity: Double? = {
+            switch (normalizedStress, normalizedAnxiety) {
+            case let (s?, a?): return (s + a) / 2.0
+            case let (s?, nil): return s
+            case let (nil, a?): return a
+            default: return nil
+            }
+        }()
+
+        // Map framing comfort and urgency into numeric cues (higher => prefers gentler framing)
+        let framingScore: Double? = viewModel.selectedFramingComfort.map { choice in
+            switch choice {
+            case .hardTruths: return 2.0
+            case .encouragingWins: return 6.0
+            case .gainsOnly: return 8.0
+            }
+        }
+        let urgencyScore: Double? = viewModel.selectedUrgencyResponse.map { choice in
+            switch choice {
+            case .energized: return 2.0
+            case .neutral: return 5.0
+            case .pressured: return 8.0
+            }
+        }
+
         let questionnaireData = QuestionnaireData(
             deviceTrackingStatus: viewModel.selectedDeviceTrackingStatus,
             lifeMotivation: viewModel.selectedLifeMotivation,
@@ -174,7 +209,11 @@ final class QuestionnaireManager: ObservableObject {
             smokingStatus: viewModel.selectedSmokingStatus?.smokingValue,
             alcoholConsumption: viewModel.selectedAlcoholFrequency?.alcoholValue,
             socialConnectionsQuality: viewModel.selectedSocialConnectionsQuality?.socialValue,
-            stressLevel: viewModel.selectedStressLevel?.stressValue, // User-selected stress level
+            stressLevel: viewModel.selectedStressLevel?.stressValue, // keep for backward compatibility
+            emotionalSensitivity: combinedSensitivity,
+            framingComfortScore: framingScore,
+            urgencyResponseScore: urgencyScore,
+            bloodPressureCategory: viewModel.selectedBloodPressureCategory,
             savedDate: Date()
         )
         saveQuestionnaireData(questionnaireData)

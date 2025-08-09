@@ -52,6 +52,18 @@ struct SettingsView: View {
                 
                 // Main Settings Section - grouped section with clear separation
                 Section {
+                    // Lifespan Display Style
+                    NavigationLink {
+                        LifespanDisplaySettingsView()
+                    } label: {
+                        SettingsRowView(
+                            icon: "battery.100",
+                            iconColor: .green,
+                            title: "Lifespan Display",
+                            detailText: settingsManager.lifespanDisplayStyle.displayName
+                        )
+                    }
+
                     // Background App Refresh - matches iOS Settings style
                     NavigationLink {
                         BackgroundRefreshSettingsView()
@@ -206,6 +218,48 @@ struct SettingsRowView: View {
             }
         }
         .padding(.vertical, 1)
+    }
+}
+
+// MARK: - Lifespan Display Settings
+
+struct LifespanDisplaySettingsView: View {
+    @EnvironmentObject private var settingsManager: SettingsManager
+
+    var body: some View {
+        List {
+            Section(footer: Text("You can change this anytime. This only affects how results are shown. Calculations remain the same.")) {
+                ForEach(SettingsManager.LifespanDisplayStyle.allCases, id: \.self) { style in
+                    HStack {
+                        Text(label(for: style))
+                            .foregroundColor(.primary)
+                        Spacer()
+                        if settingsManager.lifespanDisplayStyle == style {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.accentColor)
+                                .font(.body)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        settingsManager.lifespanDisplayStyle = style
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Lifespan Display")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func label(for style: SettingsManager.LifespanDisplayStyle) -> String {
+        switch style {
+        case .auto: return "Auto (recommended)"
+        case .fullProjection: return "Full projection (includes time remaining)"
+        case .impactOnly: return "Impact only (time gained/lost)"
+        case .positiveOnly: return "Positive only (time gained)"
+        }
     }
 }
 
@@ -834,6 +888,10 @@ class ProfileDetailsViewModel: ObservableObject {
             alcoholConsumption: alcoholConsumption,
             socialConnectionsQuality: socialConnectionsQuality,
             stressLevel: stressLevel,
+            emotionalSensitivity: nil,
+            framingComfortScore: nil,
+            urgencyResponseScore: nil,
+            bloodPressureCategory: nil,
             savedDate: currentDate
         )
         

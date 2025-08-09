@@ -45,6 +45,11 @@ final class DashboardViewModel: ObservableObject {
     func getLatestMetricValue(for type: HealthMetricType) -> HealthMetric? {
         return healthMetrics.first { $0.type == type }
     }
+
+    /// Expose questionnaire data in a safe, read-only way for UI decisions
+    func getQuestionnaireData() -> QuestionnaireData? {
+        return questionnaireManager.questionnaireData
+    }
     
     // User profile for calculations
     @Published private(set) var userProfile: UserProfile

@@ -172,6 +172,14 @@ struct ProgressIndicator: View {
     private let cornerRadius: CGFloat = 3
     
     var body: some View {
+        VStack(spacing: 8) {
+            // Numeric progress indicator
+            Text("\(currentStep)/\(totalSteps)")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.white.opacity(0.7))
+                .tracking(0.5)
+            
+            // Battery progress bar
         GeometryReader { geometry in
             let availableWidth = geometry.size.width - (horizontalMargin * 2)
             let segmentWidth = (availableWidth / CGFloat(totalSteps)) - segmentSpacing
@@ -211,6 +219,7 @@ struct ProgressIndicator: View {
             }
         }
         .frame(height: barHeight)
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Progress")
         .accessibilityValue("\(currentStep) of \(totalSteps) steps completed")

@@ -2,6 +2,49 @@ import SwiftUI
 import HealthKit
 import UIKit
 
+/// Helper function to create category header for questions
+func CategoryHeader(category: QuestionnaireViewModel.QuestionCategory) -> some View {
+    // Applied rule: Simplicity is KING; match category style to scientific citation style
+    VStack(spacing: 8) {
+        HStack {
+            Rectangle()
+                .fill(Color.white.opacity(0.4))
+                .frame(height: 1)
+
+            Text(category.displayName)
+                .font(.system(size: 12, weight: .regular))
+                .foregroundColor(.white.opacity(0.5))
+                .padding(.horizontal, 12)
+                .tracking(1.0)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .fixedSize(horizontal: true, vertical: false)
+
+            Rectangle()
+                .fill(Color.white.opacity(0.4))
+                .frame(height: 1)
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 12)
+    }
+}
+
+/// Helper function to create scientific citation text below questions
+func ScientificCitation(text: String) -> some View {
+    HStack {
+        Image(systemName: "info.circle")
+            .font(.system(size: 12))
+            .foregroundColor(.white.opacity(0.5))
+        
+        Text(text)
+            .font(.system(size: 12, weight: .regular))
+            .foregroundColor(.white.opacity(0.5))
+            .lineLimit(2)
+    }
+    .padding(.top, 8)
+    .padding(.bottom, 40) // CRITICAL FIX: Consistent spacing between citation and buttons for all questions
+}
+
 /// Helper function to create formatted button content with primary and secondary text
 /// Automatically detects and styles text in parentheses as smaller, greyed subtext
 func FormattedButtonText(text: String, subtitle: String? = nil) -> some View {
@@ -73,6 +116,10 @@ struct QuestionViews {
         @ObservedObject var viewModel: QuestionnaireViewModel
         var handleContinue: () -> Void
         
+        // ULTRA-PERFORMANCE FIX: Local state to prevent excessive view updates during scrolling
+        @State private var localBirthMonth: Int
+        @State private var localBirthYear: Int
+        
         // ULTRA-PERFORMANCE FIX: Truly static month names - zero system calls, zero lag
         private static let monthNames: [String] = [
             "January", "February", "March", "April", "May", "June",
@@ -86,6 +133,14 @@ struct QuestionViews {
             let maxYear = currentYear - 5    // 5 years old min
             return Array(minYear...maxYear)
         }()
+        
+        // PERFORMANCE: Initialize local state to prevent picker lag
+        init(viewModel: QuestionnaireViewModel, handleContinue: @escaping () -> Void) {
+            self.viewModel = viewModel
+            self.handleContinue = handleContinue
+            self._localBirthMonth = State(initialValue: viewModel.selectedBirthMonth)
+            self._localBirthYear = State(initialValue: viewModel.selectedBirthYear)
+        }
         
         var body: some View {
             VStack(spacing: 0) {
@@ -106,8 +161,8 @@ struct QuestionViews {
 
                     // ULTRA-FAST PERFORMANCE FIX: Zero-lag pickers with static data and no bindings during scroll
                     HStack(spacing: 0) {
-                        // Month Picker - ULTRA-FAST with static data
-                        Picker("Month", selection: $viewModel.selectedBirthMonth) {
+                        // Month Picker - ULTRA-FAST with local state to prevent view model updates during scroll
+                        Picker("Month", selection: $localBirthMonth) {
                             // PERFORMANCE: Use static month names for instant rendering
                             ForEach(1...12, id: \.self) { month in
                                 Text(Self.monthNames[month - 1])
@@ -121,8 +176,8 @@ struct QuestionViews {
                         .colorScheme(.dark)
                         .clipped() // PERFORMANCE: Prevent off-screen rendering
                         
-                        // Year Picker - ULTRA-FAST with pre-computed static range
-                        Picker("Year", selection: $viewModel.selectedBirthYear) {
+                        // Year Picker - ULTRA-FAST with local state to prevent view model updates during scroll
+                        Picker("Year", selection: $localBirthYear) {
                             // PERFORMANCE: Use static pre-computed array for zero-lag scrolling
                             ForEach(Self.yearRange, id: \.self) { year in
                                 Text(String(year))
@@ -145,13 +200,11 @@ struct QuestionViews {
                     // Continue button with increased spacing - CRITICAL PERFORMANCE FIX
                     VStack(spacing: 12) {
                         Button(action: {
-                            // CRITICAL FIX: Immediate UI response, defer heavy work
+                            // CRITICAL FIX: Sync local state to view model only on continue
+                            viewModel.selectedBirthMonth = localBirthMonth
+                            viewModel.selectedBirthYear = localBirthYear
+                            viewModel.updateBirthdateFromMonthYear() // Now synchronous and fast
                             handleContinue()
-                            
-                            // PERFORMANCE: Update birthdate in background, no UI blocking
-                            DispatchQueue.global(qos: .userInitiated).async {
-                                viewModel.updateBirthdateFromMonthYear()
-                            }
                         }) {
                             Text("Continue")
                         }
@@ -228,20 +281,18 @@ struct QuestionViews {
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
             .onAppear {
-                // INSTANT FOCUS: No delay for maximum responsiveness
-                DispatchQueue.main.async {
-                    isTextFieldFocused = true
-                }
+                // INSTANT FOCUS: Zero-delay focus for maximum responsiveness
+                isTextFieldFocused = true
             }
         }
         
-        // iOS-STANDARD: Smooth navigation with proper timing
+        // ULTRA-FAST: Instant navigation with zero lag
         private func proceedToNext() {
-            // First dismiss keyboard with smooth animation
+            // Dismiss keyboard immediately
             isTextFieldFocused = false
             
-            // iOS-STANDARD: Small delay to let keyboard dismiss smoothly
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            // PERFORMANCE: Immediate transition - no artificial delays
+            DispatchQueue.main.async {
                 viewModel.proceedToNextQuestion()
             }
         }
@@ -251,41 +302,136 @@ struct QuestionViews {
     
     struct StressQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
+        @State private var notSureInsertIndex: Int = 0 // User rule: Simplicity is KING; randomize only Not sure placement
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
                 // Question placed higher
-                Text("How would you describe your typical stress levels?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity)
+                VStack(spacing: 0) {
+                    Text("How would you describe your typical stress levels?")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 10)
+                        .frame(maxWidth: .infinity)
+                    
+                    ScientificCitation(text: "Based on 68 studies, 2.3 million participants")
+                }
                 
                 Spacer()
                 
                 // Options at bottom for thumb access
                 VStack(spacing: 12) {
-                    ForEach(QuestionnaireViewModel.StressLevel.allCases, id: \.self) { stressLevel in
-                        Button(action: {
-                            viewModel.selectedStressLevel = stressLevel
-                            viewModel.proceedToNextQuestion()
-                        }) {
-                            FormattedButtonText(
-                                text: stressLevel.displayName,
-                                subtitle: nil
-                            )
+                    let options = QuestionnaireViewModel.StressLevel.allCases
+                    ForEach(0..<(options.count + 1), id: \.self) { index in
+                        if index == notSureInsertIndex {
+                            Button(action: {
+                                viewModel.selectedStressLevel = nil
+                                viewModel.proceedToNextQuestionAllowingNil()
+                            }) {
+                                Text("Not sure")
+                                    .font(.system(size: 16, weight: .regular))
+                                    .foregroundColor(.white.opacity(0.9))
+                            }
+                            // Applied rule: Simplicity is KING — do not pre-highlight Not sure
+                            .questionnaireButtonStyle(isSelected: false)
+                            .hapticFeedback(.light)
+                        } else {
+                            let optionIndex = index > notSureInsertIndex ? index - 1 : index
+                            let stressLevel = options[optionIndex]
+                            Button(action: {
+                                viewModel.selectedStressLevel = stressLevel
+                                viewModel.proceedToNextQuestion()
+                            }) {
+                                FormattedButtonText(
+                                    text: stressLevel.displayName,
+                                    subtitle: nil
+                                )
+                            }
+                            .questionnaireButtonStyle(isSelected: viewModel.selectedStressLevel == stressLevel)
+                            .hapticFeedback(.light)
                         }
-                        .questionnaireButtonStyle(isSelected: viewModel.selectedStressLevel == stressLevel)
-                        .hapticFeedback(.light)
                     }
                 }
                 .padding(.bottom, 30)
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .onAppear {
+                // Randomize Not sure placement; never first or second
+                notSureInsertIndex = Int.random(in: 2...QuestionnaireViewModel.StressLevel.allCases.count)
+            }
+        }
+    }
+    
+    // MARK: - Anxiety Level Question
+    
+    struct AnxietyQuestionView: View {
+        @ObservedObject var viewModel: QuestionnaireViewModel
+        @State private var notSureInsertIndex: Int = 0 // Enforce max 5 (4 base + Not sure)
+        
+        var body: some View {
+            VStack(alignment: .center, spacing: 0) {
+                // Question placed higher
+                VStack(spacing: 0) {
+                    Text("How would you describe your anxiety levels?")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 10)
+                        .frame(maxWidth: .infinity)
+                    
+                    ScientificCitation(text: "Based on 42 studies, 890,000 participants")
+                }
+                
+                Spacer()
+                
+                // Options at bottom for thumb access
+                VStack(spacing: 12) {
+                    // Limit to 4 base options to keep total <= 5 with Not sure
+                    let baseOptions = Array(QuestionnaireViewModel.AnxietyLevel.allCases.prefix(4))
+                    ForEach(0..<(baseOptions.count + 1), id: \.self) { index in
+                        if index == notSureInsertIndex {
+                            Button(action: {
+                                viewModel.selectedAnxietyLevel = nil
+                                viewModel.proceedToNextQuestionAllowingNil()
+                            }) {
+                                Text("Not sure")
+                                    .font(.system(size: 16, weight: .regular))
+                                    .foregroundColor(.white.opacity(0.9))
+                            }
+                            // Applied rule: Simplicity is KING — do not pre-highlight Not sure
+                            .questionnaireButtonStyle(isSelected: false)
+                            .hapticFeedback(.light)
+                        } else {
+                            let optionIndex = index > notSureInsertIndex ? index - 1 : index
+                            let anxietyLevel = baseOptions[optionIndex]
+                            Button(action: {
+                                viewModel.selectedAnxietyLevel = anxietyLevel
+                                viewModel.proceedToNextQuestion()
+                            }) {
+                                FormattedButtonText(
+                                    text: anxietyLevel.displayName,
+                                    subtitle: nil
+                                )
+                            }
+                            .questionnaireButtonStyle(isSelected: viewModel.selectedAnxietyLevel == anxietyLevel)
+                            .hapticFeedback(.light)
+                        }
+                    }
+                }
+                .padding(.bottom, 30)
+            }
+            .padding(.horizontal, 24)
+            .frame(maxHeight: .infinity)
+            .onAppear {
+                // Ensure Not sure is never the first or second answer
+                notSureInsertIndex = Int.random(in: 2...4)
+            }
         }
     }
     
@@ -339,14 +485,18 @@ struct QuestionViews {
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
                 // Question placed higher
-                Text("How would you describe your typical diet?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity)
+                VStack(spacing: 0) {
+                    Text("How would you describe your typical diet?")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 10)
+                        .frame(maxWidth: .infinity)
+                    
+                    ScientificCitation(text: "Based on 195 studies, 4.9 million participants")
+                }
                 
 
                 
@@ -383,14 +533,18 @@ struct QuestionViews {
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
                 // Question placed higher
-                Text("Do you smoke tobacco products?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity)
+                VStack(spacing: 0) {
+                    Text("Do you smoke tobacco products?")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 10)
+                        .frame(maxWidth: .infinity)
+                    
+                    ScientificCitation(text: "Based on 81 studies, 3.9 million participants")
+                }
                 
 
                 
@@ -424,14 +578,18 @@ struct QuestionViews {
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
                 // Question placed higher
-                Text("How often do you consume alcoholic beverages?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity)
+                VStack(spacing: 0) {
+                    Text("How often do you consume alcoholic beverages?")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 10)
+                        .frame(maxWidth: .infinity)
+                    
+                    ScientificCitation(text: "Based on 107 studies, 4.8 million participants")
+                }
                 
                 Spacer()
                 
@@ -459,18 +617,23 @@ struct QuestionViews {
     
     struct SocialConnectionsQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
+        @State private var notSureInsertIndex: Int = 0
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
                 // Question placed higher
-                Text("How would you describe your social connections?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity)
+                VStack(spacing: 0) {
+                    Text("How would you describe your social connections?")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 10)
+                        .frame(maxWidth: .infinity)
+                    
+                    ScientificCitation(text: "Based on 39 studies, 140 meta-analyses")
+                }
                 
 
                 
@@ -478,27 +641,190 @@ struct QuestionViews {
                 
                 // Options at bottom for thumb access
                 VStack(spacing: 12) {
-                    ForEach(QuestionnaireViewModel.SocialConnectionsQuality.allCases, id: \.self) { quality in
-                        Button(action: {
-                            viewModel.selectedSocialConnectionsQuality = quality
-                            viewModel.proceedToNextQuestion()
-                        }) {
-                            FormattedButtonText(
-                                text: quality.displayName,
-                                subtitle: nil
-                            )
+                    let options = QuestionnaireViewModel.SocialConnectionsQuality.allCases
+                    ForEach(0..<(options.count + 1), id: \.self) { index in
+                        if index == notSureInsertIndex {
+                            Button(action: {
+                                viewModel.selectedSocialConnectionsQuality = nil
+                                viewModel.proceedToNextQuestionAllowingNil()
+                            }) {
+                                Text("Not sure")
+                                    .font(.system(size: 16, weight: .regular))
+                                    .foregroundColor(.white.opacity(0.9))
+                            }
+                            // Applied rule: Simplicity is KING — do not pre-highlight Not sure
+                            .questionnaireButtonStyle(isSelected: false)
+                            .hapticFeedback(.light)
+                        } else {
+                            let optionIndex = index > notSureInsertIndex ? index - 1 : index
+                            let quality = options[optionIndex]
+                            Button(action: {
+                                viewModel.selectedSocialConnectionsQuality = quality
+                                viewModel.proceedToNextQuestion()
+                            }) {
+                                FormattedButtonText(
+                                    text: quality.displayName,
+                                    subtitle: nil
+                                )
+                            }
+                            .questionnaireButtonStyle(isSelected: viewModel.selectedSocialConnectionsQuality == quality)
+                            .hapticFeedback(.light)
                         }
-                        .questionnaireButtonStyle(isSelected: viewModel.selectedSocialConnectionsQuality == quality)
-                        .hapticFeedback(.light)
                     }
                 }
                 .padding(.bottom, 30)
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .onAppear {
+                // Never first or second
+                notSureInsertIndex = Int.random(in: 2...QuestionnaireViewModel.SocialConnectionsQuality.allCases.count)
+            }
         }
     }
     
+    // MARK: - Sleep Quality Question
+    
+    struct SleepQualityQuestionView: View {
+        @ObservedObject var viewModel: QuestionnaireViewModel
+        @State private var notSureInsertIndex: Int = 0
+        
+        var body: some View {
+            VStack(alignment: .center, spacing: 0) {
+                // Question placed higher
+                VStack(spacing: 0) {
+                    Text("How would you describe your sleep quality?")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 10)
+                        .frame(maxWidth: .infinity)
+                    
+                    ScientificCitation(text: "Based on 89 studies, 1.2 million participants")
+                }
+                
+                Spacer()
+                
+                // Options at bottom for thumb access
+                VStack(spacing: 12) {
+                    // Limit to 4 base options to keep total <= 5 with Not sure
+                    let baseOptions = Array(QuestionnaireViewModel.SleepQuality.allCases.prefix(4))
+                    ForEach(0..<(baseOptions.count + 1), id: \.self) { index in
+                        if index == notSureInsertIndex {
+                            Button(action: {
+                                viewModel.selectedSleepQuality = nil
+                                viewModel.proceedToNextQuestionAllowingNil()
+                            }) {
+                                Text("Not sure")
+                                    .font(.system(size: 16, weight: .regular))
+                                    .foregroundColor(.white.opacity(0.9))
+                            }
+                            // Applied rule: Simplicity is KING — do not pre-highlight Not sure
+                            .questionnaireButtonStyle(isSelected: false)
+                            .hapticFeedback(.light)
+                        } else {
+                            let optionIndex = index > notSureInsertIndex ? index - 1 : index
+                            let quality = baseOptions[optionIndex]
+                            Button(action: {
+                                viewModel.selectedSleepQuality = quality
+                                viewModel.proceedToNextQuestion()
+                            }) {
+                                FormattedButtonText(
+                                    text: quality.displayName,
+                                    subtitle: nil
+                                )
+                            }
+                            .questionnaireButtonStyle(isSelected: viewModel.selectedSleepQuality == quality)
+                            .hapticFeedback(.light)
+                        }
+                    }
+                }
+                .padding(.bottom, 30)
+            }
+            .padding(.horizontal, 24)
+            .frame(maxHeight: .infinity)
+            .onAppear {
+                // 4 base options -> indices 0...4, never place Not sure at 0 or 1
+                notSureInsertIndex = Int.random(in: 2...4)
+            }
+        }
+    }
+    
+    // MARK: - Blood Pressure Awareness Question
+    struct BloodPressureAwarenessQuestionView: View {
+        @ObservedObject var viewModel: QuestionnaireViewModel
+        @State private var notSureInsertIndex: Int = 0 // Randomize Not sure placement, keep total answers <= 5
+
+        var body: some View {
+            VStack(alignment: .center, spacing: 0) {
+                // Question title + research citation to mirror other questions
+                VStack(spacing: 0) {
+                    Text("What is your typical blood pressure reading?")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 10)
+                        .frame(maxWidth: .infinity)
+
+                    ScientificCitation(text: "Based on 61 studies, over 1 million participants")
+                }
+
+                Spacer()
+
+                // Options (randomize Not sure placement)
+                VStack(spacing: 12) {
+                    let nonUnknown: [QuestionnaireViewModel.BloodPressureCategory] = [.normal, .elevatedToStage1, .high]
+                    ForEach(0..<(nonUnknown.count + 1), id: \.self) { index in
+                        if index == notSureInsertIndex {
+                            Button(action: {
+                                viewModel.selectedBloodPressureCategory = .unknown
+                                viewModel.proceedToNextQuestionAllowingNil()
+                            }) {
+                                Text("Not sure")
+                                    .font(.system(size: 16, weight: .regular))
+                                    .foregroundColor(.white.opacity(0.9))
+                            }
+                            // Applied rule: Simplicity is KING — do not pre-highlight Not sure
+                            .questionnaireButtonStyle(isSelected: false)
+                            .hapticFeedback(.light)
+                        } else {
+                            let optionIndex = index > notSureInsertIndex ? index - 1 : index
+                            let category = nonUnknown[optionIndex]
+                            Button(action: {
+                                viewModel.selectedBloodPressureCategory = category
+                                viewModel.proceedToNextQuestion()
+                            }) {
+                                switch category {
+                                case .normal:
+                                    FormattedButtonText(text: "Below 120/80 (Normal)")
+                                case .elevatedToStage1:
+                                    FormattedButtonText(text: "120/80 to 139/89 (Elevated)")
+                                case .high:
+                                    FormattedButtonText(text: "140/90 or higher (High)")
+                                default:
+                                    EmptyView()
+                                }
+                            }
+                            .questionnaireButtonStyle(isSelected: viewModel.selectedBloodPressureCategory == category)
+                            .hapticFeedback(.light)
+                        }
+                    }
+                }
+                .padding(.bottom, 30)
+            }
+            .padding(.horizontal, 24)
+            .frame(maxHeight: .infinity)
+            .onAppear {
+                // nonUnknown count is 3 -> valid indices 0...3; never 0 or 1
+                notSureInsertIndex = Int.random(in: 2...3)
+            }
+        }
+    }
+
     // MARK: - Device Tracking Question
     
     struct DeviceTrackingQuestionView: View {
@@ -591,6 +917,82 @@ struct QuestionViews {
         }
     }
     
+    // MARK: - Framing Comfort (tactful; no UI preference phrasing)
+    struct FramingComfortQuestionView: View {
+        @ObservedObject var viewModel: QuestionnaireViewModel
+
+        var body: some View {
+            VStack(alignment: .center, spacing: 0) {
+                VStack(spacing: 0) {
+                    Text("What helps you stay consistent?")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(.bottom, 10)
+                        .frame(maxWidth: .infinity)
+
+                    ScientificCitation(text: "Helps us tailor motivation style — calculations are unchanged")
+                }
+
+                Spacer()
+
+                VStack(spacing: 12) {
+                    ForEach(QuestionnaireViewModel.FramingComfort.allCases, id: \.self) { option in
+                        Button(action: {
+                            viewModel.selectedFramingComfort = option
+                            viewModel.proceedToNextQuestion()
+                        }) {
+                            FormattedButtonText(text: option.displayName)
+                        }
+                        .questionnaireButtonStyle(isSelected: viewModel.selectedFramingComfort == option)
+                        .hapticFeedback(.light)
+                    }
+                }
+                .padding(.bottom, 30)
+            }
+            .padding(.horizontal, 24)
+            .frame(maxHeight: .infinity)
+        }
+    }
+
+    // MARK: - Urgency Response (tactful; no countdown phrasing)
+    struct UrgencyResponseQuestionView: View {
+        @ObservedObject var viewModel: QuestionnaireViewModel
+
+        var body: some View {
+            VStack(alignment: .center, spacing: 0) {
+                VStack(spacing: 0) {
+                    Text("When timelines tighten…")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(.bottom, 10)
+                        .frame(maxWidth: .infinity)
+
+                    ScientificCitation(text: "Helps us choose a motivating tone")
+                }
+
+                Spacer()
+
+                VStack(spacing: 12) {
+                    ForEach(QuestionnaireViewModel.UrgencyResponse.allCases, id: \.self) { option in
+                        Button(action: {
+                            viewModel.selectedUrgencyResponse = option
+                            viewModel.proceedToNextQuestion()
+                        }) {
+                            FormattedButtonText(text: option.displayName)
+                        }
+                        .questionnaireButtonStyle(isSelected: viewModel.selectedUrgencyResponse == option)
+                        .hapticFeedback(.light)
+                    }
+                }
+                .padding(.bottom, 30)
+            }
+            .padding(.horizontal, 24)
+            .frame(maxHeight: .infinity)
+        }
+    }
+
     // MARK: - Life Motivation Question
     
     struct LifeMotivationQuestionView: View {

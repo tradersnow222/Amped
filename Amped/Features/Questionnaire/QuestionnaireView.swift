@@ -47,7 +47,15 @@ struct QuestionnaireView: View {
                 // Deep background
                 Color.clear.withDeepBackground()
                 
-                VStack(spacing: 12) {
+                VStack(spacing: 0) {
+                    // Category header at the very top - CRITICAL FIX: Prevent wrapping with fixed positioning
+                    if viewModel.shouldShowCategoryHeader {
+                        CategoryHeader(category: viewModel.currentQuestionCategory)
+                            .padding(.top, 16)
+                            .frame(maxWidth: .infinity)
+                            .fixedSize(horizontal: false, vertical: true) // Prevent wrapping
+                    }
+                    
                     // Navigation header with back button - Rules: Using consistent BackButton component
                     if viewModel.canMoveBack {
                         HStack {
@@ -57,18 +65,18 @@ struct QuestionnaireView: View {
                             
                             Spacer()
                         }
-                        .padding(.top, 16)
+                        .padding(.top, viewModel.shouldShowCategoryHeader ? 12 : 16)
                         .padding(.leading, 8)
                     } else {
                         // Empty space for consistent layout
                         HStack {
                             Spacer()
                         }
-                        .frame(height: 42)
+                        .frame(height: viewModel.shouldShowCategoryHeader ? 54 : 42)
                     }
                     
-                    // Add spacer to push question down approximately 1/3 from top
-                    Spacer().frame(height: geometry.size.height * 0.15)
+                    // Add spacer to push question down - adjusted for category header
+                    Spacer().frame(height: geometry.size.height * (viewModel.shouldShowCategoryHeader ? 0.08 : 0.15))
                     
                     // Current question view - CRITICAL PERFORMANCE FIX: Ultra-smooth transitions
                     ZStack {
@@ -79,7 +87,7 @@ struct QuestionnaireView: View {
                     }
                     .clipped() // Ensure off-screen content doesn't show
                     .animation(
-                        .easeInOut(duration: 0.25), // PERFORMANCE: Shorter duration for snappier feel
+                        .easeInOut(duration: 0.15), // ULTRA-PERFORMANCE: Even shorter duration for zero-lag feel
                         value: viewModel.currentQuestion
                     )
                     
@@ -156,51 +164,74 @@ struct QuestionnaireView: View {
     /// Get the view for a specific question
     @ViewBuilder
     private func questionView(for question: QuestionnaireViewModel.Question) -> some View {
-        switch question {
-        case .birthdate:
-            QuestionViews.BirthdateQuestionView(
-                viewModel: viewModel, 
-                handleContinue: handleContinue
-            )
-        case .name:
-            QuestionViews.NameQuestionView(
-                viewModel: viewModel
-            )
-        case .stressLevel:
-            QuestionViews.StressQuestionView(
-                viewModel: viewModel
-            )
-        case .gender:
-            QuestionViews.GenderQuestionView(
-                viewModel: viewModel
-            )
-        case .nutritionQuality:
-            QuestionViews.NutritionQuestionView(
-                viewModel: viewModel
-            )
-        case .smokingStatus:
-            QuestionViews.SmokingQuestionView(
-                viewModel: viewModel
-            )
-        case .alcoholConsumption:
-            QuestionViews.AlcoholQuestionView(
-                viewModel: viewModel
-            )
-        case .socialConnections:
-            QuestionViews.SocialConnectionsQuestionView(
-                viewModel: viewModel
-            )
-        case .deviceTracking:
-            QuestionViews.DeviceTrackingQuestionView(
-                viewModel: viewModel,
-                proceedToHealthKit: proceedToHealthKit,
-                skipToLifeMotivation: skipToLifeMotivation
-            )
-        case .lifeMotivation:
-            QuestionViews.LifeMotivationQuestionView(
-                viewModel: viewModel,
-                completeQuestionnaire: completeQuestionnaire
-            )
+        VStack(spacing: 0) {
+            // Question content (category header moved to top level)
+            switch question {
+            case .birthdate:
+                QuestionViews.BirthdateQuestionView(
+                    viewModel: viewModel, 
+                    handleContinue: handleContinue
+                )
+            case .name:
+                QuestionViews.NameQuestionView(
+                    viewModel: viewModel
+                )
+            case .stressLevel:
+                QuestionViews.StressQuestionView(
+                    viewModel: viewModel
+                )
+            case .anxietyLevel:
+                QuestionViews.AnxietyQuestionView(
+                    viewModel: viewModel
+                )
+            case .gender:
+                QuestionViews.GenderQuestionView(
+                    viewModel: viewModel
+                )
+            case .nutritionQuality:
+                QuestionViews.NutritionQuestionView(
+                    viewModel: viewModel
+                )
+            case .smokingStatus:
+                QuestionViews.SmokingQuestionView(
+                    viewModel: viewModel
+                )
+            case .alcoholConsumption:
+                QuestionViews.AlcoholQuestionView(
+                    viewModel: viewModel
+                )
+            case .socialConnections:
+                QuestionViews.SocialConnectionsQuestionView(
+                    viewModel: viewModel
+                )
+            case .sleepQuality:
+                QuestionViews.SleepQualityQuestionView(
+                    viewModel: viewModel
+                )
+            case .bloodPressureAwareness:
+                QuestionViews.BloodPressureAwarenessQuestionView(
+                    viewModel: viewModel
+                )
+            case .deviceTracking:
+                QuestionViews.DeviceTrackingQuestionView(
+                    viewModel: viewModel,
+                    proceedToHealthKit: proceedToHealthKit,
+                    skipToLifeMotivation: skipToLifeMotivation
+                )
+            case .framingComfort:
+                QuestionViews.FramingComfortQuestionView(
+                    viewModel: viewModel
+                )
+            case .urgencyResponse:
+                QuestionViews.UrgencyResponseQuestionView(
+                    viewModel: viewModel
+                )
+            case .lifeMotivation:
+                QuestionViews.LifeMotivationQuestionView(
+                    viewModel: viewModel,
+                    completeQuestionnaire: completeQuestionnaire
+                )
+            }
         }
     }
     

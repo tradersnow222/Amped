@@ -3,17 +3,60 @@ import SwiftUI
 
 /// ViewModel for the Questionnaire functionality
 final class QuestionnaireViewModel: ObservableObject {
+    enum QuestionCategory: String, CaseIterable {
+        case basics = "BASICS"
+        case lifestyle = "LIFESTYLE" 
+        case wellness = "WELLNESS"
+        
+        var displayName: String {
+            return self.rawValue
+        }
+    }
+    
     enum Question: Int, CaseIterable, Hashable {
         case birthdate
         case name
         case stressLevel        // NEW: Question #3 for stress level
+        case anxietyLevel       // NEW: Anxiety question
         case gender
         case nutritionQuality
         case smokingStatus
         case alcoholConsumption
         case socialConnections
+        case sleepQuality // New sleep quality question
+        case bloodPressureAwareness // New health markers question
         case deviceTracking // New question about health tracking devices
+        case framingComfort          // NEW: tactful framing preference cue
+        case urgencyResponse         // NEW: response to urgency cue
         case lifeMotivation // Moved to last - will be shown after HealthKit
+        
+        var category: QuestionCategory {
+            switch self {
+            case .birthdate, .name, .gender:
+                return .basics
+            case .nutritionQuality, .smokingStatus, .alcoholConsumption:
+                return .lifestyle
+            case .stressLevel, .anxietyLevel, .socialConnections, .sleepQuality, .bloodPressureAwareness, .deviceTracking, .framingComfort, .urgencyResponse, .lifeMotivation:
+                return .wellness
+            }
+        }
+    }
+
+    // Blood pressure categories kept simple for MVP
+    enum BloodPressureCategory: String, CaseIterable, Codable {
+        case normal
+        case unknown
+        case elevatedToStage1
+        case high
+
+        var displayName: String {
+            switch self {
+            case .normal: return "Below 120/80 (Normal)"
+            case .unknown: return "I don't know"
+            case .elevatedToStage1: return "120/80 to 139/89 (Elevated)"
+            case .high: return "140/90 or higher (High)"
+            }
+        }
     }
     
     enum StressLevel: CaseIterable {
@@ -37,6 +80,64 @@ final class QuestionnaireViewModel: ObservableObject {
             case .low: return 3.0
             case .moderateToHigh: return 6.0
             case .veryHigh: return 9.0
+            }
+        }
+    }
+    
+    enum AnxietyLevel: CaseIterable {
+        case minimal            // 10.0 - Most positive
+        case mild               // 8.0
+        case moderate           // 5.0
+        case severe             // 2.0
+        case verySevere         // 1.0 - Most negative
+        
+        var displayName: String {
+            switch self {
+            case .minimal: return "Minimal\n(Rarely feel anxious)"
+            case .mild: return "Mild\n(Occasional worry)"
+            case .moderate: return "Moderate\n(Regular anxiety)"
+            case .severe: return "Severe\n(Frequent anxiety episodes)"
+            case .verySevere: return "Very Severe\n(Constant anxiety/panic)"
+            }
+        }
+        
+        var anxietyValue: Double {
+            switch self {
+            case .minimal: return 10.0
+            case .mild: return 8.0
+            case .moderate: return 5.0
+            case .severe: return 2.0
+            case .verySevere: return 1.0
+            }
+        }
+    }
+
+    // NEW: Tactful framing comfort options (no mention of death or countdowns)
+    enum FramingComfort: CaseIterable {
+        case hardTruths       // prefers direct, complete information
+        case encouragingWins  // prefers deltas and supportive tone
+        case gainsOnly        // prefers only positive progress
+
+        var displayName: String {
+            switch self {
+            case .hardTruths: return "I do best with straight facts"
+            case .encouragingWins: return "Balanced feedback keeps me steady"
+            case .gainsOnly: return "Positive reinforcement keeps me going"
+            }
+        }
+    }
+
+    // NEW: Response to urgency or short timelines, phrased tactfully
+    enum UrgencyResponse: CaseIterable {
+        case energized     // urgency motivates
+        case neutral       // neutral
+        case pressured     // urgency feels discouraging
+
+        var displayName: String {
+            switch self {
+            case .energized: return "Urgency energizes me"
+            case .neutral: return "I can work with any pace"
+            case .pressured: return "I thrive with low-pressure pacing"
             }
         }
     }
@@ -137,6 +238,34 @@ final class QuestionnaireViewModel: ObservableObject {
             case .moderateToGood: return 6.5
             case .limited: return 2.0
             case .isolated: return 1.0
+            }
+        }
+    }
+    
+    enum SleepQuality: CaseIterable {
+        case excellent          // 10.0 - Most positive
+        case good               // 8.0
+        case average            // 6.0
+        case poor               // 3.0
+        case veryPoor           // 1.0 - Most negative
+        
+        var displayName: String {
+            switch self {
+            case .excellent: return "Excellent\n(7-9 hrs, wake refreshed)"
+            case .good: return "Good\n(Usually sleep well)"
+            case .average: return "Average\n(Sometimes restless)"
+            case .poor: return "Poor\n(Often tired, trouble sleeping)"
+            case .veryPoor: return "Very Poor\n(Chronic insomnia/fatigue)"
+            }
+        }
+        
+        var sleepValue: Double {
+            switch self {
+            case .excellent: return 10.0
+            case .good: return 8.0
+            case .average: return 6.0
+            case .poor: return 3.0
+            case .veryPoor: return 1.0
             }
         }
     }
@@ -247,23 +376,19 @@ final class QuestionnaireViewModel: ObservableObject {
     // PERFORMANCE: Use pre-computed static values
     private let calendar = Calendar.current
     
-    // ULTRA-FAST: Lightweight birthdate update with minimal computation - CRITICAL PERFORMANCE FIX
+    // ULTRA-FAST: Zero-lag synchronous birthdate update - CRITICAL PERFORMANCE FIX
     func updateBirthdateFromMonthYear() {
-        // PERFORMANCE: Defer expensive date calculation to background
-        DispatchQueue.global(qos: .userInitiated).async {
-            var components = DateComponents()
-            components.year = self.selectedBirthYear
-            components.month = self.selectedBirthMonth
-            components.day = 15 // Use middle of month as default
-            
-            if let newBirthdate = self.calendar.date(from: components) {
-                DispatchQueue.main.async {
-                    self.birthdate = newBirthdate
-                    // Clear cache so age will be recalculated
-                    self._cachedAge = nil
-                    self._cachedBirthdate = nil
-                }
-            }
+        // PERFORMANCE: Synchronous, lightweight date calculation - no async overhead
+        var components = DateComponents()
+        components.year = selectedBirthYear
+        components.month = selectedBirthMonth
+        components.day = 15 // Use middle of month as default
+        
+        if let newBirthdate = calendar.date(from: components) {
+            birthdate = newBirthdate
+            // Clear cache so age will be recalculated
+            _cachedAge = nil
+            _cachedBirthdate = nil
         }
     }
 
@@ -310,6 +435,12 @@ final class QuestionnaireViewModel: ObservableObject {
     // Social Connections
     @Published var selectedSocialConnectionsQuality: SocialConnectionsQuality?
     
+    // Sleep Quality
+    @Published var selectedSleepQuality: SleepQuality?
+    
+    // Blood Pressure
+    @Published var selectedBloodPressureCategory: BloodPressureCategory?
+
     // Device Tracking
     @Published var selectedDeviceTrackingStatus: DeviceTrackingStatus?
     
@@ -319,13 +450,20 @@ final class QuestionnaireViewModel: ObservableObject {
     // Stress Level
     @Published var selectedStressLevel: StressLevel?
     
+    // Anxiety Level
+    @Published var selectedAnxietyLevel: AnxietyLevel?
+
+    // NEW: Tactful cues
+    @Published var selectedFramingComfort: FramingComfort?
+    @Published var selectedUrgencyResponse: UrgencyResponse?
+    
     // Progress tracking for indicator
     var currentStep: Int {
         // Personalization Intro is step 1, so the first question starts at step 2
         currentQuestion.rawValue + 2 
     }
     var totalSteps: Int {
-        12 // Total steps in the onboarding flow (excluding welcome and dashboard) - added stress question
+        17 // Added framing comfort and urgency response tactful questions
     }
     
     var isComplete: Bool {
@@ -343,6 +481,8 @@ final class QuestionnaireViewModel: ObservableObject {
             return !userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .stressLevel:
             return selectedStressLevel != nil
+        case .anxietyLevel:
+            return selectedAnxietyLevel != nil
         case .gender:
             return selectedGender != nil
         case .nutritionQuality:
@@ -353,8 +493,16 @@ final class QuestionnaireViewModel: ObservableObject {
             return selectedAlcoholFrequency != nil
         case .socialConnections:
             return selectedSocialConnectionsQuality != nil
+        case .sleepQuality:
+            return selectedSleepQuality != nil
+        case .bloodPressureAwareness:
+            return selectedBloodPressureCategory != nil
         case .deviceTracking:
             return selectedDeviceTrackingStatus != nil
+        case .framingComfort:
+            return selectedFramingComfort != nil
+        case .urgencyResponse:
+            return selectedUrgencyResponse != nil
         case .lifeMotivation:
             return selectedLifeMotivation != nil
         }
@@ -368,6 +516,25 @@ final class QuestionnaireViewModel: ObservableObject {
     // Check if we're at the first question
     var isFirstQuestion: Bool {
         return currentQuestion == .birthdate
+    }
+    
+    // Check if we should show a category header for the current question
+    var shouldShowCategoryHeader: Bool {
+        // Show category header for the first question in each category
+        let questionsInOrder = Question.allCases
+        guard let currentIndex = questionsInOrder.firstIndex(of: currentQuestion) else { return false }
+        
+        // Always show for first question
+        if currentIndex == 0 { return true }
+        
+        // Show if the category is different from the previous question
+        let previousQuestion = questionsInOrder[currentIndex - 1]
+        return currentQuestion.category != previousQuestion.category
+    }
+    
+    // Get the current question's category
+    var currentQuestionCategory: QuestionCategory {
+        return currentQuestion.category
     }
     
     // Check if we're at the last question
@@ -393,6 +560,18 @@ final class QuestionnaireViewModel: ObservableObject {
             currentQuestion = nextQuestion
             
             // PERFORMANCE: Persist state in background to avoid UI blocking
+            DispatchQueue.global(qos: .utility).async {
+                UserDefaults.standard.set(nextQuestion.rawValue, forKey: "questionnaire_current_question")
+            }
+        }
+    }
+
+    /// Proceed to next question even if current selection is nil (used for "Not sure")
+    /// Applied rule: Simplicity is KING; minimal surface area to support inline "Not sure" answers
+    func proceedToNextQuestionAllowingNil() {
+        if let nextQuestion = getNextQuestion() {
+            navigationDirection = .forward
+            currentQuestion = nextQuestion
             DispatchQueue.global(qos: .utility).async {
                 UserDefaults.standard.set(nextQuestion.rawValue, forKey: "questionnaire_current_question")
             }

@@ -8,6 +8,7 @@ struct BatteryPageContentView: View {
     @Binding var selectedLifestyleTab: Int
     
     let viewModel: DashboardViewModel
+    @EnvironmentObject private var settingsManager: SettingsManager
     
     var body: some View {
         VStack(spacing: 0) {
@@ -37,11 +38,32 @@ struct BatteryPageContentView: View {
                             showingProjectionHelp = true
                         }
                     },
-                    viewModel: viewModel
+                    viewModel: viewModel,
+                    effectiveStyle: effectiveStyle()
                 )
                 
                 Spacer()
             }
         }
+    }
+
+    private func effectiveStyle() -> SettingsManager.LifespanDisplayStyle {
+        let yearsRemaining = viewModel.lifeProjection?.yearsRemaining
+        // Soft cues from questionnaire
+        let qd = viewModel.getQuestionnaireData()
+        let stressLevel10 = qd?.stressLevel
+        let deviceTracking = qd?.deviceTrackingStatus?.rawValue
+        let emotionalSensitivity10 = qd?.emotionalSensitivity
+        let framingComfort10 = qd?.framingComfortScore
+        let urgencyResponse10 = qd?.urgencyResponseScore
+        return settingsManager.effectiveLifespanDisplayStyle(
+            age: viewModel.currentUserAge,
+            yearsRemaining: yearsRemaining,
+            stressLevel10: stressLevel10,
+            deviceTracking: deviceTracking,
+            emotionalSensitivity10: emotionalSensitivity10,
+            framingComfortScore10: framingComfort10,
+            urgencyResponseScore10: urgencyResponse10
+        )
     }
 } 
