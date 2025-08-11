@@ -1,15 +1,15 @@
 import SwiftUI
 
-/// Main enum to track the onboarding state - Rules: Removed signInWithApple from flow
+/// Main enum to track the onboarding state - Rules: Removed redundant healthKitPermissions screen and signInWithApple
 enum OnboardingStep: Equatable {
     case welcome
     case valueProposition
+    case beforeAfter // New: "You today" vs "In a week"
     case personalizationIntro
     case questionnaire
-    case healthKitPermissions
-    case signInWithApple
     case prePaywallTease
     case payment
+    case attribution // New: How did you hear about us?
     case dashboard
 }
 
@@ -17,10 +17,8 @@ enum OnboardingStep: Equatable {
 struct OnboardingFlow: View {
     @State private var currentStep: OnboardingStep = .welcome
     @EnvironmentObject var appState: AppState
-    @State private var dragOffset: CGFloat = 0
     @State private var dragDirection: Edge? = nil
     @State private var isButtonNavigating: Bool = false
-    @State private var isProgrammaticNavigation: Bool = false
     
     // Add binding for questionnaire navigation
     @State private var shouldExitQuestionnaire: Bool = false
@@ -41,7 +39,7 @@ struct OnboardingFlow: View {
                         dragDirection = nil
                         navigateTo(.valueProposition) 
                     })
-                    .transition(getMaterializeTransition())
+                    .transition(getTransition(forNavigatingTo: currentStep))
                     .zIndex(currentStep == .welcome ? 1 : 0)
                 }
                 
@@ -49,10 +47,20 @@ struct OnboardingFlow: View {
                     ValuePropositionView(onContinue: { 
                         isButtonNavigating = true
                         dragDirection = nil
-                        navigateTo(.personalizationIntro) 
+                        navigateTo(.beforeAfter) 
                     })
-                    .transition(getMaterializeTransition())
+                    .transition(getTransition(forNavigatingTo: currentStep))
                     .zIndex(currentStep == .valueProposition ? 1 : 0)
+                }
+                
+                if currentStep == .beforeAfter {
+                    BeforeAfterComparisonView(onContinue: {
+                        isButtonNavigating = true
+                        dragDirection = nil
+                        navigateTo(.personalizationIntro)
+                    })
+                    .transition(getTransition(forNavigatingTo: currentStep))
+                    .zIndex(currentStep == .beforeAfter ? 1 : 0)
                 }
                 
                 if currentStep == .personalizationIntro {
@@ -61,7 +69,7 @@ struct OnboardingFlow: View {
                         dragDirection = nil
                         navigateTo(.questionnaire) 
                     })
-                    .transition(getMaterializeTransition())
+                    .transition(getTransition(forNavigatingTo: currentStep))
                     .zIndex(currentStep == .personalizationIntro ? 1 : 0)
                 }
                 
@@ -101,9 +109,9 @@ struct OnboardingFlow: View {
                             isButtonNavigating = false
                             dragDirection = .leading
                             
-                            // Questionnaire completed - go to Health permissions
+                            // Questionnaire completed - go directly to pre-paywall tease (skipping Sign in)
                             DispatchQueue.main.async {
-                                navigateTo(.healthKitPermissions)
+                                navigateTo(.prePaywallTease)
                                 
                                 // Reset drag direction after animation
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
@@ -112,33 +120,11 @@ struct OnboardingFlow: View {
                             }
                         }
                     }
-                    .transition(getMaterializeTransition())
+                    .transition(getTransition(forNavigatingTo: currentStep))
                     .zIndex(currentStep == .questionnaire ? 1 : 0)
                 }
                 
-                if currentStep == .healthKitPermissions {
-                    HealthKitPermissionsView(
-                        onContinue: {
-                            isButtonNavigating = true
-                            dragDirection = nil
-                            navigateTo(.signInWithApple)
-                        }
-                    )
-                    .transition(getMaterializeTransition())
-                    .zIndex(currentStep == .healthKitPermissions ? 1 : 0)
-                }
-                
-                if currentStep == .signInWithApple {
-                    SignInWithAppleView(
-                        onContinue: {
-                            isButtonNavigating = true
-                            dragDirection = nil
-                            navigateTo(.prePaywallTease)
-                        }
-                    )
-                    .transition(getMaterializeTransition())
-                    .zIndex(currentStep == .signInWithApple ? 1 : 0)
-                }
+
                 
                 if currentStep == .prePaywallTease {
                     PrePaywallTeaserView(
@@ -149,7 +135,7 @@ struct OnboardingFlow: View {
                             navigateTo(.payment)
                         }
                     )
-                    .transition(getMaterializeTransition())
+                    .transition(getTransition(forNavigatingTo: currentStep))
                     .zIndex(currentStep == .prePaywallTease ? 1 : 0)
                 }
 
@@ -157,10 +143,20 @@ struct OnboardingFlow: View {
                     PaymentView(onContinue: { 
                         isButtonNavigating = true
                         dragDirection = nil
-                        navigateTo(.dashboard) 
+                        navigateTo(.attribution) 
                     })
-                    .transition(getMaterializeTransition())
+                    .transition(getTransition(forNavigatingTo: currentStep))
                     .zIndex(currentStep == .payment ? 1 : 0)
+                }
+                
+                if currentStep == .attribution {
+                    AttributionSourceView(onContinue: {
+                        isButtonNavigating = true
+                        dragDirection = nil
+                        navigateTo(.dashboard)
+                    })
+                    .transition(getTransition(forNavigatingTo: currentStep))
+                    .zIndex(currentStep == .attribution ? 1 : 0)
                 }
                 
                 if currentStep == .dashboard {
@@ -175,127 +171,9 @@ struct OnboardingFlow: View {
                     }
                 }
             }
-            // UX RULE: Simplicity is KING — remove extra global animation to avoid double-animating.
-            // Transitions are now driven only by explicit withAnimation calls for smoother control.
-            .gesture(
-                // iOS-STANDARD: Improved gesture handling with proper thresholds and physics
-                DragGesture(minimumDistance: 8, coordinateSpace: .local) // iOS-standard minimum distance
-                    .onChanged { gesture in
-                        // Skip gesture handling entirely when in questionnaire
-                        if currentStep == .questionnaire {
-                            return
-                        }
-                        
-                        // Reset button navigation flag when user starts dragging
-                        isButtonNavigating = false
-                        isProgrammaticNavigation = false
-                        
-                        // Skip gesture handling for welcome screen and when transitioning to dashboard
-                        guard currentStep != .welcome && currentStep != .dashboard else { return }
-                        
-                        // iOS-STANDARD: Only respond to primarily horizontal gestures
-                        let horizontalDistance = abs(gesture.translation.width)
-                        let verticalDistance = abs(gesture.translation.height)
-                        
-                        if horizontalDistance > verticalDistance * 1.5 { // Must be 1.5x more horizontal
-                            // Determine drag direction
-                            if gesture.translation.width < 0 {
-                                // Dragging to the left (forward)
-                                if currentStep == .questionnaire {
-                                    return
-                                }
-                                
-                                dragDirection = .leading
-                                let nextStep = getNextStep(after: currentStep)
-                                if nextStep != nil {
-                                    // iOS-STANDARD: Natural resistance curve
-                                    let progress = min(abs(gesture.translation.width) / geometry.size.width, 1.0)
-                                    let resistance = 1.0 - (progress * 0.3) // Less resistance for natural feel
-                                    dragOffset = max(gesture.translation.width, -geometry.size.width) * resistance
-                                }
-                            } else if gesture.translation.width > 0 {
-                                // Dragging to the right (backward)
-                                // Don't allow swiping back to welcome view
-                                if currentStep == .valueProposition {
-                                    return
-                                }
-                                
-                                if currentStep == .questionnaire {
-                                    return
-                                }
-                                
-                                dragDirection = .trailing
-                                let previousStep = getPreviousStep(before: currentStep)
-                                if previousStep != nil && previousStep != .welcome {
-                                    // iOS-STANDARD: Natural resistance curve
-                                    let progress = min(abs(gesture.translation.width) / geometry.size.width, 1.0)
-                                    let resistance = 1.0 - (progress * 0.3) // Less resistance for natural feel
-                                    dragOffset = min(gesture.translation.width, geometry.size.width) * resistance
-                                }
-                            }
-                        }
-                    }
-                    .onEnded { gesture in
-                        // Skip gesture handling entirely when in questionnaire
-                        if currentStep == .questionnaire {
-                            return
-                        }
-                        
-                        guard dragDirection != nil else { return }
-                        
-                        // iOS-STANDARD: Reduced threshold for more responsive swiping
-                        let threshold: CGFloat = geometry.size.width * 0.15 // 15% threshold instead of 20%
-                        
-                        if dragDirection == .leading && abs(dragOffset) > threshold {
-                            // Dragged left past threshold - move forward
-                            if let nextStep = getNextStep(after: currentStep) {
-                                // UX: Luxury slow — softer/longer spring (User Rule: Simplicity is KING)
-                                withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
-                                    dragOffset = 0
-                                }
-                                
-                                // iOS-STANDARD: Immediate haptic feedback
-                                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                                impactFeedback.prepare()
-                                impactFeedback.impactOccurred(intensity: 0.6)
-                                
-                                navigateTo(nextStep)
-                                // Reset dragDirection after animation completes
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                    dragDirection = nil
-                                }
-                            }
-                        } else if dragDirection == .trailing && abs(dragOffset) > threshold {
-                            // Dragged right past threshold - move backward
-                            if let previousStep = getPreviousStep(before: currentStep), previousStep != .welcome {
-                                // UX: Luxury slow — softer/longer spring
-                                withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
-                                    dragOffset = 0
-                                }
-                                
-                                // iOS-STANDARD: Immediate haptic feedback
-                                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                                impactFeedback.prepare()
-                                impactFeedback.impactOccurred(intensity: 0.6)
-                                
-                                navigateTo(previousStep)
-                                // Reset dragDirection after animation completes
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                    dragDirection = nil
-                                }
-                            }
-                        } else {
-                            // iOS-STANDARD: Spring back if threshold not met
-                            // UX: Luxury slow — softer/longer spring
-                            withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
-                                dragOffset = 0
-                            }
-                            dragDirection = nil
-                        }
-                    }
-            )
+            // UX RULE: Simplicity is KING — gestures removed. Navigation is button-driven or
+            // programmatic (e.g., questionnaire back/forward) with direction hints via dragDirection.
         }
-        // Removed global animation on currentStep; rely on explicit animations to prevent abruptness
         .onAppear {
             // CRITICAL FIX: Clear any saved questionnaire state when starting onboarding
             // This ensures users always start from the beginning
@@ -366,11 +244,10 @@ struct OnboardingFlow: View {
         )
     }
     
-    private func navigateTo(_ step: OnboardingStep) {
+        private func navigateTo(_ step: OnboardingStep) {
         print("🔍 DEBUG: Navigating from \(currentStep) to \(step), isButtonNavigating=\(isButtonNavigating), dragDirection=\(String(describing: dragDirection))")
         
         // Use spring animation for smoother transitions
-        isProgrammaticNavigation = true
         
         // Log the transition being used
         if dragDirection == .trailing {
@@ -398,33 +275,33 @@ struct OnboardingFlow: View {
         return .asymmetric(insertion: insertion, removal: removal)
     }
     
-    /// Get the next step in the onboarding flow - Rules: Updated to skip sign-in
+    /// Get the next step in the onboarding flow - Rules: Updated to skip redundant HealthKit screen
     private func getNextStep(after step: OnboardingStep) -> OnboardingStep? {
         switch step {
         case .welcome: return .valueProposition
-        case .valueProposition: return .personalizationIntro
+        case .valueProposition: return .beforeAfter
+        case .beforeAfter: return .personalizationIntro
         case .personalizationIntro: return .questionnaire
-        case .questionnaire: return .healthKitPermissions
-        case .healthKitPermissions: return .signInWithApple
-        case .signInWithApple: return .prePaywallTease
+        case .questionnaire: return .prePaywallTease
         case .prePaywallTease: return .payment
-        case .payment: return .dashboard
+        case .payment: return .attribution
+        case .attribution: return .dashboard
         case .dashboard: return nil
         }
     }
     
-    /// Get the previous step in the onboarding flow - Rules: Updated to skip sign-in
+    /// Get the previous step in the onboarding flow - Rules: Updated to skip redundant HealthKit screen
     private func getPreviousStep(before step: OnboardingStep) -> OnboardingStep? {
         switch step {
         case .welcome: return nil
         case .valueProposition: return .welcome
-        case .personalizationIntro: return .valueProposition
+        case .beforeAfter: return .valueProposition
+        case .personalizationIntro: return .beforeAfter
         case .questionnaire: return .personalizationIntro
-        case .healthKitPermissions: return .questionnaire
-        case .signInWithApple: return .healthKitPermissions
-        case .prePaywallTease: return .signInWithApple
-        case .payment: return .signInWithApple
-        case .dashboard: return .payment
+        case .prePaywallTease: return .questionnaire
+        case .payment: return .prePaywallTease
+        case .attribution: return .payment
+        case .dashboard: return .attribution
         }
     }
     

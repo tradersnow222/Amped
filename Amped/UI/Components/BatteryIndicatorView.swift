@@ -151,8 +151,9 @@ struct BatteryIndicatorView: View {
                                     .accessibilityHint("Tap to learn more")
                             }
                             .buttonStyle(.plain)
-                            .frame(width: 28, height: 28)
-                            .contentShape(Circle())
+                            // Keep visual size small but hit target >= 44pt (Fitts's Law)
+                            .minTappableArea(44)
+                            .contentShape(Rectangle())
                         }
                     }
                 }

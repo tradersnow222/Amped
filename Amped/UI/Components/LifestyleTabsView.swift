@@ -6,7 +6,7 @@ struct LifestyleTabsView: View {
     @Binding var shouldPulseTabsForNewUsers: Bool
     
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 8) {
             // Current lifespan tab
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -16,9 +16,8 @@ struct LifestyleTabsView: View {
             } label: {
                 Text("Current Lifespan")
                     .fontWeight(selectedLifestyleTab == 0 ? .bold : .medium)
-                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, minHeight: 44)
                     .padding(.horizontal, 16)
-                    .frame(maxWidth: .infinity)
                     .background(
                         ZStack {
                             if selectedLifestyleTab == 0 {
@@ -36,6 +35,8 @@ struct LifestyleTabsView: View {
                     )
                     .foregroundColor(selectedLifestyleTab == 0 ? Color.ampedGreen : .gray)
             }
+            .buttonStyle(.plain)
+            .minTappableArea(44)
             
             // Potential lifespan tab
             Button {
@@ -46,9 +47,8 @@ struct LifestyleTabsView: View {
             } label: {
                 Text("Potential Lifespan")
                     .fontWeight(selectedLifestyleTab == 1 ? .bold : .medium)
-                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, minHeight: 44)
                     .padding(.horizontal, 16)
-                    .frame(maxWidth: .infinity)
                     .background(
                         ZStack {
                             if selectedLifestyleTab == 1 {
@@ -66,6 +66,8 @@ struct LifestyleTabsView: View {
                     )
                     .foregroundColor(selectedLifestyleTab == 1 ? Color.ampedGreen : .gray)
             }
+            .buttonStyle(.plain)
+            .minTappableArea(44)
         }
         .background(
             RoundedRectangle(cornerRadius: 12)

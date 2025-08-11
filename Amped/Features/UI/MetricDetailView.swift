@@ -62,6 +62,8 @@ struct MetricDetailView: View {
                             .foregroundColor(.white.opacity(0.5))
                     }
                 }
+                .buttonStyle(.plain)
+                .minTappableArea(44)
                 .hapticFeedback()
                 .padding(.bottom, 24)
                 

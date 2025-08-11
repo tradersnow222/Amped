@@ -883,6 +883,7 @@ class ProfileDetailsViewModel: ObservableObject {
         let questionnaireData = QuestionnaireData(
             deviceTrackingStatus: nil,
             lifeMotivation: nil,
+            desiredDailyLifespanGainMinutes: nil,
             nutritionQuality: nutritionQuality,
             smokingStatus: smokingStatus,
             alcoholConsumption: alcoholConsumption,

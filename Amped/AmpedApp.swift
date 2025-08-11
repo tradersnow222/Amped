@@ -112,7 +112,8 @@ struct AmpedApp: App {
         switch newPhase {
         case .active:
             analyticsService.trackEvent(.appLaunch)
-            // Rules: Trigger intro animations when returning from background
+            // Rules: Increment app launch count and trigger intro animations when returning from background
+            appState.incrementAppLaunchCount()
             appState.handleAppReturnFromBackground()
             
             // Start background health updates if permissions are available AND setting is enabled
@@ -148,6 +149,7 @@ final class AppState: ObservableObject {
     @Published var shouldTriggerIntroAnimations: Bool = false
     @Published var isFirstDashboardViewAfterOnboarding: Bool = false
     @Published var hasShownSignInPopupThisSession: Bool = false
+    @Published var appLaunchCount: Int = 0
     
     // MARK: - Initialization
     
@@ -160,10 +162,13 @@ final class AppState: ObservableObject {
     
     // MARK: - Persistence Methods
     
-    /// Load onboarding completion state from UserDefaults
+    /// Load onboarding completion state and app launch count from UserDefaults
     private func loadOnboardingState() async {
         // Check both UserDefaults keys for onboarding completion
         let hasCompletedFromDefaults = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+        
+        // Load app launch count
+        appLaunchCount = UserDefaults.standard.integer(forKey: "appLaunchCount")
         
         // Also check UserProfile for consistency
         if let profileData = UserDefaults.standard.data(forKey: "user_profile"),
@@ -213,6 +218,12 @@ final class AppState: ObservableObject {
         isFirstDashboardViewAfterOnboarding = false
     }
     
+    /// Increment app launch count
+    func incrementAppLaunchCount() {
+        appLaunchCount += 1
+        UserDefaults.standard.set(appLaunchCount, forKey: "appLaunchCount")
+    }
+    
     /// Reset onboarding state (for testing/debugging)
     func resetOnboarding() {
         hasCompletedOnboarding = false
@@ -224,6 +235,10 @@ final class AppState: ObservableObject {
         
         // Clear any saved questionnaire data using QuestionnaireManager
         QuestionnaireManager().clearAllData()
+        
+        // Reset app launch count for testing
+        appLaunchCount = 0
+        UserDefaults.standard.removeObject(forKey: "appLaunchCount")
         
         saveOnboardingState()
     }

@@ -18,7 +18,8 @@ struct PrimaryButtonStyle: ButtonStyle {
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
             .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity, minHeight: 40)
+            // Fitts's Law: primary CTAs should be big and easy to hit
+            .frame(maxWidth: .infinity, minHeight: 52)
             .padding(.vertical, 10)
             .padding(.horizontal, 16)
             .background(
@@ -77,8 +78,8 @@ struct QuestionnaireButtonStyle: ButtonStyle {
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
             .multilineTextAlignment(.center)
-            // Compact iOS button sizing for all answer buttons
-            .frame(maxWidth: .infinity, minHeight: 40)
+            // Fitts's Law: ensure comfortable hit target for dense answers
+            .frame(maxWidth: .infinity, minHeight: 48)
             .padding(.vertical, 8)
             .padding(.horizontal, 16)
             .background(
@@ -139,7 +140,8 @@ struct ContinueButtonStyle: ButtonStyle {
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
             .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity, minHeight: 40)
+            // Fitts's Law: continue buttons match primary height for consistency
+            .frame(maxWidth: .infinity, minHeight: 52)
             .padding(.vertical, 10)
             .padding(.horizontal, 16)
             .background(
@@ -203,7 +205,8 @@ struct UltraOptimizedNameButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 17, weight: .medium, design: .rounded))
-            .frame(maxWidth: .infinity, minHeight: 40)
+            // Maintain minimum hit target
+            .frame(maxWidth: .infinity, minHeight: 44)
             .padding(.vertical, 10)
             .padding(.horizontal, 16)
             .background(
@@ -241,4 +244,4 @@ extension View {
     func ultraOptimizedNameButtonStyle(isEnabled: Bool = true) -> some View {
         self.buttonStyle(UltraOptimizedNameButtonStyle(isEnabled: isEnabled))
     }
-} 
+}

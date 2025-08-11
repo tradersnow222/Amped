@@ -731,14 +731,18 @@ struct DashboardView: View {
     
     /// Check if we should show the sign-in popup
     private func checkAndShowSignInIfNeeded() {
-        // Rules: Show popup on every app launch from second session onwards until user signs in
-        let appLaunchCount = UserDefaults.standard.integer(forKey: "appLaunchCount")
+        // Rules: Show popup only after completing onboarding and on second app launch onwards
         
         // Show popup if:
-        // 1. User is not authenticated
-        // 2. This is at least the second app launch
-        // 3. Haven't shown the popup in this session yet
-        if !appState.isAuthenticated && appLaunchCount >= 2 && !appState.hasShownSignInPopupThisSession {
+        // 1. User has completed onboarding
+        // 2. User is not authenticated
+        // 3. This is at least the second app launch
+        // 4. Haven't shown the popup in this session yet
+        if appState.hasCompletedOnboarding && 
+           !appState.isAuthenticated && 
+           appState.appLaunchCount >= 2 && 
+           !appState.hasShownSignInPopupThisSession {
+            
             // Mark that we've shown the popup this session
             appState.hasShownSignInPopupThisSession = true
             

@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import SwiftUI
 
 /// ViewModel for the Questionnaire functionality
@@ -324,6 +325,10 @@ final class QuestionnaireViewModel: ObservableObject {
     
     // Navigation direction tracking for proper iOS-standard transitions
     @Published var navigationDirection: NavigationDirection = .forward
+    // Track the previously displayed question to allow adaptive transitions
+    @Published var previousQuestion: Question? = nil
+    // Debug logging
+    private let transitionLogger = Logger(subsystem: "com.amped.app", category: "QuestionnaireTransition")
     
     enum NavigationDirection {
         case forward    // Moving deeper into questionnaire (right to left transition)
@@ -437,6 +442,8 @@ final class QuestionnaireViewModel: ObservableObject {
     
     // Sleep Quality
     @Published var selectedSleepQuality: SleepQuality?
+    // New: Desired daily lifespan gain minutes (5..120)
+    @Published var desiredDailyLifespanGainMinutes: Int = 5
     
     // Blood Pressure
     @Published var selectedBloodPressureCategory: BloodPressureCategory?
@@ -556,6 +563,10 @@ final class QuestionnaireViewModel: ObservableObject {
         if let nextQuestion = getNextQuestion() {
             // Set forward direction for iOS-standard right-to-left transition
             navigationDirection = .forward
+            // Record previous question for adaptive transitions and logging
+            let fromQuestion = currentQuestion
+            previousQuestion = fromQuestion
+            transitionLogger.info("➡️ Proceeding from \(String(describing: fromQuestion)) to \(String(describing: nextQuestion))")
             // CRITICAL FIX (Applied rule: Simplicity is KING):
             // Ensure the transition direction is applied to the CURRENT view before it's removed.
             // We set the direction first, then update the question on the next run loop so the
@@ -595,6 +606,9 @@ final class QuestionnaireViewModel: ObservableObject {
         if let prevQuestion = getPreviousQuestion() {
             // Set backward direction for iOS-standard left-to-right transition
             navigationDirection = .backward
+            let fromQuestion = currentQuestion
+            previousQuestion = fromQuestion
+            transitionLogger.info("⬅️ Moving back from \(String(describing: fromQuestion)) to \(String(describing: prevQuestion))")
             // CRITICAL FIX: Defer question change so the outgoing view updates its transition first
             DispatchQueue.main.async {
                 withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {

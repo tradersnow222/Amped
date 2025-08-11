@@ -79,7 +79,7 @@ struct QuestionnaireView: View {
                         questionView(for: viewModel.currentQuestion)
                             .padding()
                             .id("question_\(viewModel.currentQuestion.rawValue)")
-                            .transition(getDirectionalTransition())
+                            .transition(getAdaptiveTransition())
                     }
                     .clipped() // Ensure off-screen content doesn't show
                     // UX RULE: Remove global animation; transitions are driven by explicit springs
@@ -116,6 +116,8 @@ struct QuestionnaireView: View {
                     }
             )
         }
+        // Prevent keyboard safe-area reflow during transitions to reduce layout work
+        .ignoresSafeArea(.keyboard)
         .onAppear {
             // CRITICAL PERFORMANCE FIX: Zero main thread blocking on appear
             // Move ALL initialization to background with lowest priority
@@ -132,8 +134,13 @@ struct QuestionnaireView: View {
         }
     }
     
-    // MARK: - Direction-aware Transition (prevents overlap and reduces perceived lag)
-    private func getDirectionalTransition() -> AnyTransition {
+    // MARK: - Adaptive Transition
+    private func getAdaptiveTransition() -> AnyTransition {
+        // Crossfade if either side is the heavy wheel picker to avoid layout thrash
+        let involvesHeavyPicker = viewModel.currentQuestion == .birthdate || viewModel.previousQuestion == .birthdate
+        if involvesHeavyPicker {
+            return .opacity
+        }
         switch viewModel.navigationDirection {
         case .forward:
             return .asymmetric(
@@ -237,6 +244,7 @@ struct QuestionnaireView: View {
         viewModel.navigationDirection = .forward
         
         // UX: Luxury slow spring to match onboarding transitions
+        // Avoid nested animations during heavy view changes
         withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
             viewModel.currentQuestion = .lifeMotivation
         }
@@ -251,6 +259,7 @@ struct QuestionnaireView: View {
         viewModel.navigationDirection = .forward
         
         // UX: Luxury slow spring to match onboarding transitions
+        // Avoid nested animations during heavy view changes
         withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
             viewModel.currentQuestion = .lifeMotivation
         }
@@ -296,9 +305,8 @@ struct QuestionnaireView: View {
         viewModel.navigationDirection = .forward
         
         // UX: Luxury slow spring to match onboarding transitions
-        withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
-            viewModel.proceedToNextQuestion()
-        }
+        // Avoid double-wrapping the internal animation inside proceedToNextQuestion
+        viewModel.proceedToNextQuestion()
     }
 }
 

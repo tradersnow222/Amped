@@ -5,6 +5,7 @@ import OSLog
 struct QuestionnaireData: Codable {
     let deviceTrackingStatus: QuestionnaireViewModel.DeviceTrackingStatus?
     let lifeMotivation: QuestionnaireViewModel.LifeMotivation?
+    let desiredDailyLifespanGainMinutes: Int?
     let nutritionQuality: Double?
     let smokingStatus: Double?
     let alcoholConsumption: Double?
@@ -205,6 +206,7 @@ final class QuestionnaireManager: ObservableObject {
         let questionnaireData = QuestionnaireData(
             deviceTrackingStatus: viewModel.selectedDeviceTrackingStatus,
             lifeMotivation: viewModel.selectedLifeMotivation,
+            desiredDailyLifespanGainMinutes: viewModel.desiredDailyLifespanGainMinutes,
             nutritionQuality: viewModel.selectedNutritionQuality?.nutritionValue,
             smokingStatus: viewModel.selectedSmokingStatus?.smokingValue,
             alcoholConsumption: viewModel.selectedAlcoholFrequency?.alcoholValue,

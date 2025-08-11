@@ -111,7 +111,7 @@ struct PeriodSelectorView: View {
     var onPeriodChanged: (ImpactDataPoint.PeriodType) -> Void
     
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 8) {
             ForEach(ImpactDataPoint.PeriodType.allCases, id: \.self) { period in
                 Button {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -122,9 +122,8 @@ struct PeriodSelectorView: View {
                 } label: {
                     Text(period.displayName)
                         .fontWeight(selectedPeriod == period ? .bold : .medium)
-                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                         .padding(.horizontal, 16)
-                        .frame(maxWidth: .infinity)
                         .background(
                             ZStack {
                                 if selectedPeriod == period {
@@ -142,6 +141,8 @@ struct PeriodSelectorView: View {
                         )
                         .foregroundColor(selectedPeriod == period ? Color.ampedGreen : .gray)
                 }
+                .buttonStyle(.plain)
+                .minTappableArea(44)
             }
         }
         .padding(.horizontal, 16)

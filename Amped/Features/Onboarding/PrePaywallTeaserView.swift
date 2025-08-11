@@ -122,10 +122,10 @@ struct PrePaywallTeaserView: View {
                     .padding(.horizontal, 40)
 
                 VStack(alignment: .leading, spacing: 12) {
-                    credibilityRow(text: "1,217 longevity studies")
-                    credibilityRow(text: "53+ million participants")
-                    credibilityRow(text: "Backed by science")
-                    credibilityRow(text: "Powered by on‑device intelligence")
+                    credibilityRow(text: "Built on peer‑reviewed research")
+                    credibilityRow(text: "On‑device. Private by default")
+                    credibilityRow(text: "Works with Apple Health data")
+                    credibilityRow(text: "See the studies anytime in Settings → Research")
                 }
                 .padding(.horizontal, 40)
 

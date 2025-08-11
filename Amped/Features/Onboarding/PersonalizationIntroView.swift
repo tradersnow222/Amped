@@ -108,7 +108,7 @@ struct PersonalizationIntroView: View {
                         Text("Continue")
                             .fontWeight(.bold)
                             .font(.system(.title3, design: .rounded))
-                            .frame(maxWidth: .infinity, minHeight: 40)
+                            .frame(maxWidth: .infinity, minHeight: 52)
                             .padding(.vertical, 10)
                             .padding(.horizontal, 16)
                             .background(Color.ampedGreen)
@@ -116,6 +116,7 @@ struct PersonalizationIntroView: View {
                             .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
                             .cornerRadius(14)
                     }
+                    .minTappableArea(52)
                     .hapticFeedback(.medium)
                     .padding(.horizontal, 40)
                     .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)

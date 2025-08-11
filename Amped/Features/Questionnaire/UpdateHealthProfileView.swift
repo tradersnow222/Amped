@@ -949,6 +949,8 @@ struct MetricUpdateCard<Content: View>: View {
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
             }
+            .buttonStyle(.plain)
+            .minTappableArea(44)
             
             // Expandable content
             if isExpanded {

@@ -1,4 +1,4 @@
-  import SwiftUI
+    import SwiftUI
 
 struct ContentView: View {
     @State private var selectedView: AppView = .onboardingFlow
@@ -12,8 +12,6 @@ struct ContentView: View {
         case welcome
         case personalizationIntro
         case questionnaire
-        case healthkitPermissions
-        case signInWithApple
         case payment
         case dashboard
         case onboardingFlow
@@ -25,8 +23,6 @@ struct ContentView: View {
             case .welcome: return "Welcome"
             case .personalizationIntro: return "Personalization Intro"
             case .questionnaire: return "Questionnaire"
-            case .healthkitPermissions: return "HealthKit Permissions"
-            case .signInWithApple: return "Sign In With Apple"
             case .payment: return "Payment"
             case .dashboard: return "Dashboard"
             case .onboardingFlow: return "Onboarding Flow"
@@ -65,10 +61,6 @@ struct ContentView: View {
                         PersonalizationIntroView(onContinue: {})
                     case .questionnaire:
                         QuestionnaireView(exitToPersonalizationIntro: .constant(false), proceedToHealthPermissions: .constant(false))
-                    case .healthkitPermissions:
-                        HealthKitPermissionsView(onContinue: {})
-                    case .signInWithApple:
-                        SignInWithAppleView(onContinue: {})
                     case .payment:
                         PaymentView(onContinue: {})
                             .environmentObject(appState)

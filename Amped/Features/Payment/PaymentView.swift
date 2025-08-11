@@ -153,6 +153,8 @@ struct PaymentView: View {
                     .background(Color.gray.opacity(0.05)) // Made more subtle
                     .clipShape(Circle())
             }
+            .buttonStyle(.plain)
+            .minTappableArea(44)
             .hapticFeedback(.heavy)
             
             Spacer()

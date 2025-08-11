@@ -36,9 +36,12 @@ struct BackButton: View {
                 }
             }
             .foregroundColor(.ampedGreen)
+            // Fitts's Law + HIG: minimum 44x44 hit target; visually subtle
             .padding(.vertical, 10)
             .padding(.horizontal, 16)
         }
+        .buttonStyle(.plain)
+        .minTappableArea(44)
         .accessibilityLabel(showText ? "Go back to \(text ?? "previous")" : "Go back")
         .hapticFeedback(.light)
     }
