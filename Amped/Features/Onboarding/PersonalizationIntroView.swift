@@ -15,8 +15,7 @@ struct PersonalizationIntroView: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            // Background
-            Color.clear.withDeepBackground()
+            // Content without background since parent provides static background
             
             VStack(spacing: 0) {
                 // Main content
@@ -113,13 +112,12 @@ struct PersonalizationIntroView: View {
                             .padding(.horizontal, 16)
                             .background(Color.ampedGreen)
                             .foregroundColor(.white)
-                            .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
                             .cornerRadius(14)
                     }
                     .minTappableArea(52)
                     .hapticFeedback(.medium)
                     .padding(.horizontal, 40)
-                    .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
+                    .shadow(color: Color.black.opacity(0.3), radius: 3, x: 0, y: 2)
                     .opacity(animateElements ? 1 : 0)
                     .animation(.easeOut(duration: 0.9).delay(0.55), value: animateElements)
                     

@@ -10,10 +10,10 @@ struct ScientificLoadingView: View {
     
     // Loading statistics to display
     private let statistics = [
-        "1,217 Longevity studies",
-        "53+ million participants",
+        "Based on 1,217 studies, 53 million participants",
         "Backed by science",
-        "Powered by AI"
+        "Powered by AI",
+        "Ready to analyze"
     ]
     
     var body: some View {

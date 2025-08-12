@@ -572,14 +572,8 @@ final class QuestionnaireViewModel: ObservableObject {
             // We set the direction first, then update the question on the next run loop so the
             // outgoing view uses the correct removal edge on the first transition.
             DispatchQueue.main.async {
-                // Apply a faster, simpler animation when moving from heavy wheel picker to text input
-                let animation: Animation
-                if fromQuestion == .birthdate && nextQuestion == .name {
-                    animation = .easeOut(duration: 0.20)
-                } else {
-                    animation = .spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)
-                }
-                withAnimation(animation) {
+                // Applied rule: Simplicity is KING — use consistent spring animation for all transitions
+                withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
                     self.currentQuestion = nextQuestion
                 }
             }

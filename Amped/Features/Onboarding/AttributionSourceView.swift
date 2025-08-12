@@ -58,6 +58,7 @@ struct AttributionSourceView: View {
                 .padding(.bottom, 40)
             }
         }
+        .bottomSafeAreaPadding() // Keep bottom button clear of the home indicator (iOS 16+ compatible)
         .navigationBarHidden(true)
     }
 

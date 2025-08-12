@@ -693,7 +693,7 @@ struct QuestionViews {
                         .padding(.bottom, 10)
                         .frame(maxWidth: .infinity)
                     
-                    ScientificCitation(text: "Based on 39 studies, 140 meta-analyses", metricType: .socialConnectionsQuality)
+                    ScientificCitation(text: "Based on 39 studies, 1.8 million participants", metricType: .socialConnectionsQuality)
                 }
                 
                 Spacer()

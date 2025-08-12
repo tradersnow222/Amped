@@ -18,7 +18,7 @@ struct BeforeAfterComparisonView: View {
 
     var body: some View {
         ZStack {
-            Color.clear.withDeepBackground()
+            // Content without background since parent provides static background
 
             VStack(spacing: 0) {
                 // Premium headline + subheadline to match onboarding typography
@@ -114,8 +114,7 @@ struct BeforeAfterComparisonView: View {
                 RoundedRectangle(cornerRadius: 20)
                     .fill(Color.clear)
                     .frame(width: 136, height: 196)
-                    .shadow(color: color.opacity(0.30), radius: 16, x: 0, y: 8)
-                    .shadow(color: color.opacity(0.18), radius: 24, x: 0, y: 0)
+                    .shadow(color: color.opacity(0.25), radius: 12, x: 0, y: 6)
 
                 ZStack(alignment: .bottom) {
                     RoundedRectangle(cornerRadius: 18)
@@ -147,7 +146,7 @@ struct BeforeAfterComparisonView: View {
                     Text("\(Int(fill * 100))%")
                         .font(.system(size: 18, weight: .semibold, design: .rounded))
                         .foregroundColor(.white.opacity(0.95))
-                        .shadow(color: .black.opacity(0.45), radius: 2, x: 0, y: 1)
+                        .shadow(color: .black.opacity(0.3), radius: 1.5, x: 0, y: 1)
                         .padding(.bottom, 10)
                         .opacity(opacity)
                 }

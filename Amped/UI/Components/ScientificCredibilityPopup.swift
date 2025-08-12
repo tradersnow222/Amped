@@ -22,7 +22,7 @@ struct ScientificCredibilityPopup: View {
                     bottomTrailingRadius: 0,
                     topTrailingRadius: glassTheme.largeGlassCornerRadius
                 )
-                .fill(Color.black.opacity(0.6))
+                .fill(Color.ampedDark.opacity(0.85))
                 // Remove border overlay to avoid odd grey edge on top corners
                 .frame(height: 28)
                 
@@ -169,7 +169,7 @@ struct ScientificCredibilityPopup: View {
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 28)
-            .background(Color.black.opacity(0.6))
+            .background(Color.ampedDark.opacity(0.85))
         }
         .frame(maxWidth: .infinity)
         .background(Color.clear)

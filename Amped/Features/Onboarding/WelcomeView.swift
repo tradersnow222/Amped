@@ -22,25 +22,7 @@ struct WelcomeView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Battery image as full-screen background
-                Image("BatteryBackground")
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                    .overlay(
-                        // Overlay to ensure text readability
-                        LinearGradient(
-                            gradient: Gradient(
-                                colors: [
-                                    Color.black.opacity(0.4),
-                                    Color.black.opacity(0.2)
-                                ]
-                            ),
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .clipped()
+                // Content without background since parent provides static background
                 
                 VStack {
                     // Battery content area
@@ -51,8 +33,7 @@ struct WelcomeView: View {
                             Text("Amped")
                                 .font(.system(size: 42, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
-                                .shadow(color: Color.ampedGreen, radius: 1.8, x: 0, y: 0)
-                                .shadow(color: Color.white.opacity(0.5), radius: 0.4, x: 0, y: 0)
+                                .shadow(color: Color.ampedGreen.opacity(0.8), radius: 1.5, x: 0, y: 0)
                                 .minimumScaleFactor(0.7)
                                 .lineLimit(1)
                                 .frame(maxWidth: innerGeometry.size.width * 0.8)
@@ -64,7 +45,7 @@ struct WelcomeView: View {
                                 Image(systemName: "bolt.fill")
                                     .font(.system(size: 80))
                                     .foregroundColor(.white.opacity(glowOpacity))
-                                    .shadow(color: Color.ampedGreen.opacity(0.8), radius: 10, x: 0, y: 0)
+                                    .shadow(color: Color.ampedGreen.opacity(0.6), radius: 8, x: 0, y: 0)
                                 
                                 // Main icon
                                 Image(systemName: "bolt.fill")
@@ -91,8 +72,7 @@ struct WelcomeView: View {
                                 .font(.callout.monospaced())
                                 .fontWeight(.bold)
                                 .foregroundColor(.white)
-                                .shadow(color: Color.ampedGreen, radius: 1.5, x: 0, y: 0)
-                                .shadow(color: Color.white.opacity(0.5), radius: 0.3, x: 0, y: 0)
+                                .shadow(color: Color.ampedGreen.opacity(0.8), radius: 1.2, x: 0, y: 0)
                                 .lineLimit(1)
                             
                             Text("in real-time")
@@ -117,7 +97,6 @@ struct WelcomeView: View {
         }
         .edgesIgnoringSafeArea(.all)
         .navigationBarHidden(true)
-        .withWelcomeTransition(isPresented: isAppeared)
         .onTapGesture {
             // Add subtle haptic feedback for user interaction
             HapticFeedback.buttonPress()
@@ -133,7 +112,7 @@ struct WelcomeView: View {
                 
                 // Start lightning bolt pulse animation after elements appear
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    withAnimation(.easeInOut(duration: pulseAnimationDuration).repeatForever(autoreverses: true)) {
+                    withAnimation(.easeInOut(duration: pulseAnimationDuration).repeatCount(5, autoreverses: true)) {
                         glowOpacity = 0.95
                         scale = 1.12
                     }

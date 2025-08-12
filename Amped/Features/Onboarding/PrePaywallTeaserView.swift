@@ -90,12 +90,7 @@ struct PrePaywallTeaserView: View {
     // MARK: - View
     var body: some View {
         ZStack {
-            LinearGradient(
-                gradient: Gradient(colors: [Color.black, Color.ampedDark.opacity(0.85)]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            // Background handled by parent, no need for local background
 
             VStack(spacing: 28) {
                 Spacer(minLength: 16)
@@ -136,6 +131,7 @@ struct PrePaywallTeaserView: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.white.opacity(0.85))
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 40)
 
                 VStack(alignment: .leading, spacing: 12) {
@@ -148,6 +144,7 @@ struct PrePaywallTeaserView: View {
 
                 Text("Amped turns your habits into time. Continue to see your full plan and next steps.")
                     .font(.system(size: 14, weight: .semibold))
+                    .fixedSize(horizontal: false, vertical: true)
                     .foregroundColor(.ampedGreen.opacity(0.9))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 36)
@@ -169,6 +166,7 @@ struct PrePaywallTeaserView: View {
                 .padding(.bottom, 40)
             }
         }
+        .bottomSafeAreaPadding() // Prevent pricing CTA from being obscured by home indicator (iOS 16+ compatible)
         .task {
             // Compute actual total impact from questionnaire answers only
             // Rules referenced: Simplicity is KING; Correctness over speed; Avoid placeholders
@@ -193,6 +191,7 @@ struct PrePaywallTeaserView: View {
             Text(text)
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.white)
+                .fixedSize(horizontal: false, vertical: true)
             Spacer()
         }
     }

@@ -20,11 +20,15 @@ struct QuestionnaireView: View {
     @State private var animationCompleted = false
     // Applied rule: Simplicity is KING — rely on system keyboard avoidance for name entry
     
+    // Background control
+    private let includeBackground: Bool
+    
     // MARK: - Initializers
     
-    init(exitToPersonalizationIntro: Binding<Bool>, proceedToHealthPermissions: Binding<Bool>, startFresh: Bool = false) {
+    init(exitToPersonalizationIntro: Binding<Bool>, proceedToHealthPermissions: Binding<Bool>, startFresh: Bool = false, includeBackground: Bool = true) {
         self._exitToPersonalizationIntro = exitToPersonalizationIntro
         self._proceedToHealthPermissions = proceedToHealthPermissions
+        self.includeBackground = includeBackground
         
         // Create the StateObject before init completes
         // CRITICAL FIX: Pass startFresh parameter to ensure fresh start when needed
@@ -45,8 +49,10 @@ struct QuestionnaireView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Deep background
-                Color.clear.withDeepBackground()
+                // Conditionally include background based on context
+                if includeBackground {
+                    Color.clear.withDeepBackground()
+                }
                 
                 VStack(spacing: 0) {
                     // Back button should always be above the category text (User rule: Simplicity is KING)
@@ -120,30 +126,15 @@ struct QuestionnaireView: View {
         // Applied rule: Simplicity is KING — let system avoid keyboard on the name screen only
         .modifier(ConditionalKeyboardIgnore(shouldIgnore: viewModel.currentQuestion != .name))
         .onAppear {
-            // CRITICAL PERFORMANCE FIX: Zero main thread blocking on appear
-            // Move ALL initialization to background with lowest priority
-            DispatchQueue.global(qos: .background).async {
-                // Only pre-warm if HealthKit is available
-                guard HKHealthStore.isHealthDataAvailable() else { return }
-                
-                // Pre-compute health types in background
-                _ = HealthKitManager.precomputedHealthTypes
-                
-                // Initialize HealthKit manager in background
-                _ = HealthKitManager.shared
-            }
+            // Rules: Simplicity is KING - removed background initialization
+            // HealthKit will be initialized when actually needed
         }
     }
     
     // MARK: - Adaptive Transition
     private func getAdaptiveTransition() -> AnyTransition {
-        // Applied rule: Simplicity is KING — remove crossfade artifacts.
-        // If either side involves the heavy wheel picker, avoid crossfade to prevent the
-        // previous pickers from appearing faintly in the background during transitions.
-        let involvesHeavyPicker = viewModel.currentQuestion == .birthdate || viewModel.previousQuestion == .birthdate
-        if involvesHeavyPicker {
-            return .identity // immediate replacement to ensure no ghosting
-        }
+        // Applied rule: Simplicity is KING — use consistent transitions throughout
+        // Use the same slide transitions for all questions, including birthdate picker
         switch viewModel.navigationDirection {
         case .forward:
             return .asymmetric(

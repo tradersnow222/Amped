@@ -56,6 +56,7 @@ struct PainPointsSelectionView: View {
                 .padding(.bottom, 40)
             }
         }
+        .bottomSafeAreaPadding() // Ensure bottom CTA is not obscured by the home indicator (iOS 16+ compatible)
         .navigationBarHidden(true)
     }
 

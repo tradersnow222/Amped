@@ -16,8 +16,7 @@ struct ValuePropositionView: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            // Background - follows PersonalizationIntroView pattern
-            Color.clear.withDeepBackground()
+            // Content without background since parent provides static background
             
             VStack(spacing: 0) {
                 // Main content - no scroll view needed
@@ -106,7 +105,6 @@ struct ValuePropositionView: View {
                     .opacity(animateElements ? 1 : 0)
                     .scaleEffect(animateElements ? 1 : 0.9)
                     .animation(.spring(response: 0.72, dampingFraction: 0.978).delay(0.7), value: animateElements)
-                    .withButtonInitiatedTransition()
                     
                     // Add spacer to match other onboarding screens
                     Spacer().frame(height: 120)
@@ -127,8 +125,8 @@ struct ValuePropositionView: View {
                     batteryFillLevel = 0.85
                 }
                 
-                // Add subtle glow pulse animation
-                withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+                // Add subtle glow pulse animation with limited repetitions
+                withAnimation(.easeInOut(duration: 1.8).repeatCount(3, autoreverses: true)) {
                     glowOpacity = 0.7
                     iconScale = 1.1
                 }
@@ -147,10 +145,8 @@ struct ValuePropositionView: View {
                     .stroke(Color.ampedGreen, lineWidth: 4)
                     .frame(width: 140, height: 80)
                 
-                // Battery fill that animates from empty to filled
-                GeometryReader { geometry in
-                    let fillWidth = (140 - 8) * batteryFillLevel // Account for stroke width
-                    
+                // Battery fill that animates from empty to filled - Rules: Simplicity is KING
+                HStack(spacing: 0) {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(
                             LinearGradient(
@@ -162,10 +158,12 @@ struct ValuePropositionView: View {
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: fillWidth, height: 72)
-                        .position(x: 4 + fillWidth/2, y: geometry.size.height/2)
+                        .frame(width: max(0, (140 - 8) * batteryFillLevel), height: 72)
+                    
+                    Spacer(minLength: 0)
                 }
-                .frame(width: 140, height: 80)
+                .frame(width: 140 - 8, height: 72)
+                .padding(4)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 
                 // Battery tip

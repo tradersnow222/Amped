@@ -104,6 +104,7 @@ struct PaymentView: View {
                 dismissButton: .default(Text("Got it"))
             )
         }
+        .bottomSafeAreaPadding() // Keep pricing CTAs clear of the home indicator across devices (iOS 16+ compatible)
         .onAppear {
             viewModel.appState = appState
             
