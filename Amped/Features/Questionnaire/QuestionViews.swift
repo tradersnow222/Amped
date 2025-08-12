@@ -29,20 +29,66 @@ func CategoryHeader(category: QuestionnaireViewModel.QuestionCategory) -> some V
     }
 }
 
-/// Helper function to create scientific citation text below questions
-func ScientificCitation(text: String) -> some View {
-    HStack {
-        Image(systemName: "info.circle")
-            .font(.system(size: 12))
-            .foregroundColor(.white.opacity(0.5))
-        
-        Text(text)
-            .font(.system(size: 12, weight: .regular))
-            .foregroundColor(.white.opacity(0.5))
-            .lineLimit(2)
+// MARK: - Utilities
+/// Removes the default dimming and background from SwiftUI .sheet for a clearer presentation
+/// Simplicity is KING: small, focused modifier
+struct ClearSheetBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        Group {
+            if #available(iOS 16.4, *) {
+                content
+                    .background(.clear)
+                    .presentationBackground(.clear)
+                    .presentationCornerRadius(0) // we'll handle corner shape inside the popup
+            } else {
+                content
+                    .background(.clear)
+            }
+        }
     }
-    .padding(.top, 8)
-    .padding(.bottom, 40) // CRITICAL FIX: Consistent spacing between citation and buttons for all questions
+}
+
+/// Interactive scientific citation view with popup
+struct ScientificCitation: View {
+    let text: String
+    let metricType: HealthMetricType?
+    @State private var showPopup = false
+    
+    var body: some View {
+        HStack {
+            Button(action: {
+                if metricType != nil {
+                    showPopup = true
+                }
+            }) {
+                Image(systemName: metricType != nil ? "info.circle.fill" : "info.circle")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(metricType != nil ? 0.7 : 0.5))
+            }
+            .disabled(metricType == nil)
+            
+            Text(text)
+                .font(.system(size: 12, weight: .regular))
+                .foregroundColor(.white.opacity(0.5))
+                .lineLimit(2)
+                .onTapGesture {
+                    if metricType != nil {
+                        showPopup = true
+                    }
+                }
+        }
+        .padding(.top, 8)
+        .padding(.bottom, 40) // CRITICAL FIX: Consistent spacing between citation and buttons for all questions
+        .sheet(isPresented: $showPopup) {
+            if let type = metricType,
+               let popup = ScientificCredibilityPopupFactory.createPopup(for: type, isPresented: $showPopup) {
+                popup
+                    .presentationDetents([.fraction(0.54)])
+                    .presentationDragIndicator(.hidden)
+                    .modifier(ClearSheetBackground())
+            }
+        }
+    }
 }
 
 /// Helper function to create formatted button content with primary and secondary text
@@ -236,7 +282,7 @@ struct QuestionViews {
          // PERFORMANCE: Gate keyboard focus until after transition to avoid concurrent heavy animations
          // (Rules referenced: Simplicity is KING; Security over performance; Readability over extreme optimization)
          @State private var isActive: Bool = false
-         private let focusDelaySeconds: Double = 0.28
+         private let focusDelaySeconds: Double = 0.12
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -267,6 +313,8 @@ struct QuestionViews {
                         )
                         .focused($isTextFieldFocused)
                         .textInputAutocapitalization(.words)
+                        .textContentType(.givenName)
+                        .submitLabel(.done)
                         .disableAutocorrection(true)
                         .onSubmit {
                             let canProceedLocal = !localName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -296,8 +344,13 @@ struct QuestionViews {
                 isActive = true
                 // Defer keyboard presentation slightly so it does not overlap with the heavy wheel picker removal
                 // This removes jank during the birthdate -> name transition on device
+                // Also explicitly disable implicit animations for focus state to avoid extra layout work
                 DispatchQueue.main.asyncAfter(deadline: .now() + focusDelaySeconds) {
-                    if isActive { isTextFieldFocused = true }
+                    if isActive {
+                        UIView.setAnimationsEnabled(false)
+                        isTextFieldFocused = true
+                        UIView.setAnimationsEnabled(true)
+                    }
                 }
             }
             .onDisappear {
@@ -339,7 +392,7 @@ struct QuestionViews {
                         .padding(.bottom, 10)
                         .frame(maxWidth: .infinity)
                     
-                    ScientificCitation(text: "Based on 68 studies, 2.3 million participants")
+                    ScientificCitation(text: "Based on 68 studies, 2.3 million participants", metricType: .stressLevel)
                 }
                 
                 Spacer()
@@ -399,7 +452,7 @@ struct QuestionViews {
                         .padding(.bottom, 10)
                         .frame(maxWidth: .infinity)
                     
-                    ScientificCitation(text: "Based on 42 studies, 890,000 participants")
+                    ScientificCitation(text: "Based on 42 studies, 890,000 participants", metricType: .stressLevel)
                 }
                 
                 Spacer()
@@ -504,7 +557,7 @@ struct QuestionViews {
                         .padding(.bottom, 10)
                         .frame(maxWidth: .infinity)
                     
-                    ScientificCitation(text: "Based on 195 studies, 4.9 million participants")
+                    ScientificCitation(text: "Based on 195 studies, 4.9 million participants", metricType: .nutritionQuality)
                 }
                 
 
@@ -552,7 +605,7 @@ struct QuestionViews {
                         .padding(.bottom, 10)
                         .frame(maxWidth: .infinity)
                     
-                    ScientificCitation(text: "Based on 81 studies, 3.9 million participants")
+                    ScientificCitation(text: "Based on 81 studies, 3.9 million participants", metricType: .smokingStatus)
                 }
                 
 
@@ -597,7 +650,7 @@ struct QuestionViews {
                         .padding(.bottom, 10)
                         .frame(maxWidth: .infinity)
                     
-                    ScientificCitation(text: "Based on 107 studies, 4.8 million participants")
+                    ScientificCitation(text: "Based on 107 studies, 4.8 million participants", metricType: .alcoholConsumption)
                 }
                 
                 Spacer()
@@ -640,7 +693,7 @@ struct QuestionViews {
                         .padding(.bottom, 10)
                         .frame(maxWidth: .infinity)
                     
-                    ScientificCitation(text: "Based on 39 studies, 140 meta-analyses")
+                    ScientificCitation(text: "Based on 39 studies, 140 meta-analyses", metricType: .socialConnectionsQuality)
                 }
                 
                 Spacer()
@@ -691,14 +744,14 @@ struct QuestionViews {
             VStack(alignment: .center, spacing: 0) {
                 // Prompt and guidance
                 VStack(spacing: 12) {
-                    Text("How much time would you like to add to your life each day?")
+                    Text("How much time do you want to gain each day?")
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 20)
 
-                    Text("Start from 5 minutes. Research suggests realistic daily gains can reach up to about 120 minutes when multiple habits are optimized.")
+                    Text("Daily wins add up. Set your goal up to 120 minutes as you use Amped to build better habits.")
                         .font(.system(size: 14))
                         .foregroundColor(.white.opacity(0.75))
                         .multilineTextAlignment(.center)
@@ -758,7 +811,7 @@ struct QuestionViews {
                         .padding(.bottom, 10)
                         .frame(maxWidth: .infinity)
 
-                    ScientificCitation(text: "Based on 61 studies, over 1 million participants")
+                    ScientificCitation(text: "ACC/AHA 2017 guideline + SPRINT (NEJM 2015): risk rises from ≥120 systolic; lowest near 110–119/70–79", metricType: nil)
                 }
 
                 Spacer()
@@ -775,11 +828,11 @@ struct QuestionViews {
                         }) {
                             switch category {
                             case .normal:
-                                FormattedButtonText(text: "Below 120/80 (Normal)")
+                                FormattedButtonText(text: "Below 120/80 (Normal/Optimal)")
                             case .elevatedToStage1:
-                                FormattedButtonText(text: "120/80 to 139/89 (Elevated)")
+                                FormattedButtonText(text: "120–129 systolic and <80 diastolic (Elevated)")
                             case .high:
-                                FormattedButtonText(text: "140/90 or higher (High)")
+                                FormattedButtonText(text: "130/80 or higher (High/Hypertension)")
                             default:
                                 EmptyView()
                             }
@@ -914,7 +967,7 @@ struct QuestionViews {
                         .padding(.bottom, 10)
                         .frame(maxWidth: .infinity)
 
-                    ScientificCitation(text: "Helps us tailor motivation style — calculations are unchanged")
+                    ScientificCitation(text: "Helps us tailor motivation style — calculations are unchanged", metricType: nil)
                 }
 
                 Spacer()
@@ -952,7 +1005,7 @@ struct QuestionViews {
                         .padding(.bottom, 10)
                         .frame(maxWidth: .infinity)
 
-                    ScientificCitation(text: "Helps us choose a motivating tone")
+                    ScientificCitation(text: "Helps us choose a motivating tone", metricType: nil)
                 }
 
                 Spacer()

@@ -52,10 +52,10 @@ final class QuestionnaireViewModel: ObservableObject {
 
         var displayName: String {
             switch self {
-            case .normal: return "Below 120/80 (Normal)"
+            case .normal: return "Below 120/80 (Normal/Optimal)"
             case .unknown: return "I don't know"
-            case .elevatedToStage1: return "120/80 to 139/89 (Elevated)"
-            case .high: return "140/90 or higher (High)"
+            case .elevatedToStage1: return "120–129 systolic and <80 diastolic (Elevated)"
+            case .high: return "130/80 or higher (High/Hypertension)"
             }
         }
     }
@@ -572,7 +572,14 @@ final class QuestionnaireViewModel: ObservableObject {
             // We set the direction first, then update the question on the next run loop so the
             // outgoing view uses the correct removal edge on the first transition.
             DispatchQueue.main.async {
-                withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
+                // Apply a faster, simpler animation when moving from heavy wheel picker to text input
+                let animation: Animation
+                if fromQuestion == .birthdate && nextQuestion == .name {
+                    animation = .easeOut(duration: 0.20)
+                } else {
+                    animation = .spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)
+                }
+                withAnimation(animation) {
                     self.currentQuestion = nextQuestion
                 }
             }

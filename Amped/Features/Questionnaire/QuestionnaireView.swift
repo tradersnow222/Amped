@@ -18,6 +18,7 @@ struct QuestionnaireView: View {
     
     // Internal state
     @State private var animationCompleted = false
+    // Applied rule: Simplicity is KING — rely on system keyboard avoidance for name entry
     
     // MARK: - Initializers
     
@@ -116,8 +117,8 @@ struct QuestionnaireView: View {
                     }
             )
         }
-        // Prevent keyboard safe-area reflow during transitions to reduce layout work
-        .ignoresSafeArea(.keyboard)
+        // Applied rule: Simplicity is KING — let system avoid keyboard on the name screen only
+        .modifier(ConditionalKeyboardIgnore(shouldIgnore: viewModel.currentQuestion != .name))
         .onAppear {
             // CRITICAL PERFORMANCE FIX: Zero main thread blocking on appear
             // Move ALL initialization to background with lowest priority
@@ -136,10 +137,12 @@ struct QuestionnaireView: View {
     
     // MARK: - Adaptive Transition
     private func getAdaptiveTransition() -> AnyTransition {
-        // Crossfade if either side is the heavy wheel picker to avoid layout thrash
+        // Applied rule: Simplicity is KING — remove crossfade artifacts.
+        // If either side involves the heavy wheel picker, avoid crossfade to prevent the
+        // previous pickers from appearing faintly in the background during transitions.
         let involvesHeavyPicker = viewModel.currentQuestion == .birthdate || viewModel.previousQuestion == .birthdate
         if involvesHeavyPicker {
-            return .opacity
+            return .identity // immediate replacement to ensure no ghosting
         }
         switch viewModel.navigationDirection {
         case .forward:
@@ -307,6 +310,24 @@ struct QuestionnaireView: View {
         // UX: Luxury slow spring to match onboarding transitions
         // Avoid double-wrapping the internal animation inside proceedToNextQuestion
         viewModel.proceedToNextQuestion()
+    }
+}
+
+// MARK: - Keyboard Safe-Area Helper
+
+/// Conditionally ignore the keyboard safe area. When `shouldIgnore` is true
+/// the view behaves like `.ignoresSafeArea(.keyboard)`. When false, the system
+/// will move content above the keyboard automatically.
+private struct ConditionalKeyboardIgnore: ViewModifier {
+    let shouldIgnore: Bool
+    func body(content: Content) -> some View {
+        Group {
+            if shouldIgnore {
+                content.ignoresSafeArea(.keyboard)
+            } else {
+                content
+            }
+        }
     }
 }
 

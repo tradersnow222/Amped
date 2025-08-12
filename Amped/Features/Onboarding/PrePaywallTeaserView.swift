@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 /// Combined teaser screen shown right before the paywall.
 /// It merges the preliminary battery score with credibility bullets
@@ -10,6 +11,8 @@ struct PrePaywallTeaserView: View {
     let onContinue: () -> Void
 
     // MARK: - Derived Values
+    // Applied rules: Simplicity is KING; Keep file under 300 lines; Readability over extreme optimization
+    @State private var dailyImpactMinutes: Double? = nil // Calculated from questionnaire answers only
     private var preliminaryScore: Int {
         var score = 50
 
@@ -71,6 +74,19 @@ struct PrePaywallTeaserView: View {
         }
     }
 
+    private var impactSummaryText: String {
+        // Display a concise, personal summary based on the computed daily impact
+        guard let minutes = dailyImpactMinutes else {
+            return "Analyzing your answers so far…"
+        }
+        let isPositive = minutes >= 0
+        let absMinutes = Int(round(abs(minutes)))
+        let monthlyHours = abs(minutes) * 30.0 / 60.0
+        let monthlyHoursString = String(format: "%.1f", monthlyHours)
+        let direction = isPositive ? "gaining" : "losing"
+        return "Based on your answers so far, you’re \(direction) \(absMinutes) min/day (≈ \(monthlyHoursString) hours/month)."
+    }
+
     // MARK: - View
     var body: some View {
         ZStack {
@@ -115,7 +131,8 @@ struct PrePaywallTeaserView: View {
                 }
                 .animation(.easeInOut(duration: 1.4), value: preliminaryScore)
 
-                Text("We just analyzed your inputs and prepared your personalized insights.")
+                // Personal, actionable summary using actual calculation from questionnaire answers (no Health data yet)
+                Text(impactSummaryText)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.white.opacity(0.85))
                     .multilineTextAlignment(.center)
@@ -124,12 +141,12 @@ struct PrePaywallTeaserView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     credibilityRow(text: "Built on peer‑reviewed research")
                     credibilityRow(text: "On‑device. Private by default")
-                    credibilityRow(text: "Works with Apple Health data")
+                    credibilityRow(text: "This is from your answers so far — we’ll combine it with Apple Health next")
                     credibilityRow(text: "See the studies anytime in Settings → Research")
                 }
                 .padding(.horizontal, 40)
 
-                Text("Amped will help you live longer—see how we can add time to your life.")
+                Text("Amped turns your habits into time. Continue to see your full plan and next steps.")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.ampedGreen.opacity(0.9))
                     .multilineTextAlignment(.center)
@@ -150,6 +167,20 @@ struct PrePaywallTeaserView: View {
                 }
                 .padding(.horizontal, 40)
                 .padding(.bottom, 40)
+            }
+        }
+        .task {
+            // Compute actual total impact from questionnaire answers only
+            // Rules referenced: Simplicity is KING; Correctness over speed; Avoid placeholders
+            let manager = QuestionnaireManager()
+            await manager.loadDataIfNeeded()
+            if let profile = manager.getCurrentUserProfile() {
+                let manualMetrics = manager.getCurrentManualMetrics().map { $0.toHealthMetric() }
+                if !manualMetrics.isEmpty {
+                    let service = LifeImpactService(userProfile: profile)
+                    let total = service.calculateTotalImpact(from: manualMetrics, for: .day)
+                    await MainActor.run { self.dailyImpactMinutes = total.totalImpactMinutes }
+                }
             }
         }
     }

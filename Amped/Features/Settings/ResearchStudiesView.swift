@@ -16,31 +16,48 @@ struct ResearchStudiesView: View {
         let featureArea: String
         let metric: String
         let title: String
+        let subtitle: String?
         let url: URL?
     }
 
     private var allStudyRows: [StudyRowModel] {
         var rows: [StudyRowModel] = []
+        // Existing metric-tied studies
         for metric in HealthMetricType.allCases {
             let studies = StudyReferenceProvider.getStudies(for: metric)
             guard !studies.isEmpty else { continue }
-
             let area = categoryLabel(for: metric)
             for ref in studies {
-                // Use composite id so the same study can appear under multiple metrics when relevant
                 let compositeId = "\(ref.id)_\(metric.rawValue)"
-                rows.append(
-                    StudyRowModel(
-                        id: compositeId,
-                        featureArea: area,
-                        metric: metric.displayName,
-                        title: ref.title,
-                        url: ref.primaryURL
-                    )
-                )
+                rows.append(StudyRowModel(id: compositeId, featureArea: area, metric: metric.displayName, title: ref.title, subtitle: compactSubtitle(for: ref), url: ref.primaryURL))
+            }
+        }
+        // Additional groups (e.g., Blood Pressure) not yet represented by a HealthMetricType
+        for group in StudyReferenceProvider.additionalSettingsStudyGroups {
+            for ref in group.studies {
+                let compositeId = "\(ref.id)_extra_\(group.metric.replacingOccurrences(of: " ", with: "_"))"
+                rows.append(StudyRowModel(id: compositeId, featureArea: group.featureArea, metric: group.metric, title: ref.title, subtitle: compactSubtitle(for: ref), url: ref.primaryURL))
             }
         }
         return rows
+    }
+
+    // Compose a compact subtitle such as: "Lewington (2002) — 1,000,000 participants; 10y; Meta-Analysis"
+    private func compactSubtitle(for ref: StudyReference) -> String? {
+        var parts: [String] = []
+        parts.append(ref.shortCitation)
+        if ref.sampleSize > 0 {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            let n = formatter.string(from: NSNumber(value: ref.sampleSize)) ?? "\(ref.sampleSize)"
+            parts.append("\(n) participants")
+        }
+        if let years = ref.followUpYears {
+            let yrs = String(format: "%.0f", years)
+            parts.append("\(yrs)y")
+        }
+        parts.append(ref.studyType.rawValue)
+        return parts.joined(separator: " — ")
     }
 
     private var activityStudies: [StudyRowModel] {
@@ -154,10 +171,18 @@ struct ResearchStudiesView: View {
                         }
                     } label: {
                         HStack(alignment: .top, spacing: 12) {
-                            Text(item.title)
-                                .font(.body)
-                                .foregroundColor(.primary)
-                                .fixedSize(horizontal: false, vertical: true)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.title)
+                                    .font(.body)
+                                    .foregroundColor(.primary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if let subtitle = item.subtitle {
+                                    Text(subtitle)
+                                        .font(.footnote)
+                                        .foregroundColor(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
                             Spacer()
                             Image(systemName: "safari")
                                 .font(.body)

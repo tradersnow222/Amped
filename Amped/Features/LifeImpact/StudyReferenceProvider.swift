@@ -374,6 +374,123 @@ class StudyReferenceProvider {
         )
     ]
 
+    // MARK: - Blood Pressure / Hypertension Research
+    /// Applied rule: Simplicity is KING — keep additions minimal while fully accurate.
+    /// These references are used for questionnaire education and app Settings → Research.
+    static let bloodPressureResearch: [StudyReference] = [
+        StudyReference(
+            id: "bp_lewington_lancet_2002",
+            title: "Age-specific relevance of usual blood pressure to vascular mortality: a meta-analysis of individual data for one million adults in 61 prospective studies",
+            authors: ["Lewington S", "Clarke R", "Qizilbash N", "Peto R", "Collins R", "Prospective Studies Collaboration"],
+            journal: "The Lancet",
+            year: 2002,
+            doi: "10.1016/S0140-6736(02)11911-8",
+            pmid: "12493255",
+            studyType: .metaAnalysis,
+            sampleSize: 1000000,
+            followUpYears: 10.0,
+            effectType: .linearCumulative,
+            methodology: StudyMethodology(
+                exposureAssessment: "Usual systolic/diastolic blood pressure across 61 prospective cohorts",
+                outcomeAssessment: "Vascular and all-cause mortality",
+                adjustmentFactors: ["age", "sex", "baseline risk factors"],
+                exclusionCriteria: ["pre-existing severe disease in some cohorts"],
+                statisticalMethod: "Log-linear modeling: ~2x vascular mortality per +20/10 mmHg ages 40–69"
+            ),
+            qualityScore: .high,
+            baselineValue: 115.0,
+            interventionValue: 135.0,
+            mortalityReduction: -100.0, // Encodes doubling per +20/10 (negative indicates higher risk)
+            lifeYearsGained: nil,
+            confidenceInterval: nil,
+            applicablePopulation: PopulationCriteria(
+                ageRange: PopulationCriteria.AgeRange(min: 40, max: 79),
+                gender: .all,
+                healthStatus: ["general population"],
+                geographicRegion: ["International"],
+                ethnicGroups: nil
+            ),
+            extractionNotes: "Continuous association down to at least ~115/75; ~2x vascular mortality per +20/10 mmHg (ages 40–69).",
+            limitationsNotes: "Observational; cause-specific focus on vascular mortality"
+        ),
+        StudyReference(
+            id: "bp_sprint_nejm_2015",
+            title: "A Randomized Trial of Intensive versus Standard Blood-Pressure Control",
+            authors: ["SPRINT Research Group"],
+            journal: "New England Journal of Medicine",
+            year: 2015,
+            doi: "10.1056/NEJMoa1511939",
+            pmid: "26551272",
+            studyType: .randomizedControlledTrial,
+            sampleSize: 9361,
+            followUpYears: 3.3,
+            effectType: .thresholdBased,
+            methodology: StudyMethodology(
+                exposureAssessment: "Randomized SBP target <120 vs <140 mmHg",
+                outcomeAssessment: "Composite CV outcome and all-cause mortality",
+                adjustmentFactors: ["randomization"],
+                exclusionCriteria: ["diabetes", "prior stroke"],
+                statisticalMethod: "Intention-to-treat Cox models"
+            ),
+            qualityScore: .high,
+            baselineValue: 140.0,
+            interventionValue: 120.0,
+            mortalityReduction: 27.0, // Approx all-cause mortality reduction in intensive arm
+            lifeYearsGained: nil,
+            confidenceInterval: nil,
+            applicablePopulation: PopulationCriteria(
+                ageRange: PopulationCriteria.AgeRange(min: 50, max: 90),
+                gender: .all,
+                healthStatus: ["hypertension without diabetes or prior stroke"],
+                geographicRegion: ["United States", "Puerto Rico"],
+                ethnicGroups: nil
+            ),
+            extractionNotes: "Intensive SBP <120 reduced CV events and all-cause mortality; trial stopped early for benefit.",
+            limitationsNotes: "Increased adverse events (syncope, AKI) in intensive arm"
+        ),
+        StudyReference(
+            id: "bp_acc_aha_guideline_2017",
+            title: "2017 ACC/AHA/AAPA/ABC/ACPM/AGS/APhA/ASH/ASPC/NMA/PCNA Guideline for the Prevention, Detection, Evaluation, and Management of High Blood Pressure in Adults",
+            authors: ["Whelton PK", "Carey RM", "Aronow WS", "et al."],
+            journal: "Hypertension",
+            year: 2017,
+            doi: "10.1161/HYP.0000000000000065",
+            pmid: "29133356",
+            studyType: .systematicReview,
+            sampleSize: 0,
+            followUpYears: nil,
+            effectType: .thresholdBased,
+            methodology: StudyMethodology(
+                exposureAssessment: "Guideline synthesis of RCTs and cohorts",
+                outcomeAssessment: "Evidence-based BP thresholds and targets",
+                adjustmentFactors: [],
+                exclusionCriteria: [],
+                statisticalMethod: "Consensus guideline informed by systematic reviews"
+            ),
+            qualityScore: .high,
+            baselineValue: 120.0,
+            interventionValue: 130.0,
+            mortalityReduction: nil,
+            lifeYearsGained: nil,
+            confidenceInterval: nil,
+            applicablePopulation: PopulationCriteria(
+                ageRange: PopulationCriteria.AgeRange(min: 18, max: 90),
+                gender: .all,
+                healthStatus: ["adults"],
+                geographicRegion: ["United States"],
+                ethnicGroups: nil
+            ),
+            extractionNotes: "Defines Elevated (120–129/<80) and Hypertension (≥130/80) categories; recommends lower targets for high-risk adults.",
+            limitationsNotes: "Guideline document; not a primary study"
+        )
+    ]
+
+    /// Additional study groups not tied to a specific `HealthMetricType` but shown in Settings → Research.
+    /// Applied rule: Simplicity is KING — single explicit group for Blood Pressure under Cardiovascular.
+    static var additionalSettingsStudyGroups: [(featureArea: String, metric: String, studies: [StudyReference])] {
+        return [(featureArea: "Cardiovascular", metric: "Blood Pressure", studies: bloodPressureResearch)]
+    }
+
     // MARK: - Heart Rate Variability Research
     static let hrvResearch: [StudyReference] = [
         StudyReference(
