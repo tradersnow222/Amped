@@ -136,6 +136,8 @@ struct MetricContextCard: View {
             return "Alcohol consumption"
         case .socialConnectionsQuality:
             return "Social connections"
+        case .bloodPressure:
+            return "Blood pressure management"
         }
     }
     
@@ -170,6 +172,8 @@ struct MetricContextCard: View {
             return "Moderate to no alcohol consumption is associated with better health outcomes and reduced disease risk."
         case .socialConnectionsQuality:
             return "Strong social connections are linked to better mental health, immune function, and overall longevity."
+        case .bloodPressure:
+            return "Healthy blood pressure reduces the risk of heart disease, stroke, and other cardiovascular complications."
         }
     }
     
@@ -223,6 +227,8 @@ struct MetricContextCard: View {
             return String(format: "%.0f%%", value)
         case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
             return String(format: "%.1f score", value)
+        case .bloodPressure:
+            return String(format: "%.0f mmHg", value)
         }
     }
 }

@@ -283,6 +283,8 @@ struct MetricDetailView: View {
             return String(format: "%.0f%%", value)
         case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
             return String(format: "%.1f score", value)
+        case .bloodPressure:
+            return String(format: "%.0f mmHg", value)
         }
     }
     
@@ -387,6 +389,8 @@ struct MetricDetailView: View {
             return "current score"
         case .stressLevel:
             return "current level"
+        case .bloodPressure:
+            return "current reading"
         }
     }
     
@@ -420,6 +424,8 @@ struct MetricDetailView: View {
             return "Social connections measure the quality of your relationships with family and friends. Having people you can talk to and spend time with helps you feel happier, less stressed, and can even help you live longer. Good relationships are like medicine for your mind and body."
         case .stressLevel:
             return "Stress level shows how much daily pressure and worry you feel. When stress is lower, your body can focus on healing, your sleep gets better, and you feel more relaxed. Managing stress helps your whole body work better."
+        case .bloodPressure:
+            return "Blood pressure measures the force of blood against your artery walls. Healthy blood pressure keeps your heart working efficiently and reduces your risk of heart disease and stroke. Lower readings generally indicate better cardiovascular health."
         }
     }
     

@@ -22,6 +22,7 @@ final class DashboardViewModel: ObservableObject {
     private var lifeImpactService: LifeImpactService
     private let lifeProjectionService: LifeProjectionService
     private let questionnaireManager: QuestionnaireManager
+    private let streakManager: StreakManager
     
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.amped.Amped", category: "DashboardViewModel")
     
@@ -35,6 +36,17 @@ final class DashboardViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var selectedTimePeriod: TimePeriod = .day
     @Published var historicalChartData: [ChartImpactDataPoint] = []
+    
+    // MARK: - Streak Management
+    
+    /// Current user engagement streak
+    @Published var currentStreak: BatteryStreak = BatteryStreak()
+    
+    /// New milestone reached today (for celebration UI)
+    @Published var newMilestone: StreakMilestone?
+    
+    /// Whether to show streak celebration
+    @Published var showStreakCelebration: Bool = false
     
     // MARK: - Real-time Update Notification
     
@@ -79,7 +91,8 @@ final class DashboardViewModel: ObservableObject {
         lifeImpactService: LifeImpactService? = nil,
         lifeProjectionService: LifeProjectionService? = nil,
         questionnaireManager: QuestionnaireManager? = nil,
-        userProfile: UserProfile? = nil
+        userProfile: UserProfile? = nil,
+        streakManager: StreakManager? = nil
     ) {
         // Local logger to allow logging before all stored properties are initialized
         let initLogger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.amped.Amped", category: "DashboardViewModel.init")
@@ -132,6 +145,7 @@ final class DashboardViewModel: ObservableObject {
         )
         self.lifeImpactService = lifeImpactService ?? LifeImpactService(userProfile: chosenProfile)
         self.lifeProjectionService = lifeProjectionService ?? LifeProjectionService()
+        self.streakManager = streakManager ?? StreakManager.shared
         
         // Ensure questionnaire data is loaded
         Task {
@@ -139,6 +153,7 @@ final class DashboardViewModel: ObservableObject {
         }
         
         setupSubscriptions()
+        setupStreakObservers()
         loadData()
         
         // Start foreground timer if app is currently active
@@ -162,6 +177,10 @@ final class DashboardViewModel: ObservableObject {
         NotificationCenter.default.publisher(for: NSNotification.Name("QuestionnaireDataUpdated"))
             .sink { [weak self] _ in
                 self?.logger.info("📝 Questionnaire data updated, refreshing dashboard")
+                // Reload user profile to get updated name/data
+                if let updatedProfile = self?.reloadUserProfileFromDefaults() {
+                    self?.userProfile = updatedProfile
+                }
                 Task {
                     await self?.refreshData()
                 }
@@ -225,6 +244,22 @@ final class DashboardViewModel: ObservableObject {
                 guard let self = self else { return }
                 self.logger.info("📝 Manual metrics updated. Recalculating data")
                 self.handleProfileOrManualMetricsUpdate(updateProfile: false)
+            }
+            .store(in: &cancellables)
+    }
+    
+    /// Setup observers for streak management
+    private func setupStreakObservers() {
+        // Bind streak manager's published properties to our local properties
+        streakManager.$currentStreak
+            .assign(to: &$currentStreak)
+        
+        streakManager.$newMilestoneToday
+            .sink { [weak self] milestone in
+                self?.newMilestone = milestone
+                if milestone != nil {
+                    self?.showStreakCelebration = true
+                }
             }
             .store(in: &cancellables)
     }
@@ -723,6 +758,12 @@ final class DashboardViewModel: ObservableObject {
                 
                 // Load historical chart data after refresh
                 loadHistoricalChartData()
+                
+                // Record engagement for streak tracking
+                // Only record if we have meaningful health data
+                if !periodMetrics.isEmpty {
+                    self.recordUserEngagement()
+                }
             }
         } catch {
             await MainActor.run {
@@ -1242,6 +1283,35 @@ final class DashboardViewModel: ObservableObject {
             print("Failed to decode user profile synchronously: \(error)")
             return nil
         }
+    }
+    
+    // MARK: - Streak Management Methods
+    
+    /// Record user engagement for streak tracking
+    private func recordUserEngagement() {
+        streakManager.recordEngagement()
+        logger.info("📈 User engagement recorded for streak tracking")
+    }
+    
+    /// Get encouragement message based on current streak
+    func getStreakMessage() -> String {
+        return streakManager.getStreakStatusMessage()
+    }
+    
+    /// Get detailed encouragement message
+    func getEncouragementMessage() -> String {
+        return streakManager.getEncouragementMessage()
+    }
+    
+    /// Dismiss milestone celebration
+    func dismissMilestoneCelebration() {
+        showStreakCelebration = false
+        newMilestone = nil
+    }
+    
+    /// Check if streak needs protection (for UI warnings)
+    func streakNeedsProtection() -> Bool {
+        return streakManager.needsStreakProtection()
     }
     
     /// Cleanup when view model is deallocated

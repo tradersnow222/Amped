@@ -100,9 +100,8 @@ final class PaymentViewModel: ObservableObject {
         }
         
         guard !hasActiveSubscription else {
-            // User already has a subscription, just complete onboarding
-            logger.info("User already has active subscription, completing onboarding")
-            appState?.completeOnboarding()
+            // User already has a subscription, just continue flow
+            logger.info("User already has active subscription, continuing flow")
             completion()
             return
         }
@@ -118,8 +117,7 @@ final class PaymentViewModel: ObservableObject {
                 switch result {
                 case .success(_):
                     logger.info("Purchase successful")
-                    // Complete onboarding and continue
-                    appState?.completeOnboarding()
+                    // Continue to next step
                     completion()
                     
                 case .cancelled:
@@ -141,8 +139,7 @@ final class PaymentViewModel: ObservableObject {
     /// Skip payment and continue with free version
     func skipPayment(completion: @escaping () -> Void) {
         logger.info("User skipped payment")
-        // Complete onboarding for free users too - they've finished the flow
-        appState?.completeOnboarding()
+        // Continue to next step in onboarding flow
         completion()
     }
     

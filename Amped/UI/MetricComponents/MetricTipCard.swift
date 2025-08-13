@@ -115,6 +115,8 @@ struct MetricTipCard: View {
             return "Preserve Your System Power"
         case .socialConnectionsQuality:
             return "Energize Through Connection"
+        case .bloodPressure:
+            return "Optimize Your Circulation Power"
         }
     }
     
@@ -149,6 +151,8 @@ struct MetricTipCard: View {
             return "Limiting alcohol helps your body focus energy on repair and restoration instead of processing toxins."
         case .socialConnectionsQuality:
             return "Strong relationships provide emotional energy that powers your overall wellbeing."
+        case .bloodPressure:
+            return "Regular activity and stress management help keep your circulation system running efficiently."
         }
     }
     
@@ -183,6 +187,8 @@ struct MetricTipCard: View {
             return "Alcohol-free days give your system time to fully recharge and restore."
         case .socialConnectionsQuality:
             return "Meaningful conversations recharge your emotional battery in ways nothing else can."
+        case .bloodPressure:
+            return "Simple breathing exercises help your circulation system work more smoothly."
         }
     }
     
@@ -217,6 +223,8 @@ struct MetricTipCard: View {
             return "Try sparkling water with lime instead of alcohol today"
         case .socialConnectionsQuality:
             return "Send an encouraging text to someone you care about"
+        case .bloodPressure:
+            return "Take 5 minutes to do slow, deep breathing right now"
         }
     }
     

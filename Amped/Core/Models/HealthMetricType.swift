@@ -22,6 +22,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
     case alcoholConsumption
     case socialConnectionsQuality
     case stressLevel
+    case bloodPressure
     
     var id: String { rawValue }
     
@@ -42,6 +43,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .vo2Max: return "Cardio Fitness (VO2 Max)"
         case .oxygenSaturation: return "Blood Oxygen"
         case .stressLevel: return "Stress Level"
+        case .bloodPressure: return "Blood Pressure"
         }
     }
     
@@ -62,6 +64,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .vo2Max: return "Peak performance"
         case .oxygenSaturation: return "Oxygen efficiency"
         case .stressLevel: return "Mental load"
+        case .bloodPressure: return "Cardiovascular health"
         }
     }
     
@@ -86,7 +89,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
             return .performanceMetrics
         case .nutritionQuality, .stressLevel, .socialConnectionsQuality:
             return .lifestyleFactors
-        case .smokingStatus, .alcoholConsumption:
+        case .smokingStatus, .alcoholConsumption, .bloodPressure:
             return .healthRisks
         }
     }
@@ -154,6 +157,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .vo2Max: return "Shows your endurance"
         case .oxygenSaturation: return "Reflects oxygen flow"
         case .stressLevel: return "Affects your peace"
+        case .bloodPressure: return "Powers your circulation"
         }
     }
     
@@ -188,6 +192,8 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
             return "Blood oxygen levels indicate how well your lungs and circulation deliver oxygen to your tissues."
         case .stressLevel:
             return "Chronic stress accelerates aging and increases disease risk. Managing stress is crucial for long-term health."
+        case .bloodPressure:
+            return "Blood pressure is a key indicator of cardiovascular health. Lower readings generally indicate better heart health and reduced disease risk."
         }
     }
     
@@ -210,7 +216,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
             return HKQuantityType.quantityType(forIdentifier: .vo2Max)
         case .oxygenSaturation:
             return HKQuantityType.quantityType(forIdentifier: .oxygenSaturation)
-        case .sleepHours, .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+        case .sleepHours, .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel, .bloodPressure:
             return nil // These are handled separately
         }
     }
@@ -234,7 +240,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
             return HKUnit(from: "ml/kg*min")
         case .oxygenSaturation:
             return HKUnit.percent()
-        case .sleepHours, .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+        case .sleepHours, .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel, .bloodPressure:
             return nil
         }
     }
@@ -251,13 +257,13 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
     
     /// Returns collection of manual/questionnaire types
     static var manualTypes: [HealthMetricType] {
-        return [.nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel]
+        return [.nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel, .bloodPressure]
     }
     
     /// Returns whether this metric type is derived from HealthKit
     var isHealthKitMetric: Bool {
         switch self {
-        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel, .bloodPressure:
             return false
         default:
             return true
@@ -281,6 +287,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .vo2Max: return "lungs.fill"
         case .oxygenSaturation: return "drop.fill"
         case .stressLevel: return "brain.head.profile"
+        case .bloodPressure: return "heart.circle.fill"
         }
     }
     
@@ -294,7 +301,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .steps, .exerciseMinutes, .heartRateVariability, .sleepHours, .nutritionQuality, .socialConnectionsQuality, .activeEnergyBurned, .vo2Max, .oxygenSaturation:
             return Color.ampedGreen
-        case .restingHeartRate, .bodyMass, .smokingStatus, .alcoholConsumption, .stressLevel:
+        case .restingHeartRate, .bodyMass, .smokingStatus, .alcoholConsumption, .stressLevel, .bloodPressure:
             return Color.ampedRed
         }
     }
@@ -316,6 +323,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .vo2Max: return 40 // ml/kg/min
         case .oxygenSaturation: return 98 // percent
         case .stressLevel: return 5 // 1-10 scale, 5 = moderate stress
+        case .bloodPressure: return 120 // systolic pressure baseline
         }
     }
     
@@ -324,7 +332,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .steps, .exerciseMinutes, .heartRateVariability, .sleepHours, .nutritionQuality, .socialConnectionsQuality, .activeEnergyBurned, .vo2Max, .oxygenSaturation:
             return true
-        case .restingHeartRate, .bodyMass, .smokingStatus, .alcoholConsumption, .stressLevel:
+        case .restingHeartRate, .bodyMass, .smokingStatus, .alcoholConsumption, .stressLevel, .bloodPressure:
             return false
         }
     }
@@ -346,6 +354,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .vo2Max: return 45
         case .oxygenSaturation: return 100
         case .stressLevel: return 2 // 1-10 scale, 2 = low stress (ideal)
+        case .bloodPressure: return 110 // systolic pressure target
         }
     }
     

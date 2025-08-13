@@ -1,14 +1,14 @@
 import SwiftUI
 
-/// Main enum to track the onboarding state - Rules: Removed redundant healthKitPermissions screen and signInWithApple
+/// Main enum to track the onboarding state - Rules: Streamlined flow removing redundant screens
 enum OnboardingStep: Equatable {
     case welcome
-    case valueProposition
-    case beforeAfter // New: "You today" vs "In a week"
-    case personalizationIntro
+    case personalizationIntro // Position 2: Build trust before data collection
     case questionnaire
-    case prePaywallTease
+    case valueProposition // Position 4: Reinforce value after data collection
+    case prePaywallTease // Position 5: Personalized score right before paywall
     case payment
+    case notificationPermission // New: Smart notification permission request
     case attribution // New: How did you hear about us?
     case dashboard
 }
@@ -32,8 +32,13 @@ struct OnboardingFlow: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Static background that doesn't transition
-                Color.clear.withDeepBackground()
+                // Conditional background based on current step
+                // Welcome screen uses BatteryBackground, all others use DeepBackground
+                if currentStep == .welcome {
+                    Color.clear.withBatteryBackground()
+                } else {
+                    Color.clear.withDeepBackground()
+                }
                 
                 // Transitioning content layer
                 ZStack {
@@ -41,30 +46,10 @@ struct OnboardingFlow: View {
                         WelcomeView(onContinue: { 
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.valueProposition) 
+                            navigateTo(.personalizationIntro) 
                         })
                         .transition(getTransition(forNavigatingTo: currentStep))
                         .zIndex(currentStep == .welcome ? 1 : 0)
-                    }
-                    
-                    if currentStep == .valueProposition {
-                        ValuePropositionView(onContinue: { 
-                            isButtonNavigating = true
-                            dragDirection = nil
-                            navigateTo(.beforeAfter) 
-                        })
-                        .transition(getTransition(forNavigatingTo: currentStep))
-                        .zIndex(currentStep == .valueProposition ? 1 : 0)
-                    }
-                    
-                    if currentStep == .beforeAfter {
-                        BeforeAfterComparisonView(onContinue: {
-                            isButtonNavigating = true
-                            dragDirection = nil
-                            navigateTo(.personalizationIntro)
-                        })
-                        .transition(getTransition(forNavigatingTo: currentStep))
-                        .zIndex(currentStep == .beforeAfter ? 1 : 0)
                     }
                     
                     if currentStep == .personalizationIntro {
@@ -114,9 +99,9 @@ struct OnboardingFlow: View {
                                 isButtonNavigating = false
                                 dragDirection = .leading
                                 
-                                // Questionnaire completed - go directly to pre-paywall tease (skipping Sign in)
+                                // Questionnaire completed - go to value proposition
                                 DispatchQueue.main.async {
-                                    navigateTo(.prePaywallTease)
+                                    navigateTo(.valueProposition)
                                     
                                     // Reset drag direction after animation
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
@@ -129,7 +114,15 @@ struct OnboardingFlow: View {
                         .zIndex(currentStep == .questionnaire ? 1 : 0)
                     }
                     
-
+                    if currentStep == .valueProposition {
+                        ValuePropositionView(onContinue: { 
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.prePaywallTease) 
+                        })
+                        .transition(getTransition(forNavigatingTo: currentStep))
+                        .zIndex(currentStep == .valueProposition ? 1 : 0)
+                    }
                     
                     if currentStep == .prePaywallTease {
                         PrePaywallTeaserView(
@@ -148,10 +141,20 @@ struct OnboardingFlow: View {
                         PaymentView(onContinue: { 
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.attribution) 
+                            navigateTo(.notificationPermission) 
                         })
                         .transition(getTransition(forNavigatingTo: currentStep))
                         .zIndex(currentStep == .payment ? 1 : 0)
+                    }
+                    
+                    if currentStep == .notificationPermission {
+                        NotificationPermissionView(onContinue: {
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.attribution)
+                        })
+                        .transition(getTransition(forNavigatingTo: currentStep))
+                        .zIndex(currentStep == .notificationPermission ? 1 : 0)
                     }
                     
                     if currentStep == .attribution {
@@ -281,32 +284,32 @@ struct OnboardingFlow: View {
         return .asymmetric(insertion: insertion, removal: removal)
     }
     
-    /// Get the next step in the onboarding flow - Rules: Updated to skip redundant HealthKit screen
+    /// Get the next step in the onboarding flow - Rules: Streamlined flow removing redundant screens
     private func getNextStep(after step: OnboardingStep) -> OnboardingStep? {
         switch step {
-        case .welcome: return .valueProposition
-        case .valueProposition: return .beforeAfter
-        case .beforeAfter: return .personalizationIntro
+        case .welcome: return .personalizationIntro
         case .personalizationIntro: return .questionnaire
-        case .questionnaire: return .prePaywallTease
+        case .questionnaire: return .valueProposition
+        case .valueProposition: return .prePaywallTease
         case .prePaywallTease: return .payment
-        case .payment: return .attribution
+        case .payment: return .notificationPermission
+        case .notificationPermission: return .attribution
         case .attribution: return .dashboard
         case .dashboard: return nil
         }
     }
     
-    /// Get the previous step in the onboarding flow - Rules: Updated to skip redundant HealthKit screen
+    /// Get the previous step in the onboarding flow - Rules: Streamlined flow removing redundant screens
     private func getPreviousStep(before step: OnboardingStep) -> OnboardingStep? {
         switch step {
         case .welcome: return nil
-        case .valueProposition: return .welcome
-        case .beforeAfter: return .valueProposition
-        case .personalizationIntro: return .beforeAfter
+        case .personalizationIntro: return .welcome
         case .questionnaire: return .personalizationIntro
-        case .prePaywallTease: return .questionnaire
+        case .valueProposition: return .questionnaire
+        case .prePaywallTease: return .valueProposition
         case .payment: return .prePaywallTease
-        case .attribution: return .payment
+        case .notificationPermission: return .payment
+        case .attribution: return .notificationPermission
         case .dashboard: return .attribution
         }
     }

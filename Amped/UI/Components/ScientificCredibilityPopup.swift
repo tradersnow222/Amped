@@ -204,6 +204,7 @@ struct ScientificCredibilityPopup: View {
         case .activeEnergyBurned: return "active energy"
         case .vo2Max: return "VO₂ max"
         case .oxygenSaturation: return "blood oxygen"
+        case .bloodPressure: return "blood pressure"
         }
     }
 
@@ -225,6 +226,7 @@ struct ScientificCredibilityPopup: View {
         case .socialConnectionsQuality: return "Why are social connections so important?"
         case .activeEnergyBurned: return "Why is active energy so important?"
         case .oxygenSaturation: return "Why is oxygen saturation so important?"
+        case .bloodPressure: return "Why is blood pressure so important?"
         }
     }
     
@@ -352,6 +354,12 @@ struct ScientificCredibilityPopupFactory {
             return (
                 score: 30,
                 importance: "Consistently low oxygen saturation (≤95%) is associated with increased mortality, particularly from pulmonary causes."
+            )
+            
+        case .bloodPressure:
+            return (
+                score: 85,
+                importance: "Blood pressure is a major risk factor for cardiovascular death, with each 20/10 mmHg increase doubling vascular mortality risk."
             )
         }
     }

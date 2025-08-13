@@ -157,14 +157,14 @@ struct QuestionnaireView: View {
         VStack(spacing: 0) {
             // Question content (category header moved to top level)
             switch question {
+            case .name:
+                QuestionViews.NameQuestionView(
+                    viewModel: viewModel
+                )
             case .birthdate:
                 QuestionViews.BirthdateQuestionView(
                     viewModel: viewModel, 
                     handleContinue: handleContinue
-                )
-            case .name:
-                QuestionViews.NameQuestionView(
-                    viewModel: viewModel
                 )
             case .stressLevel:
                 QuestionViews.StressQuestionView(

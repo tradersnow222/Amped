@@ -37,7 +37,8 @@ struct ValuePropositionView: View {
                         .offset(y: animateElements ? 0 : 20)
                         .animation(.easeOut(duration: 0.9), value: animateElements)
                         
-                        Text("See and grow your projected lifespan.")
+                        // Personalized subtitle - Rules: Strategic personalization for maximum impact
+                        Text(PersonalizationUtils.contextualMessage(firstName: PersonalizationUtils.userFirstName, context: .valueProposition))
                             .font(.system(size: 18, weight: .regular, design: .rounded))
                             .foregroundColor(.white.opacity(0.8))
                             .multilineTextAlignment(.center)

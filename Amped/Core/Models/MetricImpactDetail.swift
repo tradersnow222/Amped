@@ -219,7 +219,7 @@ extension HealthMetricType {
             return .medium
         case .heartRateVariability:
             return .low
-        case .alcoholConsumption, .smokingStatus, .stressLevel, .nutritionQuality, .socialConnectionsQuality, .activeEnergyBurned, .oxygenSaturation:
+        case .alcoholConsumption, .smokingStatus, .stressLevel, .nutritionQuality, .socialConnectionsQuality, .activeEnergyBurned, .oxygenSaturation, .bloodPressure:
             return .medium
         }
     }
@@ -241,6 +241,7 @@ extension HealthMetricType {
         case .socialConnectionsQuality: return 7 // 1-10 scale, 7 = good connections
         case .activeEnergyBurned: return 400 // kcal per day
         case .oxygenSaturation: return 98 // percent
+        case .bloodPressure: return 115 // mmHg systolic
         }
     }
 }

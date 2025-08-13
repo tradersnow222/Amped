@@ -33,7 +33,7 @@ struct StyledMetricChart: View {
              .vo2Max, .oxygenSaturation:
             // Higher is better
             return trend >= 0
-        case .restingHeartRate, .bodyMass, .smokingStatus, .alcoholConsumption, .stressLevel:
+        case .restingHeartRate, .bodyMass, .smokingStatus, .alcoholConsumption, .stressLevel, .bloodPressure:
             // Lower is better
             return trend <= 0
         }
@@ -221,6 +221,8 @@ struct StyledMetricChart: View {
             return String(format: "%.0f%%", value)
         case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
             return String(format: "%.1f score", value)
+        case .bloodPressure:
+            return String(format: "%.0f mmHg", value)
         }
     }
     
@@ -279,6 +281,8 @@ struct StyledMetricChart: View {
             return "%"
         case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
             return "Score"
+        case .bloodPressure:
+            return "mmHg"
         }
     }
     
@@ -307,6 +311,8 @@ struct StyledMetricChart: View {
             return String(format: "%.0f%%", value)
         case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
             return String(format: "%.1f", value)
+        case .bloodPressure:
+            return String(format: "%.0f mmHg", value)
         }
     }
 } 

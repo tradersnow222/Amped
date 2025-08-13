@@ -190,6 +190,65 @@ class CardiovascularImpactCalculator {
         return dailyImpact
     }
     
+    // MARK: - Blood Pressure Impact Calculation
+    
+    /// Calculate blood pressure impact using research from ACC/AHA guidelines and SPRINT study
+    /// Based on exponential relationship where risk doubles per 20/10 mmHg increase
+    func calculateBloodPressureImpact(systolicPressure: Double, userProfile: UserProfile) -> MetricImpactDetail {
+        logger.info("🩺 Calculating blood pressure impact for \(Int(systolicPressure)) mmHg systolic")
+        
+        let studies = StudyReferenceProvider.getApplicableStudies(for: .bloodPressure, userProfile: userProfile)
+        
+        // Calculate impact using research-based exponential model
+        let dailyImpactMinutes = calculateBPLifeImpact(
+            currentSystolic: systolicPressure,
+            userProfile: userProfile
+        )
+        
+        let recommendation = generateBPRecommendation(currentSystolic: systolicPressure)
+        
+        return MetricImpactDetail(
+            metricType: .bloodPressure,
+            currentValue: systolicPressure,
+            baselineValue: 115.0, // Optimal from research
+            studyReferences: studies,
+            lifespanImpactMinutes: dailyImpactMinutes,
+            calculationMethod: .directStudyMapping,
+            recommendation: recommendation
+        )
+    }
+    
+    /// Research-based blood pressure life impact using exponential risk model
+    /// Based on ACC/AHA guidelines and SPRINT study showing doubling risk per 20 mmHg
+    private func calculateBPLifeImpact(currentSystolic: Double, userProfile: UserProfile) -> Double {
+        let systolic = max(80, min(currentSystolic, 200))  // Reasonable bounds
+        
+        // Optimal systolic BP is around 110-115 mmHg based on research
+        let optimalSystolic = 115.0
+        
+        // Calculate difference from optimal
+        let bpDifference = systolic - optimalSystolic
+        
+        // Age adjustment - risk increases more rapidly with age
+        let age = Double(userProfile.age ?? 30)
+        let ageMultiplier = 1.0 + max(0, (age - 30) * 0.01) // 1% increased risk per year over 30
+        
+        let dailyImpact: Double
+        if bpDifference <= 0 {
+            // Below optimal - minimal additional benefit below 115 mmHg
+            dailyImpact = max(bpDifference * 0.5, -10.0) // Cap benefit at 10 min/day
+        } else {
+            // Above optimal - exponential risk increase
+            // Based on research showing ~2x cardiovascular mortality per +20 mmHg
+            let riskFactor = pow(1.8, bpDifference / 20.0) - 1.0 // Exponential model
+            dailyImpact = -riskFactor * 30.0 * ageMultiplier // Negative impact scaled by age
+        }
+        
+        logger.info("📊 BP impact: \(String(format: "%.0f", systolic)) mmHg → \(String(format: "%.1f", dailyImpact)) minutes/day")
+        
+        return dailyImpact
+    }
+    
     // MARK: - Recommendation Generation
     
     private func generateRHRRecommendation(currentRHR: Double) -> String {
@@ -226,6 +285,21 @@ class CardiovascularImpactCalculator {
             return "Consider stress reduction, better sleep, and adequate recovery between workouts to improve HRV."
         } else {
             return "Excellent HRV! Your autonomic nervous system shows good balance and recovery capacity."
+        }
+    }
+    
+    private func generateBPRecommendation(currentSystolic: Double) -> String {
+        let optimalRange = 110.0...119.0
+        let normalRange = 120.0...129.0
+        
+        if optimalRange.contains(currentSystolic) {
+            return "Excellent! Your blood pressure is in the optimal range. Maintain your healthy lifestyle."
+        } else if normalRange.contains(currentSystolic) {
+            return "Your blood pressure is elevated. Focus on diet, exercise, and stress management to lower it."
+        } else if currentSystolic >= 130.0 {
+            return "Your blood pressure is high. Consult your doctor about treatment options and lifestyle changes."
+        } else {
+            return "Your blood pressure is quite low. If you feel fine, this may be normal for you."
         }
     }
 }

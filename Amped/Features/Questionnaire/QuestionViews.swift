@@ -811,7 +811,7 @@ struct QuestionViews {
                         .padding(.bottom, 10)
                         .frame(maxWidth: .infinity)
 
-                    ScientificCitation(text: "ACC/AHA 2017 guideline + SPRINT (NEJM 2015): risk rises from ≥120 systolic; lowest near 110–119/70–79", metricType: nil)
+                    ScientificCitation(text: "ACC/AHA 2017 guideline + SPRINT (NEJM 2015): risk rises from ≥120 systolic; lowest near 110–119/70–79", metricType: .bloodPressure)
                 }
 
                 Spacer()

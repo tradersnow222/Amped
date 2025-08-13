@@ -263,6 +263,9 @@ struct DashboardView: View {
             ZStack {
                                 // Main content
                 VStack(spacing: 0) {
+                    // Personalized greeting header - Rules: Strategic personalization for maximum impact
+                    personalizedHeader
+                    
                     // Top-level selectors positioned at the top of the screen
                     topLevelSelectors
                     
@@ -561,6 +564,24 @@ struct DashboardView: View {
             .padding(.bottom, 12)
         }
         .frame(height: 56) // Consistent height for all selectors (slightly increased for breathing room)
+    }
+    
+    /// Personalized header with greeting - Rules: Strategic personalization for maximum impact
+    private var personalizedHeader: some View {
+        HStack {
+            // Personalized greeting using PersonalizationUtils - positioned top left
+            Text(PersonalizationUtils.contextualMessage(
+                firstName: PersonalizationUtils.userFirstName(from: viewModel.userProfile),
+                context: .dashboardGreeting
+            ))
+            .font(.system(size: 24, weight: .semibold, design: .rounded))
+            .foregroundColor(.white)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 4) // Minimal top padding to position as high as possible
+        .padding(.bottom, 8)
     }
     
     // MARK: - UI Components

@@ -960,6 +960,15 @@ final class MetricDetailViewModel: ObservableObject {
                 iconName: "brain.head.profile",
                 actionText: "Stress Relief Techniques"
             ))
+            
+        case .bloodPressure:
+            recommendations.append(MetricRecommendation(
+                id: UUID(),
+                title: "Blood Pressure Management",
+                description: "Maintain healthy blood pressure through regular exercise, stress management, and a heart-healthy diet rich in fruits and vegetables.",
+                iconName: "heart.circle.fill",
+                actionText: "Heart Health Tips"
+            ))
         }
         
         // Add a general recommendation for all metrics

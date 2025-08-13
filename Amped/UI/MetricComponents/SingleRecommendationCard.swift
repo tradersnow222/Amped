@@ -167,6 +167,13 @@ struct SingleRecommendationCard: View {
             } else {
                 return "Managing stress better can have a powerful impact on your health. Try simple techniques like deep breathing, short walks, or talking to someone you trust."
             }
+            
+        case .bloodPressure:
+            if isPositive {
+                return "Your blood pressure is in a healthy range! This is excellent for your heart and circulation. Keep up the good habits that are supporting this."
+            } else {
+                return "Improving your blood pressure can significantly reduce your risk of heart disease and stroke. Focus on regular movement, stress management, and a heart-healthy diet."
+            }
         }
     }
     
@@ -199,6 +206,8 @@ struct SingleRecommendationCard: View {
             return "Take 3 slow, deep breaths and notice how your body feels"
         case .oxygenSaturation:
             return nil // Medical metric - no quick action appropriate
+        case .bloodPressure:
+            return "Take 5 minutes for slow, deep breathing to help relax your circulation"
         }
     }
     
@@ -233,6 +242,8 @@ struct SingleRecommendationCard: View {
             return "Strong relationships are like medicine for both your mind and body."
         case .stressLevel:
             return "Managing stress helps your body focus on healing and staying healthy."
+        case .bloodPressure:
+            return "Healthy blood pressure keeps your heart and circulation working efficiently."
         }
     }
 } 

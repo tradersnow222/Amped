@@ -58,6 +58,12 @@ class LifeImpactService {
                 userProfile: userProfile
             )
             
+        case .bloodPressure:
+            impactDetail = cardiovascularCalculator.calculateBloodPressureImpact(
+                systolicPressure: metric.value,
+                userProfile: userProfile
+            )
+            
         // Lifestyle Metrics - Research-backed calculations
         case .alcoholConsumption:
             impactDetail = lifestyleCalculator.calculateAlcoholImpact(

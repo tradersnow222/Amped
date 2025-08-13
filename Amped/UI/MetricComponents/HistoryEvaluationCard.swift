@@ -227,7 +227,7 @@ struct HistoryEvaluationCard: View {
              .nutritionQuality, .socialConnectionsQuality, .activeEnergyBurned,
              .vo2Max, .oxygenSaturation:
             return true
-        case .restingHeartRate, .bodyMass, .smokingStatus, .alcoholConsumption, .stressLevel:
+        case .restingHeartRate, .bodyMass, .smokingStatus, .alcoholConsumption, .stressLevel, .bloodPressure:
             return false
         }
     }
@@ -250,7 +250,7 @@ struct HistoryEvaluationCard: View {
         case .vo2Max, .oxygenSaturation:
             return (low: 3, high: 10) // Should be quite stable
         case .nutritionQuality, .smokingStatus, .alcoholConsumption,
-             .socialConnectionsQuality, .stressLevel:
+             .socialConnectionsQuality, .stressLevel, .bloodPressure:
             return (low: 10, high: 30) // Lifestyle factors can vary
         }
     }

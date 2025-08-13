@@ -15,8 +15,8 @@ final class QuestionnaireViewModel: ObservableObject {
     }
     
     enum Question: Int, CaseIterable, Hashable {
-        case birthdate
         case name
+        case birthdate
         case stressLevel        // NEW: Question #3 for stress level
         case anxietyLevel       // NEW: Anxiety question
         case gender
@@ -33,7 +33,7 @@ final class QuestionnaireViewModel: ObservableObject {
         
         var category: QuestionCategory {
             switch self {
-            case .birthdate, .name, .gender:
+            case .name, .birthdate, .gender:
                 return .basics
             case .nutritionQuality, .smokingStatus, .alcoholConsumption:
                 return .lifestyle
@@ -517,12 +517,12 @@ final class QuestionnaireViewModel: ObservableObject {
     
     // Check if it's possible to move back to previous question
     var canMoveBack: Bool {
-        return currentQuestion != .birthdate
+        return currentQuestion != .name
     }
     
     // Check if we're at the first question
     var isFirstQuestion: Bool {
-        return currentQuestion == .birthdate
+        return currentQuestion == .name
     }
     
     // Check if we should show a category header for the current question
@@ -677,8 +677,8 @@ final class QuestionnaireViewModel: ObservableObject {
     init(startFresh: Bool = false) {
         // CRITICAL FIX: Allow forcing a fresh start, ignoring saved state
         if startFresh {
-            // Always start from birthdate when forcing fresh start
-            self.currentQuestion = .birthdate
+            // Always start from name when forcing fresh start
+            self.currentQuestion = .name
             
             // Clear any saved state to ensure consistency
             UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
@@ -689,7 +689,7 @@ final class QuestionnaireViewModel: ObservableObject {
                let savedQuestion = Question(rawValue: savedQuestionRawValue) {
                 self.currentQuestion = savedQuestion
             } else {
-                self.currentQuestion = .birthdate
+                self.currentQuestion = .name
             }
         }
         

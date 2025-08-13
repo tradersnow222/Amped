@@ -25,8 +25,8 @@ final class QuestionnaireViewModelTests: XCTestCase {
     
     /// Test initial state
     func testInitialState() {
-        // Initial question should be birthdate
-        XCTAssertEqual(viewModel.currentQuestion, .birthdate)
+        // Initial question should be name
+        XCTAssertEqual(viewModel.currentQuestion, .name)
         
         // Gender should be nil initially
         XCTAssertNil(viewModel.selectedGender)
@@ -59,69 +59,69 @@ final class QuestionnaireViewModelTests: XCTestCase {
     
     /// Test question navigation
     func testQuestionNavigation() {
-        // Start at birthdate
+        // Start at name
+        XCTAssertEqual(viewModel.currentQuestion, .name)
+        
+        // Set a valid name
+        viewModel.userName = "Test User"
+        
+        // Should be able to proceed
+        XCTAssertTrue(viewModel.canProceed)
+        
+        // Proceed to next question (birthdate)
+        viewModel.proceedToNextQuestion()
         XCTAssertEqual(viewModel.currentQuestion, .birthdate)
+        
+        // Cannot proceed with invalid birthdate
+        XCTAssertFalse(viewModel.canProceed)
         
         // Set a valid birthdate for an adult
         let calendar = Calendar.current
         let adultBirthdate = calendar.date(byAdding: .year, value: -30, to: Date())!
         viewModel.birthdate = adultBirthdate
-        
-        // Should be able to proceed
-        XCTAssertTrue(viewModel.canProceed)
-        
-        // Proceed to next question (gender)
-        viewModel.proceedToNextQuestion()
-        XCTAssertEqual(viewModel.currentQuestion, .gender)
-        
-        // Cannot proceed with nil gender
-        XCTAssertFalse(viewModel.canProceed)
-        
-        // Select a gender
-        viewModel.selectedGender = .female
         XCTAssertTrue(viewModel.canProceed)
         
         // Proceed to next question
         viewModel.proceedToNextQuestion()
-        XCTAssertEqual(viewModel.currentQuestion, .nutritionQuality)
+        XCTAssertEqual(viewModel.currentQuestion, .stressLevel)
     }
     
     /// Test cannot proceed with invalid data
     func testCannotProceedWithInvalidData() {
-        // Start at birthdate with invalid age
+        // Start at name with empty name
+        XCTAssertEqual(viewModel.currentQuestion, .name)
+        
+        // Should not be able to proceed (empty name)
+        XCTAssertFalse(viewModel.canProceed)
+        
+        // Move to birthdate question manually and test invalid age
+        viewModel.currentQuestion = .birthdate
         let calendar = Calendar.current
         let childBirthdate = calendar.date(byAdding: .year, value: -15, to: Date())!
         viewModel.birthdate = childBirthdate
         
         // Should not be able to proceed (too young)
         XCTAssertFalse(viewModel.canProceed)
-        
-        // Move to gender question manually (though this wouldn't happen in the app)
-        viewModel.currentQuestion = .gender
-        
-        // Cannot proceed with nil gender
-        XCTAssertFalse(viewModel.canProceed)
     }
     
     /// Test moving back through questions
     func testMoveBackThroughQuestions() {
-        // Start at birthdate
-        XCTAssertEqual(viewModel.currentQuestion, .birthdate)
+        // Start at name
+        XCTAssertEqual(viewModel.currentQuestion, .name)
         
         // Cannot move back from first question
         XCTAssertFalse(viewModel.canMoveBack)
         
-        // Set valid inputs and move to gender question
-        let calendar = Calendar.current
-        viewModel.birthdate = calendar.date(byAdding: .year, value: -30, to: Date())!
+        // Set valid inputs and move to birthdate question
+        viewModel.userName = "Test User"
         viewModel.proceedToNextQuestion()
         
-        // Now should be on gender question and can move back
-        XCTAssertEqual(viewModel.currentQuestion, .gender)
+        // Now should be on birthdate question and can move back
+        XCTAssertEqual(viewModel.currentQuestion, .birthdate)
         XCTAssertTrue(viewModel.canMoveBack)
         
-        // Move back to birthdate
+        // Move back to name
         viewModel.moveBackToPreviousQuestion()
-        XCTAssertEqual(viewModel.currentQuestion, .birthdate)
+        XCTAssertEqual(viewModel.currentQuestion, .name)
     }
 } 

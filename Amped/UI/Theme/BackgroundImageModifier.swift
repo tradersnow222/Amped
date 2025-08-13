@@ -1,5 +1,41 @@
 import SwiftUI
 
+/// View modifier that applies the BatteryBackground image as a full-screen background
+/// This modifier is specifically designed for the WelcomeView
+struct BatteryBackgroundModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        ZStack {
+            // Battery background image as full-screen background
+            GeometryReader { geometry in
+                Image("BatteryBackground")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .overlay(
+                        // Subtle overlay to ensure text readability while preserving battery theme
+                        LinearGradient(
+                            gradient: Gradient(
+                                colors: [
+                                    Color.black.opacity(0.2),
+                                    Color.black.opacity(0.1)
+                                ]
+                            ),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .edgesIgnoringSafeArea(.all)
+            }
+            .edgesIgnoringSafeArea(.all)
+            
+            // The actual content
+            content
+        }
+        // Force dark color scheme when using battery background to ensure proper text contrast
+        .environment(\.colorScheme, .dark)
+    }
+}
+
 /// View modifier that applies the DeepBackground image as a full-screen background
 /// This modifier is meant to be applied to all screens except WelcomeView
 struct DeepBackgroundModifier: ViewModifier {
@@ -37,6 +73,12 @@ struct DeepBackgroundModifier: ViewModifier {
 }
 
 extension View {
+    /// Apply the battery background image to the view
+    /// This should be applied specifically to WelcomeView
+    func withBatteryBackground() -> some View {
+        modifier(BatteryBackgroundModifier())
+    }
+    
     /// Apply the deep background image to the view
     /// This should be applied to all views EXCEPT WelcomeView
     func withDeepBackground() -> some View {

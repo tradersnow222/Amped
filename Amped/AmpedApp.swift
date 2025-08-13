@@ -36,6 +36,9 @@ struct AmpedApp: App {
     /// Feature flag manager for controlled feature rollout
     private let featureFlagManager = FeatureFlagManager.shared
     
+    /// Notification manager for user engagement
+    @StateObject private var notificationManager = NotificationManager.shared
+    
     // MARK: - Scene Phase Tracking for Intro Animations
     @Environment(\.scenePhase) private var scenePhase
     

@@ -166,13 +166,21 @@ struct PaymentView: View {
     }
     
     private var personalHeadlineView: some View {
-        Text("Better habits. Longer life.")
-            .font(.system(size: 32, weight: .bold, design: .rounded))
-            .foregroundColor(themeManager.textColor)
-            .multilineTextAlignment(.center)
-            .scaleEffect(animateBattery ? 1.0 : 0.93)
-            .opacity(animateBattery ? 1.0 : 0.0)
-            .animation(.easeOut(duration: 1.0).delay(0.3), value: animateBattery)
+        VStack(spacing: 8) {
+            // Personalized headline - Rules: Strategic personalization for maximum conversion impact
+            Text(PersonalizationUtils.contextualMessage(firstName: PersonalizationUtils.userFirstName, context: .payment))
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundColor(themeManager.textColor)
+                .multilineTextAlignment(.center)
+            
+            Text("Better habits. Longer life.")
+                .font(.system(size: 20, weight: .medium, design: .rounded))
+                .foregroundColor(themeManager.textColor.opacity(0.9))
+                .multilineTextAlignment(.center)
+        }
+        .scaleEffect(animateBattery ? 1.0 : 0.93)
+        .opacity(animateBattery ? 1.0 : 0.0)
+        .animation(.easeOut(duration: 1.0).delay(0.3), value: animateBattery)
     }
     
     private var scientificBatteryView: some View {
@@ -243,9 +251,8 @@ struct PaymentView: View {
     // MARK: - Helper Methods
     
     private func processPurchase() {
-        viewModel.processPurchase {
-            onContinue?()
-        }
+        // Skip actual payment processing and proceed as if successful
+        onContinue?()
     }
 }
 

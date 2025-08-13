@@ -95,6 +95,8 @@ struct HealthMetric: Identifiable, Equatable {
             let rating = Int(value)
             let contextLabel = getContextLabel(for: rating)
             return "\(rating)/10 (\(contextLabel))"
+        case .bloodPressure:
+            return "\(Int(value))"
         }
     }
     
@@ -128,6 +130,8 @@ struct HealthMetric: Identifiable, Equatable {
             return "%"
         case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
             return ""
+        case .bloodPressure:
+            return "mmHg"
         }
     }
     

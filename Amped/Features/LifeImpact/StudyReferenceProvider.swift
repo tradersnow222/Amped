@@ -1727,6 +1727,8 @@ class StudyReferenceProvider {
             return oxygenSaturationResearch
         case .socialConnectionsQuality:
             return socialResearch
+        case .bloodPressure:
+            return bloodPressureResearch
         }
     }
     

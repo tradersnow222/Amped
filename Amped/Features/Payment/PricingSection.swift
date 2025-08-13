@@ -31,17 +31,17 @@ struct BottomPricingSection: View {
                 }) {
                     ZStack {
                         VStack(spacing: 4) {
-                            Text("Start 7-Day Free Trial")
+                            Text("Try for free")
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundColor(.white)
                             
-                            Text("Then $6.99/week")
+                            Text("Then $3.99/week")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.white)
                         }
                         .frame(maxWidth: .infinity)
                     }
-                    .frame(height: 42)
+                    .frame(height: 52)
                     .frame(maxWidth: .infinity)
                     .background(
                         LinearGradient(

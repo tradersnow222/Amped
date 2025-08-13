@@ -22,7 +22,7 @@ struct WelcomeView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Content without background since parent provides static background
+                // Content without background since parent provides BatteryBackground for welcome screen
                 
                 VStack {
                     // Battery content area

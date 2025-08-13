@@ -293,7 +293,7 @@ struct MetricChartSection: View {
             return String(format: "%.1f", value)
         case .oxygenSaturation:
             return String(format: "%.0f", value)
-        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel, .bloodPressure:
             return String(format: "%.1f", value)
         }
     }
