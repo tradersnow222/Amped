@@ -893,4 +893,4 @@ extension MetricImpactDetail {
 - Sleep/Nutrition: 10% annual
 - Default: 12% annual
 
-This documentation reflects the exact current state of all calculations in the Amped iOS app as implemented in the codebase. 
+This documentation reflects the exact current state of all calculations in the Amped iOS app as implemented in the codebase.

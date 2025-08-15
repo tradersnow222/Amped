@@ -43,15 +43,13 @@ struct CollectiveImpactChartContainer: View {
             }
         }
         .onAppear {
-            // ENHANCED DEBUG: Log when chart container appears
-            print("🔍 CHART CONTAINER DEBUG - Period: \(effectivePeriod.rawValue), Data points: \(chartData.count)")
+            // Chart container appears
             
             // Load real historical data on appear
             viewModel.loadHistoricalChartData()
         }
         .onChange(of: effectivePeriod) { _ in
-            // ENHANCED DEBUG: Log period changes
-            print("🔍 CHART CONTAINER DEBUG - Period changed to: \(effectivePeriod.rawValue)")
+            // Period changed
             
             // FIXED: Listen to viewModel's period changes for better synchronization
             selectedDataPoint = nil
@@ -59,11 +57,7 @@ struct CollectiveImpactChartContainer: View {
             viewModel.loadHistoricalChartData()
         }
         .onChange(of: viewModel.historicalChartData) { newData in
-            // ENHANCED DEBUG: Log data changes
-            print("🔍 CHART CONTAINER DEBUG - Data updated: \(newData.count) points")
-            if let lastPoint = newData.last {
-                print("  📊 Latest impact: \(String(format: "%.2f", lastPoint.impact)) minutes")
-            }
+            // Data updated
             
             // Reset selection when data changes
             selectedDataPoint = nil
@@ -108,8 +102,7 @@ struct CollectiveImpactChart: View {
     private func getYAxisStride() -> AxisMarkValues {
         let totalRange = yAxisRange.upperBound - yAxisRange.lowerBound
         
-        // DEBUG LOG: Track y-axis range calculation
-        print("🔍 DEBUG - Y-Axis Range: \(yAxisRange.lowerBound) to \(yAxisRange.upperBound), Total: \(totalRange) minutes")
+        // Track y-axis range calculation
         
         // Define clean increment options in minutes for optimal readability
         let incrementOptions = [15.0, 30.0, 60.0, 120.0, 180.0, 360.0, 720.0, 1440.0, 2880.0] // 15min to 2 days
@@ -118,10 +111,8 @@ struct CollectiveImpactChart: View {
         var optimalTickCount = 5 // Default fallback
         for increment in incrementOptions {
             let divisions = totalRange / increment
-            print("🔍 DEBUG - Testing increment \(increment)min = \(divisions) divisions")
             if divisions >= 4 && divisions <= 8 {
                 optimalTickCount = Int(divisions.rounded())
-                print("🔍 DEBUG - Selected increment \(increment)min with \(optimalTickCount) ticks")
                 break
             }
         }
@@ -265,19 +256,7 @@ struct CollectiveImpactChart: View {
             )
         }
         .onAppear {
-            // ENHANCED DEBUGGING: Log chart data for verification
-            if !dataPoints.isEmpty {
-                print("🔍 CHART DEBUG - Displaying \(dataPoints.count) data points:")
-                for (index, point) in dataPoints.enumerated() {
-                    print("  \(index): \(point.date) = \(String(format: "%.2f", point.impact)) minutes")
-                }
-                
-                if let firstPoint = dataPoints.first, let lastPoint = dataPoints.last {
-                    let totalChange = lastPoint.impact - firstPoint.impact
-                    print("  📈 Total change: \(String(format: "%.2f", totalChange)) minutes")
-                    print("  📊 Current value: \(String(format: "%.2f", lastPoint.impact)) minutes")
-                }
-            }
+            // Chart data loaded
         }
     }
     

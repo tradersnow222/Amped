@@ -9,7 +9,7 @@
    - Battery icon at 50% charge with "Power Up Your Experience" text
    - 2-3 benefit icons with single-line descriptions (no paragraphs)
    - Quick visual showing "Your habits → Your battery life"
-   - Simple message: “Let’s go through a few quick questions to customize your battery" (5-8 questions, 1 min)
+   - Simple message: "Let's go through a few quick questions to customize your battery" (5-8 questions, 1 min)
    - Subtle animation showing swipe-right gesture
    - Clear instruction: "Swipe right to begin"
    - Progress indicator showing first step completed
@@ -27,7 +27,9 @@
 4. **HealthKit Permissions (5 metrics)**: Request access to most impactful health data
    - Clear explanation of why granting permission benefits the user and gives a more accurate calculation
    - A simple and scalable integration to meet iOS best practices and project MVP standards
-   - **Read Only**
+   - **Read Only** access with background monitoring and real-time updates
+   - Efficient querying with performance optimization
+   - Graceful handling of denied permissions with fallback mechanisms
   
 
 5. **Sign in with Apple**: Authentication
@@ -45,7 +47,13 @@
    - Present as final step to "fully power up your experience"
 
 7. **Dashboard**: Transition to main app experience
-   - Immediate value displays showing time-period-based life impact and total life left calculations
-   - Animated dual battery visualization filling up
-   - Clear next steps for exploring the app
-
+   - **Dual Battery Visualization**: 
+     - Life Impact Battery: Recent health habit impacts with time period selection
+     - Life Projection Battery: Total life expectancy with dynamic updates
+   - **Real-time Updates**: Background health data synchronization with visual indicators
+   - **Engagement Features**: Streak tracking, milestone celebrations, and notifications
+   - **Personalized Insights**: Actionable recommendations based on health data
+   - **Glass Theme Interface**: Apple Liquid Glass effects throughout the dashboard
+   - **Accessibility**: Full VoiceOver support and dynamic type compliance
+   - **Performance**: Optimized loading with caching and background processing
+   - Clear next steps for exploring detailed metrics and settings

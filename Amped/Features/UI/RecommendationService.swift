@@ -48,12 +48,8 @@ final class RecommendationService {
             return getDefaultRecommendation(for: metric, period: selectedPeriod)
         }
         
-        // COMPREHENSIVE DEBUGGING
-        print("🔍 RecommendationService.generateRecommendation DEBUG:")
-        print("  Metric Type: \(metric.type.displayName)")
-        print("  Current Value: \(metric.value)")
-        print("  Current Impact: \(impactDetails.lifespanImpactMinutes) minutes")
-        print("  Selected Period: \(selectedPeriod.rawValue)")
+        // Generate recommendation based on metric data
+
         
         // Clean expired targets on each call
         dailyTargetManager.clearExpiredTargets()

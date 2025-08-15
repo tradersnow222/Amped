@@ -1,9 +1,30 @@
 ## Testing Strategy
-- Unit tests for core impact calculation algorithms
-- Unit tests for life projection algorithms
-- Mock HealthKit data for consistent testing
-- UI and navigation flow testing
-- Performance testing for scale
-- Simulated load testing
-- Conversion funnel analytics
-- A/B testing framework for questionnaire and payment screens
+
+### Unit Testing
+- **Core Algorithm Tests**: LifeImpactService impact calculations with multiple test scenarios
+- **Life Projection Tests**: LifeProjectionService baseline and adjusted life expectancy calculations
+- **Advanced Scaling Tests**: Complex scaling functions (linear, logarithmic, diminishing returns)
+- **Interaction Effect Tests**: InteractionEffectEngine multi-metric interaction calculations
+- **Questionnaire Tests**: QuestionnaireViewModel validation and state management
+- **Battery Visualization Tests**: UI component rendering and state management
+- **Mock HealthKit Data**: Consistent test data for reliable testing
+
+### Test Structure
+- **XCTest Framework**: Primary testing framework for unit and integration tests
+- **Swift Testing Framework**: Modern testing approach with @Test annotations
+- **Test Organization**: Separate test files for each major service/component
+- **Setup/Teardown**: Proper test isolation with setUp() and tearDown() methods
+- **Test Data**: Realistic UserProfile and HealthMetric test data
+
+### Performance Testing
+- **Algorithm Performance**: Ensure calculations complete within acceptable time limits
+- **Memory Management**: Test for memory leaks and efficient resource usage
+- **Background Processing**: Test background health data synchronization
+- **Cache Performance**: Verify CacheManager efficiency and data persistence
+
+### UI Testing
+- **Navigation Flow Testing**: End-to-end user journey validation
+- **Accessibility Testing**: VoiceOver and accessibility feature validation
+- **Visual Testing**: Battery and glass theme rendering verification
+- **Conversion Funnel Analytics**: Track user progression through onboarding
+- **A/B Testing Framework**: Support for questionnaire and payment screen optimization

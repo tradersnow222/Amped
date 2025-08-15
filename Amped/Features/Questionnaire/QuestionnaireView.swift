@@ -72,7 +72,7 @@ struct QuestionnaireView: View {
                             .padding(.top, 16)
                     }
 
-                    // Category header shown for EVERY question (Always-applied rule)
+                    // Category header shown for ALL questions (standardized flow)
                     CategoryHeader(category: viewModel.currentQuestionCategory)
                         .padding(.top, 8)
                         .frame(maxWidth: .infinity)
@@ -135,6 +135,15 @@ struct QuestionnaireView: View {
     private func getAdaptiveTransition() -> AnyTransition {
         // Applied rule: Simplicity is KING — use consistent transitions throughout
         // Use the same slide transitions for all questions, including birthdate picker
+        
+        // CRITICAL FIX: When exiting to parent (OnboardingFlow), let the parent handle the transition
+        // to avoid conflicting animations that cause wrong exit direction
+        if exitToPersonalizationIntro {
+            return .identity // No internal transition - let OnboardingFlow handle it
+        }
+        
+        // Use consistent transitions for all questions
+        // The nested animation issue has been fixed, so we use the same transitions everywhere
         switch viewModel.navigationDirection {
         case .forward:
             return .asymmetric(

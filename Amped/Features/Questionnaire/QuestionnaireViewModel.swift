@@ -52,10 +52,10 @@ final class QuestionnaireViewModel: ObservableObject {
 
         var displayName: String {
             switch self {
-            case .normal: return "Below 120/80 (Normal/Optimal)"
+            case .normal: return "Below 120/80 (Normal)"
             case .unknown: return "I don't know"
-            case .elevatedToStage1: return "120–129 systolic and <80 diastolic (Elevated)"
-            case .high: return "130/80 or higher (High/Hypertension)"
+            case .elevatedToStage1: return "120-129 (Elevated)"
+            case .high: return "130/80+ (High)"
             }
         }
     }
@@ -87,16 +87,14 @@ final class QuestionnaireViewModel: ObservableObject {
     
     enum AnxietyLevel: CaseIterable {
         case minimal            // 10.0 - Most positive
-        case mild               // 8.0
-        case moderate           // 5.0
+        case mildToModerate     // 6.5 - Combined mild and moderate
         case severe             // 2.0
         case verySevere         // 1.0 - Most negative
         
         var displayName: String {
             switch self {
             case .minimal: return "Minimal\n(Rarely feel anxious)"
-            case .mild: return "Mild\n(Occasional worry)"
-            case .moderate: return "Moderate\n(Regular anxiety)"
+            case .mildToModerate: return "Mild to Moderate\n(Occasional to regular worry)"
             case .severe: return "Severe\n(Frequent anxiety episodes)"
             case .verySevere: return "Very Severe\n(Constant anxiety/panic)"
             }
@@ -105,8 +103,7 @@ final class QuestionnaireViewModel: ObservableObject {
         var anxietyValue: Double {
             switch self {
             case .minimal: return 10.0
-            case .mild: return 8.0
-            case .moderate: return 5.0
+            case .mildToModerate: return 6.5
             case .severe: return 2.0
             case .verySevere: return 1.0
             }
@@ -247,16 +244,14 @@ final class QuestionnaireViewModel: ObservableObject {
         case excellent          // 10.0 - Most positive
         case good               // 8.0
         case average            // 6.0
-        case poor               // 3.0
-        case veryPoor           // 1.0 - Most negative
+        case poorToVeryPoor     // 2.0 - Combined poor and very poor
         
         var displayName: String {
             switch self {
             case .excellent: return "Excellent\n(7-9 hrs, wake refreshed)"
             case .good: return "Good\n(Usually sleep well)"
             case .average: return "Average\n(Sometimes restless)"
-            case .poor: return "Poor\n(Often tired, trouble sleeping)"
-            case .veryPoor: return "Very Poor\n(Chronic insomnia/fatigue)"
+            case .poorToVeryPoor: return "Poor to Very Poor\n(Tired, trouble sleeping/insomnia)"
             }
         }
         
@@ -265,8 +260,7 @@ final class QuestionnaireViewModel: ObservableObject {
             case .excellent: return 10.0
             case .good: return 8.0
             case .average: return 6.0
-            case .poor: return 3.0
-            case .veryPoor: return 1.0
+            case .poorToVeryPoor: return 2.0
             }
         }
     }
@@ -610,12 +604,20 @@ final class QuestionnaireViewModel: ObservableObject {
             let fromQuestion = currentQuestion
             previousQuestion = fromQuestion
             transitionLogger.info("⬅️ Moving back from \(String(describing: fromQuestion)) to \(String(describing: prevQuestion))")
-            // CRITICAL FIX: Defer question change so the outgoing view updates its transition first
-            DispatchQueue.main.async {
-                withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
-                    self.currentQuestion = prevQuestion
+            // CRITICAL FIX: Use synchronous update with animation
+            // The caller should not wrap this in another animation block
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
+                self.currentQuestion = prevQuestion
+            }
+            
+            // PERFORMANCE: Persist state in background to avoid UI blocking
+            DispatchQueue.global(qos: .utility).async {
+                if prevQuestion != .name { // Don't save name as current question to ensure fresh start
+                    UserDefaults.standard.set(prevQuestion.rawValue, forKey: "questionnaire_current_question")
                 }
             }
+        } else {
+            print("   ERROR: No previous question found!")
         }
     }
     

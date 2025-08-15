@@ -7,9 +7,11 @@ alwaysApply: true
 
 ### HealthKit Integration
 - Request permissions for MVP core metrics only
-- Fetch and monitor health data in real-time
+- Fetch and monitor health data in real-time with background refresh
 - Process raw data into usable metrics with appropriate units
-- Handle missing or incomplete data gracefully
+- Handle missing or incomplete data gracefully with fallback mechanisms
+- Implement efficient querying with appropriate limits for performance
+- Support background task management for data synchronization
 
 ### Questionnaire Data Processing
 - Store user-provided data securely on device
@@ -20,10 +22,13 @@ alwaysApply: true
 ### Life Impact Calculations
 - Compare user metrics against scientific research baselines
 - Calculate impact for each metric type using specialized algorithms
+- Implement advanced scaling functions (linear, logarithmic, diminishing returns)
+- Handle interaction effects between multiple health metrics
 - Aggregate individual impacts into total lifespan effect
 - Scale calculations based on selected time period (Day, Month, Year)
-- Handle edge cases and data anomalies
+- Handle edge cases and data anomalies with robust error handling
 - Incorporate both HealthKit and manual metrics in calculations
+- Support meta-analysis synthesis for research-backed calculations
 
 ### Life Projection Calculations
 - Calculate baseline life expectancy based on demographic information
@@ -34,5 +39,14 @@ alwaysApply: true
 
 ### Time Period Handling
 - Support three primary periods (Day, Month, Year) for Life Impact Battery
-- Apply appropriate scaling factors to calculations
-- Maintain historical data for trending
+- Apply appropriate scaling factors to calculations with effect type consideration
+- Maintain historical data for trending with chart visualization support
+- Implement caching for performance optimization
+- Support real-time updates with background refresh
+
+### User Engagement System
+- Track user engagement streaks with milestone rewards
+- Implement notification system for streak protection
+- Provide personalized recommendations based on user data
+- Support feature flags for gradual rollout of new capabilities
+- Maintain offline operation with comprehensive caching strategy

@@ -15,28 +15,76 @@ struct NotificationPermissionView: View {
             
             // Header with icon
             VStack(spacing: 24) {
-                // Notification icon with subtle animation
+                // Notification icon with sophisticated glass morphism styling
                 ZStack {
+                    // Outer glow ring
                     Circle()
-                        .fill(Color.blue.opacity(0.1))
+                        .stroke(
+                            Color.ampedGreen.opacity(showingBenefits ? 0.4 : 0.2),
+                            lineWidth: 2
+                        )
+                        .frame(width: 90, height: 90)
+                        .blur(radius: showingBenefits ? 3 : 1)
+                        .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: showingBenefits)
+                    
+                    // Glass morphism background
+                    Circle()
+                        .fill(.ultraThinMaterial)
                         .frame(width: 80, height: 80)
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.3),
+                                            Color.ampedGreen.opacity(0.4),
+                                            Color.white.opacity(0.1)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1.5
+                                )
+                        )
+                        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+                        .shadow(color: Color.ampedGreen.opacity(0.2), radius: 15, x: 0, y: 3)
                     
                     Image(systemName: "bell.badge")
                         .font(.system(size: 32, weight: .medium))
-                        .foregroundColor(.blue)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color.ampedGreen,
+                                    Color.ampedGreen.opacity(0.8)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                         .scaleEffect(showingBenefits ? 1.1 : 1.0)
                         .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: showingBenefits)
                 }
                 
-                // Main heading - clear and benefit-focused
+                // Main heading with sophisticated typography
                 VStack(spacing: 12) {
                     Text("Stay On Track")
-                        .font(.system(size: 28, weight: .bold, design: .default))
-                        .foregroundColor(.primary)
+                        .font(.system(size: 32, weight: .bold, design: .default))
+                        .tracking(0.5)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color.white,
+                                    Color.white.opacity(0.9)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
                     
-                    Text("Get gentle reminders to check your progress and celebrate wins")
+                    Text("Get personalized reminders based on your daily goals")
                         .font(.system(size: 17, weight: .regular))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.8))
                         .multilineTextAlignment(.center)
                         .lineLimit(3)
                 }
@@ -48,30 +96,30 @@ struct NotificationPermissionView: View {
             // Benefits section
             VStack(spacing: 20) {
                 benefitRow(
-                    icon: "chart.line.uptrend.xyaxis",
-                    title: "Daily Progress",
-                    description: "See how today's choices impact your health"
+                    icon: "target",
+                    title: "Goal Reminders",
+                    description: "Stay on track with your daily time targets"
                 )
                 
                 benefitRow(
-                    icon: "flame",
-                    title: "Streak Reminders",
-                    description: "Keep your healthy habits going strong"
+                    icon: "chart.line.uptrend.xyaxis",
+                    title: "Progress Check-ins",
+                    description: "Quick updates on your health gains"
                 )
                 
                 benefitRow(
                     icon: "trophy",
                     title: "Celebrate Wins",
-                    description: "Get recognized for milestones and achievements"
+                    description: "Get recognized when you hit your goals"
                 )
             }
             .padding(.horizontal, 32)
             
             Spacer()
             
-            // Action buttons
+            // Action buttons with glass morphism styling
             VStack(spacing: 16) {
-                // Primary action - allow notifications
+                // Primary action - allow notifications with sophisticated theming
                 Button(action: {
                     handleAllowNotifications()
                 }) {
@@ -82,31 +130,74 @@ struct NotificationPermissionView: View {
                                 .scaleEffect(0.8)
                         } else {
                             Text("Enable Reminders")
-                                .fontWeight(.semibold)
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(.white)
                         }
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
+                    .padding(.vertical, 18)
+                    .background(
+                        ZStack {
+                            // Base gradient background
+                            LinearGradient(
+                                colors: [
+                                    Color.ampedGreen.opacity(0.9),
+                                    Color.ampedGreen,
+                                    Color.ampedGreen.opacity(0.8)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            
+                            // Glass overlay
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(.ultraThinMaterial.opacity(0.3))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color.white.opacity(0.4),
+                                                    Color.white.opacity(0.1)
+                                                ],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 1.5
+                                        )
+                                )
+                        }
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .shadow(color: Color.ampedGreen.opacity(0.4), radius: 15, x: 0, y: 8)
+                    .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
                 }
                 .disabled(isRequesting)
+                .scaleEffect(isRequesting ? 0.98 : 1.0)
+                .animation(.easeInOut(duration: 0.2), value: isRequesting)
                 
-                // Secondary action - skip (but make it less prominent)
+                // Secondary action - skip with subtle glass styling
                 Button(action: {
                     onContinue()
                 }) {
                     Text("Maybe Later")
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white.opacity(0.6))
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 24)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(.ultraThinMaterial.opacity(0.2))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                )
+                        )
                 }
-                .padding(.vertical, 8)
             }
             .padding(.horizontal, 32)
             .padding(.bottom, 40)
         }
-        .background(Color(.systemBackground))
         .onAppear {
             // Subtle animation on appear
             withAnimation(.easeInOut(duration: 2.0)) {
@@ -118,27 +209,39 @@ struct NotificationPermissionView: View {
     @ViewBuilder
     private func benefitRow(icon: String, title: String, description: String) -> some View {
         HStack(spacing: 16) {
-            // Icon
-            Image(systemName: icon)
-                .font(.system(size: 20, weight: .medium))
-                .foregroundColor(.blue)
-                .frame(width: 24, height: 24)
+            // Icon with glass morphism styling
+            ZStack {
+                Circle()
+                    .fill(.ultraThinMaterial.opacity(0.3))
+                    .frame(width: 32, height: 32)
+                    .overlay(
+                        Circle()
+                            .stroke(
+                                Color.white.opacity(0.2),
+                                lineWidth: 1
+                            )
+                    )
+                
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.ampedGreen)
+            }
             
-            // Text content
+            // Text content with themed colors
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .foregroundColor(.white)
                 
                 Text(description)
                     .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white.opacity(0.7))
                     .lineLimit(2)
             }
             
             Spacer()
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
     }
     
     private func handleAllowNotifications() {

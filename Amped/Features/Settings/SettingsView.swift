@@ -773,29 +773,22 @@ class ProfileDetailsViewModel: ObservableObject {
     }
     
     private func updateUserProfile() {
-        print("🔍 SETTINGS DEBUG: updateUserProfile called")
-        
         // Update the user profile with new birth year and gender
         let birthYear = Calendar.current.component(.year, from: birthDate)
-        print("🔍 SETTINGS DEBUG: Calculated birthYear: \(birthYear)")
         
         if var profile = questionnaireManager.getCurrentUserProfile() {
-            print("🔍 SETTINGS DEBUG: Found existing profile with birthYear: \(profile.birthYear ?? -1)")
             profile.birthYear = birthYear
             profile.gender = gender
-            print("🔍 SETTINGS DEBUG: Updated profile to birthYear: \(profile.birthYear ?? -1)")
             
             // Save updated profile
             do {
                 let data = try JSONEncoder().encode(profile)
                 UserDefaults.standard.set(data, forKey: "user_profile")
-                print("🔍 SETTINGS DEBUG: Successfully saved profile to UserDefaults")
             } catch {
-                print("🔍 SETTINGS DEBUG: Failed to save updated profile: \(error)")
+                // Handle error silently or log with proper logger
             }
         } else {
             // Create a new minimal profile if none exists yet
-            print("🔍 SETTINGS DEBUG: No existing profile found — creating a new one")
             let newProfile = UserProfile(
                 id: UUID().uuidString,
                 birthYear: birthYear,
@@ -812,18 +805,15 @@ class ProfileDetailsViewModel: ObservableObject {
             do {
                 let data = try JSONEncoder().encode(newProfile)
                 UserDefaults.standard.set(data, forKey: "user_profile")
-                print("🔍 SETTINGS DEBUG: Created and saved new profile to UserDefaults")
             } catch {
-                print("🔍 SETTINGS DEBUG: Failed to save new profile: \(error)")
+                // Handle error silently or log with proper logger
             }
         }
         
         // Trigger recalculation
         // Ensure any cached questionnaire data is invalidated so updated manual/profile data is reloaded
         QuestionnaireManager.invalidateCache()
-        print("🔍 SETTINGS DEBUG: Posting ProfileDataUpdated notification")
         NotificationCenter.default.post(name: NSNotification.Name("ProfileDataUpdated"), object: nil)
-        print("🔍 SETTINGS DEBUG: Notification posted")
     }
     
     private func updateManualMetrics() {
@@ -1071,7 +1061,7 @@ struct EditDatePickerView: View {
     init(currentDate: Date, onSave: @escaping (Date) -> Void) {
         self.currentDate = currentDate
         self.onSave = onSave
-        print("🔍 DATE PICKER DEBUG: Initializing with date: \(currentDate)")
+
         
         let calendar = Calendar.current
         let month = calendar.component(.month, from: currentDate)
@@ -1083,7 +1073,7 @@ struct EditDatePickerView: View {
         
         self._selectedMonth = State(initialValue: month)
         self._selectedYear = State(initialValue: year)
-        print("🔍 DATE PICKER DEBUG: Initial month: \(month), year: \(year)")
+
     }
     
     var body: some View {
@@ -1100,7 +1090,6 @@ struct EditDatePickerView: View {
                     .pickerStyle(.wheel)
                     .frame(maxWidth: .infinity)
                     .onChange(of: selectedMonth) { newMonth in
-                        print("🔍 DATE PICKER DEBUG: Month changed to: \(newMonth)")
                         updateDate()
                     }
                     
@@ -1114,7 +1103,6 @@ struct EditDatePickerView: View {
                     .pickerStyle(.wheel)
                     .frame(maxWidth: .infinity)
                     .onChange(of: selectedYear) { newYear in
-                        print("🔍 DATE PICKER DEBUG: Year changed to: \(newYear)")
                         updateDate()
                     }
                 }
@@ -1126,25 +1114,18 @@ struct EditDatePickerView: View {
         .navigationTitle("Date of Birth")
         .navigationBarTitleDisplayMode(.inline)
         .onDisappear {
-            print("🔍 DATE PICKER DEBUG: View disappearing, calling updateDate()")
             updateDate()
         }
     }
     
     private func updateDate() {
-        print("🔍 DATE PICKER DEBUG: updateDate called with month: \(selectedMonth), year: \(selectedYear)")
-        
         var components = DateComponents()
         components.year = selectedYear
         components.month = selectedMonth
         components.day = 1 // Default to first day of month
         
         if let newDate = Calendar.current.date(from: components) {
-            print("🔍 DATE PICKER DEBUG: Created new date: \(newDate)")
             onSave(newDate)
-            print("🔍 DATE PICKER DEBUG: Called onSave with new date")
-        } else {
-            print("🔍 DATE PICKER DEBUG: Failed to create date from components")
         }
     }
 }

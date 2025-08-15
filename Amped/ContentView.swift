@@ -139,7 +139,6 @@ struct ContentView: View {
                         .frame(width: 50, height: 50)
                         .contentShape(Rectangle())
                         .onTapGesture(count: 3) {
-                            print("🐛 DEBUG: Triple-tap gesture triggered")
                             showDebugControls.toggle()
                         }
                     

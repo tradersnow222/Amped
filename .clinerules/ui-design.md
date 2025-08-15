@@ -1,13 +1,17 @@
 ## UI Design
 
 ### Design System
-- **Theme**: Battery-themed visuals with different energy/charge states
+- **Dual Theme System**: 
+  - **Battery Theme**: Energy/charge state visualizations managed by BatteryThemeManager
+  - **Glass Theme**: Apple Liquid Glass interface effects managed by GlassThemeManager
 - **Colors**:
   - Base: ampedGreen (fully charged), ampedYellow (medium charge), ampedRed (low charge), ampedSilver, ampedDark
   - Energy levels: fullPower, highPower, mediumPower, lowPower, criticalPower
   - Time-based schemes: morning, midday, afternoon, evening, night
-- **Typography**: System fonts with dynamic type support
+  - Glass materials: ultraThin, thin, regular, thick, prominent
+- **Typography**: Structured text style system (AmpedTextStyle) with consistent weight and styling
 - **Icons**: Battery icons following Apple's familiar design patterns (horizontal battery with segments)
+- **Accessibility**: Full VoiceOver support with dedicated accessibility components
 
 ### Key UI Components
 - **InteractiveBatteryView**: Recent impact visualization with battery charge level
@@ -17,6 +21,13 @@
 - **MetricChartSection**: Data visualization for metric history
 - **MetricContextCard**: Contextual information about metrics
 - **MetricTipCard**: Actionable tips for improving metrics
+- **DashboardView**: Main app dashboard with dual battery system
+- **OnboardingFlow**: Comprehensive onboarding experience
+- **QuestionnaireView**: Interactive questionnaire with validation
+- **SettingsView**: App settings and user preferences
+- **PaymentView**: Subscription management interface
+- **Glass Components**: Comprehensive glass-themed UI elements with blur effects
+- **Accessibility Components**: VoiceOver and accessibility support utilities
 
 ### Dual Battery Visualization System
 - **Life Impact Battery**: Shows short-term health habit impacts
@@ -26,16 +37,20 @@
   - Changes feed into the overall Life Projection Battery
 
 - **Life Projection Battery**: Shows total projected lifespan
-  - Displayed as either “Total Life Energy Left" or "% Time Left to Live"
+  - Displayed as either "Total Life Energy Left" or "% Time Left to Live"
   - Based on baseline life expectancy plus cumulative impacts
   - More stable visualization that changes gradually over time, based on Life impact battery changes
   - Provides context for how daily habits affect long-term outcomes
 
-### Animations
+### Animations & Visual Effects
 - Simple battery charging/discharging animations (optimized for performance)
 - Energy flow animation between impact battery and projection battery
-- Smooth transitions between app sections
+- 3D transformation effects for enhanced visual depth
+- Glass blur and transparency effects with Material backgrounds
+- Smooth transitions between app sections with haptic feedback
 - Minimal but effective animations for user engagement
+- Performance-optimized shadow and visual effects
+- Real-time animation updates based on health data changes
 
 ### UX Principles
 - Frictionless interactions with minimal taps to complete tasks
@@ -47,4 +62,12 @@
 - Ensure all screens have clear next steps
 - Design for interruption (users can leave and return easily)
 - **Apply "Little Yesses" principle throughout the flow**
-- User flow should give the feeling of “Making Progress” or “Moving forward” visually
+- User flow should give the feeling of "Making Progress" or "Moving forward" visually
+
+### Questionnaire Design Rules
+- **CRITICAL: Questionnaire questions must NEVER have more than 4 options for users to choose from**
+- All questionnaire enums must have maximum 4 cases to prevent user overwhelm
+- When adding new options, combine related choices (e.g., "Mild to Moderate", "Poor to Very Poor")
+- Verify all `CaseIterable` enums in `QuestionnaireViewModel.swift` have ≤ 4 cases
+- Test questionnaire UI to ensure all options fit properly on all screen sizes
+- Maintain semantic meaning when combining options for clarity

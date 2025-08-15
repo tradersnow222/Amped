@@ -129,22 +129,14 @@ struct RealTimeLifeProgressBar: View {
     }
     
     private func loadUpdatedUserProfile() {
-        print("🔍 BAR DEBUG: Received ProfileDataUpdated notification")
-        print("🔍 BAR DEBUG: Current userProfile birthYear: \(userProfile.birthYear ?? -1)")
-        
         // Load updated profile from UserDefaults
         if let data = UserDefaults.standard.data(forKey: "user_profile") {
-            print("🔍 BAR DEBUG: Found profile data in UserDefaults")
             do {
                 let updatedProfile = try JSONDecoder().decode(UserProfile.self, from: data)
-                print("🔍 BAR DEBUG: Successfully decoded profile with birthYear: \(updatedProfile.birthYear ?? -1)")
                 userProfile = updatedProfile
-                print("🔍 BAR DEBUG: Updated userProfile state, new birthYear: \(userProfile.birthYear ?? -1)")
             } catch {
-                print("🔍 BAR DEBUG: Failed to decode profile: \(error)")
+                // Handle decoding error silently or with proper logging
             }
-        } else {
-            print("🔍 BAR DEBUG: No profile data found in UserDefaults")
         }
     }
     

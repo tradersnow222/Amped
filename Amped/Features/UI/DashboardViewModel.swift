@@ -53,6 +53,52 @@ final class DashboardViewModel: ObservableObject {
     /// Published property to notify when metrics have been refreshed
     @Published var lastMetricUpdateTime: Date = Date()
     
+    /// Track if goal was achieved today to prevent duplicate notifications
+    @Published private(set) var goalAchievedToday: Bool = false
+    
+    /// User's daily goal from questionnaire
+    private var dailyGoalMinutes: Int? {
+        return questionnaireManager.questionnaireData?.desiredDailyLifespanGainMinutes
+    }
+    
+    /// Check if user has achieved their daily goal and trigger notification
+    private func checkForGoalAchievement() {
+        guard let goalMinutes = dailyGoalMinutes,
+              let lifeImpactData = lifeImpactData,
+              !goalAchievedToday else {
+            return
+        }
+        
+        // Convert ImpactValue to minutes for goal comparison
+        let currentImpactMinutes = convertImpactValueToMinutes(lifeImpactData.totalImpact)
+        
+        guard currentImpactMinutes >= Double(goalMinutes) else {
+            return
+        }
+        
+        // Mark as achieved to prevent duplicate notifications
+        goalAchievedToday = true
+        
+        // Store achievement for persistence across app launches
+        let dateKey = "goal_achieved_\(Calendar.current.startOfDay(for: Date()).timeIntervalSince1970)"
+        UserDefaults.standard.set(true, forKey: dateKey)
+        
+        // Trigger achievement notification
+        NotificationManager.shared.scheduleGoalAchievementNotification(
+            goalMinutes: goalMinutes,
+            actualMinutes: Int(currentImpactMinutes)
+        )
+        
+        logger.info("🎉 Goal achieved! \(Int(currentImpactMinutes))/\(goalMinutes) minutes - notification scheduled")
+    }
+    
+    /// Reset goal achievement tracking for new day
+    private func resetDailyGoalTracking() {
+        let today = Calendar.current.startOfDay(for: Date())
+        let dateKey = "goal_achieved_\(today.timeIntervalSince1970)"
+        goalAchievedToday = UserDefaults.standard.bool(forKey: dateKey)
+    }
+    
     /// Get the latest value for a specific metric type
     func getLatestMetricValue(for type: HealthMetricType) -> HealthMetric? {
         return healthMetrics.first { $0.type == type }
@@ -147,6 +193,13 @@ final class DashboardViewModel: ObservableObject {
         self.lifeProjectionService = lifeProjectionService ?? LifeProjectionService()
         self.streakManager = streakManager ?? StreakManager.shared
         
+        // Setup smart notifications with initialized dependencies
+        NotificationManager.shared.setupSmartNotifications(
+            healthDataService: self.healthDataService,
+            lifeImpactService: self.lifeImpactService,
+            userProfile: chosenProfile
+        )
+        
         // Ensure questionnaire data is loaded
         Task {
             await self.questionnaireManager.loadDataIfNeeded()
@@ -154,6 +207,7 @@ final class DashboardViewModel: ObservableObject {
         
         setupSubscriptions()
         setupStreakObservers()
+        resetDailyGoalTracking()
         loadData()
         
         // Start foreground timer if app is currently active
@@ -341,6 +395,9 @@ final class DashboardViewModel: ObservableObject {
                         for: timePeriod.impactDataPointPeriodType,
                         userProfile: userProfile
                     )
+                    
+                    // Check for goal achievement after calculating life impact
+                    checkForGoalAchievement()
                     
                     if let impactData = lifeImpactData {
                         logger.info("⚡ Life impact calculated for \(timePeriod.displayName): \(impactData.totalImpact.displayString)")
@@ -741,6 +798,9 @@ final class DashboardViewModel: ObservableObject {
                     userProfile: self.userProfile
                 )
                 
+                // Check for goal achievement after calculating life impact
+                checkForGoalAchievement()
+                
                 // Calculate life projection
                 lifeProjection = lifeProjectionService.calculateLifeProjection(
                     from: periodMetrics,
@@ -861,6 +921,9 @@ final class DashboardViewModel: ObservableObject {
                         for: self.selectedTimePeriod.impactDataPointPeriodType,
                         userProfile: self.userProfile
                     )
+                    
+                    // Check for goal achievement after lightweight refresh
+                    self.checkForGoalAchievement()
                     
                     // Recalculate life projection
                     self.lifeProjection = self.lifeProjectionService.calculateLifeProjection(
@@ -1312,6 +1375,30 @@ final class DashboardViewModel: ObservableObject {
     /// Check if streak needs protection (for UI warnings)
     func streakNeedsProtection() -> Bool {
         return streakManager.needsStreakProtection()
+    }
+    
+    // MARK: - Helper Methods
+    
+    /// Convert ImpactValue to minutes for goal comparison
+    private func convertImpactValueToMinutes(_ impactValue: ImpactValue) -> Double {
+        let baseValue = impactValue.value
+        let isPositive = impactValue.direction == .positive
+        
+        // Convert to minutes based on unit
+        let minutes: Double
+        switch impactValue.unit {
+        case .minutes:
+            minutes = baseValue
+        case .hours:
+            minutes = baseValue * 60.0
+        case .days:
+            minutes = baseValue * 24.0 * 60.0
+        case .years:
+            minutes = baseValue * 365.25 * 24.0 * 60.0
+        }
+        
+        // Apply direction
+        return isPositive ? minutes : -minutes
     }
     
     /// Cleanup when view model is deallocated

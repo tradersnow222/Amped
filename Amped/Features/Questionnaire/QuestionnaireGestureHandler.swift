@@ -73,10 +73,8 @@ class QuestionnaireGestureHandler {
                 }
             } else {
                 // For any other question, navigate internally
-                // Direction is set automatically in moveBackToPreviousQuestion()
-                withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
-                    viewModel?.moveBackToPreviousQuestion()
-                }
+                // CRITICAL FIX: Don't wrap in animation - moveBackToPreviousQuestion handles its own animation
+                viewModel?.moveBackToPreviousQuestion()
             }
         }
         
@@ -95,11 +93,21 @@ class QuestionnaireGestureHandler {
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
         
-        if viewModel?.isFirstQuestion == true {
+        // Simplified logic: Use canMoveBack which should be the authoritative source
+        if viewModel?.canMoveBack == true {
+            // We can move back within questionnaire - do so
+            isBackButtonTapped = true
+            // CRITICAL FIX: Don't wrap in animation - moveBackToPreviousQuestion handles its own animation
+            viewModel?.moveBackToPreviousQuestion()
+            
+            // OPTIMIZED: Faster reset
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                self.isBackButtonTapped = false
+            }
+        } else {
+            // Cannot move back within questionnaire - exit to onboarding
             // At first question, navigate back to personalization intro
             isBackButtonTapped = true
-            print("🔍 QUESTIONNAIRE: Back to previous onboarding screen (personalization intro) - SCREEN SHOULD EXIT RIGHT")
-            
             // Set backward direction for proper iOS-standard transition
             viewModel?.navigationDirection = .backward
             
@@ -111,22 +119,6 @@ class QuestionnaireGestureHandler {
             // OPTIMIZED: Faster reset
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                 self.isBackButtonTapped = false
-                print("🔍 QUESTIONNAIRE: Back button flag reset")
-            }
-        } else {
-            // For any other question, navigate internally within questionnaire
-            isBackButtonTapped = true
-            print("🔍 QUESTIONNAIRE: Back to previous question - CURRENT QUESTION SHOULD EXIT RIGHT")
-            
-            // Direction is set automatically in moveBackToPreviousQuestion(); use unified spring
-            withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
-                viewModel?.moveBackToPreviousQuestion()
-            }
-            
-            // OPTIMIZED: Faster reset
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                self.isBackButtonTapped = false
-                print("🔍 QUESTIONNAIRE: Back button flag reset")
             }
         }
     }

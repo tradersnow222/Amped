@@ -85,14 +85,13 @@ struct MetricStatistics {
     func fetchLatestMetrics() async -> [HealthMetric] {
         logger.info("🏥 Starting to fetch latest health metrics...")
         
-        // CRITICAL DEBUG: Show exactly which metric types we're trying to fetch
+        // Fetch supported HealthKit metric types
         let metricTypesToFetch = HealthMetricType.healthKitTypes
-        logger.info("🎯 Will attempt to fetch \(metricTypesToFetch.count) HealthKit metric types:")
         for metricType in metricTypesToFetch {
             logger.info("  - \(metricType.displayName) (\(metricType.rawValue))")
         }
         
-        // CRITICAL DEBUG: Also check what the HealthKitManager thinks we should fetch
+        // Validate metric types with HealthKitManager
         if self.healthKitManager is HealthKitManager {
             let managerTypes = HealthKitManager.allMetricTypes
             logger.info("🔍 HealthKitManager.allMetricTypes contains \(managerTypes.count) types:")
@@ -110,7 +109,7 @@ struct MetricStatistics {
             }
         }
         
-        // CRITICAL DEBUG: Let's also check HealthKit availability at the HealthStore level
+        // Check HealthKit availability
         if HKHealthStore.isHealthDataAvailable() {
             logger.info("✅ HKHealthStore.isHealthDataAvailable() returns true")
         } else {
@@ -368,7 +367,7 @@ struct MetricStatistics {
         case .restingHeartRate, .heartRateVariability, .bodyMass, .vo2Max, .oxygenSaturation:
             return await fetchStatusMetricUsingHKStatisticsCollection(metricType: metricType, timePeriod: timePeriod)
             
-        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel:
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel, .bloodPressure:
             return await fetchManualMetricForPeriod(metricType: metricType, timePeriod: timePeriod)
             
         @unknown default:

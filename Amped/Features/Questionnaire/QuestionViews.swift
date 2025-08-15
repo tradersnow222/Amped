@@ -360,17 +360,15 @@ struct QuestionViews {
             }
         }
         
-        // ULTRA-FAST: Instant navigation with zero lag
+        // ULTRA-FAST: Instant navigation with zero lag - NOW CONSISTENT WITH OTHER QUESTIONS
         private func proceedToNext() {
             // Dismiss keyboard immediately
             isTextFieldFocused = false
             
-            // PERFORMANCE: Immediate transition - no artificial delays
-            DispatchQueue.main.async {
-                // Sync local name to view model only once
-                viewModel.userName = localName
-                viewModel.proceedToNextQuestion()
-            }
+            // CRITICAL FIX: Sync local name to view model and proceed directly
+            // This matches the pattern used by all questions after stress question
+            viewModel.userName = localName
+            viewModel.proceedToNextQuestion()
         }
     }
     
@@ -399,7 +397,7 @@ struct QuestionViews {
                 
                 // Options at bottom for thumb access
                 VStack(spacing: 12) {
-                    // Show all regular options first
+                    // Show all 4 stress level options (following 4-option maximum rule)
                     ForEach(QuestionnaireViewModel.StressLevel.allCases, id: \.self) { stressLevel in
                         Button(action: {
                             viewModel.selectedStressLevel = stressLevel
@@ -413,19 +411,6 @@ struct QuestionViews {
                         .questionnaireButtonStyle(isSelected: viewModel.selectedStressLevel == stressLevel)
                         .hapticFeedback(.light)
                     }
-                    
-                    // "Not sure" button at the bottom
-                    Button(action: {
-                        viewModel.selectedStressLevel = nil
-                        viewModel.proceedToNextQuestionAllowingNil()
-                    }) {
-                        Text("Not sure")
-                            .font(.system(size: 16, weight: .regular))
-                            .foregroundColor(.white.opacity(0.9))
-                    }
-                    // Applied rule: Simplicity is KING — do not pre-highlight Not sure
-                    .questionnaireButtonStyle(isSelected: false)
-                    .hapticFeedback(.light)
                 }
                 .padding(.bottom, 30)
             }
@@ -459,11 +444,8 @@ struct QuestionViews {
                 
                 // Options at bottom for thumb access
                 VStack(spacing: 12) {
-                    // Limit to 4 base options to keep total <= 5 with Not sure
-                    let baseOptions = Array(QuestionnaireViewModel.AnxietyLevel.allCases.prefix(4))
-                    
-                    // Show all regular options first
-                    ForEach(baseOptions, id: \.self) { anxietyLevel in
+                    // Show all 4 anxiety level options (following 4-option maximum rule)
+                    ForEach(QuestionnaireViewModel.AnxietyLevel.allCases, id: \.self) { anxietyLevel in
                         Button(action: {
                             viewModel.selectedAnxietyLevel = anxietyLevel
                             viewModel.proceedToNextQuestion()
@@ -476,19 +458,6 @@ struct QuestionViews {
                         .questionnaireButtonStyle(isSelected: viewModel.selectedAnxietyLevel == anxietyLevel)
                         .hapticFeedback(.light)
                     }
-                    
-                    // "Not sure" button at the bottom
-                    Button(action: {
-                        viewModel.selectedAnxietyLevel = nil
-                        viewModel.proceedToNextQuestionAllowingNil()
-                    }) {
-                        Text("Not sure")
-                            .font(.system(size: 16, weight: .regular))
-                            .foregroundColor(.white.opacity(0.9))
-                    }
-                    // Applied rule: Simplicity is KING — do not pre-highlight Not sure
-                    .questionnaireButtonStyle(isSelected: false)
-                    .hapticFeedback(.light)
                 }
                 .padding(.bottom, 30)
             }
@@ -700,7 +669,7 @@ struct QuestionViews {
                 
                 // Options at bottom for thumb access
                 VStack(spacing: 12) {
-                    // Show all regular options first
+                    // Show all 4 social connections options (following 4-option maximum rule)
                     ForEach(QuestionnaireViewModel.SocialConnectionsQuality.allCases, id: \.self) { quality in
                         Button(action: {
                             viewModel.selectedSocialConnectionsQuality = quality
@@ -714,19 +683,6 @@ struct QuestionViews {
                         .questionnaireButtonStyle(isSelected: viewModel.selectedSocialConnectionsQuality == quality)
                         .hapticFeedback(.light)
                     }
-                    
-                    // "Not sure" button at the bottom
-                    Button(action: {
-                        viewModel.selectedSocialConnectionsQuality = nil
-                        viewModel.proceedToNextQuestionAllowingNil()
-                    }) {
-                        Text("Not sure")
-                            .font(.system(size: 16, weight: .regular))
-                            .foregroundColor(.white.opacity(0.9))
-                    }
-                    // Applied rule: Simplicity is KING — do not pre-highlight Not sure
-                    .questionnaireButtonStyle(isSelected: false)
-                    .hapticFeedback(.light)
                 }
                 .padding(.bottom, 30)
             }
@@ -744,14 +700,14 @@ struct QuestionViews {
             VStack(alignment: .center, spacing: 0) {
                 // Prompt and guidance
                 VStack(spacing: 12) {
-                    Text("How much time do you want to gain each day?")
+                    Text("How much time do you want to add daily?")
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 20)
 
-                    Text("Daily wins add up. Set your goal up to 120 minutes as you use Amped to build better habits.")
+                    Text("Add up to 2 hours daily to your lifespan")
                         .font(.system(size: 14))
                         .foregroundColor(.white.opacity(0.75))
                         .multilineTextAlignment(.center)
@@ -771,6 +727,10 @@ struct QuestionViews {
                     // Map the user's aspiration to sleep quality preference proxy for compatibility
                     // Keep existing model usage minimal (Simplicity is KING)
                     viewModel.selectedSleepQuality = mapDesiredGainToSleepQuality(desiredMinutes)
+                    
+                    // Setup smart goal-based notifications for this user's target
+                    NotificationManager.shared.scheduleGoalBasedNotifications(targetMinutes: desiredMinutes)
+                    
                     viewModel.proceedToNextQuestion()
                 }) {
                     Text("Continue")
@@ -811,48 +771,27 @@ struct QuestionViews {
                         .padding(.bottom, 10)
                         .frame(maxWidth: .infinity)
 
-                    ScientificCitation(text: "ACC/AHA 2017 guideline + SPRINT (NEJM 2015): risk rises from ≥120 systolic; lowest near 110–119/70–79", metricType: .bloodPressure)
+                    ScientificCitation(text: "Based on 61 studies, 1 million participants", metricType: .bloodPressure)
                 }
 
                 Spacer()
 
                 // Options at bottom for thumb access
                 VStack(spacing: 12) {
-                    let nonUnknown: [QuestionnaireViewModel.BloodPressureCategory] = [.normal, .elevatedToStage1, .high]
-                    
-                    // Show all regular options first
-                    ForEach(nonUnknown, id: \.self) { category in
+                    // Show all 4 blood pressure options (following 4-option maximum rule)
+                    ForEach(QuestionnaireViewModel.BloodPressureCategory.allCases, id: \.self) { category in
                         Button(action: {
                             viewModel.selectedBloodPressureCategory = category
                             viewModel.proceedToNextQuestion()
                         }) {
-                            switch category {
-                            case .normal:
-                                FormattedButtonText(text: "Below 120/80 (Normal/Optimal)")
-                            case .elevatedToStage1:
-                                FormattedButtonText(text: "120–129 systolic and <80 diastolic (Elevated)")
-                            case .high:
-                                FormattedButtonText(text: "130/80 or higher (High/Hypertension)")
-                            default:
-                                EmptyView()
-                            }
+                            FormattedButtonText(
+                                text: category.displayName,
+                                subtitle: nil
+                            )
                         }
                         .questionnaireButtonStyle(isSelected: viewModel.selectedBloodPressureCategory == category)
                         .hapticFeedback(.light)
                     }
-                    
-                    // "Not sure" button at the bottom
-                    Button(action: {
-                        viewModel.selectedBloodPressureCategory = .unknown
-                        viewModel.proceedToNextQuestionAllowingNil()
-                    }) {
-                        Text("Not sure")
-                            .font(.system(size: 16, weight: .regular))
-                            .foregroundColor(.white.opacity(0.9))
-                    }
-                    // Applied rule: Simplicity is KING — do not pre-highlight Not sure
-                    .questionnaireButtonStyle(isSelected: false)
-                    .hapticFeedback(.light)
                 }
                 .padding(.bottom, 30)
             }

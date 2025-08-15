@@ -93,12 +93,8 @@ struct DailyTarget: Codable, Identifiable, Equatable {
         let currentImpact = lifeImpactService.calculateImpact(for: currentMetric)
         let currentImpactMinutes = currentImpact.lifespanImpactMinutes
         
-        // COMPREHENSIVE DEBUGGING
-        print("🔍 DailyTarget.calculateCurrentBenefit DEBUG:")
-        print("  Metric Type: \(metricType.displayName)")
-        print("  Current Value: \(currentValue)")
-        print("  Current Impact: \(currentImpactMinutes) minutes")
-        print("  Target Value: \(targetValue)")
+        // Calculate current benefit for daily target
+
         
         // CRITICAL FIX: For negative metrics, benefit is simply reaching neutral (0 impact)
         // This means the benefit is exactly abs(currentImpact), not the difference to target

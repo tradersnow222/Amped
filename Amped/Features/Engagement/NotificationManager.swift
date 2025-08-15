@@ -13,12 +13,13 @@ final class NotificationManager: NSObject, ObservableObject {
     
     private let logger = Logger(subsystem: "com.amped.Amped", category: "NotificationManager")
     private let center = UNUserNotificationCenter.current()
+    private var smartNotificationService: SmartNotificationService?
     
     // Notification identifiers
     private enum NotificationID: String {
         case morningMotivation = "morning_motivation"
-        case midDayCheckIn = "midday_checkin"
         case eveningReflection = "evening_reflection"
+        case goalAchievement = "goal_achievement"
         case streakProtection = "streak_protection"
         case milestoneReminderr = "milestone_reminder"
         case weeklyProgress = "weekly_progress"
@@ -32,6 +33,20 @@ final class NotificationManager: NSObject, ObservableObject {
         super.init()
         center.delegate = self
         checkPermissionStatus()
+    }
+    
+    /// Initialize smart notification service with dependencies
+    func setupSmartNotifications(
+        healthDataService: HealthDataServicing,
+        lifeImpactService: LifeImpactService,
+        userProfile: UserProfile
+    ) {
+        self.smartNotificationService = SmartNotificationService(
+            healthDataService: healthDataService,
+            lifeImpactService: lifeImpactService,
+            userProfile: userProfile
+        )
+        logger.info("🧠 Smart notification service initialized")
     }
     
     // MARK: - Permission Management
@@ -72,22 +87,30 @@ final class NotificationManager: NSObject, ObservableObject {
     
     // MARK: - Smart Notification Scheduling
     
-    /// Schedule contextual morning motivation
-    func scheduleMorningMotivation() {
+    /// Schedule smart morning motivation with real-time progress and actionable suggestions
+    func scheduleSmartMorningMotivation(targetMinutes: Int) {
         guard isEnabled else { return }
         
-        let content = UNMutableNotificationContent()
-        content.title = "Start Strong Today"
-        content.body = "Your daily choices add up. Ready to make progress?"
-        content.sound = .default
-        content.categoryIdentifier = "ENGAGEMENT"
-        
-        // Schedule for 8 AM daily
+        // Schedule for 9 AM daily with smart content
         var components = DateComponents()
-        components.hour = 8
+        components.hour = 9
         components.minute = 0
         
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+        
+        // Create content that will be dynamically generated when notification fires
+        let content = UNMutableNotificationContent()
+        content.title = "Loading your personalized update..."
+        content.body = "Calculating your progress and recommendations..."
+        content.sound = .default
+        content.categoryIdentifier = "SMART_ENGAGEMENT"
+        
+        // Store target minutes in userInfo for dynamic content generation
+        content.userInfo = [
+            "targetMinutes": targetMinutes,
+            "notificationType": "morning"
+        ]
+        
         let request = UNNotificationRequest(
             identifier: NotificationID.morningMotivation.rawValue,
             content: content,
@@ -96,61 +119,75 @@ final class NotificationManager: NSObject, ObservableObject {
         
         center.add(request) { [weak self] error in
             if let error = error {
-                self?.logger.error("🚨 Failed to schedule morning notification: \(error)")
+                self?.logger.error("🚨 Failed to schedule smart morning notification: \(error)")
             } else {
-                self?.logger.info("✅ Morning motivation scheduled")
+                self?.logger.info("✅ Smart morning motivation scheduled for \(targetMinutes) minutes target")
             }
         }
     }
     
-    /// Schedule midday check-in
-    func scheduleMidDayCheckIn() {
+    /// Schedule immediate goal achievement notification
+    func scheduleGoalAchievementNotification(goalMinutes: Int, actualMinutes: Int) {
         guard isEnabled else { return }
         
         let content = UNMutableNotificationContent()
-        content.title = "How's Your Day Going?"
-        content.body = "Quick check-in - small actions create big results"
+        content.title = "🎉 Goal Achieved!"
+        content.body = "Amazing! You've added \(actualMinutes) minutes to your lifespan today (goal: \(goalMinutes))"
         content.sound = .default
-        content.categoryIdentifier = "ENGAGEMENT"
+        content.categoryIdentifier = "GOAL_ACHIEVEMENT"
         
-        // Schedule for 1 PM daily
-        var components = DateComponents()
-        components.hour = 13
-        components.minute = 0
-        
-        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+        // Immediate notification
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(
-            identifier: NotificationID.midDayCheckIn.rawValue,
+            identifier: NotificationID.goalAchievement.rawValue + "_\(Date().timeIntervalSince1970)",
             content: content,
             trigger: trigger
         )
         
-        center.add(request)
+        center.add(request) { [weak self] error in
+            if let error = error {
+                self?.logger.error("🚨 Failed to schedule goal achievement notification: \(error)")
+            } else {
+                self?.logger.info("🎉 Goal achievement notification scheduled: \(actualMinutes)/\(goalMinutes) minutes")
+            }
+        }
     }
     
-    /// Schedule evening reflection
-    func scheduleEveningReflection() {
+    /// Schedule smart evening reflection with day summary
+    func scheduleSmartEveningReflection(targetMinutes: Int) {
         guard isEnabled else { return }
         
-        let content = UNMutableNotificationContent()
-        content.title = "Today's Progress"
-        content.body = "See how your choices impacted your health today"
-        content.sound = .default
-        content.categoryIdentifier = "ENGAGEMENT"
-        
-        // Schedule for 7 PM daily
+        // Schedule for 7 PM daily with smart content
         var components = DateComponents()
         components.hour = 19
         components.minute = 0
         
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+        
+        let content = UNMutableNotificationContent()
+        content.title = "Loading today's summary..."
+        content.body = "Calculating your daily impact..."
+        content.sound = .default
+        content.categoryIdentifier = "SMART_ENGAGEMENT"
+        
+        content.userInfo = [
+            "targetMinutes": targetMinutes,
+            "notificationType": "evening"
+        ]
+        
         let request = UNNotificationRequest(
             identifier: NotificationID.eveningReflection.rawValue,
             content: content,
             trigger: trigger
         )
         
-        center.add(request)
+        center.add(request) { [weak self] error in
+            if let error = error {
+                self?.logger.error("🚨 Failed to schedule smart evening notification: \(error)")
+            } else {
+                self?.logger.info("✅ Smart evening reflection scheduled for \(targetMinutes) minutes target")
+            }
+        }
     }
     
     /// Schedule streak protection notification
@@ -225,9 +262,42 @@ final class NotificationManager: NSObject, ObservableObject {
     // MARK: - Default Setup
     
     private func scheduleDefaultNotifications() {
-        scheduleMorningMotivation()
-        scheduleMidDayCheckIn()
-        scheduleEveningReflection()
+        // Get user's daily goal from questionnaire data
+        if let targetMinutes = getUserDailyGoal() {
+            scheduleSmartMorningMotivation(targetMinutes: targetMinutes)
+            scheduleSmartEveningReflection(targetMinutes: targetMinutes)
+        } else {
+            logger.warning("⚠️ No daily goal found, scheduling basic notifications")
+            // Fallback to basic notifications if no goal is set
+            scheduleSmartMorningMotivation(targetMinutes: 30) // Default 30 minutes
+            scheduleSmartEveningReflection(targetMinutes: 30)
+        }
+    }
+    
+    /// Get user's daily lifespan gain goal from stored questionnaire data
+    private func getUserDailyGoal() -> Int? {
+        // Access the stored questionnaire data
+        if let data = UserDefaults.standard.data(forKey: "questionnaire_data"),
+           let questionnaireData = try? JSONDecoder().decode(QuestionnaireData.self, from: data) {
+            return questionnaireData.desiredDailyLifespanGainMinutes
+        }
+        return nil
+    }
+    
+    /// Schedule smart goal-based notifications (called when user sets/updates their goal)
+    func scheduleGoalBasedNotifications(targetMinutes: Int) {
+        guard isEnabled else { 
+            logger.info("📱 Notifications not enabled, storing goal for later scheduling")
+            return 
+        }
+        
+        // Cancel existing notifications and reschedule with new goal
+        cancelAllNotifications()
+        
+        scheduleSmartMorningMotivation(targetMinutes: targetMinutes)
+        scheduleSmartEveningReflection(targetMinutes: targetMinutes)
+        
+        logger.info("✅ Smart goal-based notifications scheduled for \(targetMinutes) minutes daily")
     }
     
     // MARK: - Observers Setup
@@ -268,8 +338,60 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        // Check if this is a smart notification that needs dynamic content
+        if notification.request.content.categoryIdentifier == "SMART_ENGAGEMENT" {
+            Task {
+                await updateSmartNotificationContent(notification: notification)
+            }
+        }
+        
         // Show notifications even when app is in foreground
         completionHandler([.banner, .sound])
+    }
+    
+    /// Update notification content with smart, real-time data
+    private func updateSmartNotificationContent(notification: UNNotification) async {
+        guard let smartService = smartNotificationService,
+              let targetMinutes = notification.request.content.userInfo["targetMinutes"] as? Int,
+              let typeString = notification.request.content.userInfo["notificationType"] as? String else {
+            logger.warning("⚠️ Smart notification missing required data")
+            return
+        }
+        
+        let notificationType: NotificationType
+        switch typeString {
+        case "morning": notificationType = .morning
+        case "evening": notificationType = .evening
+        default: 
+            logger.warning("⚠️ Unknown notification type: \(typeString)")
+            return
+        }
+        
+        // Generate smart content
+        let smartContent = await smartService.generateSmartNotificationContent(
+            goalMinutes: targetMinutes,
+            notificationType: notificationType
+        )
+        
+        // Create updated notification content
+        let content = UNMutableNotificationContent()
+        content.title = smartContent.title
+        content.body = smartContent.body
+        content.sound = .default
+        content.categoryIdentifier = "SMART_ENGAGEMENT"
+        
+        // Update the notification with smart content
+        let identifier = notification.request.identifier + "_smart"
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+        
+        center.add(request) { [weak self] error in
+            if let error = error {
+                self?.logger.error("🚨 Failed to update smart notification: \(error)")
+            } else {
+                self?.logger.info("🧠 Smart notification content updated: \(smartContent.title)")
+            }
+        }
     }
     
     func userNotificationCenter(

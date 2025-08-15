@@ -39,7 +39,7 @@ struct PaymentView: View {
                     scientificBatteryView
                         .opacity(animateBattery ? 1.0 : 0.0)
                         .scaleEffect(animateBattery ? 1.0 : 0.75)
-                        .animation(.easeOut(duration: 1.0).delay(0.3), value: animateBattery)
+                        .animation(.easeOut(duration: 0.6).delay(0.1), value: animateBattery)
                     
                     Spacer(minLength: 20)  // Space between battery and testimonial
                     
@@ -47,7 +47,7 @@ struct PaymentView: View {
                     socialProofView
                         .opacity(showTestimonial ? 1.0 : 0.0)
                         .scaleEffect(showTestimonial ? 1.0 : 0.85)
-                        .animation(.easeInOut(duration: 1.5), value: showTestimonial)
+                        .animation(.easeInOut(duration: 0.6), value: showTestimonial)
                     
                     Spacer(minLength: 20)  // Space between testimonial and benefits
                     
@@ -63,7 +63,7 @@ struct PaymentView: View {
                 bottomPricingSection
                     .opacity(showPricingSection ? 1.0 : 0.0)
                     .offset(y: showPricingSection ? 0 : 60)
-                    .animation(.easeOut(duration: 1.0), value: showPricingSection)
+                    .animation(.easeOut(duration: 0.6), value: showPricingSection)
                     .onTapGesture { } // Consume taps on pricing section to prevent background tap
             }
             .blur(radius: showExitOffer ? 8 : 0)
@@ -108,28 +108,28 @@ struct PaymentView: View {
         .onAppear {
             viewModel.appState = appState
             
-            // Start with headline and battery together
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            // Start with headline and battery together - Shortened delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 animateBattery = true
             }
             
-            // Show testimonial after headline/battery complete (1.6s total)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
-                withAnimation(.easeInOut(duration: 1.2)) {
+            // Show testimonial after headline/battery complete (0.6s total) - Shortened
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                withAnimation(.easeInOut(duration: 0.6)) {
                     showTestimonial = true
                 }
             }
             
-            // Show benefits after testimonial (2.8s total)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
-                withAnimation(.easeOut(duration: 1.0)) {
+            // Show benefits after testimonial (1.2s total) - Shortened
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                withAnimation(.easeOut(duration: 0.6)) {
                     showBenefits = true
                 }
             }
             
-            // Show pricing section last (4.0s total)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
-                withAnimation(.easeOut(duration: 1.0)) {
+            // Show pricing section last (1.8s total) - Shortened from 4.0s
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                withAnimation(.easeOut(duration: 0.6)) {
                     showPricingSection = true
                 }
             }

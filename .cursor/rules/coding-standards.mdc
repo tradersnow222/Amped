@@ -40,8 +40,19 @@ alwaysApply: true
 - Use ViewBuilder for flexible view composition
 
 ### Architecture Guidelines
-- Maintain separation of concerns
-- Implement dependency injection for testability
-- Use protocols for dependency abstraction
+- Maintain separation of concerns with MVVM pattern
+- Implement dependency injection for testability (protocols and environment objects)
+- Use protocols for dependency abstraction (HealthKitManaging, HealthDataServicing)
 - Keep files under 300 lines with single responsibility
 - Create clear module boundaries for future team scaling
+- Use @MainActor for UI-related classes to ensure main thread safety
+- Implement comprehensive error handling with Result types and structured logging
+- Use OSLog for structured, categorized logging throughout the app
+
+### Performance and Optimization Standards
+- Implement caching strategies for offline operation
+- Use lazy loading for UI components and data
+- Optimize app launch with deferred initialization patterns
+- Implement background task management with async/await
+- Use feature flags for gradual rollout and A/B testing
+- Ensure memory efficiency with value types and proper lifecycle management

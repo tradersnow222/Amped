@@ -5,10 +5,10 @@ enum OnboardingStep: Equatable {
     case welcome
     case personalizationIntro // Position 2: Build trust before data collection
     case questionnaire
-    case valueProposition // Position 4: Reinforce value after data collection
-    case prePaywallTease // Position 5: Personalized score right before paywall
+    case notificationPermission // Moved: Right after goal setting for logical flow
+    case valueProposition // Position 5: Reinforce value after notifications
+    case prePaywallTease // Position 6: Personalized score right before paywall
     case payment
-    case notificationPermission // New: Smart notification permission request
     case attribution // New: How did you hear about us?
     case dashboard
 }
@@ -99,9 +99,9 @@ struct OnboardingFlow: View {
                                 isButtonNavigating = false
                                 dragDirection = .leading
                                 
-                                // Questionnaire completed - go to value proposition
+                                // Questionnaire completed - go to notification permission
                                 DispatchQueue.main.async {
-                                    navigateTo(.valueProposition)
+                                    navigateTo(.notificationPermission)
                                     
                                     // Reset drag direction after animation
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
@@ -112,6 +112,16 @@ struct OnboardingFlow: View {
                         }
                         .transition(getTransition(forNavigatingTo: currentStep))
                         .zIndex(currentStep == .questionnaire ? 1 : 0)
+                    }
+                    
+                    if currentStep == .notificationPermission {
+                        NotificationPermissionView(onContinue: {
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.valueProposition)
+                        })
+                        .transition(getTransition(forNavigatingTo: currentStep))
+                        .zIndex(currentStep == .notificationPermission ? 1 : 0)
                     }
                     
                     if currentStep == .valueProposition {
@@ -141,20 +151,10 @@ struct OnboardingFlow: View {
                         PaymentView(onContinue: { 
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.notificationPermission) 
+                            navigateTo(.attribution) 
                         })
                         .transition(getTransition(forNavigatingTo: currentStep))
                         .zIndex(currentStep == .payment ? 1 : 0)
-                    }
-                    
-                    if currentStep == .notificationPermission {
-                        NotificationPermissionView(onContinue: {
-                            isButtonNavigating = true
-                            dragDirection = nil
-                            navigateTo(.attribution)
-                        })
-                        .transition(getTransition(forNavigatingTo: currentStep))
-                        .zIndex(currentStep == .notificationPermission ? 1 : 0)
                     }
                     
                     if currentStep == .attribution {
@@ -205,13 +205,10 @@ struct OnboardingFlow: View {
     
         // Helper method to determine the correct transition based on navigation direction
     private func getTransition(forNavigatingTo step: OnboardingStep) -> AnyTransition {
-        print("🔍 DEBUG: Getting transition for navigating to \(step), isButtonNavigating=\(isButtonNavigating), dragDirection=\(String(describing: dragDirection))")
-        
         // Use consistent slide + opacity across onboarding for a premium, unified feel
         
         // For button-initiated navigation
         if isButtonNavigating {
-            print("🔍 DEBUG: Using button-initiated transition (forward)")
             return .asymmetric(
                 insertion: .move(edge: .trailing).combined(with: .opacity),
                 removal: .move(edge: .leading).combined(with: .opacity)
@@ -223,21 +220,18 @@ struct OnboardingFlow: View {
             switch dragDir {
             case .leading:
                 // Forward swipe (left to right on screen)
-                print("🔍 DEBUG: Using leading edge transition (forward swipe)")
                 return .asymmetric(
                     insertion: .move(edge: .trailing).combined(with: .opacity),
                     removal: .move(edge: .leading).combined(with: .opacity)
                 )
             case .trailing:
                 // Backward swipe (right to left on screen)
-                print("🔍 DEBUG: Using trailing edge transition (backward swipe)")
                 return .asymmetric(
                     insertion: .move(edge: .leading).combined(with: .opacity),
                     removal: .move(edge: .trailing).combined(with: .opacity)
                 )
             default:
                 // Default forward transition
-                print("🔍 DEBUG: Using default transition (unknown drag direction)")
                 return .asymmetric(
                     insertion: .move(edge: .trailing).combined(with: .opacity),
                     removal: .move(edge: .leading).combined(with: .opacity)
@@ -246,7 +240,6 @@ struct OnboardingFlow: View {
         }
         
         // Default transition for programmatic navigation (forward)
-        print("🔍 DEBUG: Using default transition (no drag direction)")
         return .asymmetric(
             insertion: .move(edge: .trailing).combined(with: .opacity),
             removal: .move(edge: .leading).combined(with: .opacity)
@@ -254,20 +247,7 @@ struct OnboardingFlow: View {
     }
     
         private func navigateTo(_ step: OnboardingStep) {
-        print("🔍 DEBUG: Navigating from \(currentStep) to \(step), isButtonNavigating=\(isButtonNavigating), dragDirection=\(String(describing: dragDirection))")
-        
         // Use spring animation for smoother transitions
-        
-        // Log the transition being used
-        if dragDirection == .trailing {
-            print("🔍 DEBUG: Using BACKWARD transition (trailing edge) - current screen should exit RIGHT")
-        } else if dragDirection == .leading {
-            print("🔍 DEBUG: Using FORWARD transition (leading edge) - current screen should exit LEFT")
-        } else if isButtonNavigating {
-            print("🔍 DEBUG: Using BUTTON-INITIATED transition - current screen should exit LEFT")
-        } else {
-            print("🔍 DEBUG: Using DEFAULT transition - current screen should exit LEFT")
-        }
         
         // Luxury slow — softer/longer spring for materialize transitions across onboarding
         withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
