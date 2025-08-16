@@ -7,15 +7,12 @@ Users were experiencing a bug where backgrounding the app during onboarding woul
 The `OnboardingFlow` had a local `@State private var currentStep: OnboardingStep = .welcome` that was not persisted. When the app went to background and returned, this state would reset to `.welcome`, causing users to lose their progress.
 
 ## Solution
-Implemented a smart persistence system that distinguishes between soft close (backgrounding) and hard close (force termination):
+Implemented a simplified persistence system that ensures users always return to where they left off in onboarding when backgrounding the app:
 
-### Soft Close Behavior (Backgrounding)
-- User backgrounds the app but it remains running
+### Behavior (All Cases)
+- User backgrounds or leaves the app during onboarding
 - **Result**: User returns to exactly where they left off in onboarding
-
-### Hard Close Behavior (Force Termination)
-- User force-closes the app (swipe up and close in app switcher)  
-- **Result**: User returns to the welcome screen for a fresh start
+- **Note**: For true fresh starts, users can use the debug reset function
 
 ## Implementation Details
 
@@ -88,11 +85,20 @@ enum OnboardingStep: String, Equatable, CaseIterable {
 
 ## Key Technical Decisions
 
-### Why Use `didTerminateCleanly` Flag?
-iOS doesn't provide a direct way to detect if an app was force-closed vs backgrounded. The flag works by:
-1. Setting `true` when app backgrounds
-2. Setting `false` when app resumes (after reading saved state)
-3. If flag is `false` on next launch, we know the app was force-closed
+### Synchronous vs Asynchronous Loading
+- **Problem**: UI renders immediately while AppState loads asynchronously
+- **Solution**: Load critical onboarding state synchronously during initialization
+- **Benefit**: Ensures state is available before first UI render
+
+### Direct @Published Reference vs Computed Property
+- **Problem**: Computed properties may not trigger SwiftUI updates reliably
+- **Solution**: Reference `appState.currentOnboardingStep` directly in view conditions
+- **Benefit**: Guarantees SwiftUI reactivity to state changes
+### Simplified Approach
+The implementation uses a straightforward approach:
+1. **Synchronous State Loading**: Load onboarding state immediately during AppState initialization to avoid race conditions
+2. **Direct SwiftUI Reactivity**: Reference `appState.currentOnboardingStep` directly instead of computed properties
+3. **Persistent Progress**: Always save and restore onboarding progress
 
 ### Why Save on Both `.background` and `.inactive`?
 - `.inactive`: Covers cases like Control Center, phone calls, notifications
@@ -101,7 +107,6 @@ iOS doesn't provide a direct way to detect if an app was force-closed vs backgro
 
 ## UserDefaults Keys Used
 - `currentOnboardingStep`: String value of the current onboarding step
-- `didTerminateCleanly`: Boolean flag to detect termination type
 
 ## Testing
 The fix has been validated through:
@@ -111,6 +116,7 @@ The fix has been validated through:
 
 ## Benefits
 1. **Better User Experience**: Users don't lose progress when multitasking
-2. **Intentional Fresh Starts**: Force-closing still allows users to restart onboarding
+2. **Reliable State Management**: Synchronous loading eliminates race conditions
 3. **Performance**: Minimal overhead using efficient UserDefaults persistence
-4. **Maintainable**: Clear separation of concerns between soft/hard close behaviors
+4. **Maintainable**: Simplified logic with fewer edge cases
+5. **Consistent Behavior**: Predictable restoration of onboarding progress
