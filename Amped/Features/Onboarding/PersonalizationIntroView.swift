@@ -4,7 +4,7 @@ import SwiftUI
 struct PersonalizationIntroView: View {
     // MARK: - Properties
     
-    @StateObject private var viewModel = PersonalizationIntroViewModel()
+    // PERFORMANCE FIX: Remove unnecessary @StateObject that blocks main thread
     @State private var animateElements = false
     @EnvironmentObject var themeManager: BatteryThemeManager
     
@@ -206,4 +206,4 @@ struct PersonalizationIntroView_Previews: PreviewProvider {
         PersonalizationIntroView(onContinue: {})
             .environmentObject(BatteryThemeManager())
     }
-} 
+}

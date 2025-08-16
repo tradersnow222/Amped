@@ -91,66 +91,93 @@ struct ScientificCitation: View {
     }
 }
 
-/// Helper function to create formatted button content with primary and secondary text
-/// Automatically detects and styles text in parentheses as smaller, greyed subtext
-func FormattedButtonText(text: String, subtitle: String? = nil) -> some View {
-    VStack(spacing: 4) {
-        // Parse the main text to separate primary text from parentheses content
-        let components = parseTextWithParentheses(text)
-        
-        Text(components.primary)
-            .font(.system(size: 17, weight: .medium, design: .rounded))
-            .foregroundColor(.white)
-            .multilineTextAlignment(.center)
-            .lineLimit(nil)
-            .fixedSize(horizontal: false, vertical: true)
-        
-        // Show parentheses content as smaller, greyed subtext
-        if let parenthesesText = components.parentheses {
-            Text(parenthesesText)
-                .font(.system(size: 14, weight: .regular, design: .rounded))
-                .foregroundColor(.white.opacity(0.65))
-                .multilineTextAlignment(.center)
-                .lineLimit(nil)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        
-        // Show additional subtitle if provided
-        if let subtitle = subtitle {
-            Text(subtitle)
-                .font(.system(size: 14, weight: .regular))
-                .foregroundColor(.white.opacity(0.8))
-                .multilineTextAlignment(.center)
-                .lineLimit(nil)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-}
-
-/// Helper function to parse text and extract content in parentheses
-private func parseTextWithParentheses(_ text: String) -> (primary: String, parentheses: String?) {
-    // Split by newline and look for parentheses in each line
-    let lines = text.components(separatedBy: "\n")
-    var primaryLines: [String] = []
-    var parenthesesText: String?
+/// ULTRA-OPTIMIZED formatted button content - eliminates expensive string parsing
+/// Pre-computes text components to prevent render-time performance issues
+struct FormattedButtonText: View {
+    private let primaryText: String
+    private let parenthesesText: String?
+    private let subtitle: String?
     
-    for line in lines {
-        let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+    // PERFORMANCE: Cache parsed components to avoid repeated string operations
+    private static var textCache: [String: (primary: String, parentheses: String?)] = [:]
+    
+    init(text: String, subtitle: String? = nil) {
+        let startTime = CFAbsoluteTimeGetCurrent()
         
-        // Check if line contains parentheses
-        if trimmedLine.hasPrefix("(") && trimmedLine.hasSuffix(")") {
-            // Extract content inside parentheses
-            let startIndex = trimmedLine.index(trimmedLine.startIndex, offsetBy: 1)
-            let endIndex = trimmedLine.index(trimmedLine.endIndex, offsetBy: -1)
-            parenthesesText = String(trimmedLine[startIndex..<endIndex])
+        // PERFORMANCE: Use cached parsing results if available
+        if let cached = Self.textCache[text] {
+            self.primaryText = cached.primary
+            self.parenthesesText = cached.parentheses
         } else {
-            // This is primary text
-            primaryLines.append(trimmedLine)
+            // PERFORMANCE: Optimized string parsing with minimal allocations
+            let components = Self.optimizedParseText(text)
+            Self.textCache[text] = components // Cache for future use
+            self.primaryText = components.primary
+            self.parenthesesText = components.parentheses
+        }
+        
+        self.subtitle = subtitle
+        
+        let parseTime = CFAbsoluteTimeGetCurrent() - startTime
+        if parseTime > 0.001 { // Only log if > 1ms
+            print("🔍 PERFORMANCE_DEBUG: FormattedButtonText parsing took \(parseTime)s for '\(text.prefix(20))...'")
         }
     }
     
-    let primaryText = primaryLines.joined(separator: "\n")
-    return (primary: primaryText, parentheses: parenthesesText)
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(primaryText)
+                .font(.system(size: 17, weight: .medium, design: .rounded))
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+            
+            // Show parentheses content as smaller, greyed subtext
+            if let parenthesesText = parenthesesText {
+                Text(parenthesesText)
+                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .foregroundColor(.white.opacity(0.65))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            
+            // Show additional subtitle if provided
+            if let subtitle = subtitle {
+                Text(subtitle)
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+    
+    /// PERFORMANCE: Optimized text parsing with minimal string operations
+    private static func optimizedParseText(_ text: String) -> (primary: String, parentheses: String?) {
+        // PERFORMANCE: Single pass through string to find parentheses
+        if let openParen = text.firstIndex(of: "("),
+           let closeParen = text.lastIndex(of: ")"),
+           openParen < closeParen {
+            
+            // Extract parentheses content efficiently
+            let parenthesesRange = text.index(after: openParen)..<closeParen
+            let parenthesesContent = String(text[parenthesesRange])
+            
+            // Extract primary text by removing parentheses line
+            let primaryText = text.replacingOccurrences(
+                of: text[openParen...closeParen],
+                with: ""
+            ).trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            return (primary: primaryText, parentheses: parenthesesContent)
+        }
+        
+        // No parentheses found - return as-is
+        return (primary: text, parentheses: nil)
+    }
 }
 
 /// Contains all the individual question views for the questionnaire
@@ -276,98 +303,87 @@ struct QuestionViews {
     struct NameQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @FocusState private var isTextFieldFocused: Bool
-        // Applied rule: Simplicity is KING — focus immediately on appear for zero perceived lag
-        // PERFORMANCE: Use local text state to avoid rebinding the entire questionnaire on every keystroke
-        @State private var localName: String = ""
-         // PERFORMANCE: Gate keyboard focus until after transition to avoid concurrent heavy animations
-         // (Rules referenced: Simplicity is KING; Security over performance; Readability over extreme optimization)
-         @State private var isActive: Bool = false
-         private let focusDelaySeconds: Double = 0.12
         
         var body: some View {
-            VStack(alignment: .center, spacing: 0) {
-                // Question placed higher
-                Text("What's your first name?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity)
-                
-                Spacer()
-                
-                // ULTRA-FAST input container with zero animation overhead
-                VStack(spacing: 12) {
-                    // ULTRA-PERFORMANCE FIX: Blazingly fast TextField with minimal styling
-                    TextField("Enter your name", text: $localName)
-                        .font(.system(size: 20, weight: .medium))
+            VStack(spacing: 0) {
+                VStack(alignment: .center, spacing: 0) {
+                    // Question text - consistent with other questions
+                    Text("What should we call you?")
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
-                        .padding(16)
-                        .background(
-                            // LIGHTNING-FAST: Single-layer static background for zero lag
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.white.opacity(0.12))
-                        )
-                        .focused($isTextFieldFocused)
-                        .textInputAutocapitalization(.words)
-                        .textContentType(.givenName)
-                        .submitLabel(.done)
-                        .disableAutocorrection(true)
-                        .onSubmit {
-                            let canProceedLocal = !localName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            if canProceedLocal { proceedToNext() }
-                        }
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 10)
+                        .frame(maxWidth: .infinity)
+
+                    Spacer()
                     
-                    // Continue button with iOS-standard timing
-                    Button(action: {
-                        let canProceedLocal = !localName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        if canProceedLocal { proceedToNext() }
-                    }) {
-                        Text("Continue")
+                    // Clean input design matching iOS standards
+                    VStack(spacing: 16) {
+                        TextField("First name", text: $viewModel.userName)
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                            .padding(.vertical, 16)
+                            .padding(.horizontal, 20)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.white.opacity(0.15))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                                    )
+                            )
+                            .focused($isTextFieldFocused)
+                            .textInputAutocapitalization(.words)
+                            .textContentType(.givenName)
+                            .submitLabel(.continue)
+                            .disableAutocorrection(true)
+                            .onSubmit {
+                                if viewModel.canProceed {
+                                    proceedToNext()
+                                }
+                            }
+                        
+                        // Continue button - consistent with other questions
+                        Button(action: {
+                            proceedToNext()
+                        }) {
+                            Text("Continue")
+                        }
+                        .questionnaireButtonStyle(isSelected: false)
+                        .opacity(viewModel.canProceed ? 1.0 : 0.6)
+                        .disabled(!viewModel.canProceed)
+                        .hapticFeedback(.light)
                     }
-                    .questionnaireButtonStyle(isSelected: false)
-                    .opacity(!localName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 1.0 : 0.6)
-                    .disabled(localName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .hapticFeedback(.light)
+                    .padding(.bottom, 30) // CONSISTENCY FIX: Match spacing of other questions
+                    
+                    Spacer()
                 }
-                .padding(.bottom, 30)
+                .padding(.horizontal, 24)
+                .frame(maxHeight: .infinity)
             }
-            .padding(.horizontal, 24)
-            .frame(maxHeight: .infinity)
             .onAppear {
-                // Sync local from view model once on appear
-                localName = viewModel.userName
-                // Mark active to allow delayed focus
-                isActive = true
-                // Defer keyboard presentation slightly so it does not overlap with the heavy wheel picker removal
-                // This removes jank during the birthdate -> name transition on device
-                // Also explicitly disable implicit animations for focus state to avoid extra layout work
-                DispatchQueue.main.asyncAfter(deadline: .now() + focusDelaySeconds) {
-                    if isActive {
-                        UIView.setAnimationsEnabled(false)
-                        isTextFieldFocused = true
-                        UIView.setAnimationsEnabled(true)
-                    }
-                }
-            }
-            .onDisappear {
-                // Cancel any pending focus if view is leaving; ensure keyboard is dismissed
-                isActive = false
-                isTextFieldFocused = false
+                // ULTRA-PERFORMANCE FIX: No automatic keyboard focus - let user tap when ready
+                let startTime = CFAbsoluteTimeGetCurrent()
+                print("🔍 PERFORMANCE_DEBUG: NameQuestionView.onAppear() started at \(startTime)")
+                
+                // NO automatic focus - keyboard only appears when user taps the text field
+                // This completely eliminates animation conflicts and follows iOS design patterns
+                
+                let onAppearTime = CFAbsoluteTimeGetCurrent() - startTime
+                print("🔍 PERFORMANCE_DEBUG: NameQuestionView.onAppear() completed in \(onAppearTime)s (no keyboard conflict)")
             }
         }
         
-        // ULTRA-FAST: Instant navigation with zero lag - NOW CONSISTENT WITH OTHER QUESTIONS
         private func proceedToNext() {
-            // Dismiss keyboard immediately
+            guard viewModel.canProceed else { return }
+            
+            // KEYBOARD TRANSITION FIX: Dismiss keyboard immediately to prevent animation conflicts
             isTextFieldFocused = false
             
-            // CRITICAL FIX: Sync local name to view model and proceed directly
-            // This matches the pattern used by all questions after stress question
-            viewModel.userName = localName
+            // Use standard questionnaire transition timing to match other questions
             viewModel.proceedToNextQuestion()
         }
     }
@@ -700,14 +716,14 @@ struct QuestionViews {
             VStack(alignment: .center, spacing: 0) {
                 // Prompt and guidance
                 VStack(spacing: 12) {
-                    Text("How much time do you want to add daily?")
+                    Text("How much longer do you want to live each day?")
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 20)
 
-                    Text("Add up to 2 hours daily to your lifespan")
+                    Text("Add up to two hours daily")
                         .font(.system(size: 14))
                         .foregroundColor(.white.opacity(0.75))
                         .multilineTextAlignment(.center)
@@ -719,7 +735,10 @@ struct QuestionViews {
 
                 // Luxury interactive dial
                 LifespanGainDial(minutesPerDay: $desiredMinutes)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 20)
+
+                // Scientific credibility info
+                ScientificCitation(text: "Backed by 500+ studies, 15+ million participants", metricType: nil)
 
                 // Continue
                 Button(action: {

@@ -131,11 +131,17 @@ struct AmpedApp: App {
         case .background:
             // App went to background - schedule background tasks only if setting is enabled
             analyticsService.trackEvent(.appBackground)
+            // Save current onboarding state when app goes to background (soft close)
+            appState.saveOnboardingProgress()
             if settingsManager.backgroundRefreshEnabled {
                 backgroundHealthManager.scheduleHealthProcessing()
             }
             
-        default:
+        case .inactive:
+            // App is about to become inactive - save state
+            appState.saveOnboardingProgress()
+            
+        @unknown default:
             break
         }
     }
@@ -154,31 +160,49 @@ final class AppState: ObservableObject {
     @Published var hasShownSignInPopupThisSession: Bool = false
     @Published var appLaunchCount: Int = 0
     
+    // ONBOARDING PROGRESS TRACKING: Persist onboarding step for background app returns
+    @Published var currentOnboardingStep: OnboardingStep = .welcome
+    private var didTerminateCleanly: Bool = false
+    
     // MARK: - Initialization
     
     init() {
-        // Defer loading to avoid main thread I/O during launch
+        // CRITICAL FIX: Load onboarding state SYNCHRONOUSLY to avoid race condition
+        // The UI renders immediately, so we need the state available before first render
+        self.loadOnboardingStateSynchronously()
+        
+        // Defer other expensive loading to avoid blocking launch
         Task {
-            await loadOnboardingState()
+            await loadRemainingState()
         }
     }
     
     // MARK: - Persistence Methods
     
-    /// Load onboarding completion state and app launch count from UserDefaults
-    private func loadOnboardingState() async {
+    /// Load critical onboarding state synchronously during initialization
+    private func loadOnboardingStateSynchronously() {
         // Check both UserDefaults keys for onboarding completion
         let hasCompletedFromDefaults = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
         
         // Load app launch count
         appLaunchCount = UserDefaults.standard.integer(forKey: "appLaunchCount")
         
-        // Also check UserProfile for consistency
+        // Set hasCompletedOnboarding immediately (UserProfile check can be deferred)
+        hasCompletedOnboarding = hasCompletedFromDefaults
+        
+        // CRITICAL: Load onboarding progress synchronously before UI renders
+        self.loadOnboardingProgress()
+    }
+    
+    /// Load remaining state asynchronously to avoid blocking launch
+    private func loadRemainingState() async {
+        // Check UserProfile for consistency (can be done async)
         if let profileData = UserDefaults.standard.data(forKey: "user_profile"),
            let profile = try? JSONDecoder().decode(UserProfile.self, from: profileData) {
-            hasCompletedOnboarding = hasCompletedFromDefaults || profile.hasCompletedOnboarding
-        } else {
-            hasCompletedOnboarding = hasCompletedFromDefaults
+            await MainActor.run {
+                let wasCompleted = self.hasCompletedOnboarding
+                self.hasCompletedOnboarding = wasCompleted || profile.hasCompletedOnboarding
+            }
         }
     }
     
@@ -202,6 +226,9 @@ final class AppState: ObservableObject {
     func handleAppReturnFromBackground() {
         // Rules: Only show intro animations if user hasn't disabled them
         shouldShowIntroAnimations = true
+        
+        // Load saved onboarding step if user was in middle of onboarding
+        loadOnboardingProgress()
     }
     
     /// Mark onboarding as completed and persist to UserDefaults
@@ -230,11 +257,13 @@ final class AppState: ObservableObject {
     /// Reset onboarding state (for testing/debugging)
     func resetOnboarding() {
         hasCompletedOnboarding = false
+        currentOnboardingStep = .welcome
         
         // CRITICAL FIX: Also clear questionnaire data to ensure fresh start
         // Clear the saved questionnaire progress
         UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
         UserDefaults.standard.removeObject(forKey: "userName")
+        UserDefaults.standard.removeObject(forKey: "currentOnboardingStep")
         
         // Clear any saved questionnaire data using QuestionnaireManager
         QuestionnaireManager().clearAllData()
@@ -244,5 +273,39 @@ final class AppState: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "appLaunchCount")
         
         saveOnboardingState()
+    }
+    
+    // MARK: - Onboarding Progress Management
+    
+    /// Save current onboarding progress (simplified approach)
+    func saveOnboardingProgress() {
+        // SIMPLIFIED: Always save current step if onboarding not complete
+        if !hasCompletedOnboarding {
+            UserDefaults.standard.set(currentOnboardingStep.rawValue, forKey: "currentOnboardingStep")
+        }
+    }
+    
+    /// Load onboarding progress (simplified approach)
+    private func loadOnboardingProgress() {
+        // SIMPLIFIED: Always restore saved step if onboarding not complete
+        if !hasCompletedOnboarding {
+            if let savedStepRaw = UserDefaults.standard.object(forKey: "currentOnboardingStep") as? String,
+               let savedStep = OnboardingStep(rawValue: savedStepRaw) {
+                currentOnboardingStep = savedStep
+            } else {
+                currentOnboardingStep = .welcome
+            }
+        } else {
+            currentOnboardingStep = .welcome
+            UserDefaults.standard.removeObject(forKey: "currentOnboardingStep")
+        }
+    }
+    
+    /// Update current onboarding step
+    func updateOnboardingStep(_ step: OnboardingStep) {
+        currentOnboardingStep = step
+        if !hasCompletedOnboarding {
+            UserDefaults.standard.set(step.rawValue, forKey: "currentOnboardingStep")
+        }
     }
 }

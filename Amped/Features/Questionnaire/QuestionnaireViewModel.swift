@@ -7,7 +7,7 @@ final class QuestionnaireViewModel: ObservableObject {
     enum QuestionCategory: String, CaseIterable {
         case basics = "BASICS"
         case lifestyle = "LIFESTYLE" 
-        case wellness = "WELLNESS"
+        case goals = "YOUR DAILY GOAL"
         
         var displayName: String {
             return self.rawValue
@@ -38,7 +38,7 @@ final class QuestionnaireViewModel: ObservableObject {
             case .nutritionQuality, .smokingStatus, .alcoholConsumption:
                 return .lifestyle
             case .stressLevel, .anxietyLevel, .socialConnections, .sleepQuality, .bloodPressureAwareness, .deviceTracking, .framingComfort, .urgencyResponse, .lifeMotivation:
-                return .wellness
+                return .goals
             }
         }
     }
@@ -332,37 +332,51 @@ final class QuestionnaireViewModel: ObservableObject {
     // Form data - CRITICAL PERFORMANCE FIX: Remove expensive didSet observer
     @Published var currentQuestion: Question
 
-    // OPTIMIZED: Pre-computed static values to eliminate repeated calculations
-    private static let staticAvailableYears: [Int] = {
-        let currentYear = Calendar.current.component(.year, from: Date())
-        let minYear = currentYear - 120
-        let maxYear = currentYear
-        return Array(minYear...maxYear)
-    }()
+    // COLD START FIX: Lazy-computed static values to eliminate cold start blocking
+    private static var _staticCurrentYear: Int?
+    private static var _staticCurrentMonth: Int?
+    private static var _staticOptimizedYearRange: [Int]?
+    private static var _staticCurrentYearMonths: [Int]?
+    
+    private static var staticCurrentYear: Int {
+        if let cached = _staticCurrentYear { return cached }
+        let value = Calendar.current.component(.year, from: Date())
+        _staticCurrentYear = value
+        return value
+    }
+    
+    private static var staticCurrentMonth: Int {
+        if let cached = _staticCurrentMonth { return cached }
+        let value = Calendar.current.component(.month, from: Date())
+        _staticCurrentMonth = value
+        return value
+    }
+    
+    private static var staticOptimizedYearRange: [Int] {
+        if let cached = _staticOptimizedYearRange { return cached }
+        let currentYear = staticCurrentYear
+        let minYear = currentYear - 110  // 110 years old max
+        let maxYear = currentYear - 5    // 5 years old min
+        let value = Array(minYear...maxYear)
+        _staticOptimizedYearRange = value
+        return value
+    }
+    
+    private static var staticCurrentYearMonths: [Int] {
+        if let cached = _staticCurrentYearMonths { return cached }
+        let value = Array(1...staticCurrentMonth)
+        _staticCurrentYearMonths = value
+        return value
+    }
 
-    // ULTRA-PERFORMANCE FIX: Truly static month names - zero system calls
+    // ULTRA-PERFORMANCE FIX: Truly static month names - zero system calls (keep as-is)
     private static let staticMonthNames: [String] = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
     ]
-
-    // ULTRA-PERFORMANCE FIX: Pre-computed static date values - calculated once at app launch
-    private static let staticCurrentYear = Calendar.current.component(.year, from: Date())
-    private static let staticCurrentMonth = Calendar.current.component(.month, from: Date())
-    
-    // STEVE JOBS OPTIMIZATION: Pre-computed practical year range for instant picker performance
-    private static let staticOptimizedYearRange: [Int] = {
-        let currentYear = staticCurrentYear
-        let minYear = currentYear - 110  // 110 years old max
-        let maxYear = currentYear - 5    // 5 years old min
-        return Array(minYear...maxYear)
-    }()
     
     // STEVE JOBS OPTIMIZATION: Pre-computed month arrays for instant performance
     private static let staticAllMonths = Array(1...12)
-    private static let staticCurrentYearMonths: [Int] = {
-        return Array(1...staticCurrentMonth)
-    }()
 
     // Birthdate (replacing age)
     @Published var birthdate: Date = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date() // Default to 30 years ago
@@ -391,12 +405,17 @@ final class QuestionnaireViewModel: ObservableObject {
         }
     }
 
-    // OPTIMIZED: Pre-computed birthdate range
-    private static let staticBirthdateRange: ClosedRange<Date> = {
+    // COLD START FIX: Lazy birthdate range to eliminate cold start blocking
+    private static var _staticBirthdateRange: ClosedRange<Date>?
+    
+    private static var staticBirthdateRange: ClosedRange<Date> {
+        if let cached = _staticBirthdateRange { return cached }
         let maxDate = Date() // Today (no future dates)
         let minDate = Calendar.current.date(byAdding: .year, value: -120, to: Date()) ?? Date() // Max 120 years ago
-        return minDate...maxDate
-    }()
+        let value = minDate...maxDate
+        _staticBirthdateRange = value
+        return value
+    }
 
     var birthdateRange: ClosedRange<Date> {
         return Self.staticBirthdateRange
@@ -677,33 +696,45 @@ final class QuestionnaireViewModel: ObservableObject {
     // MARK: - Initialization
     
     init(startFresh: Bool = false) {
-        // CRITICAL FIX: Allow forcing a fresh start, ignoring saved state
-        if startFresh {
-            // Always start from name when forcing fresh start
-            self.currentQuestion = .name
-            
-            // Clear any saved state to ensure consistency
-            UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
-            UserDefaults.standard.removeObject(forKey: "userName")
-        } else {
-            // Restore current question from UserDefaults if available
-            if let savedQuestionRawValue = UserDefaults.standard.object(forKey: "questionnaire_current_question") as? Int,
-               let savedQuestion = Question(rawValue: savedQuestionRawValue) {
-                self.currentQuestion = savedQuestion
-            } else {
-                self.currentQuestion = .name
+        // ULTRA-PERFORMANCE FIX: Absolute minimum initialization for instant creation
+        let startTime = CFAbsoluteTimeGetCurrent()
+        
+        // Always start at name question for onboarding flow
+        self.currentQuestion = .name
+        
+        // PERFORMANCE: Lazy birthdate initialization - defer expensive calendar operations
+        // Use pre-computed static values for instant initialization
+        self.selectedBirthMonth = Self.staticCurrentMonth
+        self.selectedBirthYear = Self.staticCurrentYear - 30 // Default to 30 years ago
+        
+        // PERFORMANCE: Move ALL UserDefaults operations to background
+        if !startFresh {
+            Task.detached(priority: .utility) {
+                if let savedQuestionRawValue = UserDefaults.standard.object(forKey: "questionnaire_current_question") as? Int,
+                   let savedQuestion = Question(rawValue: savedQuestionRawValue) {
+                    await MainActor.run {
+                        self.currentQuestion = savedQuestion
+                    }
+                }
+                
+                if let savedName = UserDefaults.standard.string(forKey: "userName") {
+                    await MainActor.run {
+                        self.userName = savedName
+                    }
+                }
             }
         }
         
-        // Load saved userName if available
-        if let savedName = UserDefaults.standard.string(forKey: "userName"), !startFresh {
-            self.userName = savedName
+        // PERFORMANCE: Move UserDefaults clearing to background
+        if startFresh {
+            Task.detached(priority: .utility) {
+                UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
+                UserDefaults.standard.removeObject(forKey: "userName")
+            }
         }
         
-        // Sync the separate month/year properties with the default birthdate
-        let calendar = Calendar.current
-        selectedBirthMonth = calendar.component(.month, from: birthdate)
-        selectedBirthYear = calendar.component(.year, from: birthdate)
+        let initTime = CFAbsoluteTimeGetCurrent() - startTime
+        print("🔍 PERFORMANCE_DEBUG: Ultra-fast QuestionnaireViewModel.init() completed in \(initTime)s")
     }
     
     // Add a new initializer to start at a specific question - for returning from HealthKit

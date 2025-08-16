@@ -89,16 +89,62 @@ class QuestionnaireGestureHandler {
     
     /// Handle back button navigation
     func handleBackNavigation() {
+        // 🔍 DEBUG: Add comprehensive logging for navigation bug investigation
+        print("🔍 BACK_NAV_DEBUG: handleBackNavigation() called")
+        print("🔍 BACK_NAV_DEBUG: Current question: \(viewModel?.currentQuestion.rawValue ?? -1)")
+        print("🔍 BACK_NAV_DEBUG: canMoveBack: \(viewModel?.canMoveBack ?? false)")
+        print("🔍 BACK_NAV_DEBUG: isFirstQuestion: \(viewModel?.isFirstQuestion ?? false)")
+        
+        // Check UserDefaults state for debugging
+        let savedQuestion = UserDefaults.standard.object(forKey: "questionnaire_current_question") as? Int
+        print("🔍 BACK_NAV_DEBUG: Saved question in UserDefaults: \(savedQuestion ?? -1)")
+        
         // OPTIMIZED: Immediate haptic feedback
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
         
-        // Simplified logic: Use canMoveBack which should be the authoritative source
-        if viewModel?.canMoveBack == true {
+        // CRITICAL FIX: Add defensive validation to prevent navigation bug
+        guard let viewModel = viewModel else {
+            print("🔍 BACK_NAV_DEBUG: ERROR - viewModel is nil, aborting navigation")
+            return
+        }
+        
+        let currentQuestion = viewModel.currentQuestion
+        let currentQuestionRaw = currentQuestion.rawValue
+        let canMoveBack = viewModel.canMoveBack
+        let isFirstQuestion = viewModel.isFirstQuestion
+        
+        print("🔍 BACK_NAV_DEBUG: Detailed state - currentQuestion: \(currentQuestion) (\(currentQuestionRaw))")
+        print("🔍 BACK_NAV_DEBUG: Detailed state - canMoveBack: \(canMoveBack), isFirstQuestion: \(isFirstQuestion)")
+        
+        // CRITICAL DEFENSIVE CHECK: If we're somehow in an invalid state where
+        // the question appears to be beyond the first question but canMoveBack is false,
+        // this indicates state corruption that could cause the bug
+        if currentQuestionRaw > 0 && !canMoveBack {
+            print("🔍 BACK_NAV_DEBUG: ⚠️ DETECTED STATE CORRUPTION - question \(currentQuestionRaw) but canMoveBack=false")
+            print("🔍 BACK_NAV_DEBUG: ⚠️ This indicates the bug condition - forcing exit to prevent wrong navigation")
+            
+            // Force exit to personalization intro to prevent navigation to wrong screen
+            isBackButtonTapped = true
+            viewModel.navigationDirection = .backward
+            
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
+                exitToPersonalizationIntro.wrappedValue = true
+            }
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                self.isBackButtonTapped = false
+            }
+            return
+        }
+        
+        // Normal logic: Use canMoveBack which should be the authoritative source
+        if canMoveBack {
             // We can move back within questionnaire - do so
+            print("🔍 BACK_NAV_DEBUG: Moving back within questionnaire from \(currentQuestion)")
             isBackButtonTapped = true
             // CRITICAL FIX: Don't wrap in animation - moveBackToPreviousQuestion handles its own animation
-            viewModel?.moveBackToPreviousQuestion()
+            viewModel.moveBackToPreviousQuestion()
             
             // OPTIMIZED: Faster reset
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
@@ -107,9 +153,10 @@ class QuestionnaireGestureHandler {
         } else {
             // Cannot move back within questionnaire - exit to onboarding
             // At first question, navigate back to personalization intro
+            print("🔍 BACK_NAV_DEBUG: At first question (\(currentQuestion)), exiting to personalization intro")
             isBackButtonTapped = true
             // Set backward direction for proper iOS-standard transition
-            viewModel?.navigationDirection = .backward
+            viewModel.navigationDirection = .backward
             
             // Signal to parent to navigate back with unified spring
             withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
@@ -138,4 +185,4 @@ class QuestionnaireGestureHandler {
         // With single-question rendering, we don't need offset calculations
         return 0
     }
-} 
+}

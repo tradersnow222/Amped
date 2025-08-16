@@ -60,7 +60,11 @@ struct ContentView: View {
                     case .personalizationIntro:
                         PersonalizationIntroView(onContinue: {})
                     case .questionnaire:
-                        QuestionnaireView(exitToPersonalizationIntro: .constant(false), proceedToHealthPermissions: .constant(false))
+                        QuestionnaireView(
+                            viewModel: QuestionnaireViewModel(startFresh: true),
+                            exitToPersonalizationIntro: .constant(false), 
+                            proceedToHealthPermissions: .constant(false)
+                        )
                     case .payment:
                         PaymentView(onContinue: {})
                             .environmentObject(appState)

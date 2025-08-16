@@ -5,7 +5,8 @@ import HealthKit
 struct QuestionnaireView: View {
     // MARK: - Properties
     
-    @StateObject private var viewModel: QuestionnaireViewModel
+    // CRITICAL PERFORMANCE FIX: Accept injected viewModel instead of creating new one
+    @ObservedObject private var viewModel: QuestionnaireViewModel
     @StateObject private var questionnaireManager = QuestionnaireManager()
     @EnvironmentObject var themeManager: BatteryThemeManager
     
@@ -18,30 +19,29 @@ struct QuestionnaireView: View {
     
     // Internal state
     @State private var animationCompleted = false
-    // Applied rule: Simplicity is KING — rely on system keyboard avoidance for name entry
     
     // Background control
     private let includeBackground: Bool
     
     // MARK: - Initializers
     
-    init(exitToPersonalizationIntro: Binding<Bool>, proceedToHealthPermissions: Binding<Bool>, startFresh: Bool = false, includeBackground: Bool = true) {
+    init(viewModel: QuestionnaireViewModel, exitToPersonalizationIntro: Binding<Bool>, proceedToHealthPermissions: Binding<Bool>, includeBackground: Bool = true) {
+        // CRITICAL PERFORMANCE FIX: Use injected viewModel instead of creating new one
+        let startTime = CFAbsoluteTimeGetCurrent()
+        
+        self.viewModel = viewModel
         self._exitToPersonalizationIntro = exitToPersonalizationIntro
         self._proceedToHealthPermissions = proceedToHealthPermissions
         self.includeBackground = includeBackground
         
-        // Create the StateObject before init completes
-        // CRITICAL FIX: Pass startFresh parameter to ensure fresh start when needed
-        let viewModel = QuestionnaireViewModel(startFresh: startFresh)
-        self._viewModel = StateObject(wrappedValue: viewModel)
-        
-        // Use the same view model instance for the gesture handler
+        // Use the existing view model instance for the gesture handler
         self.gestureHandler = QuestionnaireGestureHandler(
             viewModel: viewModel,
             exitToPersonalizationIntro: exitToPersonalizationIntro
         )
         
-        print("🔍 QUESTIONNAIRE: Initialized with starting question: \(viewModel.currentQuestion)")
+        let initTime = CFAbsoluteTimeGetCurrent() - startTime
+        print("🔍 PERFORMANCE_DEBUG: QuestionnaireView.init() completed in \(initTime)s")
     }
     
     // MARK: - Body
@@ -54,49 +54,60 @@ struct QuestionnaireView: View {
                     Color.clear.withDeepBackground()
                 }
                 
-                VStack(spacing: 0) {
-                    // Back button should always be above the category text (User rule: Simplicity is KING)
-                    if viewModel.canMoveBack {
+                ZStack {
+                    // ULTRA-STABLE: Completely static overlay layer - NEVER transitions, NEVER recreates
+                    VStack(spacing: 0) {
+                        // Back button - static overlay (needs hit testing enabled)
                         HStack {
-                            BackButton(action: {
-                                gestureHandler.handleBackNavigation()
-                            }, showText: false)
+                            if viewModel.canMoveBack {
+                                BackButton(action: {
+                                    gestureHandler.handleBackNavigation()
+                                }, showText: false)
+                                .allowsHitTesting(true) // Ensure back button is tappable
+                            }
                             Spacer()
+                                .allowsHitTesting(false) // Let spacer pass gestures through
                         }
                         .padding(.top, 16)
                         .padding(.leading, 8)
-                    } else {
-                        // Keep layout consistent when back button is hidden
-                        HStack { Spacer() }
-                            .frame(height: 42)
-                            .padding(.top, 16)
+                        .frame(height: 42)
+                        
+                        // CategoryHeader - COMPLETELY STATIC OVERLAY (never recreated)
+                        CategoryHeader(category: viewModel.currentQuestionCategory)
+                            .padding(.top, 8)
+                            .frame(maxWidth: .infinity)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .id("static_category_header") // Static ID - never changes
+                            .allowsHitTesting(false) // Let gestures pass through header
+                        
+                        Spacer()
+                            .allowsHitTesting(false) // Let gestures pass through spacer
+                        
+                        // Progress indicator - static overlay  
+                        ProgressIndicator(currentStep: viewModel.currentStep, totalSteps: viewModel.totalSteps)
+                            .padding(.bottom, 10)
+                            .allowsHitTesting(false) // Let gestures pass through progress indicator
                     }
-
-                    // Category header shown for ALL questions (standardized flow)
-                    CategoryHeader(category: viewModel.currentQuestionCategory)
-                        .padding(.top, 8)
-                        .frame(maxWidth: .infinity)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    // Add spacer to push question down - adjusted for always-present category header
-                    Spacer().frame(height: geometry.size.height * 0.08)
+                    .zIndex(1000) // Always on top
+                    // Removed global allowsHitTesting(false) and applied selectively instead
                     
-                    // Current question view — transitions now "materialize" (fade + subtle scale)
-                    ZStack {
-                        questionView(for: viewModel.currentQuestion)
-                            .padding()
-                            .id("question_\(viewModel.currentQuestion.rawValue)")
-                            .transition(getAdaptiveTransition())
+                    // Content layer - this animates but overlay stays put
+                    VStack(spacing: 0) {
+                        // Top spacer for CategoryHeader
+                        Spacer().frame(height: 100) // Fixed space for header
+                        
+                        // Animated content - NO ID to prevent view recreation
+                        ZStack {
+                            questionView(for: viewModel.currentQuestion)
+                                .padding()
+                                .transition(getAdaptiveTransition())
+                        }
+                        .clipped()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        
+                        // Bottom spacer for progress indicator
+                        Spacer().frame(height: 60) // Fixed space for progress
                     }
-                    .clipped() // Ensure off-screen content doesn't show
-                    // UX RULE: Remove global animation; transitions are driven by explicit springs
-                    
-                    Spacer()
-                    
-                    // Progress indicator at bottom - consistent with other screens
-                    ProgressIndicator(currentStep: viewModel.currentStep, totalSteps: viewModel.totalSteps)
-                        .padding(.top, -10) // Negative padding to bring it closer to the button
-                        .padding(.bottom, 10) // Further reduced to allow button to sit closer
                 }
                 .withDeepBackgroundTheme()
             }
@@ -335,6 +346,10 @@ private struct ConditionalKeyboardIgnore: ViewModifier {
 
 struct QuestionnaireView_Previews: PreviewProvider {
     static var previews: some View {
-        QuestionnaireView(exitToPersonalizationIntro: .constant(false), proceedToHealthPermissions: .constant(false))
+        QuestionnaireView(
+            viewModel: QuestionnaireViewModel(startFresh: true),
+            exitToPersonalizationIntro: .constant(false), 
+            proceedToHealthPermissions: .constant(false)
+        )
     }
 }

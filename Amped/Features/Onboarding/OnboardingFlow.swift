@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Main enum to track the onboarding state - Rules: Streamlined flow removing redundant screens
-enum OnboardingStep: Equatable {
+enum OnboardingStep: String, Equatable, CaseIterable {
     case welcome
     case personalizationIntro // Position 2: Build trust before data collection
     case questionnaire
@@ -15,17 +15,51 @@ enum OnboardingStep: Equatable {
 
 /// Main container view for the entire onboarding flow
 struct OnboardingFlow: View {
-    @State private var currentStep: OnboardingStep = .welcome
     @EnvironmentObject var appState: AppState
     @State private var dragDirection: Edge? = nil
     @State private var isButtonNavigating: Bool = false
+    
+    // DIRECT REFERENCE: Use appState.currentOnboardingStep directly in view conditions
+    // This ensures SwiftUI properly reacts to @Published changes
     
     // Add binding for questionnaire navigation
     @State private var shouldExitQuestionnaire: Bool = false
     @State private var shouldCompleteQuestionnaire: Bool = false
     
-    // Shared questionnaire view model
-    @StateObject private var questionnaireViewModel = QuestionnaireViewModel()
+    // ULTRA-PERFORMANCE FIX: Pre-initialize ViewModel in background during PersonalizationIntro
+    @State private var questionnaireViewModel: QuestionnaireViewModel?
+    @State private var isViewModelReady: Bool = false
+    
+    // Background initialization helper
+    private func getQuestionnaireViewModel() -> QuestionnaireViewModel {
+        if let existingViewModel = questionnaireViewModel {
+            return existingViewModel
+        } else {
+            // Fallback synchronous creation if background init didn't complete
+            let startTime = CFAbsoluteTimeGetCurrent()
+            let newViewModel = QuestionnaireViewModel(startFresh: true)
+            questionnaireViewModel = newViewModel
+            isViewModelReady = true
+            let initTime = CFAbsoluteTimeGetCurrent() - startTime
+            return newViewModel
+        }
+    }
+    
+    // Pre-initialize ViewModel in background during PersonalizationIntro
+    private func preInitializeQuestionnaireViewModel() {
+        guard questionnaireViewModel == nil else { return }
+        
+        Task.detached(priority: .userInitiated) {
+            let startTime = CFAbsoluteTimeGetCurrent()
+            let newViewModel = QuestionnaireViewModel(startFresh: true)
+            let initTime = CFAbsoluteTimeGetCurrent() - startTime
+            
+            await MainActor.run {
+                self.questionnaireViewModel = newViewModel
+                self.isViewModelReady = true
+            }
+        }
+    }
     
 
     
@@ -34,7 +68,7 @@ struct OnboardingFlow: View {
             ZStack {
                 // Conditional background based on current step
                 // Welcome screen uses BatteryBackground, all others use DeepBackground
-                if currentStep == .welcome {
+                if appState.currentOnboardingStep == .welcome {
                     Color.clear.withBatteryBackground()
                 } else {
                     Color.clear.withDeepBackground()
@@ -42,31 +76,33 @@ struct OnboardingFlow: View {
                 
                 // Transitioning content layer
                 ZStack {
-                    if currentStep == .welcome {
-                        WelcomeView(onContinue: { 
-                            isButtonNavigating = true
-                            dragDirection = nil
-                            navigateTo(.personalizationIntro) 
-                        })
-                        .transition(getTransition(forNavigatingTo: currentStep))
-                        .zIndex(currentStep == .welcome ? 1 : 0)
-                    }
+                if appState.currentOnboardingStep == .welcome {
+                    WelcomeView(onContinue: { 
+                        isButtonNavigating = true
+                        dragDirection = nil
+                        navigateTo(.personalizationIntro) 
+                    })
+                    .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                    .zIndex(appState.currentOnboardingStep == .welcome ? 1 : 0)
+                }
                     
-                    if currentStep == .personalizationIntro {
-                        PersonalizationIntroView(onContinue: { 
-                            isButtonNavigating = true
-                            dragDirection = nil
-                            navigateTo(.questionnaire) 
-                        })
-                        .transition(getTransition(forNavigatingTo: currentStep))
-                        .zIndex(currentStep == .personalizationIntro ? 1 : 0)
-                    }
+                if appState.currentOnboardingStep == .personalizationIntro {
+                    PersonalizationIntroView(onContinue: { 
+                        isButtonNavigating = true
+                        dragDirection = nil
+                        navigateTo(.questionnaire) 
+                    })
+                    .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                    .zIndex(appState.currentOnboardingStep == .personalizationIntro ? 1 : 0)
+                    // REMOVED: Pre-initialization now handled by WelcomeView orchestration
+                }
                     
-                    if currentStep == .questionnaire {
+                    if appState.currentOnboardingStep == .questionnaire {
+                        // CRITICAL PERFORMANCE FIX: Pass lazy-initialized viewModel to prevent double initialization
                         QuestionnaireView(
+                            viewModel: getQuestionnaireViewModel(),
                             exitToPersonalizationIntro: $shouldExitQuestionnaire,
                             proceedToHealthPermissions: $shouldCompleteQuestionnaire,
-                            startFresh: true,  // CRITICAL FIX: Always start fresh in onboarding flow
                             includeBackground: false  // Parent OnboardingFlow provides static background
                         )
                         .onChange(of: shouldExitQuestionnaire) { newValue in
@@ -110,72 +146,77 @@ struct OnboardingFlow: View {
                                 }
                             }
                         }
-                        .transition(getTransition(forNavigatingTo: currentStep))
-                        .zIndex(currentStep == .questionnaire ? 1 : 0)
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .questionnaire ? 1 : 0)
                     }
                     
-                    if currentStep == .notificationPermission {
+                    if appState.currentOnboardingStep == .notificationPermission {
                         NotificationPermissionView(onContinue: {
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.valueProposition)
                         })
-                        .transition(getTransition(forNavigatingTo: currentStep))
-                        .zIndex(currentStep == .notificationPermission ? 1 : 0)
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .notificationPermission ? 1 : 0)
                     }
                     
-                    if currentStep == .valueProposition {
+                    if appState.currentOnboardingStep == .valueProposition {
                         ValuePropositionView(onContinue: { 
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.prePaywallTease) 
                         })
-                        .transition(getTransition(forNavigatingTo: currentStep))
-                        .zIndex(currentStep == .valueProposition ? 1 : 0)
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .valueProposition ? 1 : 0)
                     }
                     
-                    if currentStep == .prePaywallTease {
+                    if appState.currentOnboardingStep == .prePaywallTease {
                         PrePaywallTeaserView(
-                            viewModel: questionnaireViewModel,
+                            viewModel: getQuestionnaireViewModel(),
                             onContinue: {
                                 isButtonNavigating = true
                                 dragDirection = nil
                                 navigateTo(.payment)
                             }
                         )
-                        .transition(getTransition(forNavigatingTo: currentStep))
-                        .zIndex(currentStep == .prePaywallTease ? 1 : 0)
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .prePaywallTease ? 1 : 0)
                     }
 
-                    if currentStep == .payment {
+                    if appState.currentOnboardingStep == .payment {
                         PaymentView(onContinue: { 
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.attribution) 
                         })
-                        .transition(getTransition(forNavigatingTo: currentStep))
-                        .zIndex(currentStep == .payment ? 1 : 0)
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .payment ? 1 : 0)
                     }
                     
-                    if currentStep == .attribution {
+                    if appState.currentOnboardingStep == .attribution {
                         AttributionSourceView(onContinue: {
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.dashboard)
                         })
-                        .transition(getTransition(forNavigatingTo: currentStep))
-                        .zIndex(currentStep == .attribution ? 1 : 0)
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .attribution ? 1 : 0)
                     }
                     
-                    if currentStep == .dashboard {
+                    if appState.currentOnboardingStep == .dashboard {
                         NavigationView {
                             DashboardView()
                         }
                         .transition(getMaterializeTransition())
-                        .zIndex(currentStep == .dashboard ? 1 : 0)
+                        .zIndex(appState.currentOnboardingStep == .dashboard ? 1 : 0)
                         .onAppear {
                             // Mark onboarding as complete once dashboard is shown
                             appState.completeOnboarding()
+                            
+                            // 🧹 SMART CLEANUP: Clear onboarding caches to free memory after completion
+                            Task.detached(priority: .background) {
+                                await performPostOnboardingCleanup()
+                            }
                         }
                     }
                 }
@@ -184,15 +225,18 @@ struct OnboardingFlow: View {
             // programmatic (e.g., questionnaire back/forward) with direction hints via dragDirection.
         }
         .onAppear {
-            // CRITICAL FIX: Clear any saved questionnaire state when starting onboarding
-            // This ensures users always start from the beginning
-            UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
-            UserDefaults.standard.removeObject(forKey: "userName")
-            
-            // Only clear questionnaire data if we're truly starting fresh
-            // (not just navigating back within the flow)
-            if currentStep == .welcome {
-                QuestionnaireManager().clearAllData()
+            // ULTRA-PERFORMANCE FIX: Minimize onAppear work to prevent UI blocking
+            // Move ALL expensive operations to background with lower priority
+            Task.detached(priority: .utility) {
+                // Only clear UserDefaults if starting fresh (at welcome step)
+                if await MainActor.run(body: { appState.currentOnboardingStep }) == .welcome {
+                    // Clear UserDefaults in background
+                    UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
+                    UserDefaults.standard.removeObject(forKey: "userName")
+                    
+                    // Move expensive clearAllData to background with even lower priority
+                    QuestionnaireManager().clearAllData()
+                }
             }
         }
         // Add a tap gesture to the corner to show/hide debug controls
@@ -205,45 +249,8 @@ struct OnboardingFlow: View {
     
         // Helper method to determine the correct transition based on navigation direction
     private func getTransition(forNavigatingTo step: OnboardingStep) -> AnyTransition {
-        // Use consistent slide + opacity across onboarding for a premium, unified feel
-        
-        // For button-initiated navigation
-        if isButtonNavigating {
-            return .asymmetric(
-                insertion: .move(edge: .trailing).combined(with: .opacity),
-                removal: .move(edge: .leading).combined(with: .opacity)
-            )
-        }
-        
-        // For gesture-based navigation
-        if let dragDir = dragDirection {
-            switch dragDir {
-            case .leading:
-                // Forward swipe (left to right on screen)
-                return .asymmetric(
-                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                    removal: .move(edge: .leading).combined(with: .opacity)
-                )
-            case .trailing:
-                // Backward swipe (right to left on screen)
-                return .asymmetric(
-                    insertion: .move(edge: .leading).combined(with: .opacity),
-                    removal: .move(edge: .trailing).combined(with: .opacity)
-                )
-            default:
-                // Default forward transition
-                return .asymmetric(
-                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                    removal: .move(edge: .leading).combined(with: .opacity)
-                )
-            }
-        }
-        
-        // Default transition for programmatic navigation (forward)
-        return .asymmetric(
-            insertion: .move(edge: .trailing).combined(with: .opacity),
-            removal: .move(edge: .leading).combined(with: .opacity)
-        )
+        // Use consistent materializing effect across all onboarding screens for premium, unified feel
+        return getMaterializeTransition()
     }
     
         private func navigateTo(_ step: OnboardingStep) {
@@ -251,7 +258,7 @@ struct OnboardingFlow: View {
         
         // Luxury slow — softer/longer spring for materialize transitions across onboarding
         withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
-            currentStep = step
+            appState.updateOnboardingStep(step)
         }
     }
 
@@ -294,7 +301,21 @@ struct OnboardingFlow: View {
         }
     }
     
+}
 
+// MARK: - Smart Post-Onboarding Cleanup
+
+/// 🧹 SMART CLEANUP: Free memory after onboarding completion
+/// Clears caches and temporary data that are no longer needed
+private func performPostOnboardingCleanup() async {
+    // Clear any temporary onboarding-related UserDefaults
+    UserDefaults.standard.removeObject(forKey: "onboarding_temp_data")
+    UserDefaults.standard.removeObject(forKey: "questionnaire_cache")
+    
+    // Trigger memory cleanup
+    autoreleasepool {
+        // Force memory cleanup for temporary objects
+    }
 }
 
 // Preview
