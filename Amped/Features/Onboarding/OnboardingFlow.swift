@@ -37,7 +37,10 @@ struct OnboardingFlow: View {
         } else {
             // Fallback synchronous creation if background init didn't complete
             let startTime = CFAbsoluteTimeGetCurrent()
-            let newViewModel = QuestionnaireViewModel(startFresh: true)
+            // CRITICAL FIX: Only start fresh if we're at the welcome step
+            // If we're restoring from a soft close, preserve questionnaire progress
+            let shouldStartFresh = appState.currentOnboardingStep == .welcome
+            let newViewModel = QuestionnaireViewModel(startFresh: shouldStartFresh)
             questionnaireViewModel = newViewModel
             isViewModelReady = true
             let initTime = CFAbsoluteTimeGetCurrent() - startTime
@@ -51,7 +54,9 @@ struct OnboardingFlow: View {
         
         Task.detached(priority: .userInitiated) {
             let startTime = CFAbsoluteTimeGetCurrent()
-            let newViewModel = QuestionnaireViewModel(startFresh: true)
+            // CRITICAL FIX: Only start fresh if we're at the welcome step
+            let shouldStartFresh = await MainActor.run { appState.currentOnboardingStep == .welcome }
+            let newViewModel = QuestionnaireViewModel(startFresh: shouldStartFresh)
             let initTime = CFAbsoluteTimeGetCurrent() - startTime
             
             await MainActor.run {
@@ -80,17 +85,27 @@ struct OnboardingFlow: View {
                     WelcomeView(onContinue: { 
                         isButtonNavigating = true
                         dragDirection = nil
-                        navigateTo(.personalizationIntro) 
+                        navigateTo(.valueProposition) 
                     })
                     .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                     .zIndex(appState.currentOnboardingStep == .welcome ? 1 : 0)
+                }
+                    
+                if appState.currentOnboardingStep == .valueProposition {
+                    ValuePropositionView(onContinue: { 
+                        isButtonNavigating = true
+                        dragDirection = nil
+                        navigateTo(.questionnaire) 
+                    })
+                    .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                    .zIndex(appState.currentOnboardingStep == .valueProposition ? 1 : 0)
                 }
                     
                 if appState.currentOnboardingStep == .personalizationIntro {
                     PersonalizationIntroView(onContinue: { 
                         isButtonNavigating = true
                         dragDirection = nil
-                        navigateTo(.questionnaire) 
+                        navigateTo(.notificationPermission) 
                     })
                     .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                     .zIndex(appState.currentOnboardingStep == .personalizationIntro ? 1 : 0)
@@ -117,7 +132,7 @@ struct OnboardingFlow: View {
                                 // Navigate back with trailing edge animation
                                 // Use a slight delay to ensure the direction is set properly
                                 DispatchQueue.main.async {
-                                    navigateTo(.personalizationIntro)
+                                    navigateTo(.valueProposition)
                                     
                                     // Reset drag direction after animation
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
@@ -135,9 +150,9 @@ struct OnboardingFlow: View {
                                 isButtonNavigating = false
                                 dragDirection = .leading
                                 
-                                // Questionnaire completed - go to notification permission
+                                // Questionnaire completed - go to personalization intro (Driven by Data screen)
                                 DispatchQueue.main.async {
-                                    navigateTo(.notificationPermission)
+                                    navigateTo(.personalizationIntro)
                                     
                                     // Reset drag direction after animation
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
@@ -154,20 +169,10 @@ struct OnboardingFlow: View {
                         NotificationPermissionView(onContinue: {
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.valueProposition)
+                            navigateTo(.prePaywallTease)
                         })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .notificationPermission ? 1 : 0)
-                    }
-                    
-                    if appState.currentOnboardingStep == .valueProposition {
-                        ValuePropositionView(onContinue: { 
-                            isButtonNavigating = true
-                            dragDirection = nil
-                            navigateTo(.prePaywallTease) 
-                        })
-                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
-                        .zIndex(appState.currentOnboardingStep == .valueProposition ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .prePaywallTease {
@@ -225,6 +230,9 @@ struct OnboardingFlow: View {
             // programmatic (e.g., questionnaire back/forward) with direction hints via dragDirection.
         }
         .onAppear {
+            // Save initial onboarding progress when flow appears
+            appState.saveOnboardingProgress()
+            
             // ULTRA-PERFORMANCE FIX: Minimize onAppear work to prevent UI blocking
             // Move ALL expensive operations to background with lower priority
             Task.detached(priority: .utility) {
@@ -238,6 +246,10 @@ struct OnboardingFlow: View {
                     QuestionnaireManager().clearAllData()
                 }
             }
+        }
+        .onDisappear {
+            // Save progress when flow disappears (user backgrounding app)
+            appState.saveOnboardingProgress()
         }
         // Add a tap gesture to the corner to show/hide debug controls
         .overlay(
@@ -269,36 +281,6 @@ struct OnboardingFlow: View {
         let removal = AnyTransition.opacity
             .combined(with: .scale(scale: 1.03, anchor: .center))
         return .asymmetric(insertion: insertion, removal: removal)
-    }
-    
-    /// Get the next step in the onboarding flow - Rules: Streamlined flow removing redundant screens
-    private func getNextStep(after step: OnboardingStep) -> OnboardingStep? {
-        switch step {
-        case .welcome: return .personalizationIntro
-        case .personalizationIntro: return .questionnaire
-        case .questionnaire: return .valueProposition
-        case .valueProposition: return .prePaywallTease
-        case .prePaywallTease: return .payment
-        case .payment: return .notificationPermission
-        case .notificationPermission: return .attribution
-        case .attribution: return .dashboard
-        case .dashboard: return nil
-        }
-    }
-    
-    /// Get the previous step in the onboarding flow - Rules: Streamlined flow removing redundant screens
-    private func getPreviousStep(before step: OnboardingStep) -> OnboardingStep? {
-        switch step {
-        case .welcome: return nil
-        case .personalizationIntro: return .welcome
-        case .questionnaire: return .personalizationIntro
-        case .valueProposition: return .questionnaire
-        case .prePaywallTease: return .valueProposition
-        case .payment: return .prePaywallTease
-        case .notificationPermission: return .payment
-        case .attribution: return .notificationPermission
-        case .dashboard: return .attribution
-        }
     }
     
 }

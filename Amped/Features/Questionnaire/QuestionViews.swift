@@ -306,63 +306,59 @@ struct QuestionViews {
         
         var body: some View {
             VStack(spacing: 0) {
-                VStack(alignment: .center, spacing: 0) {
-                    // Question text - consistent with other questions
-                    Text("What should we call you?")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                // Question text - consistent with other questions
+                Text("What should we call you?")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.bottom, 10)
+                    .padding(.horizontal, 24)
+                    .frame(maxWidth: .infinity)
+
+                Spacer()
+                
+                // Text field and continue button grouped together at bottom for thumb accessibility
+                VStack(spacing: 16) {
+                    TextField("First name", text: $viewModel.userName)
+                        .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.bottom, 10)
-                        .frame(maxWidth: .infinity)
-
-                    Spacer()
-                    
-                    // Clean input design matching iOS standards
-                    VStack(spacing: 16) {
-                        TextField("First name", text: $viewModel.userName)
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                            .padding(.vertical, 16)
-                            .padding(.horizontal, 20)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.white.opacity(0.15))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.white.opacity(0.25), lineWidth: 1)
-                                    )
-                            )
-                            .focused($isTextFieldFocused)
-                            .textInputAutocapitalization(.words)
-                            .textContentType(.givenName)
-                            .submitLabel(.continue)
-                            .disableAutocorrection(true)
-                            .onSubmit {
-                                if viewModel.canProceed {
-                                    proceedToNext()
-                                }
+                        .padding(.vertical, 16)
+                        .padding(.horizontal, 20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.white.opacity(0.15))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                                )
+                        )
+                        .focused($isTextFieldFocused)
+                        .textInputAutocapitalization(.words)
+                        .textContentType(.givenName)
+                        .submitLabel(.continue)
+                        .disableAutocorrection(true)
+                        .onSubmit {
+                            if viewModel.canProceed {
+                                proceedToNext()
                             }
-                        
-                        // Continue button - consistent with other questions
-                        Button(action: {
-                            proceedToNext()
-                        }) {
-                            Text("Continue")
                         }
-                        .questionnaireButtonStyle(isSelected: false)
-                        .opacity(viewModel.canProceed ? 1.0 : 0.6)
-                        .disabled(!viewModel.canProceed)
-                        .hapticFeedback(.light)
-                    }
-                    .padding(.bottom, 30) // CONSISTENCY FIX: Match spacing of other questions
                     
-                    Spacer()
+                    // Continue button positioned just below text field
+                    Button(action: {
+                        proceedToNext()
+                    }) {
+                        Text("Continue")
+                    }
+                    .questionnaireButtonStyle(isSelected: false)
+                    .opacity(viewModel.canProceed ? 1.0 : 0.6)
+                    .disabled(!viewModel.canProceed)
+                    .hapticFeedback(.light)
                 }
                 .padding(.horizontal, 24)
-                .frame(maxHeight: .infinity)
+                .padding(.bottom, 30) // Space above progress bar
             }
             .onAppear {
                 // ULTRA-PERFORMANCE FIX: No automatic keyboard focus - let user tap when ready

@@ -699,39 +699,33 @@ final class QuestionnaireViewModel: ObservableObject {
         // ULTRA-PERFORMANCE FIX: Absolute minimum initialization for instant creation
         let startTime = CFAbsoluteTimeGetCurrent()
         
-        // Always start at name question for onboarding flow
-        self.currentQuestion = .name
+        // CRITICAL FIX: Load saved question SYNCHRONOUSLY to prevent flash
+        if !startFresh {
+            // Load saved question immediately to avoid UI flash
+            if let savedQuestionRawValue = UserDefaults.standard.object(forKey: "questionnaire_current_question") as? Int,
+               let savedQuestion = Question(rawValue: savedQuestionRawValue) {
+                self.currentQuestion = savedQuestion
+            } else {
+                self.currentQuestion = .name
+            }
+            
+            // Load saved name immediately
+            if let savedName = UserDefaults.standard.string(forKey: "userName") {
+                self.userName = savedName
+            }
+        } else {
+            // Fresh start - always begin at name question
+            self.currentQuestion = .name
+            
+            // Clear saved data immediately when starting fresh
+            UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
+            UserDefaults.standard.removeObject(forKey: "userName")
+        }
         
         // PERFORMANCE: Lazy birthdate initialization - defer expensive calendar operations
         // Use pre-computed static values for instant initialization
         self.selectedBirthMonth = Self.staticCurrentMonth
         self.selectedBirthYear = Self.staticCurrentYear - 30 // Default to 30 years ago
-        
-        // PERFORMANCE: Move ALL UserDefaults operations to background
-        if !startFresh {
-            Task.detached(priority: .utility) {
-                if let savedQuestionRawValue = UserDefaults.standard.object(forKey: "questionnaire_current_question") as? Int,
-                   let savedQuestion = Question(rawValue: savedQuestionRawValue) {
-                    await MainActor.run {
-                        self.currentQuestion = savedQuestion
-                    }
-                }
-                
-                if let savedName = UserDefaults.standard.string(forKey: "userName") {
-                    await MainActor.run {
-                        self.userName = savedName
-                    }
-                }
-            }
-        }
-        
-        // PERFORMANCE: Move UserDefaults clearing to background
-        if startFresh {
-            Task.detached(priority: .utility) {
-                UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
-                UserDefaults.standard.removeObject(forKey: "userName")
-            }
-        }
         
         let initTime = CFAbsoluteTimeGetCurrent() - startTime
         print("🔍 PERFORMANCE_DEBUG: Ultra-fast QuestionnaireViewModel.init() completed in \(initTime)s")

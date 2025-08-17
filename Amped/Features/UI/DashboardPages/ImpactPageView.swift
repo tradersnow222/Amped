@@ -69,7 +69,7 @@ struct ImpactPageView: View {
                                 
                                 // Scientific explanation text below
                                 VStack(spacing: 4) {
-                                    Text("from your lifespan")
+                                    Text(totalTimeImpact >= 0 ? "to your lifespan" : "from your lifespan")
                                         .font(.headline)
                                         .foregroundColor(.white.opacity(0.85))
                                         .multilineTextAlignment(.center)
@@ -208,4 +208,4 @@ struct ImpactPageView: View {
         
         return max(minHeight, min(maxHeight, availableSpace))
     }
-} 
+}

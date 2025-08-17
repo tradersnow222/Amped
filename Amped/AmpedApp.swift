@@ -132,6 +132,7 @@ struct AmpedApp: App {
             // App went to background - schedule background tasks only if setting is enabled
             analyticsService.trackEvent(.appBackground)
             // Save current onboarding state when app goes to background (soft close)
+            appState.markAppEnteringBackground()
             appState.saveOnboardingProgress()
             if settingsManager.backgroundRefreshEnabled {
                 backgroundHealthManager.scheduleHealthProcessing()
@@ -160,9 +161,11 @@ final class AppState: ObservableObject {
     @Published var hasShownSignInPopupThisSession: Bool = false
     @Published var appLaunchCount: Int = 0
     
-    // ONBOARDING PROGRESS TRACKING: Persist onboarding step for background app returns
+    // ONBOARDING PROGRESS TRACKING: Advanced persistence with soft/hard close detection
     @Published var currentOnboardingStep: OnboardingStep = .welcome
-    private var didTerminateCleanly: Bool = false
+    
+    // ONBOARDING PERSISTENCE: Manager for handling soft vs hard close
+    private let persistenceManager = OnboardingPersistenceManager()
     
     // MARK: - Initialization
     
@@ -170,6 +173,9 @@ final class AppState: ObservableObject {
         // CRITICAL FIX: Load onboarding state SYNCHRONOUSLY to avoid race condition
         // The UI renders immediately, so we need the state available before first render
         self.loadOnboardingStateSynchronously()
+        
+        // Mark app launch start for persistence tracking
+        self.persistenceManager.markAppLaunchStart()
         
         // Defer other expensive loading to avoid blocking launch
         Task {
@@ -190,8 +196,13 @@ final class AppState: ObservableObject {
         // Set hasCompletedOnboarding immediately (UserProfile check can be deferred)
         hasCompletedOnboarding = hasCompletedFromDefaults
         
-        // CRITICAL: Load onboarding progress synchronously before UI renders
-        self.loadOnboardingProgress()
+        // CRITICAL: Load onboarding progress using advanced persistence
+        if !hasCompletedOnboarding {
+            let closureType = persistenceManager.detectClosureType()
+            if let restoredStep = persistenceManager.loadOnboardingProgress(closureType: closureType) {
+                currentOnboardingStep = restoredStep
+            }
+        }
     }
     
     /// Load remaining state asynchronously to avoid blocking launch
@@ -224,11 +235,12 @@ final class AppState: ObservableObject {
     
     /// Handle app return from background to trigger intro animations
     func handleAppReturnFromBackground() {
-        // Rules: Only show intro animations if user hasn't disabled them
+        // Rules: Only show intro animations if user haven't disabled them
         shouldShowIntroAnimations = true
         
-        // Load saved onboarding step if user was in middle of onboarding
-        loadOnboardingProgress()
+        // CRITICAL FIX: Don't detect closure type again on app return
+        // Detection already happened in init() - this would cause double detection
+        // and incorrect soft close detection due to fresh timestamp
     }
     
     /// Mark onboarding as completed and persist to UserDefaults
@@ -259,11 +271,8 @@ final class AppState: ObservableObject {
         hasCompletedOnboarding = false
         currentOnboardingStep = .welcome
         
-        // CRITICAL FIX: Also clear questionnaire data to ensure fresh start
-        // Clear the saved questionnaire progress
-        UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
-        UserDefaults.standard.removeObject(forKey: "userName")
-        UserDefaults.standard.removeObject(forKey: "currentOnboardingStep")
+        // Use advanced persistence manager for comprehensive reset
+        persistenceManager.resetAllData()
         
         // Clear any saved questionnaire data using QuestionnaireManager
         QuestionnaireManager().clearAllData()
@@ -277,35 +286,19 @@ final class AppState: ObservableObject {
     
     // MARK: - Onboarding Progress Management
     
-    /// Save current onboarding progress (simplified approach)
+    /// Save current onboarding progress using advanced persistence
     func saveOnboardingProgress() {
-        // SIMPLIFIED: Always save current step if onboarding not complete
-        if !hasCompletedOnboarding {
-            UserDefaults.standard.set(currentOnboardingStep.rawValue, forKey: "currentOnboardingStep")
-        }
+        persistenceManager.saveOnboardingProgress(currentOnboardingStep, hasCompletedOnboarding: hasCompletedOnboarding)
     }
     
-    /// Load onboarding progress (simplified approach)
-    private func loadOnboardingProgress() {
-        // SIMPLIFIED: Always restore saved step if onboarding not complete
-        if !hasCompletedOnboarding {
-            if let savedStepRaw = UserDefaults.standard.object(forKey: "currentOnboardingStep") as? String,
-               let savedStep = OnboardingStep(rawValue: savedStepRaw) {
-                currentOnboardingStep = savedStep
-            } else {
-                currentOnboardingStep = .welcome
-            }
-        } else {
-            currentOnboardingStep = .welcome
-            UserDefaults.standard.removeObject(forKey: "currentOnboardingStep")
-        }
+    /// Mark app as entering background (for soft close detection)
+    func markAppEnteringBackground() {
+        persistenceManager.markAppEnteringBackground()
     }
     
-    /// Update current onboarding step
+    /// Update current onboarding step and save progress
     func updateOnboardingStep(_ step: OnboardingStep) {
         currentOnboardingStep = step
-        if !hasCompletedOnboarding {
-            UserDefaults.standard.set(step.rawValue, forKey: "currentOnboardingStep")
-        }
+        persistenceManager.saveOnboardingProgress(step, hasCompletedOnboarding: hasCompletedOnboarding)
     }
 }
