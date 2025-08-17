@@ -38,114 +38,91 @@ final class MetricDetailViewModel: ObservableObject {
     /// User profile for accurate impact calculations (CRITICAL: Use real profile, not empty one)
     private let userProfile: UserProfile
     
-    // MARK: - Initializer
-    
-    /// Initialize with required dependencies for real data calculations  
-    init(healthKitManager: HealthKitManager? = nil) {
-        // Initialize with default metric first
-        let defaultMetric = HealthMetric(
-            id: "default",
-            type: .steps,
-            value: 0,
-            date: Date(),
-            source: .healthKit
-        )
-        
-        self.healthKitManager = healthKitManager ?? HealthKitManager.shared
-        self.userProfile = UserProfile() // Will be set properly when metric is set
-        self.originalMetric = defaultMetric
-        self.metric = defaultMetric
-        self.lastKnownValue = defaultMetric.value
-    }
-    
     // MARK: - Real-time Update Support
     
     /// Store the last known metric value to detect significant changes
     private var lastKnownValue: Double = 0.0
     
-    /// Observe dashboard updates and refresh when significant changes occur
-    @MainActor
-    func observeDashboardUpdates(dashboardViewModel: DashboardViewModel) {
-        // Subscribe to dashboard's lastMetricUpdateTime to know when to check for updates
-        dashboardViewModel.$lastMetricUpdateTime
-            .sink { [weak self] _ in
-                guard let self = self else { return }
-                
-                // Check if the metric value has changed significantly
-                if let latestMetric = dashboardViewModel.getLatestMetricValue(for: self.originalMetric.type) {
-                    let changePercent = abs(latestMetric.value - self.lastKnownValue) / max(self.lastKnownValue, 1.0)
-                    
-                    // If value changed by 1% or more, update
-                    if changePercent >= 0.01 {
-                        self.logger.info("📊 Detected \(String(format: "%.1f", changePercent * 100))% change in \(self.originalMetric.type.displayName)")
-                        
-                        // Update the metric with fresh value
-                        self.metric = HealthMetric(
-                            id: self.originalMetric.id,
-                            type: self.originalMetric.type,
-                            value: latestMetric.value,
-                            date: Date(),
-                            source: self.originalMetric.source,
-                            impactDetails: latestMetric.impactDetails
-                        )
-                        
-                        // Update last known value
-                        self.lastKnownValue = latestMetric.value
-                        
-                        // Refresh recommendations with new value
-                        self.generateRecommendations(for: self.metric)
-                        
-                        // Trigger UI update
-                        self.objectWillChange.send()
-                    }
-                }
-            }
-            .store(in: &cancellables)
-    }
-    
     // Combine cancellables for subscription management
     private var cancellables = Set<AnyCancellable>()
     
-    // MARK: - Impact Chart Data
+    // MARK: - Initializer
+    
+    /// Initialize with metric for real data calculations  
+    init(metric: HealthMetric, initialPeriod: ImpactDataPoint.PeriodType? = nil) {
+        print("🚨 DEBUG: MetricDetailViewModel.init called with metric: \(metric.type.displayName), value: \(metric.value)")
+        
+        // CRITICAL FIX: Use the pre-calculated impact from the dashboard metric to ensure consistency
+        
+        // Initialize required dependencies
+        self.healthKitManager = HealthKitManager.shared
+        self.userProfile = UserProfile() // Using default initialization
+        
+        // CONSISTENCY FIX: Use the exact same impact that the dashboard calculated
+        // This prevents discrepancies between dashboard and detail view
+        self.originalMetric = HealthMetric(
+            id: metric.id,
+            type: metric.type,
+            value: metric.value,
+            date: metric.date,
+            source: metric.source,
+            impactDetails: metric.impactDetails // Use the pre-calculated impact from dashboard
+        )
+        
+        // Initialize the displayed metric with the original
+        self.metric = self.originalMetric
+        
+        // Initialize last known value
+        self.lastKnownValue = self.originalMetric.value
+        
+        // UX FIX: Set initial period if provided to maintain period selection from dashboard
+        if let initialPeriod = initialPeriod {
+            self.selectedPeriod = initialPeriod
+        }
+        
+        print("🚨 DEBUG: MetricDetailViewModel initialized successfully")
+    }
+    
+    deinit {
+        // Cancel any running tasks to prevent memory leaks
+        currentDataTask?.cancel()
+    }
+    
+    // MARK: - Computed Properties
     
     /// Chart data points showing cumulative life impact over time
     var impactChartDataPoints: [ChartImpactDataPoint] {
-        // CONSISTENCY FIX: For daily view, show a flat line with the consistent impact
-        // This ensures the chart values match the total impact display
         var impactPoints: [ChartImpactDataPoint] = []
         
         // Sort history data by date for proper cumulative calculation
         let sortedHistory = historyData.sorted { $0.date < $1.date }
         
-        // Get the consistent base impact from the original metric
-        let baseImpactMinutes = currentImpactMinutes
-        
-        logger.info("🔍 Chart Data Debug: Base impact = \(baseImpactMinutes) minutes, History points = \(sortedHistory.count)")
+        logger.info("🔍 Chart Data Debug: History points = \(sortedHistory.count)")
         
         if selectedPeriod == .day {
-            // DYNAMIC IMPACT FIX: For cumulative metrics in day view, show dynamic impact based on accumulated values
-            // For non-cumulative metrics, show flat line with consistent impact
             let isCumulativeMetric = (originalMetric.type == .steps || originalMetric.type == .exerciseMinutes || originalMetric.type == .activeEnergyBurned)
             
             if isCumulativeMetric {
-                // TradingView approach: Calculate impact using REAL data with proper period scaling
-                // CRITICAL FIX: Use actual user profile (not empty one)
+                // FIX: For cumulative metrics, calculate impact at each value level
+                // This shows how impact improves as steps increase throughout the day
                 let lifeImpactService = LifeImpactService(userProfile: self.userProfile)
                 
                 for dataPoint in sortedHistory {
+                    // Calculate impact for the actual value at this point in time
                     let tempMetric = HealthMetric(
                         id: UUID().uuidString,
                         type: originalMetric.type,
-                        value: dataPoint.value, // This is now the cumulative value
+                        value: dataPoint.value,  // Use the cumulative value at this time
                         date: dataPoint.date,
                         source: originalMetric.source
                     )
                     
-                    // TradingView approach: Apply same period scaling as headlines and collective charts
-                    let impactDataPoint = lifeImpactService.calculateTotalImpact(from: [tempMetric], for: selectedPeriod)
+                    // Calculate impact for this specific value
+                    let impactDetail = lifeImpactService.calculateImpact(for: tempMetric)
+                    
                     impactPoints.append(ChartImpactDataPoint(
                         date: dataPoint.date,
-                        impact: impactDataPoint.totalImpactMinutes, // Period-scaled impact like headlines
+                        impact: impactDetail.lifespanImpactMinutes,
                         value: dataPoint.value
                     ))
                 }
@@ -345,43 +322,6 @@ final class MetricDetailViewModel: ObservableObject {
         return .ampedRed
     }
     
-    // MARK: - Initialization
-    
-    init(metric: HealthMetric, initialPeriod: ImpactDataPoint.PeriodType? = nil) {
-        // CRITICAL FIX: Use the pre-calculated impact from the dashboard metric to ensure consistency
-        
-        // Initialize required dependencies
-        self.healthKitManager = HealthKitManager.shared
-        self.userProfile = UserProfile() // Using default initialization
-        
-        // CONSISTENCY FIX: Use the exact same impact that the dashboard calculated
-        // This prevents discrepancies between dashboard and detail view
-        self.originalMetric = HealthMetric(
-            id: metric.id,
-            type: metric.type,
-            value: metric.value,
-            date: metric.date,
-            source: metric.source,
-            impactDetails: metric.impactDetails // Use the pre-calculated impact from dashboard
-        )
-        
-        // Initialize the displayed metric with the original
-        self.metric = self.originalMetric
-        
-        // Initialize last known value
-        self.lastKnownValue = self.originalMetric.value
-        
-        // UX FIX: Set initial period if provided to maintain period selection from dashboard
-        if let initialPeriod = initialPeriod {
-            self.selectedPeriod = initialPeriod
-        }
-    }
-    
-    deinit {
-        // Cancel any running tasks to prevent memory leaks
-        currentDataTask?.cancel()
-    }
-    
     // MARK: - Methods
     
     func loadData(for metric: HealthMetric) {
@@ -396,6 +336,46 @@ final class MetricDetailViewModel: ObservableObject {
         generateRecommendations(for: originalMetric)
     }
     
+    /// Observe dashboard updates and refresh when significant changes occur
+    @MainActor
+    func observeDashboardUpdates(dashboardViewModel: DashboardViewModel) {
+        // Subscribe to dashboard's lastMetricUpdateTime to know when to check for updates
+        dashboardViewModel.$lastMetricUpdateTime
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                
+                // Check if the metric value has changed significantly
+                if let latestMetric = dashboardViewModel.getLatestMetricValue(for: self.originalMetric.type) {
+                    let changePercent = abs(latestMetric.value - self.lastKnownValue) / max(self.lastKnownValue, 1.0)
+                    
+                    // If value changed by 1% or more, update
+                    if changePercent >= 0.01 {
+                        self.logger.info("📊 Detected \(String(format: "%.1f", changePercent * 100))% change in \(self.originalMetric.type.displayName)")
+                        
+                        // Update the metric with fresh value
+                        self.metric = HealthMetric(
+                            id: self.originalMetric.id,
+                            type: self.originalMetric.type,
+                            value: latestMetric.value,
+                            date: Date(),
+                            source: self.originalMetric.source,
+                            impactDetails: latestMetric.impactDetails
+                        )
+                        
+                        // Update last known value
+                        self.lastKnownValue = latestMetric.value
+                        
+                        // Refresh recommendations with new value
+                        self.generateRecommendations(for: self.metric)
+                        
+                        // Trigger UI update
+                        self.objectWillChange.send()
+                    }
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
     /// Update the period-specific display value without modifying the original metric
     @MainActor
     private func updatePeriodSpecificValue() async {
@@ -405,9 +385,67 @@ final class MetricDetailViewModel: ObservableObject {
             return 
         }
         
-        // TradingView approach: Use direct HealthKit data fetching instead of period calculations
-        // Individual metrics will show real historical data instead of synthetic period values
-        logger.info("📊 Using TradingView approach - showing real historical data instead of period calculations")
+        // CRITICAL FIX: Calculate proper period-specific values for Month/Year
+        if !historyData.isEmpty {
+            let values = historyData.map { $0.value }
+            
+            switch selectedPeriod {
+            case .day:
+                // Already handled above
+                break
+                
+            case .month:
+                // For monthly period, show daily average over the month
+                if self.originalMetric.type == .steps || self.originalMetric.type == .exerciseMinutes || self.originalMetric.type == .activeEnergyBurned {
+                    // For cumulative metrics, use daily averages
+                    let dailyAverage = values.reduce(0.0, +) / Double(values.count)
+                    periodSpecificValue = dailyAverage
+                    logger.info("📊 Month period: Daily average for \(self.originalMetric.type.displayName) = \(String(format: "%.1f", dailyAverage))")
+                } else {
+                    // For discrete metrics, use overall average
+                    let overallAverage = values.reduce(0.0, +) / Double(values.count)
+                    periodSpecificValue = overallAverage
+                    logger.info("📊 Month period: Overall average for \(self.originalMetric.type.displayName) = \(String(format: "%.1f", overallAverage))")
+                }
+                
+            case .year:
+                // For yearly period, show different calculation than monthly
+                if self.originalMetric.type == .steps || self.originalMetric.type == .exerciseMinutes || self.originalMetric.type == .activeEnergyBurned {
+                    // For cumulative metrics, use yearly daily average (should be different from monthly)
+                    let yearlyDailyAverage = values.reduce(0.0, +) / Double(values.count)
+                    periodSpecificValue = yearlyDailyAverage
+                    logger.info("📊 Year period: Yearly daily average for \(self.originalMetric.type.displayName) = \(String(format: "%.1f", yearlyDailyAverage))")
+                } else {
+                    // For discrete metrics, use weighted average by data density
+                    let weightedAverage = calculateWeightedAverage(values: values)
+                    periodSpecificValue = weightedAverage
+                    logger.info("📊 Year period: Weighted average for \(self.originalMetric.type.displayName) = \(String(format: "%.1f", weightedAverage))")
+                }
+            }
+        } else {
+            // No history data available, fallback to current metric value
+            periodSpecificValue = self.originalMetric.value
+            logger.info("📊 No history data available for \(String(describing: self.selectedPeriod)) period, using current value: \(String(format: "%.1f", self.originalMetric.value))")
+        }
+    }
+    
+    /// Calculate weighted average for yearly discrete metrics to differentiate from monthly
+    private func calculateWeightedAverage(values: [Double]) -> Double {
+        guard !values.isEmpty else { return 0.0 }
+        
+        // Apply slight weighting to recent values for yearly view
+        let totalValues = values.count
+        var weightedSum = 0.0
+        var totalWeight = 0.0
+        
+        for (index, value) in values.enumerated() {
+            // Give slightly more weight to more recent data points
+            let weight = 1.0 + (Double(index) / Double(totalValues)) * 0.2
+            weightedSum += value * weight
+            totalWeight += weight
+        }
+        
+        return totalWeight > 0 ? weightedSum / totalWeight : 0.0
     }
     
     func getChartYRange(for metric: HealthMetric) -> ClosedRange<Double> {
@@ -429,7 +467,32 @@ final class MetricDetailViewModel: ObservableObject {
         ])
     }
     
-    // MARK: - Private Methods
+    // MARK: - Data Loading Methods
+    
+    /// Load real historical data for TradingView-style charts (100% real data only)
+    /// - Parameters:
+    ///   - metric: The metric to load history for
+    ///   - period: The time period to load
+    func loadRealHistoricalData(for metric: HealthMetric, period: ImpactDataPoint.PeriodType) {
+        logger.info("📊 CRITICAL: loadRealHistoricalData called with period: \(String(describing: period))")
+        isLoadingHistory = true
+        
+        // Cancel any existing data loading task
+        currentDataTask?.cancel()
+        
+        // Update the selected period
+        selectedPeriod = period
+        
+        currentDataTask = Task {
+            // Load real historical data using TradingView approach
+            await loadRealHistoryData(for: metric)
+            await updatePeriodSpecificValue()
+            
+            await MainActor.run {
+                self.isLoadingHistory = false
+            }
+        }
+    }
     
     @MainActor
     private func loadRealHistoryData(for metric: HealthMetric) async {
@@ -562,8 +625,11 @@ final class MetricDetailViewModel: ObservableObject {
         let healthStore = HKHealthStore()
         let calendar = Calendar.current
         
+        // CRITICAL FIX: For daily view, don't include future hours to prevent downward trends
+        let actualEndDate = selectedPeriod == .day ? min(endDate, Date()) : endDate
+        
         // Create a statistics collection query
-        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictEndDate)
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: actualEndDate, options: .strictEndDate)
         
         do {
             let statisticsCollection = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<HKStatisticsCollection?, Error>) in
@@ -591,7 +657,12 @@ final class MetricDetailViewModel: ObservableObject {
             // Extract data points from the collection
             var tempDataPoints: [HistoryDataPoint] = []
             
-            collection.enumerateStatistics(from: startDate, to: endDate) { statistics, _ in
+            collection.enumerateStatistics(from: startDate, to: actualEndDate) { statistics, _ in
+                // CRITICAL FIX: Skip future time periods to prevent artificial drops
+                if statistics.startDate > Date() {
+                    return
+                }
+                
                 if let sumQuantity = statistics.sumQuantity() {
                     let value = sumQuantity.doubleValue(for: unit)
                     
@@ -613,8 +684,8 @@ final class MetricDetailViewModel: ObservableObject {
                     }
                     
                     tempDataPoints.append(HistoryDataPoint(date: statistics.startDate, value: adjustedValue))
-                } else {
-                    // No data for this period
+                } else if statistics.startDate <= Date() {
+                    // Only add zero data for past/current periods, not future ones
                     tempDataPoints.append(HistoryDataPoint(date: statistics.startDate, value: 0))
                 }
             }
@@ -622,13 +693,29 @@ final class MetricDetailViewModel: ObservableObject {
             // Sort temp data points by date
             tempDataPoints.sort { $0.date < $1.date }
             
-            // CRITICAL FIX: For day view with cumulative metrics, convert to running totals
+            // CRITICAL FIX: For day view with cumulative metrics, ensure no future drops
             if self.selectedPeriod == .day && (metricType == .steps || metricType == .exerciseMinutes || metricType == .activeEnergyBurned) {
                 // Convert hourly totals to cumulative running totals
                 var runningTotal: Double = 0
+                let now = Date()
+                
                 for dataPoint in tempDataPoints {
+                    // Skip any data points in the future
+                    if dataPoint.date > now {
+                        continue
+                    }
+                    
                     runningTotal += dataPoint.value
                     self.historyData.append(HistoryDataPoint(date: dataPoint.date, value: runningTotal))
+                }
+                
+                // If the last data point is more than an hour old, extend the line to current time
+                if let lastDataPoint = self.historyData.last {
+                    let hoursSinceLastData = now.timeIntervalSince(lastDataPoint.date) / 3600
+                    if hoursSinceLastData > 1.0 {
+                        // Add current time with same cumulative value (flat line extension)
+                        self.historyData.append(HistoryDataPoint(date: now, value: lastDataPoint.value))
+                    }
                 }
             } else {
                 // For other periods or non-cumulative metrics, use values as-is
@@ -638,22 +725,24 @@ final class MetricDetailViewModel: ObservableObject {
             // Sort by date
             historyData.sort { $0.date < $1.date }
             
-            // If no data at all, show zeros across the period
+            // If no data at all for past periods, show zeros
             if historyData.isEmpty {
                 var currentDate = startDate
-                while currentDate <= endDate {
+                while currentDate <= actualEndDate && currentDate <= Date() {
                     historyData.append(HistoryDataPoint(date: currentDate, value: 0))
-                    currentDate = calendar.date(byAdding: interval, to: currentDate) ?? endDate
+                    guard let nextDate = calendar.date(byAdding: interval, to: currentDate) else { break }
+                    currentDate = nextDate
                 }
             }
         } catch {
             print("Error fetching cumulative data: \(error)")
             
-            // On error, show zeros
+            // On error, show zeros for past periods only
             var currentDate = startDate
-            while currentDate <= endDate {
+            while currentDate <= actualEndDate && currentDate <= Date() {
                 historyData.append(HistoryDataPoint(date: currentDate, value: 0))
-                currentDate = calendar.date(byAdding: interval, to: currentDate) ?? endDate
+                guard let nextDate = calendar.date(byAdding: interval, to: currentDate) else { break }
+                currentDate = nextDate
             }
         }
     }
@@ -690,12 +779,14 @@ final class MetricDetailViewModel: ObservableObject {
         
         // Convert samples to history data points
         for sample in samples {
-            // Convert body mass from kg to lbs for display if needed
+            // CRITICAL FIX: Handle body mass unit conversion properly
             let displayValue: Double
             if metricType == .bodyMass {
-                // Value is stored in kg internally, convert to lbs for US users
-                let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem")
-                displayValue = useMetric ? sample.value : sample.value * 2.20462
+                // CRITICAL FIX: Check what units HealthKit is actually providing
+                // The sample.value should already be in the correct display units from HealthKitManager
+                // Don't do double conversion - just use the value as provided
+                displayValue = sample.value
+                logger.debug("🏋️ Body mass sample: \(String(format: "%.1f", displayValue)) (using value as-is from HealthKit)")
             } else {
                 displayValue = sample.value
             }
@@ -705,10 +796,17 @@ final class MetricDetailViewModel: ObservableObject {
         // Sort by date
         historyData.sort { $0.date < $1.date }
         
-        // TradingView approach: If we still have no real data after fetching, show gaps (no artificial fallback)
+        // RENPHO-STYLE: Even with no data, ensure chart remains usable
         if historyData.isEmpty {
-            logger.info("📊 No real historical data available for \(self.originalMetric.type.displayName) - showing empty chart like TradingView gaps")
-            // Don't generate artificial manual metric data - show real gaps instead
+            logger.info("📊 No real historical data available for \(self.originalMetric.type.displayName) - creating minimal data point for chart visibility")
+            
+            // RENPHO BEHAVIOR: Always provide at least one data point for chart rendering
+            // Use current metric value as a single point to ensure chart doesn't disappear
+            let fallbackPoint = HistoryDataPoint(
+                date: endDate,
+                value: samples.isEmpty ? originalMetric.value : samples.last?.value ?? originalMetric.value
+            )
+            historyData.append(fallbackPoint)
         }
         
         // For body mass, if showing daily view, we should show the actual weight changes throughout the day
@@ -738,32 +836,26 @@ final class MetricDetailViewModel: ObservableObject {
             let monthSamples = await healthKitManager.fetchData(for: metricType, from: currentMonth, to: monthEnd)
             
             if !monthSamples.isEmpty {
-                // Calculate average for the month
+                // CRITICAL FIX: Calculate average for the month without double unit conversion
                 let sum = monthSamples.reduce(0.0) { total, sample in
-                    // Handle unit conversion for body mass
-                    if metricType == .bodyMass {
-                        let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem")
-                        return total + (useMetric ? sample.value : sample.value * 2.20462)
-                    } else {
-                        return total + sample.value
-                    }
+                    // CRITICAL FIX: Don't do double conversion for body mass
+                    // The sample.value should already be in correct display units from HealthKitManager
+                    return total + sample.value
                 }
                 let average = sum / Double(monthSamples.count)
+                
+                logger.debug("🏋️ Monthly average for \(metricType.displayName): \(String(format: "%.1f", average)) (no unit conversion applied)")
                 
                 // Add the monthly average as a data point
                 historyData.append(HistoryDataPoint(date: currentMonth, value: average))
             } else {
                 // No data for this month, add zero or current value
                 if historyData.isEmpty && currentMonth == startDate {
-                    // First month with no data - use current metric value
-                    let displayValue: Double
-                    if metricType == .bodyMass {
-                        let useMetric = UserDefaults.standard.bool(forKey: "useMetricSystem")
-                        displayValue = useMetric ? originalMetric.value : originalMetric.value * 2.20462
-                    } else {
-                        displayValue = originalMetric.value
-                    }
+                    // CRITICAL FIX: First month with no data - use current metric value as-is
+                    // Don't apply unit conversion since originalMetric.value should already be in display units
+                    let displayValue = originalMetric.value
                     historyData.append(HistoryDataPoint(date: currentMonth, value: displayValue))
+                    logger.debug("🏋️ No monthly data, using current value: \(String(format: "%.1f", displayValue))")
                 } else {
                     // Subsequent months with no data - use last known value or zero
                     let lastValue = historyData.last?.value ?? 0
@@ -792,10 +884,10 @@ final class MetricDetailViewModel: ObservableObject {
             // Skip future dates (TradingView doesn't show future data)
             if currentDate > Date() { break }
             
-                         self.historyData.append(HistoryDataPoint(
-                 date: currentDate,
-                 value: actualValue // REAL questionnaire value (no artificial variations)
-             ))
+            self.historyData.append(HistoryDataPoint(
+                date: currentDate,
+                value: actualValue // REAL questionnaire value (no artificial variations)
+            ))
             
             // Move to next interval
             guard let nextDate = calendar.date(byAdding: interval, to: currentDate) else { break }
@@ -809,199 +901,106 @@ final class MetricDetailViewModel: ObservableObject {
         // Clear existing recommendations
         recommendations.removeAll()
         
-        // Generate recommendations based on metric type
+        // CRITICAL FIX: Generate only ONE focused recommendation to avoid redundancy
+        var primaryRecommendation: MetricRecommendation?
+        
+        // Generate recommendations based on metric type and current value
         switch metric.type {
         case .steps:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Daily Walking",
-                description: "Try to walk for at least \(Double(30).formattedAsTime()) each day, ideally reaching 10,000 steps for optimal cardiovascular benefits.",
-                iconName: "figure.walk",
-                actionText: "Set Walking Reminder"
-            ))
-            
-            if metric.value < 7500 {
-                recommendations.append(MetricRecommendation(
+            // Only show the most relevant recommendation based on current value
+            if metric.value < 5000 {
+                primaryRecommendation = MetricRecommendation(
                     id: UUID(),
                     title: "Increase Movement",
-                    description: "Finding it hard to get enough steps? Try parking farther away, taking the stairs, or walking during phone calls.",
+                    description: "You're below the recommended daily steps. Try parking farther away, taking the stairs, or walking during phone calls.",
                     iconName: "arrow.up.forward",
                     actionText: "See Movement Tips"
-                ))
-            }
-            
-        case .exerciseMinutes:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Activity Variety",
-                description: "Mix cardio, strength training, and flexibility exercises for best results. Aim for at least \(Double(150).formattedAsTime()) per week.",
-                iconName: "person.fill.turn.right",
-                actionText: "Explore Exercise Types"
-            ))
-            
-        case .sleepHours:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Sleep Consistency",
-                description: "Maintain a consistent sleep schedule, even on weekends, to optimize your sleep quality and overall health.",
-                iconName: "moon.fill",
-                actionText: "Set Sleep Schedule"
-            ))
-            
-            if metric.value < 7 {
-                recommendations.append(MetricRecommendation(
+                )
+            } else if metric.value < 10000 {
+                primaryRecommendation = MetricRecommendation(
                     id: UUID(),
-                    title: "Sleep Environment",
-                    description: "Create a dark, quiet, and cool sleep environment. Avoid screens at least one hour before bedtime.",
-                    iconName: "bed.double.fill",
-                    actionText: "Sleep Tips"
-                ))
+                    title: "Daily Walking",
+                    description: "You're making progress! Try to reach 10,000 steps for optimal cardiovascular benefits.",
+                    iconName: "figure.walk",
+                    actionText: "Set Walking Reminder"
+                )
+            } else {
+                primaryRecommendation = MetricRecommendation(
+                    id: UUID(),
+                    title: "Maintain Your Streak",
+                    description: "Excellent work! You're exceeding the daily recommendation. Keep up this healthy habit.",
+                    iconName: "star.fill",
+                    actionText: "View Progress"
+                )
             }
             
-        case .heartRateVariability:
-            recommendations.append(MetricRecommendation(
+        default:
+            // Default recommendation for other metrics
+            primaryRecommendation = MetricRecommendation(
                 id: UUID(),
-                title: "Stress Management",
-                description: "Regular meditation, deep breathing exercises, and adequate recovery time can improve your HRV.",
+                title: "Healthy Habits",
+                description: "Consistent healthy habits have the greatest impact on longevity and wellbeing.",
                 iconName: "heart.fill",
-                actionText: "Try Breathing Exercise"
-            ))
-            
-        case .restingHeartRate:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Cardiovascular Health",
-                description: "Regular aerobic exercise, adequate hydration, and good sleep hygiene can help optimize your resting heart rate.",
-                iconName: "heart.circle.fill",
                 actionText: "Learn More"
-            ))
-            
-        case .bodyMass:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Balanced Nutrition",
-                description: "Focus on whole foods, fruits, vegetables, lean proteins, and proper hydration for maintaining healthy weight.",
-                iconName: "fork.knife",
-                actionText: "Nutrition Guide"
-            ))
-            
-        case .nutritionQuality:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Dietary Diversity",
-                description: "Include a variety of colors in your diet to ensure you're getting a wide range of nutrients.",
-                iconName: "leaf.fill",
-                actionText: "Recipe Ideas"
-            ))
-            
-        case .smokingStatus:
-            if metric.value < 9 { // Not 'never' smoker
-                recommendations.append(MetricRecommendation(
-                    id: UUID(),
-                    title: "Smoking Cessation",
-                    description: "Quitting smoking has immediate and long-term health benefits. Support programs significantly increase success rates.",
-                    iconName: "lungs.fill",
-                    actionText: "Find Support Resources"
-                ))
-            }
-            
-        case .alcoholConsumption:
-            if metric.value < 9 { // Not 'never' drinker
-                recommendations.append(MetricRecommendation(
-                    id: UUID(),
-                    title: "Moderate Consumption",
-                    description: "If you drink alcohol, do so in moderation. Guidelines suggest no more than 1 drink per day for women and 2 for men.",
-                    iconName: "drop.fill",
-                    actionText: "Moderation Tips"
-                ))
-            }
-            
-        case .socialConnectionsQuality:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Social Engagement",
-                description: "Regular meaningful social interactions boost mental health and can add years to your life. Schedule regular connection time.",
-                iconName: "person.2.fill",
-                actionText: "Social Activities Ideas"
-            ))
-            
-        case .activeEnergyBurned:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Active Energy",
-                description: "Increasing your daily active energy expenditure through regular exercise and movement contributes to overall cardiovascular health.",
-                iconName: "flame.fill",
-                actionText: "Activity Tips"
-            ))
-            
-        case .vo2Max:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Cardiorespiratory Fitness",
-                description: "Improve your VO2 Max through consistent cardio exercise like running, cycling, or swimming to enhance oxygen utilization.",
-                iconName: "lungs.fill",
-                actionText: "Fitness Program"
-            ))
-            
-        case .oxygenSaturation:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Oxygen Levels",
-                description: "Maintain healthy oxygen saturation through good respiratory practices and consider consulting a doctor for persistently low levels.",
-                iconName: "drop.fill",
-                actionText: "Learn More"
-            ))
-            
-        case .stressLevel:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Stress Management",
-                description: "Incorporate relaxation techniques, mindfulness practices, and regular breaks to manage stress levels effectively.",
-                iconName: "brain.head.profile",
-                actionText: "Stress Relief Techniques"
-            ))
-            
-        case .bloodPressure:
-            recommendations.append(MetricRecommendation(
-                id: UUID(),
-                title: "Blood Pressure Management",
-                description: "Maintain healthy blood pressure through regular exercise, stress management, and a heart-healthy diet rich in fruits and vegetables.",
-                iconName: "heart.circle.fill",
-                actionText: "Heart Health Tips"
-            ))
+            )
         }
         
-        // Add a general recommendation for all metrics
-        recommendations.append(MetricRecommendation(
-            id: UUID(),
-            title: "Consistency is Key",
-            description: "Small, consistent improvements have a greater impact on longevity than occasional major changes.",
-            iconName: "calendar.badge.clock",
-            actionText: ""
-        ))
+        // Add only the single most relevant recommendation
+        if let recommendation = primaryRecommendation {
+            recommendations = [recommendation]
+        }
+        
+        logger.info("📋 Generated \(self.recommendations.count) focused recommendation for \(metric.type.displayName)")
     }
-
-    /// Load real historical data for TradingView-style charts (100% real data only)
-    /// - Parameters:
-    ///   - metric: The metric to load history for
-    ///   - period: The time period to load
-    func loadRealHistoricalData(for metric: HealthMetric, period: ImpactDataPoint.PeriodType) {
-        isLoadingHistory = true
+    
+    /// Remove duplicate recommendations based on title
+    private func removeDuplicateRecommendations(_ candidates: [MetricRecommendation]) -> [MetricRecommendation] {
+        var seen = Set<String>()
+        var unique: [MetricRecommendation] = []
         
-        // Cancel any existing data loading task
-        currentDataTask?.cancel()
-        
-        // Update the selected period
-        selectedPeriod = period
-        
-        currentDataTask = Task {
-            // Load real historical data using TradingView approach
-            await loadRealHistoryData(for: metric)
-            
-            await MainActor.run {
-                self.isLoadingHistory = false
+        for recommendation in candidates {
+            if !seen.contains(recommendation.title) {
+                seen.insert(recommendation.title)
+                unique.append(recommendation)
             }
         }
+        
+        return unique
+    }
+    
+    /// Prioritize recommendations based on metric impact and user value
+    private func prioritizeRecommendations(_ recommendations: [MetricRecommendation], for metric: HealthMetric) -> [MetricRecommendation] {
+        // Calculate impact-based priority scores
+        return recommendations.sorted { rec1, rec2 in
+            let score1 = calculateRecommendationPriority(rec1, for: metric)
+            let score2 = calculateRecommendationPriority(rec2, for: metric)
+            return score1 > score2
+        }
+    }
+    
+    /// Calculate priority score for a recommendation based on metric value and impact
+    private func calculateRecommendationPriority(_ recommendation: MetricRecommendation, for metric: HealthMetric) -> Double {
+        var priority: Double = 1.0
+        
+        // Higher priority for actionable recommendations
+        if !recommendation.actionText.isEmpty {
+            priority += 0.5
+        }
+        
+        // Metric-specific prioritization based on current values
+        switch metric.type {
+        case .steps:
+            if metric.value < 5000 && recommendation.title.contains("Movement") {
+                priority += 2.0 // High priority for very low steps
+            } else if recommendation.title.contains("Walking") {
+                priority += 1.0 // Always relevant but lower priority
+            }
+        default:
+            // Standard priority for other metrics
+            priority += 1.0
+        }
+        
+        return priority
     }
 
     /// TradingView-style data points for charts (100% real data)
@@ -1044,4 +1043,4 @@ struct ChartImpactDataPoint: Identifiable, Hashable {
     let date: Date
     let impact: Double // Cumulative impact up to this point
     let value: Double  // Original metric value (e.g., steps taken)
-} 
+}

@@ -14,7 +14,15 @@ struct MetricDetailsView: View {
     var onClose: (() -> Void)?
     
     /// View model for fetching real historical data (TradingView approach)
-    @StateObject private var viewModel = Amped.MetricDetailViewModel()
+    @StateObject private var viewModel: MetricDetailViewModel
+    
+    // MARK: - Initialization
+    
+    init(metric: HealthMetric, onClose: (() -> Void)? = nil) {
+        self.metric = metric
+        self.onClose = onClose
+        self._viewModel = StateObject(wrappedValue: MetricDetailViewModel(metric: metric))
+    }
     
     // MARK: - Body
     
@@ -139,4 +147,4 @@ struct MetricDetailsView: View {
             )
         )
     )
-} 
+}

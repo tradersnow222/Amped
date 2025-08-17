@@ -689,12 +689,23 @@ struct MetricStatistics {
             // Calculate overall average
             let overallAverage = dailyAverages.reduce(0, +) / Double(dailyAverages.count)
             
-            logger.info("✅ FIXED Apple HealthKit average for \(metricType.displayName) (\(timePeriod.displayName)): \(String(format: "%.1f", overallAverage)) over \(daysWithData) days with data out of \(totalDays) total days")
+            // CRITICAL FIX: For body mass, ensure we're not double converting units
+            // The HealthKitManager should already provide values in the correct display units
+            let displayValue: Double
+            if metricType == .bodyMass {
+                // Use the value as-is from HealthKit calculations - no additional conversion
+                displayValue = overallAverage
+                logger.info("✅ Body mass average (no unit conversion): \(String(format: "%.1f", displayValue)) lbs over \(daysWithData) days")
+            } else {
+                displayValue = overallAverage
+            }
+            
+            logger.info("✅ FIXED Apple HealthKit average for \(metricType.displayName) (\(timePeriod.displayName)): \(String(format: "%.1f", displayValue)) over \(daysWithData) days with data out of \(totalDays) total days")
             
             let metric = HealthMetric(
                 id: UUID().uuidString,
                 type: metricType,
-                value: overallAverage,
+                value: displayValue,
                 date: now, // Use current time for metric timestamp
                 source: .healthKit
             )

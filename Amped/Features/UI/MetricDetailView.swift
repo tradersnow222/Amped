@@ -37,11 +37,14 @@ struct MetricDetailView: View {
                 PeriodSelectorView(
                     selectedPeriod: $viewModel.selectedPeriod,
                     onPeriodChanged: { period in
-                        // Update period with animation to match dashboard behavior
+                        // CRITICAL FIX: Update period with animation AND reload data
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                             viewModel.selectedPeriod = period
                         }
                         HapticManager.shared.playSelection()
+                        
+                        // CRITICAL FIX: Reload data for the new period
+                        viewModel.loadRealHistoricalData(for: metric, period: period)
                     }
                 )
                 .padding(.horizontal)
@@ -121,6 +124,7 @@ struct MetricDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .withDeepBackground()
         .onAppear {
+            print("🚨 DEBUG: MetricDetailView.onAppear - metric: \(metric.type.displayName), value: \(metric.value)")
             setupNavigationBar()
             viewModel.loadData(for: metric)
             AnalyticsService.shared.trackMetricSelected(metric.type.rawValue)
@@ -188,11 +192,38 @@ struct MetricDetailView: View {
                 )
                 .frame(height: 200)
             } else {
-                // Show loading or empty state
-                Text("Loading impact data...")
-                    .style(.caption)
-                    .foregroundColor(.white.opacity(0.5))
-                    .frame(height: 200)
+                // Show proper state-based messaging that's always actionable
+                VStack(spacing: 12) {
+                    if viewModel.isLoadingHistory {
+                        // Actually loading data
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Loading your health data...")
+                                .style(.caption)
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                    } else {
+                        // Not loading but no data - provide actionable guidance
+                        VStack(spacing: 8) {
+                            Image(systemName: getEmptyStateIcon())
+                                .font(.title2)
+                                .foregroundColor(.white.opacity(0.3))
+                            
+                            Text(getEmptyStateTitle())
+                                .style(.bodyMedium)
+                                .foregroundColor(.white.opacity(0.7))
+                                .multilineTextAlignment(.center)
+                            
+                            Text(getEmptyStateMessage())
+                                .style(.caption)
+                                .foregroundColor(.white.opacity(0.5))
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
+                .frame(height: 200)
             }
         }
         .padding(16)
@@ -468,6 +499,110 @@ struct MetricDetailView: View {
         return minutes >= 0 ? .ampedGreen : .ampedRed
     }
     
+    private func getEmptyStateIcon() -> String {
+        switch metric.type {
+        case .steps:
+            return "figure.walk"
+        case .sleepHours:
+            return "bed.double"
+        case .exerciseMinutes:
+            return "figure.run"
+        case .heartRateVariability, .restingHeartRate:
+            return "heart"
+        case .bodyMass:
+            return "scalemass"
+        case .activeEnergyBurned:
+            return "flame"
+        case .vo2Max:
+            return "lungs"
+        case .oxygenSaturation:
+            return "waveform.path.ecg"
+        case .nutritionQuality:
+            return "leaf"
+        case .smokingStatus:
+            return "smoke"
+        case .alcoholConsumption:
+            return "wineglass"
+        case .socialConnectionsQuality:
+            return "person.2"
+        case .stressLevel:
+            return "brain.head.profile"
+        case .bloodPressure:
+            return "heart.circle"
+        }
+    }
+    
+    private func getEmptyStateTitle() -> String {
+        if metric.type.isHealthKitMetric {
+            // HealthKit metrics - encourage app usage or data collection
+            switch metric.type {
+            case .steps:
+                return "Start walking to see your step trends"
+            case .sleepHours:
+                return "Sleep with your Apple Watch to track trends"
+            case .exerciseMinutes:
+                return "Start exercising to see your activity trends"
+            case .heartRateVariability, .restingHeartRate:
+                return "Wear your Apple Watch to track heart data"
+            case .bodyMass:
+                return "Log your weight to track changes over time"
+            case .activeEnergyBurned:
+                return "Start moving to see your calorie trends"
+            case .vo2Max:
+                return "Exercise regularly to track fitness trends"
+            case .oxygenSaturation:
+                return "Wear your Apple Watch to track oxygen levels"
+            default:
+                return "Use your Apple Watch to collect health data"
+            }
+        } else {
+            // Questionnaire metrics - encourage lifestyle improvements
+            switch metric.type {
+            case .nutritionQuality:
+                return "Your nutrition habits are being tracked"
+            case .smokingStatus:
+                return "Your smoking habits are being tracked"
+            case .alcoholConsumption:
+                return "Your drinking habits are being tracked"
+            case .socialConnectionsQuality:
+                return "Your social connections are being tracked"
+            case .stressLevel:
+                return "Your stress levels are being tracked"
+            default:
+                return "Your lifestyle habits are being tracked"
+            }
+        }
+    }
+    
+    private func getEmptyStateMessage() -> String {
+        if metric.type.isHealthKitMetric {
+            // HealthKit metrics - actionable guidance for data collection
+            switch metric.type {
+            case .steps:
+                return "Your daily steps will appear here as you move throughout the day. Every step counts!"
+            case .sleepHours:
+                return "Your sleep patterns will show up here when you sleep with your Apple Watch or iPhone nearby."
+            case .exerciseMinutes:
+                return "Your workout data will appear here when you start exercising or use the Workout app."
+            case .heartRateVariability, .restingHeartRate:
+                return "Your heart data will appear here when you wear your Apple Watch regularly."
+            case .bodyMass:
+                return "Your weight trends will show up here when you log your weight in the Health app."
+            case .activeEnergyBurned:
+                return "Your activity calories will appear here as you move and exercise throughout the day."
+            case .vo2Max:
+                return "Your fitness level data will appear here after regular cardio workouts."
+            case .oxygenSaturation:
+                return "Your oxygen levels will appear here when measured with your Apple Watch."
+            default:
+                return "Your health data will appear here when collected by your Apple devices."
+            }
+        } else {
+            // Questionnaire metrics - no historical chart needed
+            return "Based on your questionnaire responses, we're using this value to calculate your life impact. Update your responses anytime in Settings."
+        }
+    }
+    
     private func setupNavigationBar() {
         let scrolledAppearance = UINavigationBarAppearance()
         scrolledAppearance.configureWithDefaultBackground()
@@ -488,4 +623,4 @@ struct MetricDetailView: View {
     NavigationView {
         MetricDetailView(metric: HealthMetric.sample(type: .steps, value: 8750))
     }
-} 
+}

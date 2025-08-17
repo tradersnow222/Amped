@@ -12,56 +12,106 @@ struct ImpactMetricChart: View {
     
     @State private var dragLocation: CGPoint = .zero
     
+    // RENPHO-STYLE: Summary statistics computed from available data
+    var summaryStatistics: ChartSummaryStats {
+        ChartSummaryStats.calculate(from: dataPoints, period: period)
+    }
+    
     // Determine chart color based on overall impact (Rule: Clear visual feedback)
     private var chartColor: Color {
         let finalImpact = dataPoints.last?.impact ?? 0
         return finalImpact >= 0 ? .ampedGreen : .ampedRed
     }
     
-    // Calculate Y-axis range to ensure zero is visible
+    // RENPHO-STYLE: Dynamic Y-axis scaling that always renders charts with any amount of data
     private var yAxisRange: ClosedRange<Double> {
         let values = dataPoints.map { $0.impact }
+        
+        // Handle edge cases with sparse data (Renpho behavior: always render)
+        guard !values.isEmpty else {
+            // No data points - still provide a reasonable range centered on zero
+            return -120.0...120.0
+        }
+        
         let minValue = min(0, values.min() ?? 0)
         let maxValue = max(0, values.max() ?? 0)
         
-        // Add padding for visual clarity
-        let padding = max(abs(maxValue - minValue) * 0.2, 60) // At least 60 minutes padding
-        return (minValue - padding)...(maxValue + padding)
+        // RENPHO-STYLE: Intelligent padding calculation for sparse data
+        if values.count == 1 {
+            // Single data point - create range centered around the point and zero
+            let singleValue = values[0]
+            let rangeSize = max(abs(singleValue) * 1.5, 60.0) // Minimum 60 minute range
+            let center = singleValue / 2.0 // Center between zero and the point
+            return (center - rangeSize)...(center + rangeSize)
+        } else if values.count <= 3 {
+            // Very sparse data - use larger padding to show context
+            let range = maxValue - minValue
+            let padding = max(range * 0.5, 60.0) // Larger padding for sparse data
+            return (minValue - padding)...(maxValue + padding)
+        } else {
+            // Normal data density - use standard padding
+            let range = maxValue - minValue
+            let padding = max(range * 0.2, 30.0) // Standard padding
+            return (minValue - padding)...(maxValue + padding)
+        }
     }
     
     var body: some View {
         GeometryReader { geometry in
             Chart {
-                // Neutral target line at zero (Rule: Clear visual targets)
+                // RETAINED: Neutral target line at zero (existing dotted line feature)
                 RuleMark(y: .value("Neutral", 0))
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 5]))
                     .foregroundStyle(Color.white.opacity(0.3))
                 
-                ForEach(dataPoints, id: \.id) { point in
-                    // Area mark from zero to the line value (Rule: Consistent visual language)
-                    AreaMark(
-                        x: .value("Time", point.date),
-                        yStart: .value("Start", 0),
-                        yEnd: .value("Life Impact", point.impact)
-                    )
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                chartColor.opacity(0.3),
-                                chartColor.opacity(0.05)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
+                // RENPHO-STYLE: Always render chart with available data, regardless of sparsity
+                if !dataPoints.isEmpty {
+                    ForEach(dataPoints, id: \.id) { point in
+                        // Area mark from zero to the line value - always render with smooth fill
+                        AreaMark(
+                            x: .value("Time", point.date),
+                            yStart: .value("Start", 0),
+                            yEnd: .value("Life Impact", point.impact)
                         )
-                    )
-                    
-                    // Line showing cumulative impact trend
-                    LineMark(
-                        x: .value("Time", point.date),
-                        y: .value("Life Impact", point.impact)
-                    )
-                    .foregroundStyle(chartColor)
-                    .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    chartColor.opacity(0.3),
+                                    chartColor.opacity(0.05)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        // RENPHO-STYLE: Smooth interpolation between sparse points
+                        .interpolationMethod(.catmullRom)
+                        
+                        // RENPHO-STYLE: Line connects all available points smoothly
+                        LineMark(
+                            x: .value("Time", point.date),
+                            y: .value("Life Impact", point.impact)
+                        )
+                        .foregroundStyle(chartColor)
+                        .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                        // RENPHO-STYLE: Smooth interpolation for sparse data
+                        .interpolationMethod(.catmullRom)
+                        
+                        // RENPHO-STYLE: Show data points as circles for sparse data visibility
+                        if dataPoints.count <= 10 {
+                            PointMark(
+                                x: .value("Time", point.date),
+                                y: .value("Life Impact", point.impact)
+                            )
+                            .foregroundStyle(chartColor)
+                            .symbolSize(dataPoints.count <= 3 ? 60 : 30) // Larger points for very sparse data
+                        }
+                    }
+                } else {
+                    // RENPHO-STYLE: Even with no data, show a minimal baseline
+                    // This ensures the chart never appears "broken" or empty
+                    RuleMark(y: .value("Baseline", 0))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                        .foregroundStyle(Color.secondary.opacity(0.5))
                 }
                 
                 // Selected point indicator for interaction
@@ -154,16 +204,19 @@ struct ImpactMetricChart: View {
     
     // MARK: - Helper Methods
     
+    // RENPHO-STYLE: X-axis stride adapts to data availability
     private func getXAxisStride() -> AxisMarkValues {
-        guard !dataPoints.isEmpty else { return .automatic() }
-        
+        // RENPHO BEHAVIOR: Always show appropriate time labels regardless of data sparsity
         switch period {
         case .day:
-            return .stride(by: .hour, count: 4)
+            // Show hourly markers even with sparse data
+            return dataPoints.isEmpty ? .automatic(desiredCount: 6) : .stride(by: .hour, count: 4)
         case .month:
-            return .stride(by: .day, count: 6)
+            // Show daily markers, adapting for sparse data
+            return dataPoints.count < 7 ? .automatic(desiredCount: 5) : .stride(by: .day, count: 6)
         case .year:
-            return .stride(by: .month, count: 3)
+            // Show monthly markers, adapting for very sparse data
+            return dataPoints.count < 4 ? .automatic(desiredCount: 3) : .stride(by: .month, count: 3)
         }
     }
     
@@ -235,4 +288,4 @@ struct ImpactMetricChart: View {
         
         return formatter.string(from: date)
     }
-} 
+}
