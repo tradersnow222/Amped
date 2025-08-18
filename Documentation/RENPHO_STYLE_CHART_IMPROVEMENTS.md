@@ -1,4 +1,4 @@
-# Renpho-Style Chart Improvements
+# Professional Chart Improvements
 
 ## Overview
 

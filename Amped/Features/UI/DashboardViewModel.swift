@@ -963,7 +963,7 @@ final class DashboardViewModel: ObservableObject {
         return historicalChartData
     }
     
-    /// Load real historical chart data with TradingView-style progression
+    /// Load real historical chart data with professional chart progression
     func loadHistoricalChartData() {
         guard lifeImpactData != nil else { 
             logger.warning("⚠️ No lifeImpactData available for chart generation")
@@ -972,7 +972,7 @@ final class DashboardViewModel: ObservableObject {
         }
         
         let now = Date()
-        logger.info("📊 Loading TradingView-style historical data for \(self.selectedTimePeriod.displayName)")
+        logger.info("📊 Loading professional chart-style historical data for \(self.selectedTimePeriod.displayName)")
         
         // Clear existing data to show loading state
         historicalChartData = []
@@ -981,18 +981,18 @@ final class DashboardViewModel: ObservableObject {
         Task {
             let chartData: [ChartImpactDataPoint]
             
-            switch selectedTimePeriod {
-            case .day:
-                chartData = await generateTradingViewStyleHourlyData(currentDate: now)
-            case .month:
-                chartData = await generateTradingViewStyleDailyData(currentDate: now, days: 30)
-            case .year:
-                chartData = await generateTradingViewStyleMonthlyData(currentDate: now, months: 12)
-            }
+        switch selectedTimePeriod {
+        case .day:
+            chartData = await generateProfessionalStyleHourlyData(currentDate: now)
+        case .month:
+            chartData = await generateProfessionalStyleDailyData(currentDate: now, days: 30)
+        case .year:
+            chartData = await generateProfessionalStyleMonthlyData(currentDate: now, months: 12)
+        }
             
             await MainActor.run {
                 self.historicalChartData = chartData
-                logger.info("✅ Loaded \(chartData.count) TradingView-style chart points for \(self.selectedTimePeriod.displayName)")
+                logger.info("✅ Loaded \(chartData.count) professional chart points for \(self.selectedTimePeriod.displayName)")
                 if let lastPoint = chartData.last {
                     logger.info("  📍 Final chart impact: \(String(format: "%.2f", lastPoint.impact)) minutes")
                 }
@@ -1000,25 +1000,25 @@ final class DashboardViewModel: ObservableObject {
         }
     }
 
-    // MARK: - TradingView-Style Chart Generation
+    // MARK: - Professional Chart Generation
     
-    /// Generate TradingView-style hourly data showing actual hourly impacts (scaled for day period)
-    private func generateTradingViewStyleHourlyData(currentDate: Date) async -> [ChartImpactDataPoint] {
+    /// Generate professional-style hourly data showing actual hourly impacts (scaled for day period)
+    private func generateProfessionalStyleHourlyData(currentDate: Date) async -> [ChartImpactDataPoint] {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: currentDate)
         let currentHour = calendar.component(.hour, from: currentDate)
         var chartPoints: [ChartImpactDataPoint] = []
         
-        logger.info("📊 Generating TradingView-style hourly data (Day period scaling) - REAL DATA ONLY")
+        logger.info("📊 Generating professional-style hourly data (Day period scaling) - REAL DATA ONLY")
         
-        // TradingView approach: Only create chart points where we have actual data
+        // Professional approach: Only create chart points where we have actual data
         for hour in 0...currentHour {
             guard let hourTime = calendar.date(byAdding: .hour, value: hour, to: startOfDay) else { continue }
             
             // Calculate impact using ONLY real data available at this time
             let hourImpact = await calculatePeriodScaledImpactAtTime(hourTime, periodType: .day)
             
-            // TradingView approach: Only add points where we have real data
+            // Professional approach: Only add points where we have real data
             // If calculation returned 0, it means no real data was available
             if hourImpact != 0 {
                 logger.info("  Hour \(hour): REAL impact = \(String(format: "%.2f", hourImpact)) minutes")
@@ -1029,7 +1029,7 @@ final class DashboardViewModel: ObservableObject {
                     value: 0 // Not used for collective impact display
                 ))
             } else {
-                logger.info("  Hour \(hour): No real data available - creating gap like TradingView")
+                logger.info("  Hour \(hour): No real data available - creating gap in professional chart")
             }
         }
         
@@ -1048,27 +1048,27 @@ final class DashboardViewModel: ObservableObject {
         return chartPoints
     }
 
-    /// Generate TradingView-style daily data showing actual daily impacts (scaled for month period)
-    private func generateTradingViewStyleDailyData(currentDate: Date, days: Int) async -> [ChartImpactDataPoint] {
+    /// Generate professional-style daily data showing actual daily impacts (scaled for month period)
+    private func generateProfessionalStyleDailyData(currentDate: Date, days: Int) async -> [ChartImpactDataPoint] {
         let calendar = Calendar.current
         var chartPoints: [ChartImpactDataPoint] = []
         
-        logger.info("📊 Generating TradingView-style daily data (Month period scaling) - REAL DATA ONLY")
+        logger.info("📊 Generating professional-style daily data (Month period scaling) - REAL DATA ONLY")
         
-        // TradingView approach: Only process days where we might have actual data
+        // Professional approach: Only process days where we might have actual data
         for dayOffset in -days+1...0 {
             guard let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: currentDate) else { continue }
             
             // Use end of day for complete data availability
             let dayEnd = calendar.date(byAdding: .hour, value: 23, to: calendar.startOfDay(for: dayDate)) ?? dayDate
             
-            // Skip future dates (TradingView doesn't show future data)
+            // Skip future dates (professional charts don't show future data)
             if dayEnd > Date() { continue }
             
             // Calculate impact using ONLY real data available for this day
             let dayImpact = await calculatePeriodScaledImpactAtTime(dayEnd, periodType: .month)
             
-            // TradingView approach: Only add points where we have real data
+            // Professional approach: Only add points where we have real data
             if dayImpact != 0 {
                 logger.info("  Day \(dayOffset): REAL impact = \(String(format: "%.2f", dayImpact)) minutes")
                 
@@ -1078,7 +1078,7 @@ final class DashboardViewModel: ObservableObject {
                     value: 0 // Not used for collective impact display
                 ))
             } else {
-                logger.info("  Day \(dayOffset): No real data available - creating gap like TradingView")
+                logger.info("  Day \(dayOffset): No real data available - creating gap in professional chart")
             }
         }
         
@@ -1097,14 +1097,14 @@ final class DashboardViewModel: ObservableObject {
         return chartPoints
     }
 
-    /// Generate TradingView-style monthly data showing actual monthly impacts (scaled for year period)
-    private func generateTradingViewStyleMonthlyData(currentDate: Date, months: Int) async -> [ChartImpactDataPoint] {
+    /// Generate professional-style monthly data showing actual monthly impacts (scaled for year period)
+    private func generateProfessionalStyleMonthlyData(currentDate: Date, months: Int) async -> [ChartImpactDataPoint] {
         let calendar = Calendar.current
         var chartPoints: [ChartImpactDataPoint] = []
         
-        logger.info("📊 Generating TradingView-style monthly data (Year period scaling) - REAL DATA ONLY")
+        logger.info("📊 Generating professional-style monthly data (Year period scaling) - REAL DATA ONLY")
         
-        // TradingView approach: Only process months where we might have actual data
+        // Professional approach: Only process months where we might have actual data
         for monthOffset in -months+1...0 {
             guard let monthDate = calendar.date(byAdding: .month, value: monthOffset, to: currentDate) else { continue }
             
@@ -1112,13 +1112,13 @@ final class DashboardViewModel: ObservableObject {
             guard let monthInterval = calendar.dateInterval(of: .month, for: monthDate),
                   let endOfMonth = calendar.date(byAdding: .day, value: -1, to: monthInterval.end) else { continue }
             
-            // Skip future dates (TradingView doesn't show future data)
+            // Skip future dates (professional charts don't show future data)
             if endOfMonth > Date() { continue }
             
             // Calculate impact using ONLY real data available for this month
             let monthImpact = await calculatePeriodScaledImpactAtTime(endOfMonth, periodType: .year)
             
-            // TradingView approach: Only add points where we have real data
+            // Professional approach: Only add points where we have real data
             if monthImpact != 0 {
                 logger.info("  Month \(monthOffset): REAL impact = \(String(format: "%.2f", monthImpact)) minutes")
                 
@@ -1128,7 +1128,7 @@ final class DashboardViewModel: ObservableObject {
                     value: 0 // Not used for collective impact display
                 ))
             } else {
-                logger.info("  Month \(monthOffset): No real data available - creating gap like TradingView")
+                logger.info("  Month \(monthOffset): No real data available - creating gap in professional chart")
             }
         }
         
@@ -1147,12 +1147,12 @@ final class DashboardViewModel: ObservableObject {
         return chartPoints
     }
     
-    /// Calculate period-scaled impact at a specific time using ONLY real data (like TradingView)
+    /// Calculate period-scaled impact at a specific time using ONLY real data (professional methodology)
     private func calculatePeriodScaledImpactAtTime(_ targetTime: Date, periodType: ImpactDataPoint.PeriodType) async -> Double {
         let lifeImpactService = LifeImpactService(userProfile: self.userProfile)
         var hasAnyRealData = false
         
-        // Collect all available metrics at the target time - TradingView approach: REAL DATA ONLY
+        // Collect all available metrics at the target time - professional approach: REAL DATA ONLY
         var metricsAtTime: [HealthMetric] = []
         
         for metricType in HealthMetricType.allCases {
@@ -1173,9 +1173,9 @@ final class DashboardViewModel: ObservableObject {
             }
         }
         
-        // TradingView approach: If no real data exists, return 0 (creates gap in chart)
+        // Professional approach: If no real data exists, return 0 (creates gap in chart)
         if !hasAnyRealData {
-            logger.info("  🚫 No real data available for any metrics at \(targetTime) - TradingView gap")
+            logger.info("  🚫 No real data available for any metrics at \(targetTime) - professional chart gap")
             return 0.0
         }
         
@@ -1188,12 +1188,12 @@ final class DashboardViewModel: ObservableObject {
         return scaledImpact
     }
     
-    /// Get the actual metric value at a specific time using 100% real data (like TradingView)
+    /// Get the actual metric value at a specific time using 100% real data (professional methodology)
     private func getMetricValueAtTime(_ metricType: HealthMetricType, targetTime: Date) async -> (value: Double, source: String)? {
-        // Handle manual metrics (from questionnaire) - TradingView approach
+        // Handle manual metrics (from questionnaire) - professional approach
         if !metricType.isHealthKitMetric {
             // Manual metrics represent lifestyle patterns that don't change minute-by-minute
-            // Like TradingView showing last known price, we use current questionnaire value
+            // Use current questionnaire value as last known data point
             if self.questionnaireManager.manualMetrics.isEmpty && self.questionnaireManager.hasCompletedQuestionnaire {
                 await self.questionnaireManager.loadDataIfNeeded()
             }
@@ -1201,11 +1201,11 @@ final class DashboardViewModel: ObservableObject {
             let manualMetricInputs = self.questionnaireManager.getCurrentManualMetrics()
             
             if let manualInput = manualMetricInputs.first(where: { $0.type == metricType }) {
-                // TradingView approach: Use actual value (no artificial variations)
+                // Professional approach: Use actual value (no artificial variations)
                 // Manual metrics represent consistent lifestyle patterns
                 return (value: manualInput.value, source: "Manual")
             }
-            // TradingView approach: If no data exists, return nil (gap in chart)
+            // Professional approach: If no data exists, return nil (gap in chart)
             return nil
         }
         
@@ -1214,11 +1214,11 @@ final class DashboardViewModel: ObservableObject {
         
         // For cumulative metrics, get the actual total for that specific day
         if metricType == .steps || metricType == .exerciseMinutes || metricType == .activeEnergyBurned {
-            // Get real cumulative total for the specific day (like TradingView getting actual volume)
+            // Get real cumulative total for the specific day using actual HealthKit data
             if let cumulativeValue = await fetchCumulativeValueForDay(metricType: metricType, targetTime: targetTime) {
                 return (value: cumulativeValue, source: "healthKit")
             }
-            // TradingView approach: If no real data exists, return nil (gap)
+            // Professional approach: If no real data exists, return nil (gap)
             return nil
         }
         
@@ -1233,11 +1233,11 @@ final class DashboardViewModel: ObservableObject {
         let validData = healthKitData.filter { $0.date <= targetTime }
         
         if let latestMetric = validData.last {
-            // TradingView approach: Use actual recorded data
+            // Professional approach: Use actual recorded data
             return (value: latestMetric.value, source: latestMetric.source.rawValue)
         }
         
-        // TradingView approach: If no real data exists for this time, return nil (creates gap)
+        // Professional approach: If no real data exists for this time, return nil (creates gap)
         return nil
     }
     

@@ -1,0 +1,53 @@
+**Amped - Health Data Visualization** ⚡
+
+Amped is an educational health data visualization app that transforms your Apple Health data into intuitive battery-style displays for easy understanding of your wellness metrics.
+
+**Core Features:**
+🔋 **Dual Visualization System**: View your health metrics through familiar battery displays - one for daily activity patterns, one for long-term trends
+📊 **Research-Referenced Calculations**: Data analysis based on published scientific studies and health research
+📱 **Apple Health Integration**: Connects with HealthKit to visualize your existing health data including steps, heart rate, sleep, exercise, and more
+📋 **Personal Health Survey**: Optional questionnaire to supplement HealthKit data for more comprehensive visualization
+📈 **Trend Analysis**: Historical data visualization to help you understand patterns in your health metrics
+
+**Features for Beta Testing:**
+• Complete onboarding and health survey experience
+• HealthKit permissions and data synchronization
+• Battery-style health metric visualizations  
+• Individual metric detail views with research context
+• Historical trend charts and data analysis
+• Accessibility features including VoiceOver support
+• iOS interface with glass-themed design elements
+
+**Testing Focus Areas:**
+- HealthKit data integration accuracy across devices
+- Visualization responsiveness and clarity
+- Survey completion and data entry flow
+- App performance with large health datasets
+- User interface across different screen sizes
+- Accessibility feature functionality
+
+**Important Disclaimers:**
+• This app is for educational and informational purposes only
+• Not intended for medical diagnosis, treatment, or advice
+• Always consult healthcare professionals for medical decisions
+• Data visualizations are based on general population research
+• Individual health needs may vary significantly
+
+**Privacy & Data:**
+All health data processing occurs locally on your device. No personal health information is transmitted to external servers. We follow Apple's strict HealthKit privacy guidelines.
+
+**Beta Test Instructions:**
+1. Complete the initial onboarding and optional health survey
+2. Grant HealthKit permissions for data you're comfortable sharing
+3. Explore the battery visualizations and metric details
+4. Test navigation and accessibility features
+5. Report any performance issues, crashes, or data inaccuracies
+
+**Feedback Priorities:**
+- Data visualization accuracy and usefulness
+- App stability and performance
+- User interface clarity and navigation
+- HealthKit integration reliability
+- Overall user experience quality
+
+Thank you for helping us refine this health data visualization tool!

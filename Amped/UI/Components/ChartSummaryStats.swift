@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// RENPHO-STYLE: Summary statistics calculated from available data
+/// Professional chart statistics: Summary statistics calculated from available data
 /// Always computes meaningful statistics regardless of data sparsity
 struct ChartSummaryStats {
     let dailyRate: Double        // Daily change rate in minutes
@@ -10,10 +10,10 @@ struct ChartSummaryStats {
     let lowest: Double          // Lowest impact value
     let dataPointCount: Int     // Number of available data points
     
-    /// RENPHO BEHAVIOR: Calculate stats from whatever data exists, never show "no data"
+    /// Professional behavior: Calculate stats from whatever data exists, never show "no data"
     static func calculate(from dataPoints: [ChartImpactDataPoint], period: ImpactDataPoint.PeriodType) -> ChartSummaryStats {
         guard !dataPoints.isEmpty else {
-            // Even with no data, return meaningful zero stats (Renpho never shows errors)
+            // Even with no data, return meaningful zero stats (professional charts never show errors)
             return ChartSummaryStats(
                 dailyRate: 0.0,
                 weeklyRate: 0.0,
@@ -50,7 +50,7 @@ struct ChartSummaryStats {
         period: ImpactDataPoint.PeriodType
     ) -> (dailyRate: Double, weeklyRate: Double, trend: Double) {
         guard dataPoints.count >= 2 else {
-            // Single or no data point - rates are zero (like Renpho with insufficient data)
+            // Single or no data point - rates are zero (professional behavior with insufficient data)
             return (0.0, 0.0, dataPoints.first?.impact ?? 0.0)
         }
         
@@ -78,7 +78,7 @@ struct ChartSummaryStats {
         return (dailyRate, weeklyRate, trend)
     }
     
-    // MARK: - Formatted Display Methods (Renpho-style)
+    // MARK: - Formatted Display Methods (Professional chart style)
     
     func formattedDailyRate(period: ImpactDataPoint.PeriodType) -> String {
         let rate = period == .year ? weeklyRate : dailyRate
@@ -111,7 +111,7 @@ struct ChartSummaryStats {
     
     // MARK: - UI Components
     
-    /// RENPHO-STYLE: Summary statistics view that appears below charts
+    /// Professional chart: Summary statistics view that appears below charts
     @ViewBuilder
     func summaryView(period: ImpactDataPoint.PeriodType) -> some View {
         HStack(spacing: 20) {

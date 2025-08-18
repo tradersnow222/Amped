@@ -18,7 +18,7 @@ final class MetricDetailViewModel: ObservableObject {
     @Published var metric: HealthMetric  // Always stores the original daily metric
     @Published var selectedPeriod: ImpactDataPoint.PeriodType = .day
     
-    /// Loading state for TradingView-style charts
+    /// Loading state for professional-style charts
     @Published var isLoadingHistory: Bool = false
     
     // Task management for data loading
@@ -150,7 +150,7 @@ final class MetricDetailViewModel: ObservableObject {
                     }
                 }
             } else {
-                // TradingView approach: Calculate impact using REAL data with proper period scaling
+                // Professional approach: Calculate impact using REAL data with proper period scaling
                 // CRITICAL FIX: Use actual user profile (not empty one)
                 let lifeImpactService = LifeImpactService(userProfile: self.userProfile)
                 
@@ -163,7 +163,7 @@ final class MetricDetailViewModel: ObservableObject {
                         source: originalMetric.source
                     )
                     
-                    // TradingView approach: Apply same period scaling as headlines and collective charts
+                    // Professional approach: Apply same period scaling as headlines and collective charts
                     let impactDataPoint = lifeImpactService.calculateTotalImpact(from: [tempMetric], for: selectedPeriod)
                     impactPoints.append(ChartImpactDataPoint(
                         date: dataPoint.date,
@@ -196,7 +196,7 @@ final class MetricDetailViewModel: ObservableObject {
                 }
             }
         } else {
-            // TradingView approach: Use REAL historical data with proper period scaling
+            // Professional approach: Use REAL historical data with proper period scaling
             // CRITICAL FIX: Use actual user profile (not empty one)
             let lifeImpactService = LifeImpactService(userProfile: self.userProfile)
             
@@ -209,7 +209,7 @@ final class MetricDetailViewModel: ObservableObject {
                     source: originalMetric.source
                 )
                 
-                // TradingView approach: Apply same period scaling as headlines and collective charts
+                // Professional approach: Apply same period scaling as headlines and collective charts
                 let impactDataPoint = lifeImpactService.calculateTotalImpact(from: [tempMetric], for: selectedPeriod)
                 impactPoints.append(ChartImpactDataPoint(
                     date: dataPoint.date,
@@ -469,7 +469,7 @@ final class MetricDetailViewModel: ObservableObject {
     
     // MARK: - Data Loading Methods
     
-    /// Load real historical data for TradingView-style charts (100% real data only)
+    /// Load real historical data for professional-style charts (100% real data only)
     /// - Parameters:
     ///   - metric: The metric to load history for
     ///   - period: The time period to load
@@ -484,7 +484,7 @@ final class MetricDetailViewModel: ObservableObject {
         selectedPeriod = period
         
         currentDataTask = Task {
-            // Load real historical data using TradingView approach
+            // Load real historical data using professional approach
             await loadRealHistoryData(for: metric)
             await updatePeriodSpecificValue()
             
@@ -507,9 +507,9 @@ final class MetricDetailViewModel: ObservableObject {
         // Determine the date range based on the selected period
         let (startDate, endDate, interval) = getDateRangeAndInterval(for: selectedPeriod, now: now)
         
-        // TradingView approach: For manual metrics, show real questionnaire data consistently
+        // Professional approach: For manual metrics, show real questionnaire data consistently
         if metric.type.isHealthKitMetric == false {
-            // Use actual questionnaire value (like TradingView showing last known price)
+            // Use actual questionnaire value as consistent lifestyle data
             // Manual metrics represent lifestyle patterns that don't change minute-by-minute
             generateRealManualMetricData(metric: metric, startDate: startDate, endDate: endDate, interval: interval)
             return
@@ -771,9 +771,9 @@ final class MetricDetailViewModel: ObservableObject {
         let samples = await healthKitManager.fetchData(for: metricType, from: startDate, to: endDate)
         
         if samples.isEmpty {
-            // TradingView approach: If no real data exists, show gaps (empty chart)
+            // Professional approach: If no real data exists, show gaps (empty chart)
             // Don't create artificial flat lines like the old implementation
-            logger.info("📊 No real HealthKit data found for \(metricType.displayName) - showing gap like TradingView")
+            logger.info("📊 No real HealthKit data found for \(metricType.displayName) - showing gap in professional chart")
             return
         }
         
@@ -796,11 +796,11 @@ final class MetricDetailViewModel: ObservableObject {
         // Sort by date
         historyData.sort { $0.date < $1.date }
         
-        // RENPHO-STYLE: Even with no data, ensure chart remains usable
+        // Professional chart: Even with no data, ensure chart remains usable
         if historyData.isEmpty {
             logger.info("📊 No real historical data available for \(self.originalMetric.type.displayName) - creating minimal data point for chart visibility")
             
-            // RENPHO BEHAVIOR: Always provide at least one data point for chart rendering
+            // Professional behavior: Always provide at least one data point for chart rendering
             // Use current metric value as a single point to ensure chart doesn't disappear
             let fallbackPoint = HistoryDataPoint(
                 date: endDate,
@@ -867,11 +867,11 @@ final class MetricDetailViewModel: ObservableObject {
         }
     }
     
-    /// Generate real manual metric data using actual questionnaire responses (TradingView approach)
-    /// Unlike the old generateManualMetricData, this uses REAL questionnaire values consistently
+    /// Generate real manual metric data using actual questionnaire responses (professional approach)
+    /// Uses REAL questionnaire values consistently
     private func generateRealManualMetricData(metric: HealthMetric, startDate: Date, endDate: Date, interval: DateComponents) {
-        // TradingView approach: Manual metrics represent consistent lifestyle patterns
-        // Use actual questionnaire value (like TradingView showing last known price when markets are closed)
+        // Professional approach: Manual metrics represent consistent lifestyle patterns
+        // Use actual questionnaire value as consistent baseline data
         
         let calendar = Calendar.current
         var currentDate = startDate
@@ -881,7 +881,7 @@ final class MetricDetailViewModel: ObservableObject {
         
         // Create data points using the actual questionnaire value consistently
         while currentDate <= endDate {
-            // Skip future dates (TradingView doesn't show future data)
+            // Skip future dates (professional charts don't show future data)
             if currentDate > Date() { break }
             
             self.historyData.append(HistoryDataPoint(
@@ -1003,8 +1003,8 @@ final class MetricDetailViewModel: ObservableObject {
         return priority
     }
 
-    /// TradingView-style data points for charts (100% real data)
-    var tradingViewStyleDataPoints: [MetricDataPoint] {
+    /// Professional-style data points for charts (100% real data)
+    var professionalStyleDataPoints: [MetricDataPoint] {
         return historyData.map { dataPoint in
             MetricDataPoint(
                 date: dataPoint.date,
@@ -1015,7 +1015,7 @@ final class MetricDetailViewModel: ObservableObject {
     
     /// Historical data points for charting (UI compatibility)
     var historyDataPoints: [MetricDataPoint] {
-        return tradingViewStyleDataPoints
+        return professionalStyleDataPoints
     }
 }
 

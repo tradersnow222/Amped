@@ -2,13 +2,13 @@ import XCTest
 @testable import Amped
 import SwiftUI
 
-/// Tests for Renpho-style chart behavior with sparse data handling
-class RenphoStyleChartTests: XCTestCase {
+/// Tests for professional chart behavior with sparse data handling
+class ProfessionalChartTests: XCTestCase {
     
     // MARK: - Chart Summary Statistics Tests
     
     func testSummaryStatsWithNoData() {
-        // RENPHO BEHAVIOR: Even with no data, should return meaningful zero stats
+        // Professional behavior: Even with no data, should return meaningful zero stats
         let emptyDataPoints: [ChartImpactDataPoint] = []
         let stats = ChartSummaryStats.calculate(from: emptyDataPoints, period: .day)
         
@@ -24,7 +24,7 @@ class RenphoStyleChartTests: XCTestCase {
     }
     
     func testSummaryStatsWithSingleDataPoint() {
-        // RENPHO BEHAVIOR: Single data point should show zero rates but non-zero values
+        // Professional behavior: Single data point should show zero rates but non-zero values
         let singlePoint = ChartImpactDataPoint(
             date: Date(),
             impact: 45.2,
@@ -40,7 +40,7 @@ class RenphoStyleChartTests: XCTestCase {
     }
     
     func testSummaryStatsWithSparseData() {
-        // RENPHO BEHAVIOR: Sparse data (2-3 points) should calculate meaningful rates
+        // Professional behavior: Sparse data (2-3 points) should calculate meaningful rates
         let calendar = Calendar.current
         let now = Date()
         let yesterday = calendar.date(byAdding: .day, value: -1, to: now)!
@@ -60,7 +60,7 @@ class RenphoStyleChartTests: XCTestCase {
     }
     
     func testSummaryStatsWithWeeklyPeriod() {
-        // RENPHO BEHAVIOR: Year period should show weekly rates
+        // Professional behavior: Year period should show weekly rates
         let calendar = Calendar.current
         let now = Date()
         let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: now)!
@@ -79,7 +79,7 @@ class RenphoStyleChartTests: XCTestCase {
     // MARK: - Chart Y-Axis Range Tests
     
     func testYAxisRangeWithNoData() {
-        // RENPHO BEHAVIOR: No data should still provide reasonable Y-axis range
+        // Professional behavior: No data should still provide reasonable Y-axis range
         let chartView = ImpactMetricChart(
             metricType: .steps,
             dataPoints: [],
@@ -98,7 +98,7 @@ class RenphoStyleChartTests: XCTestCase {
     }
     
     func testYAxisRangeWithSinglePoint() {
-        // RENPHO BEHAVIOR: Single data point should create centered range
+        // Professional behavior: Single data point should create centered range
         let singlePoint = ChartImpactDataPoint(date: Date(), impact: 45.0, value: 8000)
         let chartView = ImpactMetricChart(
             metricType: .steps,
@@ -115,7 +115,7 @@ class RenphoStyleChartTests: XCTestCase {
     }
     
     func testYAxisRangeWithSparseData() {
-        // RENPHO BEHAVIOR: Sparse data should use larger padding for context
+        // Professional behavior: Sparse data should use larger padding for context
         let sparsePoints = [
             ChartImpactDataPoint(date: Date(), impact: 20.0, value: 5000),
             ChartImpactDataPoint(date: Date().addingTimeInterval(3600), impact: 80.0, value: 15000)
@@ -137,7 +137,7 @@ class RenphoStyleChartTests: XCTestCase {
     // MARK: - Chart Rendering Tests
     
     func testChartAlwaysRendersWithAnyData() {
-        // RENPHO BEHAVIOR: Chart should always render, never show "no data" state
+        // Professional behavior: Chart should always render, never show "no data" state
         
         // Test with no data
         let emptyChart = ImpactMetricChart(
@@ -166,12 +166,12 @@ class RenphoStyleChartTests: XCTestCase {
         XCTAssertEqual(singlePointStats.dataPointCount, 1, "Single point chart should have 1 data point")
         XCTAssertEqual(singlePointStats.trend, 30.0, "Should show trend equal to single point")
         
-        // Test with very sparse data (like Renpho's weekly chart with outlier)
+        // Test with very sparse data (professional chart with outlier)
         let calendar = Calendar.current
         let now = Date()
         let sparsePoints = [
             ChartImpactDataPoint(date: calendar.date(byAdding: .day, value: -6, to: now)!, impact: 25.0, value: 8000),
-            ChartImpactDataPoint(date: now, impact: 95.0, value: 18000) // Outlier like Renpho's Friday spike
+            ChartImpactDataPoint(date: now, impact: 95.0, value: 18000) // Outlier data point
         ]
         
         let sparseChart = ImpactMetricChart(
@@ -192,7 +192,7 @@ class RenphoStyleChartTests: XCTestCase {
     // MARK: - Time Period Adaptation Tests
     
     func testXAxisStrideDifferentDataDensities() {
-        // RENPHO BEHAVIOR: X-axis should adapt to data availability
+        // Professional behavior: X-axis should adapt to data availability
         
         // Test daily period with no data
         let emptyDayChart = ImpactMetricChart(
@@ -247,7 +247,7 @@ class RenphoStyleChartTests: XCTestCase {
     // MARK: - Edge Case Handling Tests
     
     func testChartWithIdenticalValues() {
-        // RENPHO BEHAVIOR: Identical values should still show meaningful chart
+        // Professional behavior: Identical values should still show meaningful chart
         let identicalPoints = (0..<5).map { hourOffset in
             ChartImpactDataPoint(
                 date: Calendar.current.date(byAdding: .hour, value: -hourOffset, to: Date())!,
@@ -273,7 +273,7 @@ class RenphoStyleChartTests: XCTestCase {
     }
     
     func testChartWithExtremeOutlier() {
-        // RENPHO BEHAVIOR: Like their Friday spike, should handle outliers gracefully
+        // Professional behavior: Should handle outliers gracefully
         let calendar = Calendar.current
         let now = Date()
         
@@ -283,7 +283,7 @@ class RenphoStyleChartTests: XCTestCase {
             ChartImpactDataPoint(date: calendar.date(byAdding: .day, value: -4, to: now)!, impact: 28.0, value: 6800),
             ChartImpactDataPoint(date: calendar.date(byAdding: .day, value: -3, to: now)!, impact: 31.0, value: 7100),
             ChartImpactDataPoint(date: calendar.date(byAdding: .day, value: -2, to: now)!, impact: 29.0, value: 6900),
-            ChartImpactDataPoint(date: calendar.date(byAdding: .day, value: -1, to: now)!, impact: 95.0, value: 18500), // Outlier like Friday spike
+            ChartImpactDataPoint(date: calendar.date(byAdding: .day, value: -1, to: now)!, impact: 95.0, value: 18500), // Outlier data point
             ChartImpactDataPoint(date: now, impact: 33.0, value: 7300)
         ]
         
@@ -308,7 +308,7 @@ class RenphoStyleChartTests: XCTestCase {
     // MARK: - Formatting Tests
     
     func testSummaryStatsFormatting() {
-        // RENPHO BEHAVIOR: Consistent formatting like their app
+        // Professional behavior: Consistent formatting standards
         let testPoint = ChartImpactDataPoint(date: Date(), impact: 123.456, value: 12000)
         let stats = ChartSummaryStats.calculate(from: [testPoint], period: .day)
         
@@ -327,7 +327,7 @@ class RenphoStyleChartTests: XCTestCase {
 
 // MARK: - Test Helpers
 
-extension RenphoStyleChartTests {
+extension ProfessionalChartTests {
     
     /// Helper to create test data points with realistic progression
     func createTestProgression(days: Int, startImpact: Double, endImpact: Double) -> [ChartImpactDataPoint] {

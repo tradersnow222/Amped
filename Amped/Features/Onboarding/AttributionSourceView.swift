@@ -97,13 +97,13 @@ struct AttributionSourceView: View {
 }
 
 enum AttributionSource: String, CaseIterable, Hashable {
-    case friendsFamily, instagram, xTwitter, appStore, other
+    case friendsFamily, socialMedia, searchEngine, appStore, other
 
     var title: String {
         switch self {
         case .friendsFamily: return "Friends/Family"
-        case .instagram: return "Instagram"
-        case .xTwitter: return "X/Twitter"
+        case .socialMedia: return "Social Media"
+        case .searchEngine: return "Search Engine"
         case .appStore: return "Apple Store"
         case .other: return "Other"
         }

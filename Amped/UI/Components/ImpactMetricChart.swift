@@ -12,7 +12,7 @@ struct ImpactMetricChart: View {
     
     @State private var dragLocation: CGPoint = .zero
     
-    // RENPHO-STYLE: Summary statistics computed from available data
+    // Professional chart: Summary statistics computed from available data
     var summaryStatistics: ChartSummaryStats {
         ChartSummaryStats.calculate(from: dataPoints, period: period)
     }
@@ -23,11 +23,11 @@ struct ImpactMetricChart: View {
         return finalImpact >= 0 ? .ampedGreen : .ampedRed
     }
     
-    // RENPHO-STYLE: Dynamic Y-axis scaling that always renders charts with any amount of data
+    // Professional chart: Dynamic Y-axis scaling that always renders charts with any amount of data
     private var yAxisRange: ClosedRange<Double> {
         let values = dataPoints.map { $0.impact }
         
-        // Handle edge cases with sparse data (Renpho behavior: always render)
+        // Handle edge cases with sparse data (professional behavior: always render)
         guard !values.isEmpty else {
             // No data points - still provide a reasonable range centered on zero
             return -120.0...120.0
@@ -36,7 +36,7 @@ struct ImpactMetricChart: View {
         let minValue = min(0, values.min() ?? 0)
         let maxValue = max(0, values.max() ?? 0)
         
-        // RENPHO-STYLE: Intelligent padding calculation for sparse data
+        // Professional chart: Intelligent padding calculation for sparse data
         if values.count == 1 {
             // Single data point - create range centered around the point and zero
             let singleValue = values[0]
@@ -64,7 +64,7 @@ struct ImpactMetricChart: View {
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 5]))
                     .foregroundStyle(Color.white.opacity(0.3))
                 
-                // RENPHO-STYLE: Always render chart with available data, regardless of sparsity
+                // Professional chart: Always render chart with available data, regardless of sparsity
                 if !dataPoints.isEmpty {
                     ForEach(dataPoints, id: \.id) { point in
                         // Area mark from zero to the line value - always render with smooth fill
@@ -83,20 +83,20 @@ struct ImpactMetricChart: View {
                                 endPoint: .bottom
                             )
                         )
-                        // RENPHO-STYLE: Smooth interpolation between sparse points
+                        // Professional chart: Smooth interpolation between sparse points
                         .interpolationMethod(.catmullRom)
                         
-                        // RENPHO-STYLE: Line connects all available points smoothly
+                        // Professional chart: Line connects all available points smoothly
                         LineMark(
                             x: .value("Time", point.date),
                             y: .value("Life Impact", point.impact)
                         )
                         .foregroundStyle(chartColor)
                         .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-                        // RENPHO-STYLE: Smooth interpolation for sparse data
+                        // Professional chart: Smooth interpolation for sparse data
                         .interpolationMethod(.catmullRom)
                         
-                        // RENPHO-STYLE: Show data points as circles for sparse data visibility
+                        // Professional chart: Show data points as circles for sparse data visibility
                         if dataPoints.count <= 10 {
                             PointMark(
                                 x: .value("Time", point.date),
@@ -107,7 +107,7 @@ struct ImpactMetricChart: View {
                         }
                     }
                 } else {
-                    // RENPHO-STYLE: Even with no data, show a minimal baseline
+                    // Professional chart: Even with no data, show a minimal baseline
                     // This ensures the chart never appears "broken" or empty
                     RuleMark(y: .value("Baseline", 0))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 2]))
@@ -204,9 +204,9 @@ struct ImpactMetricChart: View {
     
     // MARK: - Helper Methods
     
-    // RENPHO-STYLE: X-axis stride adapts to data availability
+    // Professional chart: X-axis stride adapts to data availability
     private func getXAxisStride() -> AxisMarkValues {
-        // RENPHO BEHAVIOR: Always show appropriate time labels regardless of data sparsity
+        // Professional behavior: Always show appropriate time labels regardless of data sparsity
         switch period {
         case .day:
             // Show hourly markers even with sparse data

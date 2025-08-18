@@ -1,7 +1,7 @@
 import SwiftUI
 import SafariServices
 
-/// In-app browser using SFSafariViewController (Instagram-style link open)
+/// In-app browser using SFSafariViewController (professional link handling)
 /// Rules applied: Simplicity is KING; SwiftUI-first; Security over performance
 struct SafariView: UIViewControllerRepresentable {
     let url: URL
@@ -23,5 +23,3 @@ struct SafariView: UIViewControllerRepresentable {
         // No-op
     }
 }
-
-

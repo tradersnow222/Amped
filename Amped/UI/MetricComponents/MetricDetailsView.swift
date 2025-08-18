@@ -13,7 +13,7 @@ struct MetricDetailsView: View {
     /// Close action
     var onClose: (() -> Void)?
     
-    /// View model for fetching real historical data (TradingView approach)
+    /// View model for fetching real historical data (professional approach)
     @StateObject private var viewModel: MetricDetailViewModel
     
     // MARK: - Initialization
@@ -38,11 +38,11 @@ struct MetricDetailsView: View {
                     periodSelector
                         .padding(.horizontal)
                     
-                    // Chart section - TradingView-style with REAL DATA ONLY
+                    // Chart section - Professional-style with REAL DATA ONLY
                     if !viewModel.isLoadingHistory {
                         MetricChartSection(
                             metricType: metric.type,
-                            dataPoints: viewModel.tradingViewStyleDataPoints, // REAL DATA ONLY
+                            dataPoints: viewModel.professionalStyleDataPoints, // REAL DATA ONLY
                             period: selectedPeriod
                         )
                         .padding(.horizontal)
@@ -82,11 +82,11 @@ struct MetricDetailsView: View {
                 UINavigationBar.appearance().scrollEdgeAppearance = transparentAppearance
                 UINavigationBar.appearance().compactAppearance = scrolledAppearance
                 
-                // Load REAL historical data for this metric (TradingView approach)
+                // Load REAL historical data for this metric (professional approach)
                 viewModel.loadRealHistoricalData(for: metric, period: selectedPeriod)
             }
             .onChange(of: selectedPeriod) { newPeriod in
-                // Reload data when period changes (TradingView approach)
+                // Reload data when period changes (professional approach)
                 viewModel.loadRealHistoricalData(for: metric, period: newPeriod)
             }
             .toolbar {
@@ -124,7 +124,7 @@ struct MetricDetailsView: View {
 // MARK: - MetricDetailsViewModel
 
 // REMOVED: Duplicate MetricDetailViewModel class
-// TradingView approach: Use the real MetricDetailViewModel from Features/UI/ViewModels/ instead
+// Professional approach: Use the real MetricDetailViewModel from Features/UI/ViewModels/ instead
 
 // MARK: - Preview Provider
 

@@ -155,6 +155,40 @@ Unlock the full power of Amped with premium features:
 
 ---
 
+## 🛠️ For Developers
+
+### Quick Setup
+```bash
+git clone https://github.com/tradersnow222/Amped.git
+cd Amped
+open Amped.xcodeproj
+```
+
+**Requirements**: Xcode 15.0+, iOS 16.0+, Apple Developer Account
+
+### Key Documentation
+- **[Developer Setup](DEVELOPER_SETUP.md)** - Complete setup instructions
+- **[UI Design System](UI_DESIGN_SYSTEM.md)** - Design system and components
+- **[Contributing](CONTRIBUTING.md)** - Development workflow and standards
+- **[Architecture](Documentation/Architecture/Architecture.md)** - Technical architecture overview
+
+### Project Structure
+```
+Amped/
+├── Features/           # Feature modules (Onboarding, UI, HealthKit)
+├── UI/                # Shared components and design system
+├── Core/              # Models, services, and utilities
+└── Documentation/     # Technical documentation
+```
+
+### Tech Stack
+- **SwiftUI + Combine** - Reactive UI framework
+- **HealthKit** - Health data integration  
+- **MVVM Architecture** - Scalable design pattern
+- **Swift Concurrency** - Modern async/await patterns
+
+---
+
 <div align="center">
 
 **⚡ Amped - Power Up Your Life! 🔋**

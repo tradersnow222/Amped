@@ -2,7 +2,7 @@ import SwiftUI
 import Foundation
 
 /// Premium luxury pre-paywall teaser with sophisticated visual design
-/// Inspired by high-end health apps like Oura Ring, WHOOP, and premium fitness trackers
+/// Premium health app design with sophisticated visual styling
 /// Applied rules: Simplicity is KING; keep file under 300 lines; MVVM-friendly; SwiftUI-first.
 struct PrePaywallTeaserView: View {
     @ObservedObject var viewModel: QuestionnaireViewModel
@@ -448,5 +448,3 @@ struct PrePaywallTeaserView: View {
         onContinue: {}
     )
 }
-
-

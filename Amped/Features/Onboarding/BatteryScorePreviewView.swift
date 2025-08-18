@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Premium luxury battery score preview with sophisticated visual design
-/// Inspired by high-end health apps like Oura Ring, WHOOP, and premium fitness trackers
+/// Premium health app design with sophisticated visual styling  
 struct BatteryScorePreviewView: View {
     @ObservedObject var viewModel: QuestionnaireViewModel
     let onContinue: () -> Void
