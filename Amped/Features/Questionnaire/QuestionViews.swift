@@ -193,6 +193,9 @@ struct QuestionViews {
         @State private var localBirthMonth: Int
         @State private var localBirthYear: Int
         
+        // Screen size adaptive spacing
+        @Environment(\.adaptiveSpacing) private var spacing
+        
         // ULTRA-PERFORMANCE FIX: Truly static month names - zero system calls, zero lag
         private static let monthNames: [String] = [
             "January", "February", "March", "April", "May", "June",
@@ -229,8 +232,8 @@ struct QuestionViews {
                         .padding(.bottom, 10)
                         .frame(maxWidth: .infinity)
 
-                    Spacer()
-                    Spacer() // Additional spacer to push picker lower
+                    // Adaptive spacer instead of multiple fixed spacers
+                    AdaptiveSpacer(minHeight: 16, maxHeight: ScreenSizeCategory.current == .compact ? 24 : 40)
 
                 // ULTRA-FAST PERFORMANCE FIX: Zero-lag pickers with static data and no bindings during scroll
                 HStack(spacing: 0) {
@@ -264,14 +267,14 @@ struct QuestionViews {
                         .colorScheme(.dark)
                         .clipped() // PERFORMANCE: Prevent off-screen rendering
                 }
-                .frame(height: 216) // Standard iOS picker height
+                .frame(height: ScreenSizeCategory.current == .compact ? 180 : 216) // Reduced height for compact screens
                 .padding(.horizontal, 24)
 
-                    Spacer()
-                    Spacer() // Extra spacer for more spacing above Continue button
+                    // Adaptive spacer for button spacing
+                    AdaptiveSpacer(minHeight: 12, maxHeight: ScreenSizeCategory.current == .compact ? 16 : 24)
 
-                // Continue button with increased spacing - CRITICAL PERFORMANCE FIX
-                VStack(spacing: 12) {
+                // Continue button with adaptive spacing - CRITICAL PERFORMANCE FIX
+                VStack(spacing: spacing.buttonSpacing) {
                         // Compute eligibility locally to avoid binding VM during scroll
                         let currentYear = Calendar.current.component(.year, from: Date())
                         let approxAge = currentYear - localBirthYear
@@ -290,11 +293,12 @@ struct QuestionViews {
                         .disabled(!canProceedLocal)
                         .hapticFeedback(.light)
                     }
-                    .padding(.bottom, 30)
+                    .adaptiveBottomPadding()
                 }
                 .padding(.horizontal, 24)
                 .frame(maxHeight: .infinity)
             }
+            .adaptiveSpacing()
         }
     }
     
@@ -303,6 +307,7 @@ struct QuestionViews {
     struct NameQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @FocusState private var isTextFieldFocused: Bool
+        @Environment(\.adaptiveSpacing) private var spacing
         
         var body: some View {
             VStack(spacing: 0) {
@@ -317,10 +322,11 @@ struct QuestionViews {
                     .padding(.horizontal, 24)
                     .frame(maxWidth: .infinity)
 
-                Spacer()
+                // Adaptive spacer instead of fixed spacer
+                AdaptiveSpacer(minHeight: 20)
                 
                 // Text field and continue button grouped together at bottom for thumb accessibility
-                VStack(spacing: 16) {
+                VStack(spacing: spacing.buttonSpacing) {
                     TextField("First name", text: $viewModel.userName)
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
@@ -358,8 +364,9 @@ struct QuestionViews {
                     .hapticFeedback(.light)
                 }
                 .padding(.horizontal, 24)
-                .padding(.bottom, 30) // Space above progress bar
+                .adaptiveBottomPadding() // Use adaptive bottom padding
             }
+            .adaptiveSpacing()
             .onAppear {
                 // ULTRA-PERFORMANCE FIX: No automatic keyboard focus - let user tap when ready
                 let startTime = CFAbsoluteTimeGetCurrent()
@@ -388,6 +395,7 @@ struct QuestionViews {
     
     struct StressQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
+        @Environment(\.adaptiveSpacing) private var spacing
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -405,10 +413,10 @@ struct QuestionViews {
                     ScientificCitation(text: "Based on 68 studies, 2.3 million participants", metricType: .stressLevel)
                 }
                 
-                Spacer()
+                AdaptiveSpacer()
                 
                 // Options at bottom for thumb access
-                VStack(spacing: 12) {
+                VStack(spacing: spacing.buttonSpacing) {
                     // Show all 4 stress level options (following 4-option maximum rule)
                     ForEach(QuestionnaireViewModel.StressLevel.allCases, id: \.self) { stressLevel in
                         Button(action: {
@@ -424,10 +432,11 @@ struct QuestionViews {
                         .hapticFeedback(.light)
                     }
                 }
-                .padding(.bottom, 30)
+                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .adaptiveSpacing()
         }
     }
     
@@ -435,6 +444,7 @@ struct QuestionViews {
     
     struct AnxietyQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
+        @Environment(\.adaptiveSpacing) private var spacing
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -452,10 +462,10 @@ struct QuestionViews {
                     ScientificCitation(text: "Based on 42 studies, 890,000 participants", metricType: .stressLevel)
                 }
                 
-                Spacer()
+                AdaptiveSpacer()
                 
                 // Options at bottom for thumb access
-                VStack(spacing: 12) {
+                VStack(spacing: spacing.buttonSpacing) {
                     // Show all 4 anxiety level options (following 4-option maximum rule)
                     ForEach(QuestionnaireViewModel.AnxietyLevel.allCases, id: \.self) { anxietyLevel in
                         Button(action: {
@@ -471,10 +481,11 @@ struct QuestionViews {
                         .hapticFeedback(.light)
                     }
                 }
-                .padding(.bottom, 30)
+                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .adaptiveSpacing()
         }
     }
     
@@ -482,6 +493,7 @@ struct QuestionViews {
     
     struct GenderQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
+        @Environment(\.adaptiveSpacing) private var spacing
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -495,10 +507,10 @@ struct QuestionViews {
                     .padding(.bottom, 10)
                     .frame(maxWidth: .infinity)
                 
-                Spacer()
+                AdaptiveSpacer()
                 
                 // Options at bottom for thumb access
-                VStack(spacing: 12) {
+                VStack(spacing: spacing.buttonSpacing) {
                     ForEach(["Female", "Male"], id: \.self) { gender in
                         Button(action: {
                             viewModel.selectedGender = gender == "Male" ? .male : .female
@@ -513,10 +525,11 @@ struct QuestionViews {
                         .hapticFeedback(.light)
                     }
                 }
-                .padding(.bottom, 30)
+                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .adaptiveSpacing()
         }
     }
     
@@ -524,6 +537,7 @@ struct QuestionViews {
     
     struct NutritionQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
+        @Environment(\.adaptiveSpacing) private var spacing
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -541,12 +555,10 @@ struct QuestionViews {
                     ScientificCitation(text: "Based on 195 studies, 4.9 million participants", metricType: .nutritionQuality)
                 }
                 
-
-                
-                Spacer()
+                AdaptiveSpacer()
                 
                 // Options at bottom for thumb access
-                VStack(spacing: 12) {
+                VStack(spacing: spacing.buttonSpacing) {
                     ForEach(QuestionnaireViewModel.NutritionQuality.allCases, id: \.self) { nutrition in
                         Button(action: {
                             viewModel.selectedNutritionQuality = nutrition
@@ -561,10 +573,11 @@ struct QuestionViews {
                         .hapticFeedback(.light)
                     }
                 }
-                .padding(.bottom, 30)
+                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .adaptiveSpacing()
         }
     }
     
@@ -572,6 +585,7 @@ struct QuestionViews {
     
     struct SmokingQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
+        @Environment(\.adaptiveSpacing) private var spacing
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -589,12 +603,10 @@ struct QuestionViews {
                     ScientificCitation(text: "Based on 81 studies, 3.9 million participants", metricType: .smokingStatus)
                 }
                 
-
-                
-                Spacer()
+                AdaptiveSpacer()
                 
                 // Options at bottom for thumb access
-                VStack(spacing: 12) {
+                VStack(spacing: spacing.buttonSpacing) {
                     ForEach(QuestionnaireViewModel.SmokingStatus.allCases, id: \.self) { status in
                         Button(action: {
                             viewModel.selectedSmokingStatus = status
@@ -606,10 +618,11 @@ struct QuestionViews {
                         .hapticFeedback(.light)
                     }
                 }
-                .padding(.bottom, 30)
+                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .adaptiveSpacing()
         }
     }
     
@@ -617,6 +630,7 @@ struct QuestionViews {
     
     struct AlcoholQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
+        @Environment(\.adaptiveSpacing) private var spacing
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -634,10 +648,10 @@ struct QuestionViews {
                     ScientificCitation(text: "Based on 107 studies, 4.8 million participants", metricType: .alcoholConsumption)
                 }
                 
-                Spacer()
+                AdaptiveSpacer()
                 
                 // Options at bottom for thumb access
-                VStack(spacing: 12) {
+                VStack(spacing: spacing.buttonSpacing) {
                     ForEach(QuestionnaireViewModel.AlcoholFrequency.allCases, id: \.self) { frequency in
                         Button(action: {
                             viewModel.selectedAlcoholFrequency = frequency
@@ -649,10 +663,11 @@ struct QuestionViews {
                         .hapticFeedback(.light)
                     }
                 }
-                .padding(.bottom, 30)
+                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .adaptiveSpacing()
         }
     }
     
@@ -660,6 +675,7 @@ struct QuestionViews {
     
     struct SocialConnectionsQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
+        @Environment(\.adaptiveSpacing) private var spacing
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -677,10 +693,10 @@ struct QuestionViews {
                     ScientificCitation(text: "Based on 39 studies, 1.8 million participants", metricType: .socialConnectionsQuality)
                 }
                 
-                Spacer()
+                AdaptiveSpacer()
                 
                 // Options at bottom for thumb access
-                VStack(spacing: 12) {
+                VStack(spacing: spacing.buttonSpacing) {
                     // Show all 4 social connections options (following 4-option maximum rule)
                     ForEach(QuestionnaireViewModel.SocialConnectionsQuality.allCases, id: \.self) { quality in
                         Button(action: {
@@ -696,10 +712,11 @@ struct QuestionViews {
                         .hapticFeedback(.light)
                     }
                 }
-                .padding(.bottom, 30)
+                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .adaptiveSpacing()
         }
     }
     
@@ -707,11 +724,12 @@ struct QuestionViews {
     struct SleepQualityQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @State private var desiredMinutes: Int = 5 // 5..120
+        @Environment(\.adaptiveSpacing) private var spacing
 
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
                 // Prompt and guidance
-                VStack(spacing: 12) {
+                VStack(spacing: spacing.sectionSpacing) {
                     Text("How much longer do you want to live each day?")
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
@@ -727,11 +745,11 @@ struct QuestionViews {
                 }
                 .padding(.top, 10)
 
-                Spacer()
+                AdaptiveSpacer(minHeight: 16)
 
                 // Luxury interactive dial
                 LifespanGainDial(minutesPerDay: $desiredMinutes)
-                    .padding(.bottom, 20)
+                    .padding(.bottom, ScreenSizeCategory.current == .compact ? 16 : 20)
 
                 // Scientific credibility info
                 ScientificCitation(text: "Backed by 500+ studies, 15+ million participants", metricType: nil)
@@ -752,10 +770,11 @@ struct QuestionViews {
                 }
                 .questionnaireButtonStyle(isSelected: false)
                 .hapticFeedback(.light)
-                .padding(.bottom, 30)
+                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .adaptiveSpacing()
         }
 
         private func mapDesiredGainToSleepQuality(_ minutes: Int) -> QuestionnaireViewModel.SleepQuality {
@@ -772,6 +791,7 @@ struct QuestionViews {
     // MARK: - Blood Pressure Awareness Question
     struct BloodPressureAwarenessQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
+        @Environment(\.adaptiveSpacing) private var spacing
 
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -789,10 +809,10 @@ struct QuestionViews {
                     ScientificCitation(text: "Based on 61 studies, 1 million participants", metricType: .bloodPressure)
                 }
 
-                Spacer()
+                AdaptiveSpacer()
 
                 // Options at bottom for thumb access
-                VStack(spacing: 12) {
+                VStack(spacing: spacing.buttonSpacing) {
                     // Show all 4 blood pressure options (following 4-option maximum rule)
                     ForEach(QuestionnaireViewModel.BloodPressureCategory.allCases, id: \.self) { category in
                         Button(action: {
@@ -808,10 +828,11 @@ struct QuestionViews {
                         .hapticFeedback(.light)
                     }
                 }
-                .padding(.bottom, 30)
+                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .adaptiveSpacing()
         }
     }
 
@@ -823,16 +844,20 @@ struct QuestionViews {
         var skipToLifeMotivation: () -> Void
         
         @State private var isWaitingForHealthKitAuth = false
+        @Environment(\.adaptiveSpacing) private var spacing
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
-                // Fitness tracker image (similar to screenshot)
+                // Fitness tracker image - reduced size for compact screens
                 Image(systemName: "applewatch")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 120, height: 120)
+                    .frame(
+                        width: ScreenSizeCategory.current == .compact ? 100 : 120,
+                        height: ScreenSizeCategory.current == .compact ? 100 : 120
+                    )
                     .foregroundColor(.white.opacity(0.9))
-                    .padding(.bottom, 40)
+                    .padding(.bottom, ScreenSizeCategory.current == .compact ? 24 : 40)
                 
                 // Question text - shorter and more scannable
                 Text("Do you track your health\nwith a device?")
@@ -845,10 +870,10 @@ struct QuestionViews {
                     .padding(.bottom, 10)
                     .frame(maxWidth: .infinity)
                 
-                Spacer()
+                AdaptiveSpacer()
                 
                 // Options at bottom for thumb access - simplified to 2 options
-                VStack(spacing: 12) {
+                VStack(spacing: spacing.buttonSpacing) {
                     // Yes option
                     Button(action: {
                         viewModel.selectedDeviceTrackingStatus = .yesBoth
@@ -872,10 +897,11 @@ struct QuestionViews {
                     .questionnaireButtonStyle(isSelected: viewModel.selectedDeviceTrackingStatus == .no)
                     .hapticFeedback(.light)
                 }
-                .padding(.bottom, 30)
+                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .adaptiveSpacing()
             .onChange(of: viewModel.selectedDeviceTrackingStatus) { newValue in
                 print("🔍 DEVICE TRACKING: Device tracking status changed to: \(String(describing: newValue))")
             }
@@ -910,6 +936,7 @@ struct QuestionViews {
     // MARK: - Framing Comfort (tactful; no UI preference phrasing)
     struct FramingComfortQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
+        @Environment(\.adaptiveSpacing) private var spacing
 
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -924,9 +951,9 @@ struct QuestionViews {
                     ScientificCitation(text: "Helps us tailor motivation style — calculations are unchanged", metricType: nil)
                 }
 
-                Spacer()
+                AdaptiveSpacer()
 
-                VStack(spacing: 12) {
+                VStack(spacing: spacing.buttonSpacing) {
                     ForEach(QuestionnaireViewModel.FramingComfort.allCases, id: \.self) { option in
                         Button(action: {
                             viewModel.selectedFramingComfort = option
@@ -938,16 +965,18 @@ struct QuestionViews {
                         .hapticFeedback(.light)
                     }
                 }
-                .padding(.bottom, 30)
+                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .adaptiveSpacing()
         }
     }
 
     // MARK: - Urgency Response (tactful; no countdown phrasing)
     struct UrgencyResponseQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
+        @Environment(\.adaptiveSpacing) private var spacing
 
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -962,9 +991,9 @@ struct QuestionViews {
                     ScientificCitation(text: "Helps us choose a motivating tone", metricType: nil)
                 }
 
-                Spacer()
+                AdaptiveSpacer()
 
-                VStack(spacing: 12) {
+                VStack(spacing: spacing.buttonSpacing) {
                     ForEach(QuestionnaireViewModel.UrgencyResponse.allCases, id: \.self) { option in
                         Button(action: {
                             viewModel.selectedUrgencyResponse = option
@@ -976,10 +1005,11 @@ struct QuestionViews {
                         .hapticFeedback(.light)
                     }
                 }
-                .padding(.bottom, 30)
+                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .adaptiveSpacing()
         }
     }
 
@@ -988,6 +1018,7 @@ struct QuestionViews {
     struct LifeMotivationQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         var completeQuestionnaire: () -> Void
+        @Environment(\.adaptiveSpacing) private var spacing
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
@@ -1001,10 +1032,10 @@ struct QuestionViews {
                     .padding(.bottom, 10)
                     .frame(maxWidth: .infinity)
                 
-                Spacer()
+                AdaptiveSpacer()
                 
                 // Options at bottom for thumb access - using consistent questionnaire styling
-                VStack(spacing: 12) {
+                VStack(spacing: spacing.buttonSpacing) {
                     ForEach(QuestionnaireViewModel.LifeMotivation.allCases, id: \.self) { motivation in
                         Button(action: {
                             viewModel.selectedLifeMotivation = motivation
@@ -1021,10 +1052,11 @@ struct QuestionViews {
                         .hapticFeedback(.light)
                     }
                 }
-                .padding(.bottom, 30)
+                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
+            .adaptiveSpacing()
         }
     }
 }

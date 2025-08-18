@@ -7,7 +7,9 @@ final class QuestionnaireViewModel: ObservableObject {
     enum QuestionCategory: String, CaseIterable {
         case basics = "BASICS"
         case lifestyle = "LIFESTYLE" 
-        case goals = "YOUR DAILY GOAL"
+        case currentHealth = "CURRENT HEALTH"
+        case goalsAndMotivation = "GOALS & MOTIVATION"
+        case preferences = "PREFERENCES"
         
         var displayName: String {
             return self.rawValue
@@ -37,8 +39,12 @@ final class QuestionnaireViewModel: ObservableObject {
                 return .basics
             case .nutritionQuality, .smokingStatus, .alcoholConsumption:
                 return .lifestyle
-            case .stressLevel, .anxietyLevel, .socialConnections, .sleepQuality, .bloodPressureAwareness, .deviceTracking, .framingComfort, .urgencyResponse, .lifeMotivation:
-                return .goals
+            case .stressLevel, .anxietyLevel, .socialConnections, .bloodPressureAwareness:
+                return .currentHealth
+            case .sleepQuality, .lifeMotivation:
+                return .goalsAndMotivation
+            case .deviceTracking, .framingComfort, .urgencyResponse:
+                return .preferences
             }
         }
     }
@@ -727,8 +733,8 @@ final class QuestionnaireViewModel: ObservableObject {
         self.selectedBirthMonth = Self.staticCurrentMonth
         self.selectedBirthYear = Self.staticCurrentYear - 30 // Default to 30 years ago
         
-        let initTime = CFAbsoluteTimeGetCurrent() - startTime
-        print("🔍 PERFORMANCE_DEBUG: Ultra-fast QuestionnaireViewModel.init() completed in \(initTime)s")
+        _ = CFAbsoluteTimeGetCurrent() - startTime  // Performance timing (unused in release)
+        print("🔍 PERFORMANCE_DEBUG: Ultra-fast QuestionnaireViewModel.init() completed")
     }
     
     // Add a new initializer to start at a specific question - for returning from HealthKit

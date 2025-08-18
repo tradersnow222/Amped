@@ -752,16 +752,18 @@ struct DashboardView: View {
     
     /// Check if we should show the sign-in popup
     private func checkAndShowSignInIfNeeded() {
-        // Rules: Show popup only after completing onboarding and on second app launch onwards
+        // Rules: Show popup only once on second app launch, never again after dismissal
         
         // Show popup if:
         // 1. User has completed onboarding
         // 2. User is not authenticated
-        // 3. This is at least the second app launch
-        // 4. Haven't shown the popup in this session yet
+        // 3. This is exactly the second app launch
+        // 4. User has not permanently dismissed the popup
+        // 5. Haven't shown the popup in this session yet
         if appState.hasCompletedOnboarding && 
            !appState.isAuthenticated && 
-           appState.appLaunchCount >= 2 && 
+           appState.appLaunchCount == 2 && 
+           !appState.hasUserPermanentlyDismissedSignIn &&
            !appState.hasShownSignInPopupThisSession {
             
             // Mark that we've shown the popup this session
@@ -787,4 +789,4 @@ struct DashboardView_Previews: PreviewProvider {
             DashboardView()
         }
     }
-} 
+}

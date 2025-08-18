@@ -293,11 +293,17 @@ private func performUltraPerformanceOrchestration(startTime: Double) async {
     let _ = QuestionnaireViewModel(startFresh: true)
     print("🚀 ORCHESTRATION: ✅ QuestionnaireViewModel pre-initialized")
     
-    // Pre-initialize other critical managers
-    let _ = HealthKitManager.shared
-    let _ = BatteryThemeManager()
-    let _ = GlassThemeManager()
-    let _ = QuestionnaireManager()
+    // Pre-initialize other critical managers on main actor
+    await MainActor.run {
+        let _ = BatteryThemeManager()
+        let _ = GlassThemeManager()
+        let _ = QuestionnaireManager()
+    }
+    
+    // Initialize HealthKitManager separately on main actor if it requires special handling
+    await MainActor.run {
+        let _ = HealthKitManager.shared
+    }
     
     let viewModelTime = CFAbsoluteTimeGetCurrent() - viewModelStart
     print("🚀 ORCHESTRATION: Phase 1 completed in \(viewModelTime)s")
@@ -306,7 +312,7 @@ private func performUltraPerformanceOrchestration(startTime: Double) async {
     print("🚀 ORCHESTRATION: Phase 2 - Text Parsing Cache")
     let textCacheStart = CFAbsoluteTimeGetCurrent()
     
-    await precacheAllQuestionnaireText()
+    precacheAllQuestionnaireText()
     
     let textCacheTime = CFAbsoluteTimeGetCurrent() - textCacheStart
     print("🚀 ORCHESTRATION: Phase 2 completed in \(textCacheTime)s")
@@ -315,7 +321,7 @@ private func performUltraPerformanceOrchestration(startTime: Double) async {
     print("🚀 ORCHESTRATION: Phase 3 - Static Resources")
     let resourceStart = CFAbsoluteTimeGetCurrent()
     
-    await preloadStaticResources()
+    preloadStaticResources()
     
     let resourceTime = CFAbsoluteTimeGetCurrent() - resourceStart
     print("🚀 ORCHESTRATION: Phase 3 completed in \(resourceTime)s")
@@ -324,7 +330,9 @@ private func performUltraPerformanceOrchestration(startTime: Double) async {
     print("🚀 ORCHESTRATION: Phase 4 - Background Services")
     let serviceStart = CFAbsoluteTimeGetCurrent()
     
-    await initializeBackgroundServices()
+    await MainActor.run {
+        initializeBackgroundServices()
+    }
     
     let serviceTime = CFAbsoluteTimeGetCurrent() - serviceStart
     print("🚀 ORCHESTRATION: Phase 4 completed in \(serviceTime)s")
@@ -334,7 +342,7 @@ private func performUltraPerformanceOrchestration(startTime: Double) async {
 }
 
 /// Pre-cache ALL text parsing for the entire questionnaire
-private func precacheAllQuestionnaireText() async {
+private func precacheAllQuestionnaireText() {
     let allTexts = [
         // Stress Level Options
         "Very Low\n(rarely feel stressed)",
@@ -410,7 +418,7 @@ private func precacheAllQuestionnaireText() async {
 }
 
 /// Pre-load all static resources, theme assets, and computed values
-private func preloadStaticResources() async {
+private func preloadStaticResources() {
     // Pre-load color assets
     let _ = Color.ampedGreen
     let _ = Color.ampedYellow
@@ -430,7 +438,8 @@ private func preloadStaticResources() async {
 }
 
 /// Initialize background services and managers
-private func initializeBackgroundServices() async {
+@MainActor
+private func initializeBackgroundServices() {
     // Initialize analytics service
     let _ = AnalyticsService.shared
     

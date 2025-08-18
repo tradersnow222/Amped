@@ -40,8 +40,8 @@ struct QuestionnaireView: View {
             exitToPersonalizationIntro: exitToPersonalizationIntro
         )
         
-        let initTime = CFAbsoluteTimeGetCurrent() - startTime
-        print("🔍 PERFORMANCE_DEBUG: QuestionnaireView.init() completed in \(initTime)s")
+        _ = CFAbsoluteTimeGetCurrent() - startTime  // Performance timing (unused in release)
+        print("🔍 PERFORMANCE_DEBUG: QuestionnaireView.init() completed")
     }
     
     // MARK: - Body
@@ -136,6 +136,7 @@ struct QuestionnaireView: View {
         }
         // Applied rule: Simplicity is KING — let system avoid keyboard on the name screen only
         .modifier(ConditionalKeyboardIgnore(shouldIgnore: viewModel.currentQuestion != .name))
+        .adaptiveSpacing() // Apply adaptive spacing environment
         .onAppear {
             // Rules: Simplicity is KING - removed background initialization
             // HealthKit will be initialized when actually needed

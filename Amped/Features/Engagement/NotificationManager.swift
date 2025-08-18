@@ -340,8 +340,8 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
     ) {
         // Check if this is a smart notification that needs dynamic content
         if notification.request.content.categoryIdentifier == "SMART_ENGAGEMENT" {
-            Task {
-                await updateSmartNotificationContent(notification: notification)
+            Task { [weak self] in
+                await self?.updateSmartNotificationContent(notification: notification)
             }
         }
         
@@ -385,12 +385,11 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
         
-        center.add(request) { [weak self] error in
-            if let error = error {
-                self?.logger.error("🚨 Failed to update smart notification: \(error)")
-            } else {
-                self?.logger.info("🧠 Smart notification content updated: \(smartContent.title)")
-            }
+        do {
+            try await center.add(request)
+            logger.info("🧠 Smart notification content updated: \(smartContent.title)")
+        } catch {
+            logger.error("🚨 Failed to update smart notification: \(error)")
         }
     }
     

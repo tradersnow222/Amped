@@ -9,6 +9,7 @@ struct SignInPopupView: View {
     @StateObject private var viewModel = SignInPopupViewModel()
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var themeManager: BatteryThemeManager
+    @EnvironmentObject var glassTheme: GlassThemeManager
     @Binding var isPresented: Bool
     
     private let logger = Logger(subsystem: "com.amped.Amped", category: "SignInPopup")
@@ -21,72 +22,28 @@ struct SignInPopupView: View {
     
     var body: some View {
         ZStack {
-            // Blurred background tap to dismiss
-            Color.black.opacity(0.6)
+            // Glass-themed blurred background tap to dismiss
+            Color.black.opacity(0.4)
                 .ignoresSafeArea()
                 .onTapGesture {
-                    dismissPopup()
+                    dismissPopupPermanently()
                 }
                 .allowsHitTesting(isPresented)
             
-            // Main card content - Rules: Similar style to battery info cards
-            VStack(spacing: 0) {
-                // Header section with title
-                VStack(spacing: 8) {
-                    // Simple, realistic messaging - Rules: Following user requirement for not overpromising
-                    Text("Join early")
-                        .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(.white)
-                    
-                    // Vague but enticing subtitle
-                    Text("Get future perks")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.ampedGreen)
-                }
-                .multilineTextAlignment(.center)
-                .padding(.top, 40)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
+            // Main card content with glass theme
+            VStack {
+                Spacer()
                 
-                // Single sign-in button - Rules: Apple Sign-In only
-                VStack(spacing: 20) {
-                    // Sign in with Apple button - Rules: Only option for simplicity
-                    SignInWithAppleButtonWrapper(
-                        onRequest: { request in
-                            request.requestedScopes = [.fullName, .email]
-                            logger.info("🍎 Requesting Apple Sign In")
-                        },
-                        onCompletion: { result in
-                            handleSignInWithAppleResult(result)
-                        }
-                    )
-                    .frame(height: 52)
-                    .cornerRadius(10)
-                    .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
-                    .scaleEffect(animateAppleButton ? 1.0 : 0.95)
-                    .opacity(animateAppleButton ? 1.0 : 0.0)
-                    
-                    // Subtle skip option - Rules: Less prominent to encourage sign-up
-                    Button(action: {
-                        dismissPopup()
-                    }) {
-                        Text("Maybe later")
-                            .font(.system(size: 13, weight: .regular))
-                            .foregroundColor(.white.opacity(0.6))
-                    }
-                    .opacity(animateAppleButton ? 1.0 : 0.0)
-                    .hapticFeedback(.light)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 28)
+                glassThemedSignInCard
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.95).combined(with: .opacity),
+                        removal: .scale(scale: 0.95).combined(with: .opacity)
+                    ))
+                    .zIndex(1)
+                
+                Spacer()
             }
-            .background(Color.black.opacity(0.75))
-            .cornerRadius(20)
-            .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
-            .padding(.horizontal, 20)
-            .scaleEffect(showContent ? 1.0 : 0.9)
-            .opacity(showContent ? 1.0 : 0.0)
-            .offset(y: showContent ? 0 : 20)
+            .padding(.horizontal, 24)
         }
         .onAppear {
             animateIn()
@@ -98,7 +55,121 @@ struct SignInPopupView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
-        .animation(.easeInOut(duration: 0.3), value: showContent)
+    }
+    
+    // MARK: - Glass-Themed Sign-In Card
+    
+    private var glassThemedSignInCard: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Header with icon and title
+            HStack(spacing: 12) {
+                // Apple logo icon to match theme
+                Image(systemName: "applelogo")
+                    .font(.largeTitle)
+                    .foregroundColor(.white)
+                    .symbolRenderingMode(.hierarchical)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Join Early Access")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                    
+                    Text("Secure your account & future perks")
+                        .font(.subheadline)
+                        .foregroundColor(.ampedGreen)
+                }
+                
+                Spacer()
+            }
+            
+            // Benefits with icons
+            VStack(alignment: .leading, spacing: 16) {
+                // Benefit 1
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "shield.checkered")
+                        .font(.body)
+                        .foregroundColor(.ampedGreen)
+                        .frame(width: 24)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Secure Account")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                        
+                        Text("Your data stays private & secure")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+                
+                // Benefit 2
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "star.circle.fill")
+                        .font(.body)
+                        .foregroundColor(.ampedYellow)
+                        .frame(width: 24)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Early Perks")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                        
+                        Text("Get exclusive features first")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                }
+            }
+            
+            // Sign in with Apple button - styled to match theme
+            VStack(spacing: 16) {
+                SignInWithAppleButtonWrapper(
+                    onRequest: { request in
+                        request.requestedScopes = [.fullName, .email]
+                        logger.info("🍎 Requesting Apple Sign In")
+                    },
+                    onCompletion: { result in
+                        handleSignInWithAppleResult(result)
+                    }
+                )
+                .frame(height: 52)
+                .cornerRadius(12)
+                .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+                .scaleEffect(animateAppleButton ? 1.0 : 0.95)
+                .opacity(animateAppleButton ? 1.0 : 0.0)
+                
+                // Dismiss button - styled to match theme
+                Button(action: {
+                    dismissPopupPermanently()
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "xmark.circle")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.6))
+                        
+                        Text("Maybe later")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 20)
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(8)
+                }
+                .opacity(animateAppleButton ? 1.0 : 0.0)
+                .hapticFeedback(.light)
+            }
+        }
+        .padding(28)
+        .frame(idealWidth: 340, maxWidth: 360)
+        .glassBackground(.thick, cornerRadius: 20, withBorder: true, withShadow: true)
+        .shadow(color: .black.opacity(0.3), radius: 15, x: 0, y: 8)
+        .scaleEffect(showContent ? 1.0 : 0.9)
+        .opacity(showContent ? 1.0 : 0.0)
+        .offset(y: showContent ? 0 : 30)
     }
     
     // MARK: - Helper Methods
@@ -116,9 +187,13 @@ struct SignInPopupView: View {
         }
     }
     
-    private func dismissPopup() {
-        logger.info("📱 User dismissed sign-in popup")
-        withAnimation(.easeInOut(duration: 0.2)) {
+    private func dismissPopupPermanently() {
+        logger.info("📱 User permanently dismissed sign-in popup")
+        
+        // Mark as permanently dismissed in app state
+        appState.markSignInPermanentlyDismissed()
+        
+        withAnimation(.easeInOut(duration: 0.3)) {
             isPresented = false
         }
     }
@@ -133,8 +208,10 @@ struct SignInPopupView: View {
                 // Update app state with authentication - Rules: Track authentication
                 appState.setAuthenticated(true)
                 
-                // Dismiss popup
-                dismissPopup()
+                // Dismiss popup (authentication automatically marks as permanently dismissed)
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isPresented = false
+                }
                 
                 // Track successful sign-in
                 AnalyticsService.shared.trackEvent(.signIn(method: "apple"))
@@ -222,4 +299,4 @@ struct SignInPopupView_Previews: PreviewProvider {
                 .environmentObject(BatteryThemeManager())
         }
     }
-} 
+}

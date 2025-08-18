@@ -296,18 +296,19 @@ struct CompleteProfileEditorView: View {
                             .accessibilityHint("Double tap to change profile picture")
                             
                             // Photo picker and remove options
+                            let hasProfileImage = viewModel.profileManager.profileImage != nil
                             VStack(spacing: 8) {
                                 PhotosPicker(
                                     selection: $viewModel.selectedPhotoItem,
                                     matching: .images,
                                     photoLibrary: .shared()
                                 ) {
-                                    Text(viewModel.profileManager.profileImage == nil ? "Add Photo" : "Change Photo")
+                                    Text(hasProfileImage ? "Change Photo" : "Add Photo")
                                         .font(.subheadline)
                                         .foregroundColor(.accentColor)
                                 }
                                 
-                                if viewModel.profileManager.profileImage != nil {
+                                if hasProfileImage {
                                     Button("Remove Photo") {
                                         viewModel.profileManager.removeProfileImage()
                                     }
@@ -710,14 +711,17 @@ class CompleteProfileEditorViewModel: ObservableObject {
                 Just(true) // Placeholder to maintain CombineLatest4 structure
             )
         )
-        .sink { [weak self] combinedOutput in
-            self?.checkForChanges()
+        .sink { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.checkForChanges()
+            }
         }
         .store(in: &cancellables)
     }
     
     private var cancellables = Set<AnyCancellable>()
     
+    @MainActor
     private func checkForChanges() {
         guard let original = originalValues else {
             hasChanges = false
@@ -797,33 +801,34 @@ class CompleteProfileEditorViewModel: ObservableObject {
             .dropFirst() // Skip the initial nil value
             .compactMap { $0 } // Filter out nil values
             .sink { [weak self] photoItem in
-                Task { @MainActor in
+                Task {
                     await self?.loadSelectedPhoto(from: photoItem)
                 }
             }
             .store(in: &cancellables)
     }
     
-    @MainActor
     private func loadSelectedPhoto(from photoItem: PhotosPickerItem) async {
         guard let imageData = try? await photoItem.loadTransferable(type: Data.self),
               let uiImage = UIImage(data: imageData) else {
-            logger.error("Failed to load selected photo")
+            await MainActor.run {
+                logger.error("Failed to load selected photo")
+            }
             return
         }
         
         // Use centralized profile manager to save the image - explicitly on main actor
-        await MainActor.run {
-            profileManager.saveProfileImage(uiImage)
+        await MainActor.run { [weak self] in
+            self?.profileManager.saveProfileImage(uiImage)
+            
+            // Post notification to refresh any UI displaying the profile image
+            NotificationCenter.default.post(
+                name: NSNotification.Name("ProfileImageUpdated"),
+                object: nil
+            )
+            
+            self?.logger.info("Profile image updated successfully")
         }
-        
-        // Post notification to refresh any UI displaying the profile image
-        NotificationCenter.default.post(
-            name: NSNotification.Name("ProfileImageUpdated"),
-            object: nil
-        )
-        
-        logger.info("Profile image updated successfully")
     }
     
  
@@ -1110,4 +1115,4 @@ class UpdateHealthProfileViewModel: ObservableObject {
         default: return nil
         }
     }
-} 
+}

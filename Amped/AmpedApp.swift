@@ -159,6 +159,7 @@ final class AppState: ObservableObject {
     @Published var shouldTriggerIntroAnimations: Bool = false
     @Published var isFirstDashboardViewAfterOnboarding: Bool = false
     @Published var hasShownSignInPopupThisSession: Bool = false
+    @Published var hasUserPermanentlyDismissedSignIn: Bool = false
     @Published var appLaunchCount: Int = 0
     
     // ONBOARDING PROGRESS TRACKING: Advanced persistence with soft/hard close detection
@@ -192,6 +193,10 @@ final class AppState: ObservableObject {
         
         // Load app launch count
         appLaunchCount = UserDefaults.standard.integer(forKey: "appLaunchCount")
+        
+        // Load authentication and sign-in dismissal state
+        isAuthenticated = UserDefaults.standard.bool(forKey: "isAuthenticated")
+        hasUserPermanentlyDismissedSignIn = UserDefaults.standard.bool(forKey: "hasUserPermanentlyDismissedSignIn")
         
         // Set hasCompletedOnboarding immediately (UserProfile check can be deferred)
         hasCompletedOnboarding = hasCompletedFromDefaults
@@ -249,9 +254,22 @@ final class AppState: ObservableObject {
         saveOnboardingState()
     }
     
-    /// Set authentication status
+    /// Set authentication status and persist to UserDefaults
     func setAuthenticated(_ authenticated: Bool) {
         isAuthenticated = authenticated
+        UserDefaults.standard.set(authenticated, forKey: "isAuthenticated")
+        
+        // If user authenticated, they've implicitly dismissed the sign-in popup permanently
+        if authenticated {
+            hasUserPermanentlyDismissedSignIn = true
+            UserDefaults.standard.set(true, forKey: "hasUserPermanentlyDismissedSignIn")
+        }
+    }
+    
+    /// Mark that user has permanently dismissed the sign-in popup
+    func markSignInPermanentlyDismissed() {
+        hasUserPermanentlyDismissedSignIn = true
+        UserDefaults.standard.set(true, forKey: "hasUserPermanentlyDismissedSignIn")
     }
     
     /// Mark dashboard animations as shown

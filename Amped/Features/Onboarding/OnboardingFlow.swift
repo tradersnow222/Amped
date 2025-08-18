@@ -43,7 +43,7 @@ struct OnboardingFlow: View {
             let newViewModel = QuestionnaireViewModel(startFresh: shouldStartFresh)
             questionnaireViewModel = newViewModel
             isViewModelReady = true
-            let initTime = CFAbsoluteTimeGetCurrent() - startTime
+            _ = CFAbsoluteTimeGetCurrent() - startTime  // Performance timing (unused in release)
             return newViewModel
         }
     }
@@ -55,13 +55,15 @@ struct OnboardingFlow: View {
         Task.detached(priority: .userInitiated) {
             let startTime = CFAbsoluteTimeGetCurrent()
             // CRITICAL FIX: Only start fresh if we're at the welcome step
-            let shouldStartFresh = await MainActor.run { appState.currentOnboardingStep == .welcome }
+            let shouldStartFresh = await MainActor.run { 
+                appState.currentOnboardingStep == .welcome 
+            }
             let newViewModel = QuestionnaireViewModel(startFresh: shouldStartFresh)
-            let initTime = CFAbsoluteTimeGetCurrent() - startTime
+            _ = CFAbsoluteTimeGetCurrent() - startTime  // Performance timing (unused in release)
             
             await MainActor.run {
-                self.questionnaireViewModel = newViewModel
-                self.isViewModelReady = true
+                questionnaireViewModel = newViewModel
+                isViewModelReady = true
             }
         }
     }
@@ -120,47 +122,45 @@ struct OnboardingFlow: View {
                             proceedToHealthPermissions: $shouldCompleteQuestionnaire,
                             includeBackground: false  // Parent OnboardingFlow provides static background
                         )
-                        .onChange(of: shouldExitQuestionnaire) { newValue in
-                            if newValue {
-                                // Reset flag first
-                                shouldExitQuestionnaire = false
-                                
-                                // Important: First set drag direction, then navigate
-                                isButtonNavigating = false
-                                dragDirection = .trailing
-                                
-                                // Navigate back with trailing edge animation
-                                // Use a slight delay to ensure the direction is set properly
-                                DispatchQueue.main.async {
-                                    navigateTo(.valueProposition)
-                                    
-                                    // Reset drag direction after animation
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-                                        dragDirection = nil
-                                    }
-                                }
-                            }
-                        }
-                        .onChange(of: shouldCompleteQuestionnaire) { newValue in
-                            if newValue {
-                                // Reset flag first
-                                shouldCompleteQuestionnaire = false
-                                
-                                // Navigate forward with leading edge animation
-                                isButtonNavigating = false
-                                dragDirection = .leading
-                                
-                                // Questionnaire completed - go to personalization intro (Driven by Data screen)
-                                DispatchQueue.main.async {
-                                    navigateTo(.personalizationIntro)
-                                    
-                                    // Reset drag direction after animation
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-                                        dragDirection = nil
-                                    }
-                                }
-                            }
-                        }
+        .onChange(of: shouldExitQuestionnaire) { newValue in
+            if newValue {
+                // Reset flag first
+                shouldExitQuestionnaire = false
+                
+                // Important: First set drag direction, then navigate
+                isButtonNavigating = false
+                dragDirection = .trailing
+                
+                // Navigate back with trailing edge animation
+                // Use a slight delay to ensure the direction is set properly
+                Task { @MainActor in
+                    navigateTo(.valueProposition)
+                    
+                    // Reset drag direction after animation
+                    try? await Task.sleep(for: .seconds(0.7))
+                    dragDirection = nil
+                }
+            }
+        }
+        .onChange(of: shouldCompleteQuestionnaire) { newValue in
+            if newValue {
+                // Reset flag first
+                shouldCompleteQuestionnaire = false
+                
+                // Navigate forward with leading edge animation
+                isButtonNavigating = false
+                dragDirection = .leading
+                
+                // Questionnaire completed - go to personalization intro (Driven by Data screen)
+                Task { @MainActor in
+                    navigateTo(.personalizationIntro)
+                    
+                    // Reset drag direction after animation
+                    try? await Task.sleep(for: .seconds(0.7))
+                    dragDirection = nil
+                }
+            }
+        }
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .questionnaire ? 1 : 0)
                     }
@@ -237,7 +237,8 @@ struct OnboardingFlow: View {
             // Move ALL expensive operations to background with lower priority
             Task.detached(priority: .utility) {
                 // Only clear UserDefaults if starting fresh (at welcome step)
-                if await MainActor.run(body: { appState.currentOnboardingStep }) == .welcome {
+                let currentStep = await MainActor.run { appState.currentOnboardingStep }
+                if currentStep == .welcome {
                     // Clear UserDefaults in background
                     UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
                     UserDefaults.standard.removeObject(forKey: "userName")
