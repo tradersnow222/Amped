@@ -20,6 +20,9 @@ struct QuestionnaireView: View {
     // Internal state
     @State private var animationCompleted = false
     
+    // CRITICAL KEYBOARD FIX: Track keyboard visibility to disable gestures
+    @State private var isKeyboardVisible = false
+    
     // Background control
     private let includeBackground: Bool
     
@@ -49,9 +52,9 @@ struct QuestionnaireView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Conditionally include background based on context
+                // CRITICAL PERFORMANCE FIX: Use optimized background that doesn't recalculate on keyboard
                 if includeBackground {
-                    Color.clear.withDeepBackground()
+                    Color.clear.withOptimizedDeepBackground()
                 }
                 
                 ZStack {
@@ -111,11 +114,15 @@ struct QuestionnaireView: View {
                 }
                 .withDeepBackgroundTheme()
             }
-            // OPTIMIZED: Simplified gesture handling with better performance
+            // CRITICAL KEYBOARD FIX: Only apply gestures when keyboard is NOT visible
             .contentShape(Rectangle()) // Ensure the entire area responds to gestures
             .gesture(
+                isKeyboardVisible ? nil :
                 DragGesture(minimumDistance: 10, coordinateSpace: .local) // iOS-STANDARD: Lower threshold for more responsive feel
                     .onChanged { gesture in
+                        // CRITICAL: Don't process gestures if keyboard is visible
+                        guard !isKeyboardVisible else { return }
+                        
                         // iOS-STANDARD: Process horizontal movements with standard iOS sensitivity
                         let horizontalDistance = abs(gesture.translation.width)
                         let verticalDistance = abs(gesture.translation.height)
@@ -128,6 +135,9 @@ struct QuestionnaireView: View {
                         let _ = gestureHandler.handleDragChanged(gesture, geometry: geometry)
                     }
                     .onEnded { gesture in
+                        // CRITICAL: Don't process gestures if keyboard is visible
+                        guard !isKeyboardVisible else { return }
+                        
                         gestureHandler.handleDragEnded(gesture, geometry: geometry) {
                             animationCompleted = true
                         }
@@ -137,6 +147,15 @@ struct QuestionnaireView: View {
         // Applied rule: Simplicity is KING — let system avoid keyboard on the name screen only
         .modifier(ConditionalKeyboardIgnore(shouldIgnore: viewModel.currentQuestion != .name))
         .adaptiveSpacing() // Apply adaptive spacing environment
+        // CRITICAL KEYBOARD FIX: Track keyboard visibility to disable gestures and prevent lag
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isKeyboardVisible = true
+            print("🔍 KEYBOARD_DEBUG: Keyboard will show - disabling gestures")
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            isKeyboardVisible = false
+            print("🔍 KEYBOARD_DEBUG: Keyboard will hide - enabling gestures")
+        }
         .onAppear {
             // Rules: Simplicity is KING - removed background initialization
             // HealthKit will be initialized when actually needed

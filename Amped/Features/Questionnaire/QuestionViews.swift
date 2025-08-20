@@ -302,12 +302,16 @@ struct QuestionViews {
         }
     }
     
-    // MARK: - Name Question
+    // MARK: - Name Question - KEYBOARD LAG FIX
     
     struct NameQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @FocusState private var isTextFieldFocused: Bool
         @Environment(\.adaptiveSpacing) private var spacing
+        
+        // CRITICAL KEYBOARD LAG FIX: Local state to prevent expensive view model updates during typing
+        @State private var localUserName: String = ""
+        @State private var hasInitialized = false
         
         var body: some View {
             VStack(spacing: 0) {
@@ -327,7 +331,8 @@ struct QuestionViews {
                 
                 // Text field and continue button grouped together at bottom for thumb accessibility
                 VStack(spacing: spacing.buttonSpacing) {
-                    TextField("First name", text: $viewModel.userName)
+                    // CRITICAL KEYBOARD LAG FIX: Use local state to prevent ObservedObject updates on every keystroke
+                    TextField("First name", text: $localUserName)
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
@@ -346,21 +351,32 @@ struct QuestionViews {
                         .textContentType(.givenName)
                         .submitLabel(.continue)
                         .disableAutocorrection(true)
+                        // PERFORMANCE FIX: Only sync to view model on submit/continue, not every keystroke
                         .onSubmit {
-                            if viewModel.canProceed {
+                            syncToViewModel()
+                            if canProceedLocally {
                                 proceedToNext()
+                            }
+                        }
+                        // KEYBOARD RESPONSIVENESS FIX: Debounce sync to view model
+                        .onChange(of: localUserName) { newValue in
+                            // Debounce expensive operations - sync to view model after user stops typing
+                            debounceTimer?.invalidate()
+                            debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                                syncToViewModel()
                             }
                         }
                     
                     // Continue button positioned just below text field
+                    // PERFORMANCE FIX: Use local validation to avoid expensive view model checks
                     Button(action: {
                         proceedToNext()
                     }) {
                         Text("Continue")
                     }
                     .questionnaireButtonStyle(isSelected: false)
-                    .opacity(viewModel.canProceed ? 1.0 : 0.6)
-                    .disabled(!viewModel.canProceed)
+                    .opacity(canProceedLocally ? 1.0 : 0.6)
+                    .disabled(!canProceedLocally)
                     .hapticFeedback(.light)
                 }
                 .padding(.horizontal, 24)
@@ -368,7 +384,12 @@ struct QuestionViews {
             }
             .adaptiveSpacing()
             .onAppear {
-                // ULTRA-PERFORMANCE FIX: No automatic keyboard focus - let user tap when ready
+                // KEYBOARD LAG FIX: Initialize local state from view model once
+                if !hasInitialized {
+                    localUserName = viewModel.userName
+                    hasInitialized = true
+                }
+                
                 let startTime = CFAbsoluteTimeGetCurrent()
                 print("🔍 PERFORMANCE_DEBUG: NameQuestionView.onAppear() started at \(startTime)")
                 
@@ -378,13 +399,41 @@ struct QuestionViews {
                 let onAppearTime = CFAbsoluteTimeGetCurrent() - startTime
                 print("🔍 PERFORMANCE_DEBUG: NameQuestionView.onAppear() completed in \(onAppearTime)s (no keyboard conflict)")
             }
+            .onDisappear {
+                // Cleanup timer when view disappears
+                debounceTimer?.invalidate()
+                debounceTimer = nil
+            }
+        }
+        
+        // KEYBOARD LAG FIX: Debounce timer for expensive operations
+        @State private var debounceTimer: Timer?
+        
+        // Local validation to avoid expensive view model property access
+        private var canProceedLocally: Bool {
+            !localUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        
+        // KEYBOARD LAG FIX: Sync local state to view model efficiently
+        private func syncToViewModel() {
+            // Only sync if actually different to avoid unnecessary updates
+            if viewModel.userName != localUserName {
+                viewModel.userName = localUserName
+            }
         }
         
         private func proceedToNext() {
-            guard viewModel.canProceed else { return }
+            guard canProceedLocally else { return }
             
             // KEYBOARD TRANSITION FIX: Dismiss keyboard immediately to prevent animation conflicts
             isTextFieldFocused = false
+            
+            // Ensure view model is synced before proceeding
+            syncToViewModel()
+            
+            // Cleanup timer
+            debounceTimer?.invalidate()
+            debounceTimer = nil
             
             // Use standard questionnaire transition timing to match other questions
             viewModel.proceedToNextQuestion()
