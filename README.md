@@ -21,14 +21,6 @@
 
 Using cutting-edge algorithms and peer-reviewed research, Amped converts your daily health data into **actual minutes of life gained or lost**, visualized through beautiful battery interfaces that make your health tangible and actionable.
 
-### ✨ Why Users Love Amped
-
-> *"Finally, I can see the real impact of my morning runs!"* - Sarah M.
-
-> *"This app changed how I think about every health choice I make."* - Mike R.
-
-> *"The battery visualization makes my health goals so much clearer."* - Jennifer L.
-
 ---
 
 ## 🎯 Core Features
