@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "steprest.png",
+      "filename" : "emma_character.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "steprest@2x.png",
+      "filename" : "emma_character@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "steprest@3x.png",
+      "filename" : "emma_character@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

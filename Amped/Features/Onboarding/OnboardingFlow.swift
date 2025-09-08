@@ -74,9 +74,11 @@ struct OnboardingFlow: View {
         GeometryReader { geometry in
             ZStack {
                 // Conditional background based on current step
-                // Welcome screen uses BatteryBackground, all others use DeepBackground
+                // Welcome screen uses BatteryBackground, questionnaire uses black, others use DeepBackground
                 if appState.currentOnboardingStep == .welcome {
                     Color.clear.withBatteryBackground()
+                } else if appState.currentOnboardingStep == .questionnaire {
+                    Color.black.ignoresSafeArea(.all)
                 } else {
                     Color.clear.withDeepBackground()
                 }

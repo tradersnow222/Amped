@@ -485,11 +485,11 @@ final class QuestionnaireViewModel: ObservableObject {
     
     // Progress tracking for indicator
     var currentStep: Int {
-        // Personalization Intro is step 1, so the first question starts at step 2
-        currentQuestion.rawValue + 2 
+        // First question (name) should be step 1
+        currentQuestion.rawValue + 1 
     }
     var totalSteps: Int {
-        17 // Added framing comfort and urgency response tactful questions
+        12 // Updated to match new design requirement
     }
     
     var isComplete: Bool {

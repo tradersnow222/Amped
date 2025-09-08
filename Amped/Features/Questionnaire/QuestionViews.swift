@@ -1,6 +1,5 @@
 import SwiftUI
 import HealthKit
-import UIKit
 
 /// Helper function to create category header for questions
 func CategoryHeader(category: QuestionnaireViewModel.QuestionCategory) -> some View {
@@ -302,7 +301,7 @@ struct QuestionViews {
         }
     }
     
-    // MARK: - Name Question - KEYBOARD LAG FIX
+    // MARK: - Name Question - NEW DESIGN WITH EMMA CHARACTER
     
     struct NameQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
@@ -313,96 +312,160 @@ struct QuestionViews {
         @State private var localUserName: String = ""
         @State private var hasInitialized = false
         
+        // Avatar state management
+        @State private var avatarState: AvatarState = .stepone
+        
+        enum AvatarState {
+            case stepone    // When field is blank
+            case steptwo    // When user taps the field
+            case steprest   // When user is done entering value
+        }
+        
         var body: some View {
             VStack(spacing: 0) {
-                // Question text - consistent with other questions
-                Text("What should we call you?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.bottom, 10)
-                    .padding(.horizontal, 24)
-                    .frame(maxWidth: .infinity)
-
-                // Adaptive spacer instead of fixed spacer
-                AdaptiveSpacer(minHeight: 20)
+                Spacer()
                 
-                // Text field and continue button grouped together at bottom for thumb accessibility
-                VStack(spacing: spacing.buttonSpacing) {
-                    // CRITICAL KEYBOARD LAG FIX: Use local state to prevent ObservedObject updates on every keystroke
-                    TextField("First name", text: $localUserName)
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .padding(.vertical, 16)
-                        .padding(.horizontal, 20)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.white.opacity(0.15))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
-                                )
-                        )
+                // Main content
+                VStack(spacing: 32) {
+                    // Emma character and text
+                    HStack(spacing: 16) {
+                        // Emma character (turtle with battery)
+                         // Avatar based on state
+                    Image(avatarImageName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 68, height: 68)
+                        .animation(.easeInOut(duration: 0.3), value: avatarState)
+                    
+                        // Image(avatarImageName)
+                        //     .resizable()
+                        //     .aspectRatio(contentMode: .fill)
+                        //     .frame(width: 80, height: 80)
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Let's get familiar")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.white)
+                            
+                            Text("I'm Emma your guide and companion in this journey.")
+                                .font(.system(size: 16, weight: .regular))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 24)
+                    
+                    VStack(spacing: 16) {
+                    // Question - left aligned, font size 20, weight 500
+                    HStack {
+                        Text("What should I call you?")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(.white)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 24)
+                    
+                    // Text field with white background and custom placeholder
+                    ZStack(alignment: .leading) {
+                        // Custom placeholder
+                        if localUserName.isEmpty {
+                            Text("Enter your full name")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4))
+                                .padding(.horizontal, 20)
+                                .allowsHitTesting(false)
+                        }
+                        
+                        TextField("", text: $localUserName)
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundColor(.black)
+                            .multilineTextAlignment(.leading)
+                            .padding(.vertical, 14)
+                            .padding(.horizontal, 20)
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.white)
+                    )
+                    .accentColor(.black)
                         .focused($isTextFieldFocused)
                         .textInputAutocapitalization(.words)
                         .textContentType(.givenName)
                         .submitLabel(.continue)
                         .disableAutocorrection(true)
-                        // PERFORMANCE FIX: Only sync to view model on submit/continue, not every keystroke
                         .onSubmit {
                             syncToViewModel()
                             if canProceedLocally {
                                 proceedToNext()
                             }
                         }
-                        // KEYBOARD RESPONSIVENESS FIX: Debounce sync to view model
                         .onChange(of: localUserName) { newValue in
-                            // Debounce expensive operations - sync to view model after user stops typing
+                            updateAvatarState()
+                            // Debounce sync to view model
                             debounceTimer?.invalidate()
                             debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
                                 syncToViewModel()
                             }
                         }
-                    
-                    // Continue button positioned just below text field
-                    // PERFORMANCE FIX: Use local validation to avoid expensive view model checks
+                        .onChange(of: isTextFieldFocused) { isFocused in
+                            updateAvatarState()
+                        }
+                        .padding(.horizontal, 24)
+                }
+                
+                // Continue button
+                if canProceedLocally {
                     Button(action: {
                         proceedToNext()
                     }) {
                         Text("Continue")
                     }
-                    .questionnaireButtonStyle(isSelected: false)
-                    .opacity(canProceedLocally ? 1.0 : 0.6)
-                    .disabled(!canProceedLocally)
-                    .hapticFeedback(.light)
+                    .buttonStyle(PrimaryButtonStyle())
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 40)
+                } else {
+                    Button(action: {
+                        proceedToNext()
+                    }) {
+                        Text("Continue")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(Color.white.opacity(0.3))
+                            )
+                    }
+                    .disabled(true)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 40)
                 }
-                .padding(.horizontal, 24)
-                .adaptiveBottomPadding() // Use adaptive bottom padding
+                }
+                Spacer()
             }
-            .adaptiveSpacing()
             .onAppear {
-                // KEYBOARD LAG FIX: Initialize local state from view model once
                 if !hasInitialized {
                     localUserName = viewModel.userName
                     hasInitialized = true
                 }
-                
-                let startTime = CFAbsoluteTimeGetCurrent()
-                print("🔍 PERFORMANCE_DEBUG: NameQuestionView.onAppear() started at \(startTime)")
-                
-                // NO automatic focus - keyboard only appears when user taps the text field
-                // This completely eliminates animation conflicts and follows iOS design patterns
-                
-                let onAppearTime = CFAbsoluteTimeGetCurrent() - startTime
-                print("🔍 PERFORMANCE_DEBUG: NameQuestionView.onAppear() completed in \(onAppearTime)s (no keyboard conflict)")
+                updateAvatarState()
             }
             .onDisappear {
-                // Cleanup timer when view disappears
                 debounceTimer?.invalidate()
                 debounceTimer = nil
+            }
+        }
+        
+        private var avatarImageName: String {
+            switch avatarState {
+            case .stepone:
+                return "stepone"
+            case .steptwo:
+                return "steptwo"
+            case .steprest:
+                return "steprest"
             }
         }
         
@@ -412,6 +475,16 @@ struct QuestionViews {
         // Local validation to avoid expensive view model property access
         private var canProceedLocally: Bool {
             !localUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        
+        private func updateAvatarState() {
+            if localUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                avatarState = .stepone
+            } else if isTextFieldFocused {
+                avatarState = .steptwo
+            } else {
+                avatarState = .steprest
+            }
         }
         
         // KEYBOARD LAG FIX: Sync local state to view model efficiently

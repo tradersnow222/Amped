@@ -6,12 +6,12 @@
       "scale" : "1x"
     },
     {
-      "filename" : "stepone 1.png",
+      "filename" : "stepone@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "stepone 2.png",
+      "filename" : "stepone@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

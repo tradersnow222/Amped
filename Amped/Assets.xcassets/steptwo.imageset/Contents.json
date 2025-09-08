@@ -6,12 +6,12 @@
       "scale" : "1x"
     },
     {
-      "filename" : "steptwo 1.png",
+      "filename" : "steptwo@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "steptwo 2.png",
+      "filename" : "steptwo@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }
