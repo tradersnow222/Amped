@@ -410,6 +410,29 @@ final class QuestionnaireViewModel: ObservableObject {
             _cachedBirthdate = nil
         }
     }
+    
+    // NEW: Direct age setting method for age input
+    func setAge(_ age: Int) {
+        // Calculate birthdate from age
+        let currentYear = calendar.component(.year, from: Date())
+        let birthYear = currentYear - age
+        
+        // Set birthdate to January 1st of the birth year
+        var components = DateComponents()
+        components.year = birthYear
+        components.month = 1
+        components.day = 1
+        
+        if let newBirthdate = calendar.date(from: components) {
+            birthdate = newBirthdate
+            // Update month/year properties for consistency
+            selectedBirthMonth = 1
+            selectedBirthYear = birthYear
+            // Clear cache so age will be recalculated
+            _cachedAge = nil
+            _cachedBirthdate = nil
+        }
+    }
 
     // COLD START FIX: Lazy birthdate range to eliminate cold start blocking
     private static var _staticBirthdateRange: ClosedRange<Date>?
