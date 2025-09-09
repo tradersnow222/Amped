@@ -19,9 +19,9 @@ final class QuestionnaireViewModel: ObservableObject {
     enum Question: Int, CaseIterable, Hashable {
         case name
         case birthdate
-        case stressLevel        // NEW: Question #3 for stress level
-        case anxietyLevel       // NEW: Anxiety question
         case gender
+        case stressLevel        // NEW: Question #4 for stress level
+        case anxietyLevel       // NEW: Anxiety question
         case nutritionQuality
         case smokingStatus
         case alcoholConsumption

@@ -576,7 +576,20 @@ struct QuestionViews {
     }
     
     // MARK: - Anxiety Level Question
-    
+    struct RoundedCorner: Shape {
+        var radius: CGFloat = 16
+        var corners: UIRectCorner = .allCorners
+        
+        func path(in rect: CGRect) -> Path {
+            let path = UIBezierPath(
+                roundedRect: rect,
+                byRoundingCorners: corners,
+                cornerRadii: CGSize(width: radius, height: radius)
+            )
+            return Path(path.cgPath)
+        }
+    }
+
     struct AnxietyQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @Environment(\.adaptiveSpacing) private var spacing
@@ -629,42 +642,192 @@ struct QuestionViews {
     struct GenderQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @Environment(\.adaptiveSpacing) private var spacing
+        @State private var isDropdownExpanded = false
         
         var body: some View {
-            VStack(alignment: .center, spacing: 0) {
-                // Question placed higher
-                Text("What is your biological sex?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity)
+            VStack(spacing: 0) {
+                Spacer()
                 
-                AdaptiveSpacer()
-                
-                // Options at bottom for thumb access
-                VStack(spacing: spacing.buttonSpacing) {
-                    ForEach(["Female", "Male"], id: \.self) { gender in
-                        Button(action: {
-                            viewModel.selectedGender = gender == "Male" ? .male : .female
-                            viewModel.proceedToNextQuestion()
-                        }) {
-                            Text(gender)
+                // Main content
+                VStack(spacing: 32) {
+                    // Emma character and text
+                    HStack(spacing: 16) {
+                        // Emma character (steptwo)
+                        Image("steptwo")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 68, height: 68)
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Quick question: are you Team He, She, or They?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
                         }
-                        .questionnaireButtonStyle(
-                            isSelected: (gender == "Male" && viewModel.selectedGender == .male) || 
-                                       (gender == "Female" && viewModel.selectedGender == .female)
-                        )
-                        .hapticFeedback(.light)
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 24)
+                    
+                    VStack(spacing: 16) {
+                        // Dropdown field
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isDropdownExpanded.toggle()
+                            }
+                        }) {
+                            HStack {
+                                Text(selectedGenderText)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(selectedGenderText == "Select an option" ? Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4) : .black)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.black)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: isDropdownExpanded ? 12 : 6)
+                                    .fill(Color.white)
+                            )
+                        }
+                        .padding(.horizontal, 24)
+                        
+                        // Continue button
+                        if viewModel.selectedGender != nil {
+                            Button(action: {
+                                viewModel.proceedToNextQuestion()
+                            }) {
+                                Text("Continue")
+                            }
+                            .buttonStyle(PrimaryButtonStyle())
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 40)
+                        } else {
+                            Button(action: {
+                                viewModel.proceedToNextQuestion()
+                            }) {
+                                Text("Continue")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 16)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .fill(Color.white.opacity(0.3))
+                                    )
+                            }
+                            .disabled(true)
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 40)
+                        }
                     }
                 }
-                .adaptiveBottomPadding()
+                Spacer()
             }
-            .padding(.horizontal, 24)
-            .frame(maxHeight: .infinity)
-            .adaptiveSpacing()
+            .overlay(
+                // Dropdown overlay
+                Group {
+                    if isDropdownExpanded {
+                        VStack(spacing: 0) {
+                            // Position the dropdown below the input field
+                            Spacer()
+                                .frame(height: 360)
+                            
+                            // Unified dropdown container
+                            VStack(spacing: 0) {
+                                // First option (Male)
+                                Button(action: {
+                                    viewModel.selectedGender = .male
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        isDropdownExpanded = false
+                                    }
+                                }) {
+                                    HStack {
+                                        Text("Male")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.black)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 14)
+                                }
+                                
+                                // Divider
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(height: 1)
+                                
+                                // Second option (Female)
+                                Button(action: {
+                                    viewModel.selectedGender = .female
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        isDropdownExpanded = false
+                                    }
+                                }) {
+                                    HStack {
+                                        Text("Female")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.black)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 14)
+                                }
+                                
+                                // Divider
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(height: 1)
+                                
+                                // Third option (Prefer not to say)
+                                Button(action: {
+                                    viewModel.selectedGender = .preferNotToSay
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        isDropdownExpanded = false
+                                    }
+                                }) {
+                                    HStack {
+                                        Text("Prefer not to say")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.black)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 14)
+                                }
+                            }
+                            .background(Color.white)
+                            .cornerRadius(12)
+                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                            .padding(.horizontal, 24)
+                            
+                            Spacer()
+                        }
+                        .background(Color.black.opacity(0.3))
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isDropdownExpanded = false
+                            }
+                        }
+                    }
+                }
+            )
+        }
+        
+        private var selectedGenderText: String {
+            switch viewModel.selectedGender {
+            case .male:
+                return "Male"
+            case .female:
+                return "Female"
+            case .preferNotToSay:
+                return "Prefer not to say"
+            case .none:
+                return "Select an option"
+            }
         }
     }
     
