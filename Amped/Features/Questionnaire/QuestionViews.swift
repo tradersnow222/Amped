@@ -563,10 +563,10 @@ struct QuestionViews {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("How would you describe your typical stress level?")
                                     .font(.system(size: 20, weight: .medium))
-                                    .foregroundColor(.white)
+                        .foregroundColor(.white)
                                     .multilineTextAlignment(.leading)
-                                    .lineLimit(nil)
-                                    .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
                             }
@@ -585,13 +585,14 @@ struct QuestionViews {
                                 
                                 Text("Tap to see what research based on 195 studies tell us.")
                                     .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                     .foregroundColor(.gray)
                             }
                         }
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 24)
+                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -931,10 +932,10 @@ struct QuestionViews {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("How would you describe your anxiety level?")
                                     .font(.system(size: 20, weight: .medium))
-                                    .foregroundColor(.white)
+                        .foregroundColor(.white)
                                     .multilineTextAlignment(.leading)
-                                    .lineLimit(nil)
-                                    .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
                             }
@@ -953,13 +954,14 @@ struct QuestionViews {
                                 
                                 Text("Tap to see what research based on 195 studies tell us.")
                                     .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                     .foregroundColor(.gray)
                             }
                         }
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 24)
+                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -1478,12 +1480,12 @@ struct QuestionViews {
                             
                             // Question text
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("How would you describe your typical diet?")
+                    Text("How would you describe your typical diet?")
                                     .font(.system(size: 20, weight: .medium))
-                                    .foregroundColor(.white)
+                        .foregroundColor(.white)
                                     .multilineTextAlignment(.leading)
-                                    .lineLimit(nil)
-                                    .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
                             }
@@ -1502,13 +1504,14 @@ struct QuestionViews {
                                 
                                 Text("Tap to see what research based on 195 studies tell us.")
                                     .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                     .foregroundColor(.gray)
                             }
                         }
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 24)
+                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -1829,12 +1832,12 @@ struct QuestionViews {
                             
                             // Question text
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("Do you smoke tobacco products?")
+                    Text("Do you smoke tobacco products?")
                                     .font(.system(size: 20, weight: .medium))
-                                    .foregroundColor(.white)
+                        .foregroundColor(.white)
                                     .multilineTextAlignment(.leading)
-                                    .lineLimit(nil)
-                                    .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
                             }
@@ -1853,13 +1856,14 @@ struct QuestionViews {
                                 
                                 Text("Tap to see what research based on 195 studies tell us.")
                                     .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                     .foregroundColor(.gray)
                             }
                         }
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 24)
+                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -2182,12 +2186,12 @@ struct QuestionViews {
                             
                             // Question text
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("How often do you consume alcoholic beverages?")
+                    Text("How often do you consume alcoholic beverages?")
                                     .font(.system(size: 20, weight: .medium))
-                                    .foregroundColor(.white)
+                        .foregroundColor(.white)
                                     .multilineTextAlignment(.leading)
-                                    .lineLimit(nil)
-                                    .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
                             }
@@ -2206,13 +2210,14 @@ struct QuestionViews {
                                 
                                 Text("Tap to see what research based on 195 studies tell us.")
                                     .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                     .foregroundColor(.gray)
                             }
                         }
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 24)
+                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -2257,8 +2262,8 @@ struct QuestionViews {
                         }
                         .hapticFeedback(.light)
                     }
-                }
-                .padding(.horizontal, 24)
+            }
+            .padding(.horizontal, 24)
 
                 Spacer()
             }
@@ -2506,12 +2511,12 @@ struct QuestionViews {
                             
                             // Question text
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("How would you describe your social connections?")
+                    Text("How would you describe your social connections?")
                                     .font(.system(size: 20, weight: .medium))
-                                    .foregroundColor(.white)
+                        .foregroundColor(.white)
                                     .multilineTextAlignment(.leading)
-                                    .lineLimit(nil)
-                                    .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
                             }
@@ -2530,13 +2535,14 @@ struct QuestionViews {
                                 
                                 Text("Tap to see what research based on 195 studies tell us.")
                                     .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                     .foregroundColor(.gray)
                             }
                         }
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 24)
+                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -2581,8 +2587,8 @@ struct QuestionViews {
                         }
                         .hapticFeedback(.light)
                     }
-                }
-                .padding(.horizontal, 24)
+            }
+            .padding(.horizontal, 24)
 
                 Spacer()
             }
@@ -2831,10 +2837,10 @@ struct QuestionViews {
                             VStack(alignment: .leading, spacing: 0) {
                                 Text("Let's set some goals.")
                                     .font(.system(size: 20, weight: .medium))
-                                    .foregroundColor(.white)
+                        .foregroundColor(.white)
                                     .multilineTextAlignment(.leading)
                                     .lineLimit(nil)
-                                    .fixedSize(horizontal: false, vertical: true)
+                        .fixedSize(horizontal: false, vertical: true)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
                                 Text("Please choose number of hours you want to add on daily basis.")
@@ -2957,8 +2963,8 @@ struct QuestionViews {
                             )
                         )
                         .cornerRadius(25)
-                }
-                .padding(.horizontal, 24)
+            }
+            .padding(.horizontal, 24)
                 .padding(.bottom, 20)
 
                 Spacer()
@@ -3127,12 +3133,12 @@ struct QuestionViews {
                             
                             // Question text
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("What is your typical blood pressure reading?")
+                    Text("What is your typical blood pressure reading?")
                                     .font(.system(size: 20, weight: .medium))
-                                    .foregroundColor(.white)
+                        .foregroundColor(.white)
                                     .multilineTextAlignment(.leading)
-                                    .lineLimit(nil)
-                                    .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
                             }
@@ -3151,13 +3157,14 @@ struct QuestionViews {
                                 
                                 Text("Tap to see what research based on 195 studies tell us.")
                                     .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                     .foregroundColor(.gray)
                             }
                         }
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 24)
+                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -3202,8 +3209,8 @@ struct QuestionViews {
                         }
                         .hapticFeedback(.light)
                     }
-                }
-                .padding(.horizontal, 24)
+            }
+            .padding(.horizontal, 24)
 
                 Spacer()
             }
@@ -3461,8 +3468,8 @@ struct QuestionViews {
                         .font(.system(size: 12, weight: .light))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.leading)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
                     
                     Text("Any wearable device with Apple Health works, if you don't have one you can use your phone.")
                         .font(.system(size: 16, weight: .regular))
@@ -3474,7 +3481,7 @@ struct QuestionViews {
                     Spacer()
                     .frame(height: 6)
 
-                         // Yes option
+                    // Yes option
                     Button(action: {
                         viewModel.selectedDeviceTrackingStatus = .yesBoth
                         // Trigger HealthKit authorization directly and instantly
@@ -3674,12 +3681,12 @@ struct QuestionViews {
                             
                             // Question text
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("What is the main reason you might want to live longer?")
+                Text("What is the main reason you might want to live longer?")
                                     .font(.system(size: 20, weight: .medium))
-                                    .foregroundColor(.white)
+                    .foregroundColor(.white)
                                     .multilineTextAlignment(.leading)
-                                    .lineLimit(nil)
-                                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
                             }
@@ -3698,13 +3705,14 @@ struct QuestionViews {
                                 
                                 Text("Tap to see what research based on 195 studies tell us.")
                                     .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                     .foregroundColor(.gray)
                             }
                         }
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 24)
+                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -3751,8 +3759,8 @@ struct QuestionViews {
                         }
                         .hapticFeedback(.light)
                     }
-                }
-                .padding(.horizontal, 24)
+            }
+            .padding(.horizontal, 24)
 
                 Spacer()
             }

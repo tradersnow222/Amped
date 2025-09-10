@@ -168,11 +168,18 @@ struct OnboardingFlow: View {
                     }
                     
                     if appState.currentOnboardingStep == .notificationPermission {
-                        NotificationPermissionView(onContinue: {
-                            isButtonNavigating = true
-                            dragDirection = nil
-                            navigateTo(.prePaywallTease)
-                        })
+                        NotificationPermissionView(
+                            onContinue: {
+                                isButtonNavigating = true
+                                dragDirection = nil
+                                navigateTo(.prePaywallTease)
+                            },
+                            onBackTap: {
+                                isButtonNavigating = true
+                                dragDirection = nil
+                                navigateTo(.personalizationIntro)
+                            }
+                        )
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .notificationPermission ? 1 : 0)
                     }
