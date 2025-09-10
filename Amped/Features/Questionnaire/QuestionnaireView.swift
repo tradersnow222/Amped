@@ -80,12 +80,12 @@ struct QuestionnaireView: View {
                         questionView(for: viewModel.currentQuestion)
                             .transition(getAdaptiveTransition())
                     }
-                    .clipped()
+                    // .clipped()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     
-                    // Bottom spacer to position content above home indicator
-                    Spacer()
-                        .frame(height: geometry.safeAreaInsets.bottom) // Space above home indicator
+                    // // Bottom spacer to position content above home indicator
+                    // Spacer()
+                    //     .frame(height: geometry.safeAreaInsets.bottom) // Space above home indicator
                 }
             }
             // CRITICAL KEYBOARD FIX: Only apply gestures when keyboard is NOT visible
@@ -219,8 +219,7 @@ struct QuestionnaireView: View {
             case .deviceTracking:
                 QuestionViews.DeviceTrackingQuestionView(
                     viewModel: viewModel,
-                    proceedToHealthKit: proceedToHealthKit,
-                    skipToLifeMotivation: skipToLifeMotivation
+                    completeQuestionnaire: completeQuestionnaire
                 )
             case .framingComfort:
                 QuestionViews.FramingComfortQuestionView(
