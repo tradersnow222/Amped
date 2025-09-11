@@ -81,11 +81,7 @@ struct AmpedApp: App {
         ZStack {
             // Deep background image
             GeometryReader { geometry in
-                Image("DeepBackground")
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                    .clipped()
+                Color.black.ignoresSafeArea()
             }
             .ignoresSafeArea()
             

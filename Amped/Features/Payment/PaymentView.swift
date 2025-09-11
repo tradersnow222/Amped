@@ -1,7 +1,7 @@
 import SwiftUI
 import StoreKit
 
-/// Clean, focused payment screen with conversion psychology
+/// Payment screen with ValuePropositionBg background matching onboarding design pattern
 struct PaymentView: View {
     // MARK: - Properties
     
@@ -10,61 +10,218 @@ struct PaymentView: View {
     @EnvironmentObject var themeManager: BatteryThemeManager
     @Environment(\.presentationMode) private var presentationMode
     @State private var showExitOffer = false
-    @State private var animateBattery = false
+    @State private var animateElements = false
     @State private var annualButtonPressed = false
     @State private var monthlyButtonPressed = false
-    @State private var showBenefits = false  // New state for benefits animation
-    @State private var showPricingSection = false  // New state for pricing section animation
-    @State private var showExitButton = true  // New state for exit button visibility
-    @State private var showTestimonial = false  // New state for testimonial visibility
+    @State private var userProfile: UserProfile?
     
     // Callback to proceed to next step
     var onContinue: (() -> Void)?
     
+    // MARK: - Computed Properties
+    
+    /// Background image based on user's gender selection
+    private var backgroundImageName: String {
+        switch userProfile?.gender {
+        case .female:
+            return "femaleBg"
+        case .male, .preferNotToSay, .none:
+            return "ValuePropositionBg"
+        }
+    }
+    
     // MARK: - Body
     
     var body: some View {
-        ZStack {
+        VStack {
+            // Background image with overlay - matching ValuePropositionView pattern
+            GeometryReader { geometry in
+                Image(backgroundImageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+                    .offset(y: -100)
+                    .clipped()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .clipShape(
+                        // Curved bottom shape
+                        CurvedBottomShape()
+                    )
+            }
+            .frame(height: UIScreen.main.bounds.height * 0.5)
+            .edgesIgnoringSafeArea(.all)
             
-            VStack(spacing: 0) {
-                // Clean header with X button
-                headerView
-                
-                // Main content without scroll
-                VStack(spacing: 16) {  // Reduced from 20
-                    // Personal headline
-                    personalHeadlineView
+            // Main content - all content grouped together at bottom
+            VStack {
+                VStack(spacing: 48) {
+                    VStack(spacing: 0) {
+                        // Main headline with gradient text
+                        Spacer()
+                        VStack(spacing: 0) {
+                            HStack(spacing: 0) {
+                                Text("Unlock")
+                                    .font(.system(size: 28, weight: .bold, design: .default))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            gradient: Gradient(stops: [
+                                                .init(color: Color(red: 0/255, green: 146/255, blue: 69/255), location: 0.5),
+                                                .init(color: Color(red: 252/255, green: 238/255, blue: 33/255), location: 1.9)  // #FCEE21 at 7.07%
+                                                // #009245 at 80.26%
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                Text(" Your Life's")
+                                    .font(.system(size: 28, weight: .bold, design: .default))
+                                    .foregroundColor(.white)
+                            }
+                            .multilineTextAlignment(.center)
+                            .opacity(animateElements ? 1 : 0)
+                            .offset(y: animateElements ? 0 : 20)
+                            .animation(.easeOut(duration: 0.8).delay(0.2), value: animateElements)
+                            .padding(.top,10)
+                            
+                            HStack(spacing: 0) {
+                                Text("Full ")
+                                    .font(.system(size: 28, weight: .bold, design: .default))
+                                    .foregroundColor(.white)
+                                Text("Potential")
+                                    .font(.system(size: 28, weight: .bold, design: .default))
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            gradient: Gradient(stops: [
+                                                .init(color: Color(red: 0/255, green: 146/255, blue: 69/255), location: 0.5),
+                                                .init(color: Color(red: 252/255, green: 238/255, blue: 33/255), location: 1.9)      // #009245 at 80.26%
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                            }
+                            .multilineTextAlignment(.center)
+                            .opacity(animateElements ? 1 : 0)
+                            .offset(y: animateElements ? 0 : 20)
+                            .animation(.easeOut(duration: 0.8).delay(0.3), value: animateElements)
+                        }
+                        
+                        // Subtitle
+                        Text("Better Habits. Longer Life.")
+                            .font(.system(size: 18, weight: .regular, design: .default))
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                            .lineSpacing(4)
+                            .padding(.horizontal, 28)
+                            .padding(.top, 16)
+                            .opacity(animateElements ? 1 : 0)
+                            .offset(y: animateElements ? 0 : 20)
+                            .animation(.easeOut(duration: 0.8).delay(0.4), value: animateElements)
+                        
+                        // Scientific backing section
+                        VStack(spacing: 8) {
+                            
+                            highlightedText(
+                                fullText: "Our AI lifespan models are based on\n200+ peer-reviewed studies with over 10 million participants",
+                                highlightedParts: ["200+ peer-reviewed", "10 million"],
+                                highlightColor: Color(red: 250/255, green: 192/255, blue: 60/255)
+                            )
+                            .opacity(animateElements ? 1 : 0)
+                            .padding(.horizontal,24)
+                            .offset(y: animateElements ? 0 : 20)
+                            .animation(.easeOut(duration: 0.8).delay(0.6), value: animateElements)
+                        }
+                        .padding(.top, 20)
+                    }
+                    .padding(.horizontal, 24)
                     
-                    // Simple battery visual
-                    scientificBatteryView
-                        .opacity(animateBattery ? 1.0 : 0.0)
-                        .scaleEffect(animateBattery ? 1.0 : 0.75)
-                        .animation(.easeOut(duration: 0.6).delay(0.1), value: animateBattery)
-                    
-                    Spacer(minLength: 20)  // Space between battery and testimonial
-                    
-                    // Social proof - moved to center between battery and benefits
-                    socialProofView
-                        .opacity(showTestimonial ? 1.0 : 0.0)
-                        .scaleEffect(showTestimonial ? 1.0 : 0.85)
-                        .animation(.easeInOut(duration: 0.6), value: showTestimonial)
-                    
-                    Spacer(minLength: 20)  // Space between testimonial and benefits
-                    
-                    // Zero-friction benefits
-                    benefitsListView
-                    
-                    Spacer(minLength: 20)  // Reduced minimum space
+                    // Pricing buttons
+                    VStack(spacing: 8) {
+                        // Pricing information
+                        VStack(spacing: 8) {
+                            Text("Limited-time pricing. Cancel anytime")
+                                .font(.system(size: 14, weight: .regular, design: .default))
+                                .foregroundColor(.white.opacity(0.8))
+                                .multilineTextAlignment(.center)
+                                .opacity(animateElements ? 1 : 0)
+                                .offset(y: animateElements ? 0 : 20)
+                                .animation(.easeOut(duration: 0.8).delay(0.7), value: animateElements)
+                        }
+                        .padding(.top, 20)
+                        // Main pricing button
+                        Button(action: {
+                            viewModel.selectedPlan = .monthly
+                            processPurchase()
+                        }) {
+                            HStack {
+                                Text("$3.99 per week")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.white)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(
+                                LinearGradient(
+                                    gradient: Gradient(stops: [
+                                        .init(color: Color(red: 0/255, green: 146/255, blue: 69/255), location: 0.0),     // #009245
+                                        .init(color: Color(red: 252/255, green: 238/255, blue: 33/255), location: 1.0)     // #FCEE21
+                                    ]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 28))
+                        }
+                        .buttonStyle(.plain)
+                        .scaleEffect(monthlyButtonPressed ? 0.95 : 1.0)
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.1)) {
+                                monthlyButtonPressed = true
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                withAnimation(.easeInOut(duration: 0.1)) {
+                                    monthlyButtonPressed = false
+                                }
+                            }
+                        }
+                        .opacity(animateElements ? 1 : 0)
+                        .scaleEffect(animateElements ? 1 : 0.9)
+                        .animation(.easeOut(duration: 0.8).delay(0.8), value: animateElements)
+                        
+                        // Trial offer text
+                        VStack(spacing: 4) {
+                            Text("Try for 0 USD")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white)
+                            
+                            Text("3 days free trial then $3.99 per week")
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                        .opacity(animateElements ? 1 : 0)
+                        .offset(y: animateElements ? 0 : 20)
+                        .animation(.easeOut(duration: 0.8).delay(0.9), value: animateElements)
+                        Spacer()
+                        // Legal links
+                        HStack(spacing: 16) {
+                            Button("Privacy Policy") {
+                                // Handle privacy policy
+                            }
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(.white.opacity(0.6))
+                            
+                            Button("Terms of Use") {
+                                // Handle terms of use
+                            }
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(.white.opacity(0.6))
+                        }
+                        .opacity(animateElements ? 1 : 0)
+                        .offset(y: animateElements ? 0 : 20)
+                        .animation(.easeOut(duration: 0.8).delay(1.0), value: animateElements)
+                    }
+                    .padding(.horizontal, 28)
+                    Spacer()
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 8)
-                
-                // Bottom pricing section with two options
-                bottomPricingSection
-                    .opacity(showPricingSection ? 1.0 : 0.0)
-                    .offset(y: showPricingSection ? 0 : 60)
-                    .animation(.easeOut(duration: 0.6), value: showPricingSection)
-                    .onTapGesture { } // Consume taps on pricing section to prevent background tap
             }
             .blur(radius: showExitOffer ? 8 : 0)
             .animation(.easeInOut(duration: 0.25), value: showExitOffer)
@@ -97,6 +254,7 @@ struct PaymentView: View {
                 .zIndex(1)
             }
         }
+        .background(Color.black)
         .alert(isPresented: $viewModel.showError) {
             Alert(
                 title: Text("Oops!"),
@@ -104,37 +262,15 @@ struct PaymentView: View {
                 dismissButton: .default(Text("Got it"))
             )
         }
-        .bottomSafeAreaPadding() // Keep pricing CTAs clear of the home indicator across devices (iOS 16+ compatible)
+        .navigationBarHidden(true)
         .onAppear {
             viewModel.appState = appState
+            loadUserProfile()
             
-            // Start with headline and battery together - Shortened delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                animateBattery = true
-            }
-            
-            // Show testimonial after headline/battery complete (0.6s total) - Shortened
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                withAnimation(.easeInOut(duration: 0.6)) {
-                    showTestimonial = true
-                }
-            }
-            
-            // Show benefits after testimonial (1.2s total) - Shortened
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                withAnimation(.easeOut(duration: 0.6)) {
-                    showBenefits = true
-                }
-            }
-            
-            // Show pricing section last (1.8s total) - Shortened from 4.0s
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
-                withAnimation(.easeOut(duration: 0.6)) {
-                    showPricingSection = true
-                }
+            withAnimation {
+                animateElements = true
             }
         }
-        .withDeepBackground()
     }
     
     // MARK: - View Components
@@ -149,9 +285,9 @@ struct PaymentView: View {
             }) {
                 Image(systemName: "xmark")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.secondary.opacity(0.4)) // Made more subtle
+                    .foregroundColor(.white.opacity(0.6))
                     .padding(12)
-                    .background(Color.gray.opacity(0.05)) // Made more subtle
+                    .background(Color.black.opacity(0.2))
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
@@ -165,94 +301,77 @@ struct PaymentView: View {
         .frame(height: 44) // Fixed height to prevent layout shift
     }
     
-    private var personalHeadlineView: some View {
-        VStack(spacing: 8) {
-            // Personalized headline - Rules: Strategic personalization for maximum conversion impact
-            Text(PersonalizationUtils.contextualMessage(firstName: PersonalizationUtils.userFirstName, context: .payment))
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(themeManager.textColor)
-                .multilineTextAlignment(.center)
-            
-            Text("Better habits. Longer life.")
-                .font(.system(size: 20, weight: .medium, design: .rounded))
-                .foregroundColor(themeManager.textColor.opacity(0.9))
-                .multilineTextAlignment(.center)
-        }
-        .scaleEffect(animateBattery ? 1.0 : 0.93)
-        .opacity(animateBattery ? 1.0 : 0.0)
-        .animation(.easeOut(duration: 1.0).delay(0.3), value: animateBattery)
-    }
-    
-    private var scientificBatteryView: some View {
-        ZStack {
-            // Battery outline with scientific elements
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.ampedGreen, lineWidth: 3)
-                .frame(width: 120, height: 60)
-                .overlay(
-                    HStack(spacing: 0) {
-                        // DNA helix symbol
-                        Image(systemName: "waveform.path.ecg")
-                            .font(.system(size: 24))
-                            .foregroundColor(.ampedGreen)
-                        
-                        // Plus sign
-                        Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.white.opacity(0.7))
-                            .padding(.horizontal, 8)
-                        
-                        // AI brain symbol
-                        Image(systemName: "brain")
-                            .font(.system(size: 24))
-                            .foregroundColor(.ampedGreen)
-                    }
-                )
-            
-            // Battery tip
-            RoundedRectangle(cornerRadius: 3)
-                .fill(Color.ampedGreen)
-                .frame(width: 6, height: 30)
-                .offset(x: 68)
-        }
-    }
-    
-    private var socialProofView: some View {
-        VStack(spacing: 8) {
-            Text("\"The Health App That\nWill Change Your Life\"")
-                .font(.system(size: 28, weight: .semibold, design: .serif))  // Increased from 22 to 28
-                .foregroundColor(themeManager.textColor)
-                .multilineTextAlignment(.center)
-                .italic()
-                .fixedSize(horizontal: false, vertical: true)  // Prevent text cutoff
-                .padding(.horizontal, 10)  // Add padding to prevent edge cutoff
-            
-            Text("— FEATURED IN APP STORE")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.secondary)
-                .tracking(1.2)
-        }
-        .padding(.vertical, 8)  // Add some vertical padding
-    }
-    
-    private var benefitsListView: some View {
-        BenefitsListView(showBenefits: $showBenefits)
-    }
-    
-    private var bottomPricingSection: some View {
-        BottomPricingSection(
-            viewModel: viewModel,
-            annualButtonPressed: $annualButtonPressed,
-            monthlyButtonPressed: $monthlyButtonPressed,
-            processPurchase: processPurchase
-        )
-    }
-    
     // MARK: - Helper Methods
     
     private func processPurchase() {
         // Skip actual payment processing and proceed as if successful
         onContinue?()
+    }
+    
+    /// Load user profile from UserDefaults to determine background image
+    private func loadUserProfile() {
+        guard let data = UserDefaults.standard.data(forKey: "user_profile") else { return }
+        
+        do {
+            let profile = try JSONDecoder().decode(UserProfile.self, from: data)
+            userProfile = profile
+        } catch {
+            print("Failed to load user profile: \(error)")
+        }
+    }
+    
+    private func highlightedText(fullText: String, highlightedParts: [String], highlightColor: Color) -> some View {
+        let attributedString = NSMutableAttributedString(string: fullText)
+        let baseAttributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 16, weight: .regular),
+            .foregroundColor: UIColor.white
+        ]
+        let highlightAttributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 16, weight: .bold),
+            .foregroundColor: UIColor(highlightColor)
+        ]
+        
+        attributedString.addAttributes(baseAttributes, range: NSRange(location: 0, length: fullText.count))
+        
+        for part in highlightedParts {
+            let range = (fullText as NSString).range(of: part)
+            if range.location != NSNotFound {
+                attributedString.addAttributes(highlightAttributes, range: range)
+            }
+        }
+        
+        return Text(AttributedString(attributedString))
+            .multilineTextAlignment(.center)
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+// MARK: - Curved Bottom Shape
+
+struct CurvedBottomShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        
+        // Start from top-left
+        path.move(to: CGPoint(x: 0, y: 0))
+        
+        // Top edge
+        path.addLine(to: CGPoint(x: rect.width, y: 0))
+        
+        // Right edge
+        path.addLine(to: CGPoint(x: rect.width, y: rect.height*0.9))
+        
+        // Curved bottom - goes to bottom of geometry
+        path.addQuadCurve(
+            to: CGPoint(x: 0, y: rect.height*0.9),
+            control: CGPoint(x: rect.width * 0.5, y: rect.height*1.1)
+        )
+        
+        // Left edge back to start
+        path.addLine(to: CGPoint(x: 0, y: 0))
+        
+        return path
     }
 }
 

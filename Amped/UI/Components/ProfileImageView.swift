@@ -8,16 +8,47 @@ struct ProfileImageView: View {
     let size: CGFloat
     let showBorder: Bool
     let showEditIndicator: Bool
+    let showWelcomeMessage: Bool
     
-    init(size: CGFloat, showBorder: Bool = false, showEditIndicator: Bool = false) {
+    init(size: CGFloat, showBorder: Bool = false, showEditIndicator: Bool = false, showWelcomeMessage: Bool = false) {
         self.size = size
         self.showBorder = showBorder
         self.showEditIndicator = showEditIndicator
+        self.showWelcomeMessage = showWelcomeMessage
     }
     
     var body: some View {
+        if showWelcomeMessage {
+            // Full header design with avatar + welcome message
+            HStack {
+                avatarView
+                
+                // Welcome message
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Welcome!")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.white)
+                    
+                    Text(getUserName())
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.white.opacity(0.8))
+                }
+                
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 4)
+            .padding(.bottom, 8)
+        } else {
+            // Just the avatar
+            avatarView
+        }
+    }
+    
+    @ViewBuilder
+    private var avatarView: some View {
         ZStack {
-            // Main profile image circle
+            // Main profile image circle with new design
             if let profileImage = profileManager.profileImage {
                 Image(uiImage: profileImage)
                     .resizable()
@@ -32,17 +63,21 @@ struct ProfileImageView: View {
                             )
                     )
             } else {
-                // Default avatar with initials - clean, no background
+                // New design: Circular avatar with white background and initials
                 Circle()
-                    .stroke(
-                        showBorder ? Color(.systemGray4) : Color.clear,
-                        lineWidth: showBorder ? 1 : 0
-                    )
+                    .fill(Color.white.opacity(0.2))
                     .frame(width: size, height: size)
                     .overlay(
                         Text(getInitials())
-                            .font(.system(size: size * 0.4, weight: .medium))
-                            .foregroundColor(.primary)
+                            .font(.system(size: size * 0.4, weight: .semibold))
+                            .foregroundColor(.white)
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(
+                                showBorder ? Color(.systemGray4) : Color.clear,
+                                lineWidth: showBorder ? 1 : 0
+                            )
                     )
             }
             
@@ -71,6 +106,10 @@ struct ProfileImageView: View {
         let firstInitial = components.first?.prefix(1).uppercased() ?? "M"
         let lastInitial = components.dropFirst().first?.prefix(1).uppercased() ?? "S"
         return "\(firstInitial)\(lastInitial)"
+    }
+    
+    private func getUserName() -> String {
+        return UserDefaults.standard.string(forKey: "userName") ?? "Matt Snow"
     }
 }
 
