@@ -349,10 +349,10 @@ struct DashboardView: View {
                         )
                         .id("\(metric.title)-\(selectedPeriod)-\(index)")
                         .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: .trailing)).combined(with: .scale(scale: 0.9)),
-                            removal: .opacity.combined(with: .move(edge: .leading)).combined(with: .scale(scale: 1.1))
+                            insertion: .opacity.combined(with: .move(edge: .trailing)).combined(with: .scale(scale: 0.95)),
+                            removal: .opacity.combined(with: .move(edge: .leading)).combined(with: .scale(scale: 1.05))
                         ))
-                        .animation(.easeInOut(duration: 0.4).delay(Double(index) * 0.08), value: selectedPeriod)
+                        .animation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0.2).delay(Double(index) * 0.05), value: selectedPeriod)
                     }
                     
                     Spacer(minLength: 100) // Space for bottom navigation
