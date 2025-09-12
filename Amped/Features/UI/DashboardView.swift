@@ -633,34 +633,14 @@ struct DashboardView: View {
         }
     }
     
-    /// Energy View - Battery page content (old battery page)
+    /// Energy View - Battery page content using EnergyView component
     private var energyView: some View {
-        VStack(spacing: 0) {
-            // Personalized greeting header
-            personalizedHeader
-            
-            // Lifestyle tabs
-            lifestyleTabs
-            
-            // Battery page content
-            ScrollView {
-                VStack(spacing: 0) {
-                    batteryPageContent
-                    
-                    Spacer(minLength: 100) // Space for bottom navigation
-                }
-            }
-        }
+        EnergyView()
     }
     
-    /// Profile View - Profile/settings placeholder
+    /// Profile View - Profile/settings using ProfileView component
     private var profileView: some View {
-        VStack {
-            Text("Profile View")
-                .font(.title)
-                .foregroundColor(.white)
-            Spacer()
-        }
+        ProfileView()
     }
     
     // MARK: - Dashboard Home Components
@@ -1174,7 +1154,7 @@ struct DashboardView: View {
                         )
                 }
                 
-                Spacer()
+                        Spacer()
                     .frame(width: 16)
                 Text("Detailed Analysis")
                     .font(.system(size: 18, weight: .semibold))
@@ -1309,12 +1289,12 @@ struct DashboardView: View {
             }
             
             // Time values
-            HStack {
+        HStack {
                 Text(leftValue)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.white)
-                
-                Spacer()
+            .foregroundColor(.white)
+            
+            Spacer()
                 
                 Text(rightValue)
                     .font(.system(size: 14, weight: .medium))
@@ -1340,8 +1320,8 @@ struct DashboardView: View {
             HStack {
                 Text("Life Projection")
                     .font(.headline)
-                            .foregroundColor(.white)
-                        
+                    .foregroundColor(.white)
+                
                 Spacer()
                 
                 Button(action: {
