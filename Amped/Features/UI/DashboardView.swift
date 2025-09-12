@@ -279,6 +279,8 @@ struct DashboardView: View {
         .navigationDestination(for: String.self) { destination in
             if destination == "detailedAnalysis" {
                 detailedAnalysisView
+            } else if destination.hasPrefix("metricDetail-") {
+                metricDetailView(for: destination)
             }
         }
         .onAppear {
@@ -290,6 +292,269 @@ struct DashboardView: View {
         .animation(.easeInOut(duration: 0.2), value: showingProjectionHelp)
         .animation(.easeInOut(duration: 0.2), value: showSignInPopup)
         }
+    }
+    
+    /// Metric Detail View - Shows detailed view for individual metrics
+    private func metricDetailView(for destination: String) -> some View {
+        let components = destination.components(separatedBy: "-")
+        guard components.count >= 3 else { return AnyView(Text("Error")) }
+        
+        let metricTitle = components[1]
+        let period = components[2]
+        
+        return AnyView(
+            VStack(spacing: 0) {
+                // Custom header
+                HStack {
+                    Button(action: {
+                        navigationPath.removeLast()
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(width: 32, height: 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
+                            )
+                    }
+                    
+                    Spacer()
+                    
+                    Text(metricTitle)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                    
+                    Spacer()
+                    
+                    // Empty space to balance the back button
+                    Rectangle()
+                        .fill(Color.clear)
+                        .frame(width: 32, height: 32)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
+                .padding(.bottom, 20)
+                .background(Color.black)
+                
+                // Day/Month/Year selector - matching home screen design
+                HStack(spacing: 4) {
+                    ForEach(["Day", "Month", "Year"], id: \.self) { periodOption in
+                        Button(action: {
+                            // Simple tab action - no complex state management
+                        }) {
+                            Text(periodOption)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(periodOption.lowercased() == period ? .white : .white.opacity(0.6))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 100)
+                                        .fill(periodOption.lowercased() == period ? Color.black : Color.clear)
+                                )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(.horizontal, 2)
+                .padding(.vertical, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: 100)
+                        .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
+                )
+                .padding(.horizontal, 24)
+                .padding(.bottom, 20)
+                
+                // Content
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Main metric display
+                        VStack(spacing: 8) {
+                            if let metric = getMetricsForPeriod(ImpactDataPoint.PeriodType(rawValue: period) ?? .day).first(where: { $0.title == metricTitle }) {
+                                // Large value display
+                                HStack(alignment: .bottom, spacing: 12) {
+                                    Text(metric.value)
+                                        .font(.system(size: 28, weight: .bold))
+                                        .foregroundColor(.white)
+                                    
+                                    if !metric.unit.isEmpty {
+                                        Text(metric.unit)
+                                            .font(.system(size: 18, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.7))
+//                                            .padding(.bottom, 8)
+                                    }
+                                    
+                                    Text(metric.status)
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(metric.statusColor)
+//                            .padding(.bottom, 8)                                    
+                                     Spacer()
+                                }
+                            }
+                            
+                            // Date info
+                            Text(Date().formatted(.dateTime.day().month().year()))
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(Color(red:213/255,green:213/255,blue:213/255).opacity(0.8))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        // Real Chart section
+                        VStack(spacing: 16) {
+                            // Chart area with real data
+                            VStack(spacing: 12) {
+                                Spacer()
+                                    .frame(height:12)
+                                
+                                // Chart title
+                                // HStack {
+                                //     Text("\(metricTitle) Trend")
+                                //         .font(.system(size: 16, weight: .semibold))
+                                //         .foregroundColor(.white)
+                                    
+                                //     Spacer()
+                                    
+                                //     Text(period.capitalized)
+                                //         .font(.system(size: 14, weight: .medium))
+                                //         .foregroundColor(.white.opacity(0.7))
+                                // }
+                                // .padding(.horizontal, 20)
+                                
+                                // Bar chart implementation
+                                GeometryReader { geometry in
+                                    VStack(spacing: 0) {
+                                        // Chart area with Y-axis labels
+                                        HStack(alignment: .bottom, spacing: 0) {
+                                            // Y-axis labels
+                                            VStack(alignment: .trailing, spacing: 0) {
+                                                ForEach(getYAxisLabels(for: metricTitle), id: \.self) { label in
+                                                    Text(label)
+                                                        .font(.system(size: 10, weight: .medium))
+                                                        .foregroundColor(.white.opacity(0.6))
+                                                        .frame(height: (geometry.size.height - 30) / CGFloat(getYAxisLabels(for: metricTitle).count))
+                                                }
+                                            }
+                                            .frame(width: 30)
+                                            .frame(height: geometry.size.height - 30)
+                                            
+                                            // Chart area - full width
+                                            ZStack(alignment: .bottomLeading) {
+                                                // Background grid lines
+                                                HStack(spacing: 0) {
+                                                    ForEach(0..<4, id: \.self) { index in
+                                                        Rectangle()
+                                                            .fill(Color.white.opacity(0.1))
+                                                            .frame(width: 1, height: geometry.size.height - 30)
+                                                        Spacer()
+                                                    }
+                                                }
+                                                
+                                                // Bar chart - full width
+                                                HStack(alignment: .bottom, spacing: 8) {
+                                                    ForEach(Array(getChartDataForMetric(metricTitle, period: period).enumerated()), id: \.offset) { index, point in
+                                                        let dataPoints = getChartDataForMetric(metricTitle, period: period)
+                                                        let maxValue = dataPoints.map { $0.value }.max() ?? 1
+                                                        let minValue = dataPoints.map { $0.value }.min() ?? 0
+                                                        let valueRange = maxValue - minValue
+                                                        let chartHeight = geometry.size.height - 30
+                                                        
+                                                        let normalizedValue = valueRange > 0 ? (point.value - minValue) / valueRange : 0.5
+                                                        let barHeight = normalizedValue * chartHeight
+                                                        
+                                                        RoundedRectangle(cornerRadius: 3)
+                                                            .fill(getColorForMetric(metricTitle))
+                                                            .frame(width: 16, height: max(4, barHeight))
+                                                    }
+                                                }
+                                                .padding(.horizontal, 16)
+                                            }
+                                        }
+                                        
+                                        // X-axis labels with more spacing
+                                        HStack(spacing: 0) {
+                                            Spacer().frame(width: 30) // Align with chart area
+                                            ForEach(getXAxisLabels(for: period), id: \.self) { label in
+                                                Text(label)
+                                                    .font(.system(size: 10, weight: .medium))
+                                                    .foregroundColor(.white.opacity(0.6))
+                                                
+                                                if label != getXAxisLabels(for: period).last {
+                                                    Spacer()
+                                                }
+                                            }
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.top, 15)
+                                        .padding(.bottom, 5)
+                                    }
+                                }
+                                .frame(height: 200)
+                                .padding(.horizontal, 0)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        // Recommendations section
+                        VStack(spacing: 16) {
+                            Spacer()
+                                .frame(height:12)
+                            
+                            Text("Recommendations")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 20)
+                            
+                            // Recommendation card
+                            VStack(spacing: 12) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: getIconForMetric(metricTitle))
+                                        .font(.system(size: 20, weight: .medium))
+                                        .foregroundColor(getColorForMetric(metricTitle))
+                                        .frame(width: 24, height: 24)
+                                    
+                                    Text(metricTitle)
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.white)
+                                    
+                                    Spacer()
+                                }
+                                
+                                Text(getRecommendationForMetric(metricTitle))
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.8))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .padding(16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
+                            )
+                            .padding(.horizontal, 20)
+                        }
+                        // Action item
+                        HStack(spacing: 8) {
+                            Spacer()
+                            Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(getColorForMetric(metricTitle))
+                            
+                            Text(getActionForMetric(metricTitle))
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white.opacity(0.8))
+                            
+                            Spacer()
+                        }
+                        
+                        Spacer(minLength: 100) // Space for bottom navigation
+                    }
+                    .padding(.top, 20)
+                }
+            }
+            .background(Color.black)
+            .navigationBarHidden(true)
+        )
     }
     
     // MARK: - Dashboard Views
@@ -337,16 +602,21 @@ struct DashboardView: View {
                 VStack(spacing: 16) {
                     // Animated content based on selected period
                     ForEach(Array(getMetricsForPeriod(selectedPeriod).enumerated()), id: \.offset) { index, metric in
-                        dashboardMetricCard(
-                            icon: metric.icon,
-                            iconColor: metric.iconColor,
-                            title: metric.title,
-                            value: metric.value,
-                            unit: metric.unit,
-                            status: metric.status,
-                            statusColor: metric.statusColor,
-                            timestamp: metric.timestamp
-                        )
+                        Button(action: {
+                            navigationPath.append("metricDetail-\(metric.title)-\(selectedPeriod)")
+                        }) {
+                            dashboardMetricCard(
+                                icon: metric.icon,
+                                iconColor: metric.iconColor,
+                                title: metric.title,
+                                value: metric.value,
+                                unit: metric.unit,
+                                status: metric.status,
+                                statusColor: metric.statusColor,
+                                timestamp: metric.timestamp
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
                         .id("\(metric.title)-\(selectedPeriod)-\(index)")
                         .transition(.asymmetric(
                             insertion: .opacity.combined(with: .move(edge: .trailing)).combined(with: .scale(scale: 0.95)),
@@ -1110,6 +1380,87 @@ struct DashboardView: View {
     
     // MARK: - Helper Functions
     
+    func getDateForPeriod(_ period: String) -> String {
+        switch period {
+        case "day":
+            return "Today"
+        case "month":
+            return "This Month"
+        case "year":
+            return "This Year"
+        default:
+            return "Today"
+        }
+    }
+    
+    func getIconForMetric(_ metricTitle: String) -> String {
+        switch metricTitle {
+        case "Heart Rate":
+            return "heart.fill"
+        case "Steps":
+            return "figure.walk"
+        case "Active Energy":
+            return "flame.fill"
+        case "Sleep":
+            return "moon.fill"
+        case "Cardio (VO2)":
+            return "heart.circle.fill"
+        default:
+            return "heart.fill"
+        }
+    }
+    
+    func getColorForMetric(_ metricTitle: String) -> Color {
+        switch metricTitle {
+        case "Heart Rate":
+            return .red
+        case "Steps":
+            return .blue
+        case "Active Energy":
+            return .orange
+        case "Sleep":
+            return .yellow
+        case "Cardio (VO2)":
+            return .blue
+        default:
+            return .white
+        }
+    }
+    
+    func getRecommendationForMetric(_ metricTitle: String) -> String {
+        switch metricTitle {
+        case "Heart Rate":
+            return "Maintaining a healthy heart rate is essential for cardiovascular health and longevity."
+        case "Steps":
+            return "Regular walking helps improve circulation, strengthen your heart, and boost overall fitness."
+        case "Active Energy":
+            return "Active energy expenditure through exercise is crucial for maintaining a healthy metabolism."
+        case "Sleep":
+            return "Getting a solid 8 hours of sleep is essential for your overall health."
+        case "Cardio (VO2)":
+            return "Improving your VO2 max through cardio exercise can significantly extend your lifespan."
+        default:
+            return "Keep up the great work with your health metrics!"
+        }
+    }
+    
+    func getActionForMetric(_ metricTitle: String) -> String {
+        switch metricTitle {
+        case "Heart Rate":
+            return "Add 10 mins by maintaining optimal heart rate"
+        case "Steps":
+            return "Add 15 mins by walking 10,000 steps daily"
+        case "Active Energy":
+            return "Add 20 mins by burning 500 calories daily"
+        case "Sleep":
+            return "Add 10 mins by taking 8 hours of sleep"
+        case "Cardio (VO2)":
+            return "Add 25 mins by improving cardio fitness"
+        default:
+            return "Continue healthy habits"
+        }
+    }
+    
     /// Get icon for metric type
     private func metricIcon(for type: HealthMetricType) -> String {
         switch type {
@@ -1460,6 +1811,252 @@ extension DashboardView {
             ]
         }
     }
+    
+    // MARK: - Chart Helper Functions
+    
+    /// Get chart data for a specific metric and period
+    func getChartDataForMetric(_ metricTitle: String, period: String) -> [ChartDataPoint] {
+        switch metricTitle.lowercased() {
+        case "sleep":
+            return getSleepChartData(for: period)
+        case "steps":
+            return getStepsChartData(for: period)
+        case "heart rate":
+            return getHeartRateChartData(for: period)
+        case "exercise":
+            return getExerciseChartData(for: period)
+        case "weight":
+            return getWeightChartData(for: period)
+        default:
+            return getDefaultChartData(for: period)
+        }
+    }
+    
+    /// Get X-axis labels for different periods
+    func getXAxisLabels(for period: String) -> [String] {
+        switch period {
+        case "day":
+            return ["12 AM", "6 AM", "12 PM", "6 PM", "12 AM"]
+        case "month":
+            return ["Week 1", "Week 2", "Week 3", "Week 4"]
+        case "year":
+            return ["Q1", "Q2", "Q3", "Q4"]
+        default:
+            return ["1", "2", "3", "4", "5"]
+        }
+    }
+    
+    /// Get Y-axis labels based on metric type
+    func getYAxisLabels(for metricTitle: String) -> [String] {
+        switch metricTitle.lowercased() {
+        case "sleep":
+            return ["9", "7", "5", "3"]
+        case "steps":
+            return ["15k", "10k", "5k", "0"]
+        case "heart rate":
+            return ["70", "65", "60", "55"]
+        case "exercise":
+            return ["60", "40", "20", "0"]
+        case "weight":
+            return ["75", "70", "65", "60"]
+        default:
+            return ["100", "75", "50", "25"]
+        }
+    }
+    
+    // MARK: - Specific Chart Data Functions
+    
+    func getSleepChartData(for period: String) -> [ChartDataPoint] {
+        switch period {
+        case "day":
+            return [
+                ChartDataPoint(value: 7.2, label: "Mon"),
+                ChartDataPoint(value: 8.1, label: "Tue"),
+                ChartDataPoint(value: 6.8, label: "Wed"),
+                ChartDataPoint(value: 7.5, label: "Thu"),
+                ChartDataPoint(value: 8.3, label: "Fri"),
+                ChartDataPoint(value: 9.1, label: "Sat"),
+                ChartDataPoint(value: 7.8, label: "Sun")
+            ]
+        case "month":
+            return [
+                ChartDataPoint(value: 7.5, label: "Week 1"),
+                ChartDataPoint(value: 8.0, label: "Week 2"),
+                ChartDataPoint(value: 7.2, label: "Week 3"),
+                ChartDataPoint(value: 7.8, label: "Week 4")
+            ]
+        case "year":
+            return [
+                ChartDataPoint(value: 7.3, label: "Q1"),
+                ChartDataPoint(value: 7.8, label: "Q2"),
+                ChartDataPoint(value: 8.1, label: "Q3"),
+                ChartDataPoint(value: 7.6, label: "Q4")
+            ]
+        default:
+            return []
+        }
+    }
+    
+    func getStepsChartData(for period: String) -> [ChartDataPoint] {
+        switch period {
+        case "day":
+            return [
+                ChartDataPoint(value: 8500, label: "Mon"),
+                ChartDataPoint(value: 12000, label: "Tue"),
+                ChartDataPoint(value: 9800, label: "Wed"),
+                ChartDataPoint(value: 11500, label: "Thu"),
+                ChartDataPoint(value: 13200, label: "Fri"),
+                ChartDataPoint(value: 15800, label: "Sat"),
+                ChartDataPoint(value: 9200, label: "Sun")
+            ]
+        case "month":
+            return [
+                ChartDataPoint(value: 10500, label: "Week 1"),
+                ChartDataPoint(value: 12000, label: "Week 2"),
+                ChartDataPoint(value: 9800, label: "Week 3"),
+                ChartDataPoint(value: 11200, label: "Week 4")
+            ]
+        case "year":
+            return [
+                ChartDataPoint(value: 9500, label: "Q1"),
+                ChartDataPoint(value: 11200, label: "Q2"),
+                ChartDataPoint(value: 12800, label: "Q3"),
+                ChartDataPoint(value: 10500, label: "Q4")
+            ]
+        default:
+            return []
+        }
+    }
+    
+    func getHeartRateChartData(for period: String) -> [ChartDataPoint] {
+        switch period {
+        case "day":
+            return [
+                ChartDataPoint(value: 65, label: "Mon"),
+                ChartDataPoint(value: 62, label: "Tue"),
+                ChartDataPoint(value: 68, label: "Wed"),
+                ChartDataPoint(value: 64, label: "Thu"),
+                ChartDataPoint(value: 61, label: "Fri"),
+                ChartDataPoint(value: 59, label: "Sat"),
+                ChartDataPoint(value: 66, label: "Sun")
+            ]
+        case "month":
+            return [
+                ChartDataPoint(value: 66, label: "Week 1"),
+                ChartDataPoint(value: 64, label: "Week 2"),
+                ChartDataPoint(value: 63, label: "Week 3"),
+                ChartDataPoint(value: 62, label: "Week 4")
+            ]
+        case "year":
+            return [
+                ChartDataPoint(value: 68, label: "Q1"),
+                ChartDataPoint(value: 65, label: "Q2"),
+                ChartDataPoint(value: 63, label: "Q3"),
+                ChartDataPoint(value: 61, label: "Q4")
+            ]
+        default:
+            return []
+        }
+    }
+    
+    func getExerciseChartData(for period: String) -> [ChartDataPoint] {
+        switch period {
+        case "day":
+            return [
+                ChartDataPoint(value: 25, label: "Mon"),
+                ChartDataPoint(value: 45, label: "Tue"),
+                ChartDataPoint(value: 30, label: "Wed"),
+                ChartDataPoint(value: 50, label: "Thu"),
+                ChartDataPoint(value: 35, label: "Fri"),
+                ChartDataPoint(value: 60, label: "Sat"),
+                ChartDataPoint(value: 20, label: "Sun")
+            ]
+        case "month":
+            return [
+                ChartDataPoint(value: 35, label: "Week 1"),
+                ChartDataPoint(value: 42, label: "Week 2"),
+                ChartDataPoint(value: 38, label: "Week 3"),
+                ChartDataPoint(value: 45, label: "Week 4")
+            ]
+        case "year":
+            return [
+                ChartDataPoint(value: 30, label: "Q1"),
+                ChartDataPoint(value: 38, label: "Q2"),
+                ChartDataPoint(value: 45, label: "Q3"),
+                ChartDataPoint(value: 42, label: "Q4")
+            ]
+        default:
+            return []
+        }
+    }
+    
+    func getWeightChartData(for period: String) -> [ChartDataPoint] {
+        switch period {
+        case "day":
+            return [
+                ChartDataPoint(value: 70.2, label: "Mon"),
+                ChartDataPoint(value: 70.1, label: "Tue"),
+                ChartDataPoint(value: 69.8, label: "Wed"),
+                ChartDataPoint(value: 70.0, label: "Thu"),
+                ChartDataPoint(value: 69.9, label: "Fri"),
+                ChartDataPoint(value: 70.3, label: "Sat"),
+                ChartDataPoint(value: 70.1, label: "Sun")
+            ]
+        case "month":
+            return [
+                ChartDataPoint(value: 71.0, label: "Week 1"),
+                ChartDataPoint(value: 70.5, label: "Week 2"),
+                ChartDataPoint(value: 70.2, label: "Week 3"),
+                ChartDataPoint(value: 70.0, label: "Week 4")
+            ]
+        case "year":
+            return [
+                ChartDataPoint(value: 72.5, label: "Q1"),
+                ChartDataPoint(value: 71.8, label: "Q2"),
+                ChartDataPoint(value: 70.5, label: "Q3"),
+                ChartDataPoint(value: 70.0, label: "Q4")
+            ]
+        default:
+            return []
+        }
+    }
+    
+    func getDefaultChartData(for period: String) -> [ChartDataPoint] {
+        switch period {
+        case "day":
+            return [
+                ChartDataPoint(value: 85, label: "Mon"),
+                ChartDataPoint(value: 92, label: "Tue"),
+                ChartDataPoint(value: 78, label: "Wed"),
+                ChartDataPoint(value: 88, label: "Thu"),
+                ChartDataPoint(value: 95, label: "Fri"),
+                ChartDataPoint(value: 90, label: "Sat"),
+                ChartDataPoint(value: 82, label: "Sun")
+            ]
+        case "month":
+            return [
+                ChartDataPoint(value: 82, label: "Week 1"),
+                ChartDataPoint(value: 88, label: "Week 2"),
+                ChartDataPoint(value: 85, label: "Week 3"),
+                ChartDataPoint(value: 90, label: "Week 4")
+            ]
+        case "year":
+            return [
+                ChartDataPoint(value: 80, label: "Q1"),
+                ChartDataPoint(value: 85, label: "Q2"),
+                ChartDataPoint(value: 88, label: "Q3"),
+                ChartDataPoint(value: 90, label: "Q4")
+            ]
+        default:
+            return []
+        }
+    }
+}
+
+// MARK: - Chart Data Model
+struct ChartDataPoint {
+    let value: Double
+    let label: String
 }
 
 // MARK: - Divergent Bar Chart Component
