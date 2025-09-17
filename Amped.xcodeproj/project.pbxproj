@@ -433,7 +433,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Amped/Preview Content\"";
-				DEVELOPMENT_TEAM = W79L33J5V4;
+				DEVELOPMENT_TEAM = CGJF4WRXFT;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = "ai.ampedlife.amped.health-refresh ai.ampedlife.amped.health-processing";
@@ -469,7 +469,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Amped/Preview Content\"";
-				DEVELOPMENT_TEAM = W79L33J5V4;
+				DEVELOPMENT_TEAM = CGJF4WRXFT;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_BGTaskSchedulerPermittedIdentifiers = "ai.ampedlife.amped.health-refresh ai.ampedlife.amped.health-processing";

@@ -26,7 +26,7 @@ struct MascotIntroductionView: View {
                 
                 VStack(spacing: 12) {
                     // Mascot character
-                    Image("steptwo")
+                    Image("emma")
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 200, height: 200)
