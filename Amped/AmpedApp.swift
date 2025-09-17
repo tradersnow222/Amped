@@ -10,6 +10,7 @@
 import SwiftUI
 import OSLog
 import HealthKit
+import RevenueCat
 
 @main
 struct AmpedApp: App {
@@ -39,6 +40,9 @@ struct AmpedApp: App {
     /// Notification manager for user engagement
     @StateObject private var notificationManager = NotificationManager.shared
     
+    /// Subscription manager for RevenueCat integration
+    @StateObject private var subscriptionManager = SubscriptionManager.shared
+    
     // MARK: - Scene Phase Tracking for Intro Animations
     @Environment(\.scenePhase) private var scenePhase
     
@@ -47,6 +51,9 @@ struct AmpedApp: App {
         // Rules: Minimize main thread blocking during app launch
         LaunchOptimizer.shared.performCriticalInitialization()
         LaunchOptimizer.shared.performDeferredInitialization()
+        
+        // Configure RevenueCat
+        RevenueCatConfig.configure()
     }
     
     // MARK: - Scene Configuration
@@ -63,6 +70,7 @@ struct AmpedApp: App {
                     .environmentObject(glassTheme)
                     .environmentObject(batteryTheme)
                     .environmentObject(backgroundHealthManager)
+                    .environmentObject(subscriptionManager)
             }
             .onChange(of: scenePhase) { newPhase in
                 handleScenePhaseChange(to: newPhase)
@@ -164,6 +172,9 @@ final class AppState: ObservableObject {
     // MASCOT PERSONALIZATION: Store user's chosen mascot name globally
     @Published var mascotName: String = "Emma" // Default name
     
+    // SUBSCRIPTION STATUS: Track premium subscription status
+    @Published var isPremiumUser: Bool = false
+    
     // ONBOARDING PERSISTENCE: Manager for handling soft vs hard close
     private let persistenceManager = OnboardingPersistenceManager()
     
@@ -212,6 +223,9 @@ final class AppState: ObservableObject {
         if let savedMascotName = UserDefaults.standard.string(forKey: "mascot_name") {
             mascotName = savedMascotName
         }
+        
+        // Load subscription status
+        isPremiumUser = UserDefaults.standard.bool(forKey: "is_premium_user")
     }
     
     /// Load remaining state asynchronously to avoid blocking launch
@@ -230,6 +244,12 @@ final class AppState: ObservableObject {
     func saveMascotName(_ name: String) {
         mascotName = name
         UserDefaults.standard.set(name, forKey: "mascot_name")
+    }
+    
+    /// Update subscription status and save to UserDefaults
+    func updateSubscriptionStatus(_ isPremium: Bool) {
+        isPremiumUser = isPremium
+        UserDefaults.standard.set(isPremium, forKey: "is_premium_user")
     }
     
     /// Save onboarding completion state to UserDefaults

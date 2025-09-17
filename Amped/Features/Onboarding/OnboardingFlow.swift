@@ -197,9 +197,9 @@ struct OnboardingFlow: View {
                 isButtonNavigating = false
                 dragDirection = .leading
                 
-                // Questionnaire completed - go to personalization intro (Driven by Data screen)
+                // Questionnaire completed - go to pre-paywall teaser
                 Task { @MainActor in
-                    navigateTo(.personalizationIntro)
+                    navigateTo(.prePaywallTease)
                     
                     // Reset drag direction after animation
                     try? await Task.sleep(for: .seconds(0.7))

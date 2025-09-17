@@ -650,7 +650,7 @@ struct QuestionViews {
                         Color.black.opacity(0.5)
                             .ignoresSafeArea()
                             .onTapGesture {
-                                UserDefaults.standard.set(true, forKey: "stressPopupShown")
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     showPopup = false
                                 }
@@ -687,7 +687,7 @@ struct QuestionViews {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 
                                 Button(action: {
-                                    UserDefaults.standard.set(true, forKey: "stressPopupShown")
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                     withAnimation(.easeInOut(duration: 0.3)) {
                                         showPopup = false
                                     }
@@ -883,7 +883,7 @@ struct QuestionViews {
             )
             .onAppear {
                 // Show popup only once when view appears
-                if !UserDefaults.standard.bool(forKey: "stressPopupShown") {
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
                             showPopup = true
@@ -1019,7 +1019,7 @@ struct QuestionViews {
                         Color.black.opacity(0.5)
                             .ignoresSafeArea()
                             .onTapGesture {
-                                UserDefaults.standard.set(true, forKey: "anxietyPopupShown")
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     showPopup = false
                                 }
@@ -1056,7 +1056,7 @@ struct QuestionViews {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 
                                 Button(action: {
-                                    UserDefaults.standard.set(true, forKey: "anxietyPopupShown")
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                     withAnimation(.easeInOut(duration: 0.3)) {
                                         showPopup = false
                                     }
@@ -1252,7 +1252,7 @@ struct QuestionViews {
             )
             .onAppear {
                 // Show popup only once when view appears
-                if !UserDefaults.standard.bool(forKey: "anxietyPopupShown") {
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
                             showPopup = true
@@ -1569,7 +1569,7 @@ struct QuestionViews {
                         Color.black.opacity(0.5)
                             .ignoresSafeArea()
                             .onTapGesture {
-                                UserDefaults.standard.set(true, forKey: "dietPopupShown")
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     showPopup = false
                                 }
@@ -1604,7 +1604,7 @@ struct QuestionViews {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 
                                 Button(action: {
-                                    UserDefaults.standard.set(true, forKey: "dietPopupShown")
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                     withAnimation(.easeInOut(duration: 0.3)) {
                                         showPopup = false
                                     }
@@ -1798,7 +1798,7 @@ struct QuestionViews {
             )
             .onAppear {
                 // Show popup only once when view appears
-                if !UserDefaults.standard.bool(forKey: "dietPopupShown") {
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
                             showPopup = true
@@ -1923,7 +1923,7 @@ struct QuestionViews {
                         Color.black.opacity(0.5)
                             .ignoresSafeArea()
                             .onTapGesture {
-                                UserDefaults.standard.set(true, forKey: "smokingPopupShown")
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     showPopup = false
                                 }
@@ -1958,7 +1958,7 @@ struct QuestionViews {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 
                                 Button(action: {
-                                    UserDefaults.standard.set(true, forKey: "smokingPopupShown")
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                     withAnimation(.easeInOut(duration: 0.3)) {
                                         showPopup = false
                                     }
@@ -2152,7 +2152,7 @@ struct QuestionViews {
             )
             .onAppear {
                 // Show popup only once when view appears
-                if !UserDefaults.standard.bool(forKey: "smokingPopupShown") {
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
                             showPopup = true
@@ -2277,7 +2277,7 @@ struct QuestionViews {
                         Color.black.opacity(0.5)
                             .ignoresSafeArea()
                             .onTapGesture {
-                                UserDefaults.standard.set(true, forKey: "alcoholPopupShown")
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     showPopup = false
                                 }
@@ -2309,7 +2309,7 @@ struct QuestionViews {
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
                                 Button(action: {
-                                    UserDefaults.standard.set(true, forKey: "alcoholPopupShown")
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                     withAnimation(.easeInOut(duration: 0.3)) {
                                         showPopup = false
                                     }
@@ -2477,7 +2477,7 @@ struct QuestionViews {
                 }
             )
             .onAppear {
-                if !UserDefaults.standard.bool(forKey: "alcoholPopupShown") {
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
                             showPopup = true
@@ -2602,7 +2602,7 @@ struct QuestionViews {
                         Color.black.opacity(0.5)
                             .ignoresSafeArea()
                             .onTapGesture {
-                                UserDefaults.standard.set(true, forKey: "socialConnectionsPopupShown")
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     showPopup = false
                                 }
@@ -2634,7 +2634,7 @@ struct QuestionViews {
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
                                 Button(action: {
-                                    UserDefaults.standard.set(true, forKey: "socialConnectionsPopupShown")
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                     withAnimation(.easeInOut(duration: 0.3)) {
                                         showPopup = false
                                     }
@@ -2802,7 +2802,7 @@ struct QuestionViews {
                 }
             )
             .onAppear {
-                if !UserDefaults.standard.bool(forKey: "socialConnectionsPopupShown") {
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
                             showPopup = true
@@ -3224,7 +3224,7 @@ struct QuestionViews {
                         Color.black.opacity(0.5)
                             .ignoresSafeArea()
                             .onTapGesture {
-                                UserDefaults.standard.set(true, forKey: "bloodPressurePopupShown")
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     showPopup = false
                                 }
@@ -3256,7 +3256,7 @@ struct QuestionViews {
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
                                 Button(action: {
-                                    UserDefaults.standard.set(true, forKey: "bloodPressurePopupShown")
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                     withAnimation(.easeInOut(duration: 0.3)) {
                                         showPopup = false
                                     }
@@ -3424,7 +3424,7 @@ struct QuestionViews {
                 }
             )
             .onAppear {
-                if !UserDefaults.standard.bool(forKey: "bloodPressurePopupShown") {
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
                             showPopup = true
@@ -3774,7 +3774,7 @@ struct QuestionViews {
                         Color.black.opacity(0.5)
                             .ignoresSafeArea()
                             .onTapGesture {
-                                UserDefaults.standard.set(true, forKey: "lifeMotivationPopupShown")
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     showPopup = false
                                 }
@@ -3806,7 +3806,7 @@ struct QuestionViews {
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
                                 Button(action: {
-                                    UserDefaults.standard.set(true, forKey: "lifeMotivationPopupShown")
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
                                     withAnimation(.easeInOut(duration: 0.3)) {
                                         showPopup = false
                                     }
@@ -3974,7 +3974,7 @@ struct QuestionViews {
                 }
             )
             .onAppear {
-                if !UserDefaults.standard.bool(forKey: "lifeMotivationPopupShown") {
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
                             showPopup = true

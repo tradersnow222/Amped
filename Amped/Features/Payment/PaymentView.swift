@@ -1,5 +1,6 @@
 import SwiftUI
 import StoreKit
+import RevenueCat
 
 /// Payment screen with ValuePropositionBg background matching onboarding design pattern
 struct PaymentView: View {
@@ -8,6 +9,7 @@ struct PaymentView: View {
     @StateObject private var viewModel = PaymentViewModel()
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var themeManager: BatteryThemeManager
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
     @Environment(\.presentationMode) private var presentationMode
     @State private var showExitOffer = false
     @State private var animateElements = false
@@ -267,6 +269,11 @@ struct PaymentView: View {
             viewModel.appState = appState
             loadUserProfile()
             
+            // Load RevenueCat offerings
+            Task {
+                await subscriptionManager.loadOfferings()
+            }
+            
             withAnimation {
                 animateElements = true
             }
@@ -304,8 +311,46 @@ struct PaymentView: View {
     // MARK: - Helper Methods
     
     private func processPurchase() {
-        // Skip actual payment processing and proceed as if successful
-        onContinue?()
+        Task {
+            // Load offerings if not already loaded
+            if subscriptionManager.currentOffering == nil {
+                await subscriptionManager.loadOfferings()
+            }
+            
+            // Get the weekly package
+            guard let weeklyPackage = subscriptionManager.weeklyPackage else {
+                print("❌ Weekly package not found")
+                return
+            }
+            
+            // Attempt purchase
+            let success = await subscriptionManager.purchase(package: weeklyPackage)
+            
+            if success {
+                // Update app state
+                appState.updateSubscriptionStatus(true)
+                
+                // Proceed to next step
+                onContinue?()
+            } else {
+                // Handle purchase failure - error message is already set in subscriptionManager
+                print("❌ Purchase failed")
+            }
+        }
+    }
+    
+    private func restorePurchases() {
+        Task {
+            let success = await subscriptionManager.restorePurchases()
+            
+            if success {
+                // Update app state
+                appState.updateSubscriptionStatus(true)
+                
+                // Proceed to next step
+                onContinue?()
+            }
+        }
     }
     
     /// Load user profile from UserDefaults to determine background image
