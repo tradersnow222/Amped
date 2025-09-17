@@ -354,6 +354,7 @@ struct QuestionViews {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @FocusState private var isTextFieldFocused: Bool
         @Environment(\.adaptiveSpacing) private var spacing
+        @EnvironmentObject var appState: AppState
         
         // CRITICAL KEYBOARD LAG FIX: Local state to prevent expensive view model updates during typing
         @State private var localUserName: String = ""
@@ -384,7 +385,7 @@ struct QuestionViews {
                                 .font(.system(size: 20, weight: .medium))
                     .foregroundColor(.white)
                             
-                            Text("I'm Emma your guide and companion in this journey.")
+                            Text("I'm \(appState.mascotName), your guide and companion in this journey.")
                                 .font(.system(size: 16, weight: .regular))
                                 .foregroundColor(.white.opacity(0.8))
                         }

@@ -1,4 +1,6 @@
 import SwiftUI
+import AVFoundation
+import AVKit
 
 /// Introduction to personalization and questionnaire - builds credibility with scientific backing
 struct PersonalizationIntroView: View {
@@ -15,13 +17,13 @@ struct PersonalizationIntroView: View {
     
     var body: some View {
         ZStack {
-            // Background image with overlay
+            // Background video with overlay
             GeometryReader { geometry in
-                Image("personalization")
-                    .resizable()
-                    .scaledToFill()
+                DNAVideoBackgroundView()
                     .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
-                    .offset(y: -180)
+                    .rotationEffect(.degrees(90)) // Rotate 90 degrees
+                    .scaleEffect(1.8) // Same scale as ValuePropositionView
+                    .offset(y: -180) // Match the original image offset
                     .clipped()
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 

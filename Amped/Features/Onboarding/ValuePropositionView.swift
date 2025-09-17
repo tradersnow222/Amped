@@ -1,4 +1,42 @@
 import SwiftUI
+import AVFoundation
+import AVKit
+
+/// DNA video background player
+struct DNAVideoBackgroundView: View {
+    @State private var player = AVPlayer()
+    
+    var body: some View {
+        VideoPlayer(player: player)
+            .disabled(true) // Disable user interaction
+            .onAppear {
+                setupVideo()
+            }
+    }
+    
+    private func setupVideo() {
+        guard let url = Bundle.main.url(forResource: "dna", withExtension: "mov") else {
+            print("❌ Could not find dna.mov in bundle")
+            return
+        }
+        
+        player = AVPlayer(url: url)
+        player.isMuted = true
+        player.play()
+        
+        // Set up looping
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: player.currentItem,
+            queue: .main
+        ) { _ in
+            player.seek(to: .zero)
+            player.play()
+        }
+        
+        print("✅ Video player setup complete")
+    }
+}
 
 /// Value proposition screen explaining how Amped helps users live longer
 struct ValuePropositionView: View {
@@ -13,13 +51,13 @@ struct ValuePropositionView: View {
     
     var body: some View {
         ZStack {
-            // Background image with overlay
+            // Background video with overlay
             GeometryReader { geometry in
-                Image("ValuePropositionBg")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height,alignment:.top)
-                    .offset(y:-180)
+                DNAVideoBackgroundView()
+                    .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+                    .rotationEffect(.degrees(90)) // Rotate 90 degrees
+                    .scaleEffect(1.8) // Increased scale for wider coverage
+                    .offset(y: -180) // Match the original image offset
                     .clipped()
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 
@@ -51,7 +89,7 @@ struct ValuePropositionView: View {
                     
                     // Main headline
                     VStack(spacing:0){
-                        Text("Add Years To")
+                        Text("Welcome")
                             .font(.system(size: 32, weight: .bold, design: .default))
                             .foregroundColor(.white)
                             .multilineTextAlignment(.center)
@@ -60,18 +98,18 @@ struct ValuePropositionView: View {
                             .offset(y: animateElements ? 4 : 20)
                             .animation(.easeOut(duration: 0.8).delay(0.2), value: animateElements)
                         
-                        Text("Your Life")
-                            .font(.system(size: 32, weight: .bold, design: .default))
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                            .opacity(animateElements ? 1 : 0)
-                            .offset(y: animateElements ? 0 : 20)
-                            .padding(.top,4)
-                            .animation(.easeOut(duration: 0.8).delay(0.2), value: animateElements)
+                        // Text("Your Life")
+                        //     .font(.system(size: 32, weight: .bold, design: .default))
+                        //     .foregroundColor(.white)
+                        //     .multilineTextAlignment(.center)
+                        //     .opacity(animateElements ? 1 : 0)
+                        //     .offset(y: animateElements ? 0 : 20)
+                        //     .padding(.top,4)
+                        //     .animation(.easeOut(duration: 0.8).delay(0.2), value: animateElements)
                     }
                     // Subtitle
-                    Text("Your habits directly impact your lifespan. Get better at improving your habits using most science backed studies.")
-                        .font(.system(size: 16, weight: .regular, design: .default))
+                    Text("Life is fleeting, but this app can guide you towards a healthier, longer life.")
+                        .font(.system(size: 22, weight: .light, design: .default))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                         .lineSpacing(4)

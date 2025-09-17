@@ -161,6 +161,9 @@ final class AppState: ObservableObject {
     // ONBOARDING PROGRESS TRACKING: Advanced persistence with soft/hard close detection
     @Published var currentOnboardingStep: OnboardingStep = .welcome
     
+    // MASCOT PERSONALIZATION: Store user's chosen mascot name globally
+    @Published var mascotName: String = "Emma" // Default name
+    
     // ONBOARDING PERSISTENCE: Manager for handling soft vs hard close
     private let persistenceManager = OnboardingPersistenceManager()
     
@@ -204,6 +207,11 @@ final class AppState: ObservableObject {
                 currentOnboardingStep = restoredStep
             }
         }
+        
+        // Load saved mascot name
+        if let savedMascotName = UserDefaults.standard.string(forKey: "mascot_name") {
+            mascotName = savedMascotName
+        }
     }
     
     /// Load remaining state asynchronously to avoid blocking launch
@@ -216,6 +224,12 @@ final class AppState: ObservableObject {
                 self.hasCompletedOnboarding = wasCompleted || profile.hasCompletedOnboarding
             }
         }
+    }
+    
+    /// Save mascot name to UserDefaults
+    func saveMascotName(_ name: String) {
+        mascotName = name
+        UserDefaults.standard.set(name, forKey: "mascot_name")
     }
     
     /// Save onboarding completion state to UserDefaults
