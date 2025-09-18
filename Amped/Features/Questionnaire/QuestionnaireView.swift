@@ -188,10 +188,6 @@ struct QuestionnaireView: View {
                 QuestionViews.AnxietyQuestionView(
                     viewModel: viewModel
                 )
-            case .gender:
-                QuestionViews.GenderQuestionView(
-                    viewModel: viewModel
-                )
             case .nutritionQuality:
                 QuestionViews.NutritionQuestionView(
                     viewModel: viewModel

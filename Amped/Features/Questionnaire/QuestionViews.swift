@@ -188,10 +188,14 @@ struct QuestionViews {
         @ObservedObject var viewModel: QuestionnaireViewModel
         var handleContinue: () -> Void
         
-        // Local state for age input
+        // Local state for numeric inputs
         @State private var localAge: String = ""
+        @State private var localHeight: String = ""
+        @State private var localWeight: String = ""
         @State private var hasInitialized = false
-        @FocusState private var isTextFieldFocused: Bool
+        @FocusState private var isAgeFieldFocused: Bool
+        @FocusState private var isHeightFieldFocused: Bool
+        @FocusState private var isWeightFieldFocused: Bool
         
         // Screen size adaptive spacing
         @Environment(\.adaptiveSpacing) private var spacing
@@ -214,9 +218,9 @@ struct QuestionViews {
                             .frame(width: 68, height: 76)
                         
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("How many candles are on your birthday cake?")
-                                .font(.system(size: 20, weight: .regular))
-                                    .foregroundColor(.white)
+                            Text("Let's take some of your metrics.")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
                         }
                         
                         Spacer()
@@ -224,48 +228,143 @@ struct QuestionViews {
                     .padding(.horizontal, 24)
                     
                     VStack(spacing: 16) {
-                        
-                        // Text field with white background and custom placeholder
-                        ZStack(alignment: .leading) {
-                            // Custom placeholder
-                            if localAge.isEmpty {
-                                Text("Enter your age (eg. 35)")
-                                    .font(.system(size: 14, weight: .regular))
-                                    .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4))
-                                    .padding(.horizontal, 20)
-                                    .allowsHitTesting(false)
+                        // Age input field
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Your Age")
+                                    .font(.system(size: 20, weight: .medium))
+                                    .foregroundColor(.white)
+                                Spacer()
                             }
+                            .padding(.horizontal, 24)
                             
-                            TextField("", text: $localAge)
-                                .font(.system(size: 14, weight: .regular))
-                                .foregroundColor(.black)
-                                .multilineTextAlignment(.leading)
-                                .padding(.vertical, 14)
-                                .padding(.horizontal, 20)
-                                .keyboardType(.numberPad)
-                        }
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(Color.white)
-                        )
-                        .accentColor(.black)
-                        .focused($isTextFieldFocused)
-                        .submitLabel(.continue)
-                        .disableAutocorrection(true)
-                        .onSubmit {
-                            syncToViewModel()
-                            if canProceedLocally {
-                                proceedToNext()
+                            ZStack(alignment: .leading) {
+                                if localAge.isEmpty {
+                                    Text("Enter your age (eg. 35)")
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4))
+                                        .padding(.horizontal, 20)
+                                        .allowsHitTesting(false)
+                                }
+                                
+                                TextField("", text: $localAge)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(.black)
+                                    .multilineTextAlignment(.leading)
+                                    .padding(.vertical, 14)
+                                    .padding(.horizontal, 20)
+                                    .keyboardType(.numberPad)
                             }
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.white)
+                            )
+                            .accentColor(.black)
+                            .focused($isAgeFieldFocused)
+                            .submitLabel(.next)
+                            .disableAutocorrection(true)
+                            .onChange(of: localAge) { newValue in
+                                debounceTimer?.invalidate()
+                                debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                                    syncToViewModel()
+                                }
+                            }
+                            .padding(.horizontal, 24)
                         }
-                        .onChange(of: localAge) { newValue in
-                            // Debounce sync to view model
-                            debounceTimer?.invalidate()
-                            debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                        
+                        // Height input field
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Your Height")
+                                    .font(.system(size: 20, weight: .medium))
+                                    .foregroundColor(.white)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 24)
+                            
+                            ZStack(alignment: .leading) {
+                                if localHeight.isEmpty {
+                                    Text("Enter your height (eg. 135)")
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4))
+                                        .padding(.horizontal, 20)
+                                        .allowsHitTesting(false)
+                                }
+                                
+                                TextField("", text: $localHeight)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(.black)
+                                    .multilineTextAlignment(.leading)
+                                    .padding(.vertical, 14)
+                                    .padding(.horizontal, 20)
+                                    .keyboardType(.numberPad)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.white)
+                            )
+                            .accentColor(.black)
+                            .focused($isHeightFieldFocused)
+                            .submitLabel(.next)
+                            .disableAutocorrection(true)
+                            .onChange(of: localHeight) { newValue in
+                                debounceTimer?.invalidate()
+                                debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                                    syncToViewModel()
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                        }
+                        
+                        // Weight input field
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Your Weight")
+                                    .font(.system(size: 20, weight: .medium))
+                                    .foregroundColor(.white)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 24)
+                            
+                            ZStack(alignment: .leading) {
+                                if localWeight.isEmpty {
+                                    Text("Enter your weight (eg. 85)")
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4))
+                                        .padding(.horizontal, 20)
+                                        .allowsHitTesting(false)
+                                }
+                                
+                                TextField("", text: $localWeight)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(.black)
+                                    .multilineTextAlignment(.leading)
+                                    .padding(.vertical, 14)
+                                    .padding(.horizontal, 20)
+                                    .keyboardType(.numberPad)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.white)
+                            )
+                            .accentColor(.black)
+                            .focused($isWeightFieldFocused)
+                            .submitLabel(.continue)
+                            .disableAutocorrection(true)
+                            .onSubmit {
                                 syncToViewModel()
+                                if canProceedLocally {
+                                    proceedToNext()
+                                }
                             }
+                            .onChange(of: localWeight) { newValue in
+                                debounceTimer?.invalidate()
+                                debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                                    syncToViewModel()
+                                }
+                            }
+                            .padding(.horizontal, 24)
                         }
-                .padding(.horizontal, 24)
                     }
                     
                     // Continue button
@@ -301,7 +400,10 @@ struct QuestionViews {
             }
             .onAppear {
                 if !hasInitialized {
+                    // Only pre-fill if there are actual values (not defaults)
                     localAge = viewModel.age > 0 ? String(viewModel.age) : ""
+                    localHeight = viewModel.height > 0 ? String(Int(viewModel.height)) : ""
+                    localWeight = viewModel.weight > 0 ? String(Int(viewModel.weight)) : ""
                     hasInitialized = true
                 }
             }
@@ -313,28 +415,42 @@ struct QuestionViews {
         
         // Local validation to avoid expensive view model property access
         private var canProceedLocally: Bool {
-            guard let ageInt = Int(localAge.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            guard let ageInt = Int(localAge.trimmingCharacters(in: .whitespacesAndNewlines)),
+                  let heightInt = Int(localHeight.trimmingCharacters(in: .whitespacesAndNewlines)),
+                  let weightInt = Int(localWeight.trimmingCharacters(in: .whitespacesAndNewlines)) else {
                 return false
             }
-            return ageInt >= 18 && ageInt <= 120
+            return ageInt >= 18 && ageInt <= 120 && heightInt >= 100 && heightInt <= 250 && weightInt >= 30 && weightInt <= 300
         }
         
         // Sync local state to view model efficiently
         private func syncToViewModel() {
-            guard let ageInt = Int(localAge.trimmingCharacters(in: .whitespacesAndNewlines)),
-                  ageInt >= 18 && ageInt <= 120 else {
-                return
+            // Sync age
+            if let ageInt = Int(localAge.trimmingCharacters(in: .whitespacesAndNewlines)),
+               ageInt >= 18 && ageInt <= 120 {
+                viewModel.setAge(ageInt)
             }
             
-            // Update the view model's age directly
-            viewModel.setAge(ageInt)
+            // Sync height
+            if let heightInt = Int(localHeight.trimmingCharacters(in: .whitespacesAndNewlines)),
+               heightInt >= 100 && heightInt <= 250 {
+                viewModel.setHeight(Double(heightInt))
+            }
+            
+            // Sync weight
+            if let weightInt = Int(localWeight.trimmingCharacters(in: .whitespacesAndNewlines)),
+               weightInt >= 30 && weightInt <= 300 {
+                viewModel.setWeight(Double(weightInt))
+            }
         }
         
         private func proceedToNext() {
             guard canProceedLocally else { return }
             
-            // Dismiss keyboard immediately to prevent animation conflicts
-            isTextFieldFocused = false
+            // KEYBOARD TRANSITION FIX: Dismiss keyboard immediately to prevent animation conflicts
+            isAgeFieldFocused = false
+            isHeightFieldFocused = false
+            isWeightFieldFocused = false
             
             // Ensure view model is synced before proceeding
             syncToViewModel()

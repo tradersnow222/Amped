@@ -19,7 +19,6 @@ final class QuestionnaireViewModel: ObservableObject {
     enum Question: Int, CaseIterable, Hashable {
         case name
         case birthdate
-        case gender
         case stressLevel        // NEW: Question #4 for stress level
         case anxietyLevel       // NEW: Anxiety question
         case nutritionQuality
@@ -35,7 +34,7 @@ final class QuestionnaireViewModel: ObservableObject {
         
         var category: QuestionCategory {
             switch self {
-            case .name, .birthdate, .gender:
+            case .name, .birthdate:
                 return .basics
             case .nutritionQuality, .smokingStatus, .alcoholConsumption:
                 return .lifestyle
@@ -544,7 +543,7 @@ final class QuestionnaireViewModel: ObservableObject {
     private static let staticAllMonths = Array(1...12)
 
     // Birthdate (replacing age)
-    @Published var birthdate: Date = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date() // Default to 30 years ago
+    @Published var birthdate: Date = Date() // Default to today (age = 0, so no pre-filled value)
 
     // Separate month and year selection for improved UX
     // PERFORMANCE FIX: Remove expensive didSet observers that trigger on every picker scroll
@@ -592,6 +591,16 @@ final class QuestionnaireViewModel: ObservableObject {
             _cachedBirthdate = nil
         }
     }
+    
+    // Height setting method (in cm)
+    func setHeight(_ height: Double) {
+        self.height = height
+    }
+    
+    // Weight setting method (in kg)
+    func setWeight(_ weight: Double) {
+        self.weight = weight
+    }
 
     // COLD START FIX: Lazy birthdate range to eliminate cold start blocking
     private static var _staticBirthdateRange: ClosedRange<Date>?
@@ -628,6 +637,10 @@ final class QuestionnaireViewModel: ObservableObject {
     
     // Name
     @Published var userName: String = ""
+    
+    // Height and Weight (in cm and kg)
+    @Published var height: Double = 0
+    @Published var weight: Double = 0
     
     // Nutrition
     @Published var selectedNutritionQuality: NutritionQuality?
@@ -691,8 +704,6 @@ final class QuestionnaireViewModel: ObservableObject {
             return selectedStressLevel != nil
         case .anxietyLevel:
             return selectedAnxietyLevel != nil
-        case .gender:
-            return selectedGender != nil
         case .nutritionQuality:
             return selectedNutritionQuality != nil
         case .smokingStatus:
