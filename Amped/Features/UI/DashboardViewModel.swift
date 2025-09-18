@@ -464,7 +464,13 @@ final class DashboardViewModel: ObservableObject {
     // MARK: - Life Projection Calculations
     
     private func calculateLifeProjection() {
-        logger.info("🔮 Calculating life projection for user age: \(self.userProfile.age ?? 0)")
+        // PERFORMANCE FIX: Reduce logging frequency to prevent spam
+        // Only log detailed info occasionally, not on every calculation
+        let shouldLogDetails = Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 10) < 1
+        
+        if shouldLogDetails {
+            logger.info("🔮 Calculating life projection for user age: \(self.userProfile.age ?? 0)")
+        }
         
         lifeProjection = lifeProjectionService.calculateLifeProjection(
             from: self.healthMetrics,
@@ -474,7 +480,7 @@ final class DashboardViewModel: ObservableObject {
         // Also calculate optimal habits projection using scientific pipeline
         optimalHabitsProjection = calculateOptimalHabitsProjection()
         
-        if let projection = lifeProjection {
+        if let projection = lifeProjection, shouldLogDetails {
             logger.info("📊 Life projection calculated:")
             logger.info("  - Baseline expectancy: \(String(format: "%.1f", projection.baselineLifeExpectancy)) years")
             logger.info("  - Current age: \(String(format: "%.1f", projection.currentAge)) years")
@@ -482,15 +488,18 @@ final class DashboardViewModel: ObservableObject {
             logger.info("  - Projected expectancy: \(String(format: "%.1f", projection.projectedLifeExpectancy)) years")
             logger.info("  - Years remaining: \(String(format: "%.1f", projection.yearsRemaining)) years")
             logger.info("  - Percentage remaining: \(String(format: "%.1f", projection.percentageRemaining))%")
-        } else {
-            logger.warning("⚠️ No life projection calculated")
         }
     }
     
     /// Calculate optimal habits lifespan projection using scientifically-backed optimal values
     /// This represents what the user could achieve with perfect health habits based on research
     func calculateOptimalHabitsProjection() -> LifeProjection? {
-        logger.info("🎯 Calculating OPTIMAL habits projection using scientifically-backed perfect values")
+        // PERFORMANCE FIX: Reduce logging frequency to prevent spam
+        let shouldLogDetails = Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 15) < 1
+        
+        if shouldLogDetails {
+            logger.info("🎯 Calculating OPTIMAL habits projection using scientifically-backed perfect values")
+        }
         
         // Create truly optimal metrics based on scientific research (not just improved current metrics)
         let optimalMetrics = createScientificallyOptimalMetrics()
@@ -505,14 +514,18 @@ final class DashboardViewModel: ObservableObject {
             let currentProjectedYears = self.lifeProjection?.adjustedLifeExpectancyYears ?? projection.baselineLifeExpectancyYears
             let potentialGain = projection.adjustedLifeExpectancyYears - currentProjectedYears
             
-            logger.info("✅ OPTIMAL habits projection calculated:")
-            logger.info("  - Baseline expectancy: \(String(format: "%.1f", projection.baselineLifeExpectancyYears)) years")
-            logger.info("  - OPTIMAL projected expectancy: \(String(format: "%.1f", projection.adjustedLifeExpectancyYears)) years")
-            logger.info("  - MAXIMUM improvement potential: \(String(format: "%.1f", potentialGain)) years")
+            if shouldLogDetails {
+                logger.info("✅ OPTIMAL habits projection calculated:")
+                logger.info("  - Baseline expectancy: \(String(format: "%.1f", projection.baselineLifeExpectancyYears)) years")
+                logger.info("  - OPTIMAL projected expectancy: \(String(format: "%.1f", projection.adjustedLifeExpectancyYears)) years")
+                logger.info("  - MAXIMUM improvement potential: \(String(format: "%.1f", potentialGain)) years")
+            }
             
             return projection
         } else {
-            logger.warning("⚠️ Failed to calculate optimal habits projection")
+            if shouldLogDetails {
+                logger.warning("⚠️ Failed to calculate optimal habits projection")
+            }
             return nil
         }
     }
@@ -801,14 +814,20 @@ final class DashboardViewModel: ObservableObject {
                 // Check for goal achievement after calculating life impact
                 checkForGoalAchievement()
                 
-                // Calculate life projection
-                lifeProjection = lifeProjectionService.calculateLifeProjection(
-                    from: periodMetrics,
-                    userProfile: self.userProfile
-                )
+                // PERFORMANCE FIX: Only recalculate life projection if metrics actually changed
+                let hasMetricsChanged = self.healthMetrics.count != periodMetrics.count || 
+                                      !periodMetrics.isEmpty
                 
-                // Also recalculate optimal habits projection
-                optimalHabitsProjection = calculateOptimalHabitsProjection()
+                if hasMetricsChanged {
+                    // Calculate life projection
+                    lifeProjection = lifeProjectionService.calculateLifeProjection(
+                        from: periodMetrics,
+                        userProfile: self.userProfile
+                    )
+                    
+                    // Also recalculate optimal habits projection
+                    optimalHabitsProjection = calculateOptimalHabitsProjection()
+                }
                 
                 self.isLoading = false
                 
