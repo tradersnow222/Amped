@@ -4,6 +4,9 @@ import SwiftUI
 enum OnboardingStep: String, Equatable, CaseIterable {
     case welcome
     case personalizationIntro // Position 2: Build trust before data collection
+    case beforeAfterTransformation // Position 3: Show transformation journey
+    case mascotIntroduction // Position 4: Introduce the mascot
+    case mascotNaming // Position 5: Let user name the mascot
     case questionnaire
     case notificationPermission // Moved: Right after goal setting for logical flow
     case valueProposition // Position 5: Reinforce value after notifications
@@ -29,6 +32,8 @@ struct OnboardingFlow: View {
     // ULTRA-PERFORMANCE FIX: Pre-initialize ViewModel in background during PersonalizationIntro
     @State private var questionnaireViewModel: QuestionnaireViewModel?
     @State private var isViewModelReady: Bool = false
+    
+    // Mascot name is now stored globally in AppState
     
     // Background initialization helper
     private func getQuestionnaireViewModel() -> QuestionnaireViewModel {
@@ -73,13 +78,9 @@ struct OnboardingFlow: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Conditional background based on current step
-                // Welcome screen uses BatteryBackground, all others use DeepBackground
-                if appState.currentOnboardingStep == .welcome {
-                    Color.clear.withBatteryBackground()
-                } else {
-                    Color.clear.withDeepBackground()
-                }
+                // Consistent black background for all onboarding screens to prevent flashing
+                // Each individual view handles its own background content
+                Color.black.ignoresSafeArea(.all)
                 
                 // Transitioning content layer
                 ZStack {
@@ -97,7 +98,7 @@ struct OnboardingFlow: View {
                     ValuePropositionView(onContinue: { 
                         isButtonNavigating = true
                         dragDirection = nil
-                        navigateTo(.questionnaire) 
+                        navigateTo(.personalizationIntro) 
                     })
                     .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                     .zIndex(appState.currentOnboardingStep == .valueProposition ? 1 : 0)
@@ -107,14 +108,53 @@ struct OnboardingFlow: View {
                     PersonalizationIntroView(onContinue: { 
                         isButtonNavigating = true
                         dragDirection = nil
-                        navigateTo(.notificationPermission) 
+                        navigateTo(.beforeAfterTransformation) 
                     })
                     .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                     .zIndex(appState.currentOnboardingStep == .personalizationIntro ? 1 : 0)
-                    // REMOVED: Pre-initialization now handled by WelcomeView orchestration
                 }
                     
-                    if appState.currentOnboardingStep == .questionnaire {
+                if appState.currentOnboardingStep == .beforeAfterTransformation {
+                    BeforeAfterTransformationView(onContinue: { 
+                        isButtonNavigating = true
+                        dragDirection = nil
+                        navigateTo(.mascotIntroduction) 
+                    })
+                    .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                    .zIndex(appState.currentOnboardingStep == .beforeAfterTransformation ? 1 : 0)
+                }
+                    
+                if appState.currentOnboardingStep == .mascotIntroduction {
+                    MascotIntroductionView(
+                        onContinue: { 
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.mascotNaming) 
+                        },
+                        onSkip: {
+                            // Use default name and skip to questionnaire
+                            appState.saveMascotName("Emma")
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.questionnaire)
+                        }
+                    )
+                    .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                    .zIndex(appState.currentOnboardingStep == .mascotIntroduction ? 1 : 0)
+                }
+                    
+                if appState.currentOnboardingStep == .mascotNaming {
+                    MascotNamingView(onContinue: { name in
+                        appState.saveMascotName(name) // Store the chosen name globally
+                        isButtonNavigating = true
+                        dragDirection = nil
+                        navigateTo(.questionnaire) 
+                    })
+                    .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                    .zIndex(appState.currentOnboardingStep == .mascotNaming ? 1 : 0)
+                }
+                    
+                if appState.currentOnboardingStep == .questionnaire {
                         // CRITICAL PERFORMANCE FIX: Pass lazy-initialized viewModel to prevent double initialization
                         QuestionnaireView(
                             viewModel: getQuestionnaireViewModel(),
@@ -151,9 +191,9 @@ struct OnboardingFlow: View {
                 isButtonNavigating = false
                 dragDirection = .leading
                 
-                // Questionnaire completed - go to personalization intro (Driven by Data screen)
+                // Questionnaire completed - go to pre-paywall teaser
                 Task { @MainActor in
-                    navigateTo(.personalizationIntro)
+                    navigateTo(.prePaywallTease)
                     
                     // Reset drag direction after animation
                     try? await Task.sleep(for: .seconds(0.7))
@@ -166,11 +206,18 @@ struct OnboardingFlow: View {
                     }
                     
                     if appState.currentOnboardingStep == .notificationPermission {
-                        NotificationPermissionView(onContinue: {
-                            isButtonNavigating = true
-                            dragDirection = nil
-                            navigateTo(.prePaywallTease)
-                        })
+                        NotificationPermissionView(
+                            onContinue: {
+                                isButtonNavigating = true
+                                dragDirection = nil
+                                navigateTo(.prePaywallTease)
+                            },
+                            onBackTap: {
+                                isButtonNavigating = true
+                                dragDirection = nil
+                                navigateTo(.personalizationIntro)
+                            }
+                        )
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .notificationPermission ? 1 : 0)
                     }
@@ -275,13 +322,9 @@ struct OnboardingFlow: View {
         }
     }
 
-    // MARK: - Materialize Transition (Luxury feel)
+    // MARK: - Fade Transition (Clean opacity only)
     private func getMaterializeTransition() -> AnyTransition {
-        let insertion = AnyTransition.opacity
-            .combined(with: .scale(scale: 0.97, anchor: .center))
-        let removal = AnyTransition.opacity
-            .combined(with: .scale(scale: 1.03, anchor: .center))
-        return .asymmetric(insertion: insertion, removal: removal)
+        return .opacity
     }
     
 }

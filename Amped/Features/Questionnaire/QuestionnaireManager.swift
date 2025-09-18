@@ -158,8 +158,8 @@ final class QuestionnaireManager: ObservableObject {
             firstName: viewModel.userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : viewModel.userName.components(separatedBy: " ").first,
             birthYear: birthYear,
             gender: viewModel.selectedGender,
-            height: nil, // Not collected in questionnaire yet
-            weight: nil, // Not collected in questionnaire yet
+            height: viewModel.height > 0 ? viewModel.height : nil,
+            weight: viewModel.weight > 0 ? viewModel.weight : nil,
             isSubscribed: currentUserProfile?.isSubscribed ?? false,
             hasCompletedOnboarding: currentUserProfile?.hasCompletedOnboarding ?? false,
             hasCompletedQuestionnaire: true,

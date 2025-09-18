@@ -1,6 +1,5 @@
 import SwiftUI
 import HealthKit
-import UIKit
 
 /// Helper function to create category header for questions
 func CategoryHeader(category: QuestionnaireViewModel.QuestionCategory) -> some View {
@@ -189,230 +188,483 @@ struct QuestionViews {
         @ObservedObject var viewModel: QuestionnaireViewModel
         var handleContinue: () -> Void
         
-        // ULTRA-PERFORMANCE FIX: Local state to prevent excessive view updates during scrolling
-        @State private var localBirthMonth: Int
-        @State private var localBirthYear: Int
+        // Local state for numeric inputs
+        @State private var localAge: String = ""
+        @State private var localHeight: String = ""
+        @State private var localWeight: String = ""
+        @State private var hasInitialized = false
+        @FocusState private var isAgeFieldFocused: Bool
+        @FocusState private var isHeightFieldFocused: Bool
+        @FocusState private var isWeightFieldFocused: Bool
         
         // Screen size adaptive spacing
         @Environment(\.adaptiveSpacing) private var spacing
         
-        // ULTRA-PERFORMANCE FIX: Truly static month names - zero system calls, zero lag
-        private static let monthNames: [String] = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
-        ]
+        // Debounce timer for text input
+        @State private var debounceTimer: Timer?
         
-        // ULTRA-PERFORMANCE FIX: Pre-computed static year array - zero computation during scroll
-        private static let yearRange: [Int] = {
-            let currentYear = Calendar.current.component(.year, from: Date())
-            let minYear = currentYear - 110  // 110 years old max
-            let maxYear = currentYear - 5    // 5 years old min
-            return Array(minYear...maxYear)
-        }()
-        
-        // PERFORMANCE: Initialize local state to prevent picker lag
-        init(viewModel: QuestionnaireViewModel, handleContinue: @escaping () -> Void) {
-            self.viewModel = viewModel
-            self.handleContinue = handleContinue
-            self._localBirthMonth = State(initialValue: viewModel.selectedBirthMonth)
-            self._localBirthYear = State(initialValue: viewModel.selectedBirthYear)
-        }
+        // Keyboard tracking
+        @State private var keyboardHeight: CGFloat = 0
         
         var body: some View {
-            VStack(spacing: 0) {
-                // Main content area with consistent padding
-                VStack(alignment: .center, spacing: 0) {
-                    // Question text placed higher - consistent with other questions
-                    Text("When were you born?")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.bottom, 10)
-                        .frame(maxWidth: .infinity)
-
-                    // Adaptive spacer instead of multiple fixed spacers
-                    AdaptiveSpacer(minHeight: 16, maxHeight: ScreenSizeCategory.current == .compact ? 24 : 40)
-
-                // ULTRA-FAST PERFORMANCE FIX: Zero-lag pickers with static data and no bindings during scroll
-                HStack(spacing: 0) {
-                        // Month Picker - ULTRA-FAST with local state to prevent view model updates during scroll
-                        Picker("Month", selection: $localBirthMonth) {
-                            // PERFORMANCE: Use static month names for instant rendering
-                            ForEach(1...12, id: \.self) { month in
-                                Text(Self.monthNames[month - 1])
-                                    .font(.system(size: 22, weight: .medium))
-                                    .foregroundColor(.white)
-                                    .tag(month)
-                            }
+            ScrollView {
+                VStack(spacing: 0) {
+                Spacer()
+                
+                // Main content
+                VStack(spacing: 32) {
+                    // Emma character and text
+                    VStack(spacing: 16) {
+                        // Emma character (steptwo) - centered
+                        Image("emma")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 107, height: 121)
+                    
+                        // Text section - left aligned to match fields
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Let's take some of your metrics.")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
                         }
-                        .pickerStyle(.wheel)
-                        .frame(maxWidth: .infinity)
-                        .colorScheme(.dark)
-                        .clipped() // PERFORMANCE: Prevent off-screen rendering
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
+                    }
+                    
+                    VStack(spacing: 16) {
+                        // Age input field
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Your Age")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.white)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 24)
+                            
+                            ZStack(alignment: .leading) {
+                                if localAge.isEmpty {
+                                    Text("Enter your age (eg. 35)")
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4))
+                                        .padding(.horizontal, 20)
+                                        .allowsHitTesting(false)
+                                }
+                                
+                                TextField("", text: $localAge)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(.black)
+                                    .multilineTextAlignment(.leading)
+                                    .padding(.vertical, 14)
+                                    .padding(.horizontal, 20)
+                                    .keyboardType(.numberPad)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.white)
+                            )
+                            .accentColor(.black)
+                            .focused($isAgeFieldFocused)
+                            .submitLabel(.next)
+                            .disableAutocorrection(true)
+                            .onChange(of: localAge) { newValue in
+                                debounceTimer?.invalidate()
+                                debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                                    syncToViewModel()
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                        }
                         
-                        // Year Picker - ULTRA-FAST with local state to prevent view model updates during scroll
-                        Picker("Year", selection: $localBirthYear) {
-                            // PERFORMANCE: Use static pre-computed array for zero-lag scrolling
-                            ForEach(Self.yearRange, id: \.self) { year in
-                                Text(String(year))
-                                    .font(.system(size: 22, weight: .medium))
+                        // Height input field
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Your Height")
+                                    .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(.white)
-                                    .tag(year)
+                                Spacer()
                             }
+                            .padding(.horizontal, 24)
+                            
+                            ZStack(alignment: .leading) {
+                                if localHeight.isEmpty {
+                                    Text("Enter your height (eg. 135)")
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4))
+                                        .padding(.horizontal, 20)
+                                        .allowsHitTesting(false)
+                                }
+                                
+                                TextField("", text: $localHeight)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(.black)
+                                    .multilineTextAlignment(.leading)
+                                    .padding(.vertical, 14)
+                                    .padding(.horizontal, 20)
+                                    .keyboardType(.numberPad)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.white)
+                            )
+                            .accentColor(.black)
+                            .focused($isHeightFieldFocused)
+                            .submitLabel(.next)
+                            .disableAutocorrection(true)
+                            .onChange(of: localHeight) { newValue in
+                                debounceTimer?.invalidate()
+                                debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                                    syncToViewModel()
+                                }
+                            }
+                            .padding(.horizontal, 24)
                         }
-                        .pickerStyle(.wheel)
-                        .frame(maxWidth: .infinity)
-                        .colorScheme(.dark)
-                        .clipped() // PERFORMANCE: Prevent off-screen rendering
-                }
-                .frame(height: ScreenSizeCategory.current == .compact ? 180 : 216) // Reduced height for compact screens
-                .padding(.horizontal, 24)
-
-                    // Adaptive spacer for button spacing
-                    AdaptiveSpacer(minHeight: 12, maxHeight: ScreenSizeCategory.current == .compact ? 16 : 24)
-
-                // Continue button with adaptive spacing - CRITICAL PERFORMANCE FIX
-                VStack(spacing: spacing.buttonSpacing) {
-                        // Compute eligibility locally to avoid binding VM during scroll
-                        let currentYear = Calendar.current.component(.year, from: Date())
-                        let approxAge = currentYear - localBirthYear
-                        let canProceedLocal = approxAge >= 18 && approxAge <= 120
+                        
+                        // Weight input field
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Your Weight")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.white)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 24)
+                            
+                            ZStack(alignment: .leading) {
+                                if localWeight.isEmpty {
+                                    Text("Enter your weight (eg. 85)")
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4))
+                                        .padding(.horizontal, 20)
+                                        .allowsHitTesting(false)
+                                }
+                                
+                                TextField("", text: $localWeight)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(.black)
+                                    .multilineTextAlignment(.leading)
+                                    .padding(.vertical, 14)
+                                    .padding(.horizontal, 20)
+                                    .keyboardType(.numberPad)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.white)
+                            )
+                            .accentColor(.black)
+                            .focused($isWeightFieldFocused)
+                            .submitLabel(.continue)
+                            .disableAutocorrection(true)
+                            .onSubmit {
+                                syncToViewModel()
+                                if canProceedLocally {
+                                    proceedToNext()
+                                }
+                            }
+                            .onChange(of: localWeight) { newValue in
+                                debounceTimer?.invalidate()
+                                debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                                    syncToViewModel()
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                        }
+                    }
+                    
+                    // Continue button
+                    if canProceedLocally {
                         Button(action: {
-                            // CRITICAL FIX: Sync local state to view model only on continue
-                            viewModel.selectedBirthMonth = localBirthMonth
-                            viewModel.selectedBirthYear = localBirthYear
-                            viewModel.updateBirthdateFromMonthYear() // Now synchronous and fast
-                            handleContinue()
+                            proceedToNext()
                         }) {
                             Text("Continue")
                         }
-                        .questionnaireButtonStyle(isSelected: false)
-                        .opacity(canProceedLocal ? 1.0 : 0.6)
-                        .disabled(!canProceedLocal)
-                        .hapticFeedback(.light)
-                    }
-                    .adaptiveBottomPadding()
-                }
+                        .buttonStyle(PrimaryButtonStyle())
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 40)
+                    } else {
+                        Button(action: {
+                            proceedToNext()
+                        }) {
+                            Text("Continue")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 100)
+                                        .fill(Color.white.opacity(0.3))
+                                )
+                        }
+                        .disabled(true)
                 .padding(.horizontal, 24)
-                .frame(maxHeight: .infinity)
+                        .padding(.bottom, 40)
+                    }
+                }
+                Spacer()
+                }
             }
-            .adaptiveSpacing()
+            .scrollContentBackground(.hidden)
+            .scrollDisabled(keyboardHeight == 0)
+            .onTapGesture {
+                // Dismiss keyboard when tapping outside input fields
+                isAgeFieldFocused = false
+                isHeightFieldFocused = false
+                isWeightFieldFocused = false
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+                if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                    keyboardHeight = keyboardFrame.height
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                keyboardHeight = 0
+            }
+            .onAppear {
+                if !hasInitialized {
+                    // Only pre-fill if there are actual values (not defaults)
+                    localAge = viewModel.age > 0 ? String(viewModel.age) : ""
+                    localHeight = viewModel.height > 0 ? String(Int(viewModel.height)) : ""
+                    localWeight = viewModel.weight > 0 ? String(Int(viewModel.weight)) : ""
+                    hasInitialized = true
+                }
+            }
+            .onDisappear {
+                debounceTimer?.invalidate()
+                debounceTimer = nil
+            }
+        }
+        
+        // Local validation to avoid expensive view model property access
+        private var canProceedLocally: Bool {
+            guard let ageInt = Int(localAge.trimmingCharacters(in: .whitespacesAndNewlines)),
+                  let heightInt = Int(localHeight.trimmingCharacters(in: .whitespacesAndNewlines)),
+                  let weightInt = Int(localWeight.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+                return false
+            }
+            return ageInt >= 18 && ageInt <= 120 && heightInt >= 100 && heightInt <= 250 && weightInt >= 30 && weightInt <= 300
+        }
+        
+        // Sync local state to view model efficiently
+        private func syncToViewModel() {
+            // Sync age
+            if let ageInt = Int(localAge.trimmingCharacters(in: .whitespacesAndNewlines)),
+               ageInt >= 18 && ageInt <= 120 {
+                viewModel.setAge(ageInt)
+            }
+            
+            // Sync height
+            if let heightInt = Int(localHeight.trimmingCharacters(in: .whitespacesAndNewlines)),
+               heightInt >= 100 && heightInt <= 250 {
+                viewModel.setHeight(Double(heightInt))
+            }
+            
+            // Sync weight
+            if let weightInt = Int(localWeight.trimmingCharacters(in: .whitespacesAndNewlines)),
+               weightInt >= 30 && weightInt <= 300 {
+                viewModel.setWeight(Double(weightInt))
+            }
+        }
+        
+        private func proceedToNext() {
+            guard canProceedLocally else { return }
+            
+            // KEYBOARD TRANSITION FIX: Dismiss keyboard immediately to prevent animation conflicts
+            isAgeFieldFocused = false
+            isHeightFieldFocused = false
+            isWeightFieldFocused = false
+            
+            // Ensure view model is synced before proceeding
+            syncToViewModel()
+            
+            // Cleanup timer
+            debounceTimer?.invalidate()
+            debounceTimer = nil
+            
+            // Use standard questionnaire transition timing to match other questions
+            viewModel.proceedToNextQuestion()
         }
     }
     
-    // MARK: - Name Question - KEYBOARD LAG FIX
+    // MARK: - Name Question - NEW DESIGN WITH EMMA CHARACTER
     
     struct NameQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @FocusState private var isTextFieldFocused: Bool
         @Environment(\.adaptiveSpacing) private var spacing
+        @EnvironmentObject var appState: AppState
         
         // CRITICAL KEYBOARD LAG FIX: Local state to prevent expensive view model updates during typing
         @State private var localUserName: String = ""
         @State private var hasInitialized = false
         
+        // Keyboard tracking
+        @State private var keyboardHeight: CGFloat = 0
+        
         var body: some View {
-            VStack(spacing: 0) {
-                // Question text - consistent with other questions
-                Text("What should we call you?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.bottom, 10)
-                    .padding(.horizontal, 24)
-                    .frame(maxWidth: .infinity)
-
-                // Adaptive spacer instead of fixed spacer
-                AdaptiveSpacer(minHeight: 20)
+            ScrollView {
+                VStack(spacing: 0) {
+                Spacer()
                 
-                // Text field and continue button grouped together at bottom for thumb accessibility
-                VStack(spacing: spacing.buttonSpacing) {
-                    // CRITICAL KEYBOARD LAG FIX: Use local state to prevent ObservedObject updates on every keystroke
-                    TextField("First name", text: $localUserName)
+                // Main content
+                VStack(spacing: 32) {
+                    // Emma character and text
+                    VStack(spacing: 16) {
+                        // Emma character (turtle with battery) - centered
+                        Image("emma")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 107, height: 121)
+                    
+                        // Text section - left aligned to match fields
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Let's get familiar")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                            
+                            Text("I'm \(appState.mascotName), your guide and companion in this journey.")
+                                .font(.system(size: 16, weight: .regular))
+                                .foregroundColor(.white.opacity(0.8))
+                                .multilineTextAlignment(.leading)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
+                     }
+                    
+                    VStack(spacing: 16) {
+                    // Question - left aligned, font size 20, weight 500
+                    HStack {
+                        Text("What should I call you?")
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .padding(.vertical, 16)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 24)
+                    
+                    // Text field with white background and custom placeholder
+                    ZStack(alignment: .leading) {
+                        // Custom placeholder
+                        if localUserName.isEmpty {
+                            Text("Enter your full name")
+                                .font(.system(size: 14, weight: .regular))
+                                .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4))
                         .padding(.horizontal, 20)
+                                .allowsHitTesting(false)
+                        }
+                        
+                        TextField("", text: $localUserName)
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundColor(.black)
+                            .multilineTextAlignment(.leading)
+                            .padding(.vertical, 14)
+                            .padding(.horizontal, 20)
+                    }
                         .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.white.opacity(0.15))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
-                                )
-                        )
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.white)
+                    )
+                    .accentColor(.black)
                         .focused($isTextFieldFocused)
                         .textInputAutocapitalization(.words)
                         .textContentType(.givenName)
                         .submitLabel(.continue)
                         .disableAutocorrection(true)
-                        // PERFORMANCE FIX: Only sync to view model on submit/continue, not every keystroke
                         .onSubmit {
                             syncToViewModel()
                             if canProceedLocally {
                                 proceedToNext()
                             }
                         }
-                        // KEYBOARD RESPONSIVENESS FIX: Debounce sync to view model
                         .onChange(of: localUserName) { newValue in
-                            // Debounce expensive operations - sync to view model after user stops typing
+                            // Debounce sync to view model
                             debounceTimer?.invalidate()
                             debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
                                 syncToViewModel()
                             }
                         }
+                        .padding(.horizontal, 24)
+                        
+                        // Gender selection dropdown using reusable component
+                        CustomDropdown(
+                            placeholder: "Select your gender",
+                            selection: Binding(
+                                get: { viewModel.selectedGender },
+                                set: { newValue in
+                                    DispatchQueue.main.async {
+                                        viewModel.selectedGender = newValue
+                                    }
+                                }
+                            ),
+                            displayText: { $0.displayName }
+                        )
+                        }
                     
-                    // Continue button positioned just below text field
-                    // PERFORMANCE FIX: Use local validation to avoid expensive view model checks
+                // Continue button
+                if canProceedLocally {
                     Button(action: {
                         proceedToNext()
                     }) {
                         Text("Continue")
                     }
-                    .questionnaireButtonStyle(isSelected: false)
-                    .opacity(canProceedLocally ? 1.0 : 0.6)
-                    .disabled(!canProceedLocally)
-                    .hapticFeedback(.light)
-                }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 40)
+                } else {
+                    Button(action: {
+                        proceedToNext()
+                    }) {
+                        Text("Continue")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(Color.white.opacity(0.3))
+                            )
+                    }
+                    .disabled(true)
                 .padding(.horizontal, 24)
-                .adaptiveBottomPadding() // Use adaptive bottom padding
+                    .padding(.bottom, 40)
             }
-            .adaptiveSpacing()
+                }
+                Spacer()
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .scrollDisabled(keyboardHeight == 0)
+            .onTapGesture {
+                // Dismiss keyboard when tapping outside input field
+                isTextFieldFocused = false
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+                if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                    keyboardHeight = keyboardFrame.height
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                keyboardHeight = 0
+            }
             .onAppear {
-                // KEYBOARD LAG FIX: Initialize local state from view model once
                 if !hasInitialized {
                     localUserName = viewModel.userName
                     hasInitialized = true
                 }
-                
-                let startTime = CFAbsoluteTimeGetCurrent()
-                print("🔍 PERFORMANCE_DEBUG: NameQuestionView.onAppear() started at \(startTime)")
-                
-                // NO automatic focus - keyboard only appears when user taps the text field
-                // This completely eliminates animation conflicts and follows iOS design patterns
-                
-                let onAppearTime = CFAbsoluteTimeGetCurrent() - startTime
-                print("🔍 PERFORMANCE_DEBUG: NameQuestionView.onAppear() completed in \(onAppearTime)s (no keyboard conflict)")
             }
             .onDisappear {
-                // Cleanup timer when view disappears
                 debounceTimer?.invalidate()
                 debounceTimer = nil
             }
         }
+        
         
         // KEYBOARD LAG FIX: Debounce timer for expensive operations
         @State private var debounceTimer: Timer?
         
         // Local validation to avoid expensive view model property access
         private var canProceedLocally: Bool {
-            !localUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            !localUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && viewModel.selectedGender != nil
         }
+        
         
         // KEYBOARD LAG FIX: Sync local state to view model efficiently
         private func syncToViewModel() {
@@ -442,99 +694,755 @@ struct QuestionViews {
     
     // MARK: - Stress Level Question
     
+    struct Triangle: Shape {
+        func path(in rect: CGRect) -> Path {
+            var path = Path()
+            path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            path.closeSubpath()
+            return path
+        }
+    }
+    
     struct StressQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @Environment(\.adaptiveSpacing) private var spacing
+        @State private var showPopup = false
+        @State private var showDrawer = false
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
-                // Question placed higher
-                VStack(spacing: 0) {
-                    Text("How would you describe your typical stress levels?")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.bottom, 10)
-                        .frame(maxWidth: .infinity)
-                    
-                    ScientificCitation(text: "Based on 68 studies, 2.3 million participants", metricType: .stressLevel)
+                Spacer()
+                
+                // Emma character and question layout
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("How would you describe your typical stress level?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        // Research citation with book icon
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showDrawer = true
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image("book_ribbon")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 16, height: 16)
+                                
+                                Text("Tap to see what research based on 195 studies tell us.")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
                 
-                AdaptiveSpacer()
+                Spacer()
+                 .frame(maxHeight: 32)
                 
-                // Options at bottom for thumb access
-                VStack(spacing: spacing.buttonSpacing) {
-                    // Show all 4 stress level options (following 4-option maximum rule)
+                // Stress level options
+                VStack(spacing: 16) {
                     ForEach(QuestionnaireViewModel.StressLevel.allCases, id: \.self) { stressLevel in
                         Button(action: {
                             viewModel.selectedStressLevel = stressLevel
                             viewModel.proceedToNextQuestion()
                         }) {
-                            FormattedButtonText(
-                                text: stressLevel.displayName,
-                                subtitle: nil
+                            VStack(alignment: .center, spacing: 4) {
+                                Text(stressLevel.mainText)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                
+                                Text(stressLevel.subText)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(viewModel.selectedStressLevel == stressLevel ? .white.opacity(0.8) : .gray)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(
+                                        viewModel.selectedStressLevel == stressLevel ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                                    startPoint: .leading,
+                                                    endPoint: .trailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
                             )
                         }
-                        .questionnaireButtonStyle(isSelected: viewModel.selectedStressLevel == stressLevel)
                         .hapticFeedback(.light)
                     }
-                }
-                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
+                
+                Spacer()
+            }
             .frame(maxHeight: .infinity)
-            .adaptiveSpacing()
+            .ignoresSafeArea(.container, edges: .bottom)
+            .overlay(
+                // Popup overlay
+                Group {
+                    if showPopup {
+                        Color.black.opacity(0.5)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showPopup = false
+                                }
+                            }
+                        
+                        // Popup content
+                        VStack(spacing: 0) {
+                            // Speech bubble arrow
+                            Triangle()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                            .init(color: Color(red: 0.00, green: 0.57, blue: 0.27), location: 0.0),  // #009245
+                                            .init(color: Color(red: 0.49, green: 0.75, blue: 0.20), location: 0.9), // #7EC033
+                                            .init(color: Color(red: 0.99, green: 0.93, blue: 0.13), location: 1.0), // #FCEE21
+                                        ]
+                                        ),
+                                        // startPoint: UnitPoint(x: 0.35, y: 0.12), // 232.42deg equivalent
+                                        // endPoint: UnitPoint(x: 0.89, y: 0.89)
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                                )
+                                .frame(width: 20, height: 12)
+                                .offset(y: 5)
+                            
+                            // Popup content
+                            VStack(spacing: 16) {
+                                Text("Tap to see how this habit impacts lifespan")
+                                    .font(.system(size: 20, weight: .regular))
+                                    .foregroundColor(.white)
+                                    .multilineTextAlignment(.leading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                
+                                Button(action: {
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showPopup = false
+                                    }
+                                }) {
+                                    Text("Okay")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(Color("ampedGreen"))
+                                        .padding(.horizontal, 24)
+                                        .padding(.vertical, 12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 20)
+                                                .fill(Color.white)
+                                        )
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                         LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                           .init(color: Color(red: 0/255, green: 146/255, blue: 69/255), location: 0.0707),
+                                            .init(color: Color(red: 63/255, green: 169/255, blue: 60/255), location: 0.291),
+                                            .init(color: Color(red: 126/255, green: 192/255, blue: 51/255), location: 0.5908),
+                                            .init(color: Color(red: 252/255, green: 238/255, blue: 33/255), location: 0.8026)
+                                        ]
+                                        ),
+                                        // startPoint: UnitPoint(x: 0.35, y: 0.12), // 232.42deg equivalent
+                                        // endPoint: UnitPoint(x: 0.89, y: 0.89)
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                            )
+                            )
+                        }
+                        .padding(.horizontal, 40)
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                }
+            )
+            .overlay(
+                // Drawer overlay
+                Group {
+                    if showDrawer {
+                        ZStack(alignment: .bottom) {
+                            // Transparent background overlay
+                            Color.clear
+                                .ignoresSafeArea(.all)
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showDrawer = false
+                                    }
+                                }
+                            
+                            // Drawer content - positioned at bottom
+                            VStack(spacing: 0) {
+                                // Handle bar (draggable)
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.white)
+                                    .frame(width: 40, height: 4)
+                                    .padding(.top, 8)
+                                    .padding(.bottom, 20)
+                                    .onTapGesture {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showDrawer = false
+                                        }
+                                    }
+                                
+                                VStack(alignment: .leading, spacing: 20) {
+                                    // Header
+                                    HStack {
+                                        Text("Impact score")
+                                            .font(.system(size: 18, weight: .regular))
+                                            .foregroundColor(.white)
+                                        
+                                        Spacer()
+                                        
+                                        Button(action: {
+                                            withAnimation(.easeInOut(duration: 0.3)) {
+                                                showDrawer = false
+                                            }
+                                        }) {
+                                            Image(systemName: "xmark")
+                                                .font(.system(size: 16, weight: .medium))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                    
+                                    // Score display
+                                    HStack(alignment: .bottom, spacing: 0) {
+                                        Text("50")
+                                            .font(.system(size: 48, weight: .bold))
+                                            .foregroundColor(.white)
+                                        
+                                        Text("/100")
+                                            .font(.system(size: 24, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .padding(.bottom, 8)
+                                    }
+                                    
+                                    // Slider
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        // Custom slider
+                                        GeometryReader { geometry in
+                                            ZStack(alignment: .leading) {
+                                                // Background track
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color.white)
+                                                    .frame(height: 8)
+                                                
+                                                // Progress track
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color("ampedYellow"))
+                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                
+                                                // Thumb
+                                                Circle()
+                                                    .fill(Color.gray)
+                                                    .frame(width: 20, height: 20)
+                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                            }
+                                        }
+                                        .frame(height: 20)
+                                        
+                                        // Range labels
+                                        HStack {
+                                            Text("0")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                            
+                                            Spacer()
+                                            
+                                            Text("100")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+                                    
+                                    // Description text
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("This score estimates how your stress level affects your life expectancy.")
+                                            .font(.system(size: 16, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        
+                                        Text("Stress contributes to 30% of your total lifespan impact. It's important!")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        
+                                        Text("Chronic stress increases mortality risk by 43% compared to low stress levels.")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                    
+                                    // Source button
+                                    Button(action: {
+                                        // Handle source link tap
+                                    }) {
+                                        HStack {
+                                            Text("Source: Keller A (2012)")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                            
+                                            Image(systemName: "arrow.up.right")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.gray.opacity(0.3))
+                                        )
+                                    }
+                                    .padding(.bottom, 20)
+                                }
+                                .padding(.horizontal, 24)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color(red: 0x27/255, green: 0x27/255, blue: 0x27/255)) // #272727
+                            )
+                            .ignoresSafeArea(.all)
+                        }
+                        .ignoresSafeArea(.all)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+            )
+            .onAppear {
+                // Show popup only once when view appears
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showPopup = true
+                        }
+                    }
+                }
+            }
         }
     }
     
     // MARK: - Anxiety Level Question
+    struct RoundedCorner: Shape {
+        var radius: CGFloat = 16
+        var corners: UIRectCorner = .allCorners
+        
+        func path(in rect: CGRect) -> Path {
+            let path = UIBezierPath(
+                roundedRect: rect,
+                byRoundingCorners: corners,
+                cornerRadii: CGSize(width: radius, height: radius)
+            )
+            return Path(path.cgPath)
+        }
+    }
     
     struct AnxietyQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @Environment(\.adaptiveSpacing) private var spacing
+        @State private var showPopup = false
+        @State private var showDrawer = false
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
-                // Question placed higher
-                VStack(spacing: 0) {
-                    Text("How would you describe your anxiety levels?")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.bottom, 10)
-                        .frame(maxWidth: .infinity)
-                    
-                    ScientificCitation(text: "Based on 42 studies, 890,000 participants", metricType: .stressLevel)
+                Spacer()
+                
+                // Emma character and question layout
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("How would you describe your anxiety level?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        // Research citation with book icon
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showDrawer = true
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image("book_ribbon")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 16, height: 16)
+                                
+                                Text("Tap to see what research based on 195 studies tell us.")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
                 
-                AdaptiveSpacer()
+                Spacer()
+                 .frame(maxHeight: 32)
                 
-                // Options at bottom for thumb access
-                VStack(spacing: spacing.buttonSpacing) {
-                    // Show all 4 anxiety level options (following 4-option maximum rule)
+                // Anxiety level options
+                VStack(spacing: 16) {
                     ForEach(QuestionnaireViewModel.AnxietyLevel.allCases, id: \.self) { anxietyLevel in
                         Button(action: {
                             viewModel.selectedAnxietyLevel = anxietyLevel
                             viewModel.proceedToNextQuestion()
                         }) {
-                            FormattedButtonText(
-                                text: anxietyLevel.displayName,
-                                subtitle: nil
+                            VStack(alignment: .center, spacing: 4) {
+                                Text(anxietyLevel.mainText)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                
+                                Text(anxietyLevel.subText)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(viewModel.selectedAnxietyLevel == anxietyLevel ? .white.opacity(0.8) : .gray)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(
+                                        viewModel.selectedAnxietyLevel == anxietyLevel ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                                    startPoint: .leading,
+                                                    endPoint: .trailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
                             )
                         }
-                        .questionnaireButtonStyle(isSelected: viewModel.selectedAnxietyLevel == anxietyLevel)
                         .hapticFeedback(.light)
                     }
-                }
-                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
+                
+                Spacer()
+            }
             .frame(maxHeight: .infinity)
-            .adaptiveSpacing()
+            .ignoresSafeArea(.container, edges: .bottom)
+            .overlay(
+                // Popup overlay
+                Group {
+                    if showPopup {
+                        Color.black.opacity(0.5)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showPopup = false
+                                }
+                            }
+                        
+                        // Popup content
+                        VStack(spacing: 0) {
+                            // Speech bubble arrow
+                            Triangle()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                            .init(color: Color(red: 0.00, green: 0.57, blue: 0.27), location: 0.0),  // #009245
+                                            .init(color: Color(red: 0.49, green: 0.75, blue: 0.20), location: 0.9), // #7EC033
+                                            .init(color: Color(red: 0.99, green: 0.93, blue: 0.13), location: 1.0), // #FCEE21
+                                        ]
+                                        ),
+                                        // startPoint: UnitPoint(x: 0.35, y: 0.12), // 232.42deg equivalent
+                                        // endPoint: UnitPoint(x: 0.89, y: 0.89)
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                                )
+                                .frame(width: 20, height: 12)
+                                .offset(y: 5)
+                            
+                            // Popup content
+                            VStack(spacing: 16) {
+                                Text("Tap to see how this habit impacts lifespan")
+                                    .font(.system(size: 20, weight: .regular))
+                                    .foregroundColor(.white)
+                                    .multilineTextAlignment(.leading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                
+                                Button(action: {
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showPopup = false
+                                    }
+                                }) {
+                                    Text("Okay")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(Color("ampedGreen"))
+                                        .padding(.horizontal, 24)
+                                        .padding(.vertical, 12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 20)
+                                                .fill(Color.white)
+                                        )
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                         LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                           .init(color: Color(red: 0/255, green: 146/255, blue: 69/255), location: 0.0707),
+                                            .init(color: Color(red: 63/255, green: 169/255, blue: 60/255), location: 0.291),
+                                            .init(color: Color(red: 126/255, green: 192/255, blue: 51/255), location: 0.5908),
+                                            .init(color: Color(red: 252/255, green: 238/255, blue: 33/255), location: 0.8026)
+                                        ]
+                                        ),
+                                        // startPoint: UnitPoint(x: 0.35, y: 0.12), // 232.42deg equivalent
+                                        // endPoint: UnitPoint(x: 0.89, y: 0.89)
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                            )
+                            )
+                        }
+                        .padding(.horizontal, 40)
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                }
+            )
+            .overlay(
+                // Drawer overlay
+                Group {
+                    if showDrawer {
+                        ZStack(alignment: .bottom) {
+                            // Transparent background overlay
+                            Color.clear
+                                .ignoresSafeArea(.all)
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showDrawer = false
+                                    }
+                                }
+                            
+                            // Drawer content - positioned at bottom
+                            VStack(spacing: 0) {
+                                // Handle bar (draggable)
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.white)
+                                    .frame(width: 40, height: 4)
+                                    .padding(.top, 8)
+                                    .padding(.bottom, 20)
+                                    .onTapGesture {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showDrawer = false
+                                        }
+                                    }
+                                
+                                VStack(alignment: .leading, spacing: 20) {
+                                    // Header
+                                    HStack {
+                                        Text("Impact score")
+                                            .font(.system(size: 18, weight: .regular))
+                                            .foregroundColor(.white)
+                                        
+                                        Spacer()
+                                        
+                                        Button(action: {
+                                            withAnimation(.easeInOut(duration: 0.3)) {
+                                                showDrawer = false
+                                            }
+                                        }) {
+                                            Image(systemName: "xmark")
+                                                .font(.system(size: 16, weight: .medium))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                    
+                                    // Score display
+                                    HStack(alignment: .bottom, spacing: 0) {
+                                        Text("50")
+                                            .font(.system(size: 48, weight: .bold))
+                                            .foregroundColor(.white)
+                                        
+                                        Text("/100")
+                                            .font(.system(size: 24, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .padding(.bottom, 8)
+                                    }
+                                    
+                                    // Slider
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        // Custom slider
+                                        GeometryReader { geometry in
+                                            ZStack(alignment: .leading) {
+                                                // Background track
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color.white)
+                                                    .frame(height: 8)
+                                                
+                                                // Progress track
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color("ampedYellow"))
+                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                
+                                                // Thumb
+                                                Circle()
+                                                    .fill(Color.gray)
+                                                    .frame(width: 20, height: 20)
+                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                            }
+                                        }
+                                        .frame(height: 20)
+                                        
+                                        // Range labels
+                                        HStack {
+                                            Text("0")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                            
+                                            Spacer()
+                                            
+                                            Text("100")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+                                    
+                                    // Description text
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("This score estimates how your anxiety level affects your life expectancy.")
+                                            .font(.system(size: 16, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        
+                                        Text("Anxiety contributes to 30% of your total lifespan impact. It's important!")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        
+                                        Text("Chronic anxiety increases mortality risk by 43% compared to low anxiety levels.")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                    
+                                    // Source button
+                                    Button(action: {
+                                        // Handle source link tap
+                                    }) {
+                                        HStack {
+                                            Text("Source: Keller A (2012)")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                            
+                                            Image(systemName: "arrow.up.right")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.gray.opacity(0.3))
+                                        )
+                                    }
+                                    .padding(.bottom, 20)
+                                }
+                                .padding(.horizontal, 24)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color(red: 0x27/255, green: 0x27/255, blue: 0x27/255)) // #272727
+                            )
+                            .ignoresSafeArea(.all)
+                        }
+                        .ignoresSafeArea(.all)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+            )
+            .onAppear {
+                // Show popup only once when view appears
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showPopup = true
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -543,42 +1451,192 @@ struct QuestionViews {
     struct GenderQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @Environment(\.adaptiveSpacing) private var spacing
+        @State private var isDropdownExpanded = false
         
         var body: some View {
-            VStack(alignment: .center, spacing: 0) {
-                // Question placed higher
-                Text("What is your biological sex?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity)
+            VStack(spacing: 0) {
+                Spacer()
                 
-                AdaptiveSpacer()
-                
-                // Options at bottom for thumb access
-                VStack(spacing: spacing.buttonSpacing) {
-                    ForEach(["Female", "Male"], id: \.self) { gender in
+                // Main content
+                VStack(spacing: 32) {
+                    // Emma character and text
+                    VStack(spacing: 16) {
+                        // Emma character (steptwo) - centered
+                        Image("emma")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 107, height: 121)
+                    
+                        // Text section - left aligned to match fields
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Quick question: are you Team He, She, or They?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
+                    }
+                    
+                    VStack(spacing: 16) {
+                        // Dropdown field
                         Button(action: {
-                            viewModel.selectedGender = gender == "Male" ? .male : .female
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isDropdownExpanded.toggle()
+                            }
+                        }) {
+                            HStack {
+                                Text(selectedGenderText)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(selectedGenderText == "Select an option" ? Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4) : .black)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.black)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: isDropdownExpanded ? 12 : 6)
+                                    .fill(Color.white)
+                            )
+                        }
+                        .padding(.horizontal, 24)
+                        
+                        // Continue button
+                        if viewModel.selectedGender != nil {
+                            Button(action: {
                             viewModel.proceedToNextQuestion()
                         }) {
-                            Text(gender)
+                                Text("Continue")
+                            }
+                            .buttonStyle(PrimaryButtonStyle())
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 40)
+                        } else {
+                            Button(action: {
+                                viewModel.proceedToNextQuestion()
+                            }) {
+                                Text("Continue")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 16)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .fill(Color.white.opacity(0.3))
+                                    )
+                            }
+                            .disabled(true)
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 40)
                         }
-                        .questionnaireButtonStyle(
-                            isSelected: (gender == "Male" && viewModel.selectedGender == .male) || 
-                                       (gender == "Female" && viewModel.selectedGender == .female)
-                        )
-                        .hapticFeedback(.light)
                     }
                 }
-                .adaptiveBottomPadding()
+                Spacer()
             }
+            .overlay(
+                // Dropdown overlay
+                Group {
+                    if isDropdownExpanded {
+                        VStack(spacing: 0) {
+                            // Position the dropdown below the input field
+                            Spacer()
+                                .frame(height: 360)
+                            
+                            // Unified dropdown container
+                            VStack(spacing: 0) {
+                                // First option (Male)
+                                Button(action: {
+                                    viewModel.selectedGender = .male
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        isDropdownExpanded = false
+                                    }
+                                }) {
+                                    HStack {
+                                        Text("Male")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.black)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 14)
+                                }
+                                
+                                // Divider
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(height: 1)
+                                
+                                // Second option (Female)
+                                Button(action: {
+                                    viewModel.selectedGender = .female
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        isDropdownExpanded = false
+                                    }
+                                }) {
+                                    HStack {
+                                        Text("Female")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.black)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 14)
+                                }
+                                
+                                // Divider
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(height: 1)
+                                
+                                // Third option (Prefer not to say)
+                                Button(action: {
+                                    viewModel.selectedGender = .preferNotToSay
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        isDropdownExpanded = false
+                                    }
+                                }) {
+                                    HStack {
+                                        Text("Prefer not to say")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.black)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 14)
+                                }
+                            }
+                            .background(Color.white)
+                            .cornerRadius(12)
+                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
             .padding(.horizontal, 24)
-            .frame(maxHeight: .infinity)
-            .adaptiveSpacing()
+                            
+                            Spacer()
+                        }
+                        .background(Color.black.opacity(0.3))
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isDropdownExpanded = false
+                            }
+                        }
+                    }
+                }
+            )
+        }
+        
+        private var selectedGenderText: String {
+            switch viewModel.selectedGender {
+            case .male:
+                return "Male"
+            case .female:
+                return "Female"
+            case .preferNotToSay:
+                return "Prefer not to say"
+            case .none:
+                return "Select an option"
+            }
         }
     }
     
@@ -587,46 +1645,359 @@ struct QuestionViews {
     struct NutritionQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @Environment(\.adaptiveSpacing) private var spacing
+        @State private var showPopup = false
+        @State private var showDrawer = false
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
-                // Question placed higher
-                VStack(spacing: 0) {
-                    Text("How would you describe your typical diet?")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.bottom, 10)
-                        .frame(maxWidth: .infinity)
-                    
-                    ScientificCitation(text: "Based on 195 studies, 4.9 million participants", metricType: .nutritionQuality)
+                Spacer()
+                
+                // Emma character and question layout
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("How would you describe your typical diet?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        // Research citation with book icon
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showDrawer = true
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image("book_ribbon")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 16, height: 16)
+                                
+                                Text("Tap to see what research based on 195 studies tell us.")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
                 
-                AdaptiveSpacer()
+                Spacer()
+                 .frame(maxHeight: 32)
                 
-                // Options at bottom for thumb access
-                VStack(spacing: spacing.buttonSpacing) {
+                // Diet quality options
+                VStack(spacing: 16) {
                     ForEach(QuestionnaireViewModel.NutritionQuality.allCases, id: \.self) { nutrition in
                         Button(action: {
                             viewModel.selectedNutritionQuality = nutrition
                             viewModel.proceedToNextQuestion()
                         }) {
-                            FormattedButtonText(
-                                text: nutrition.displayName,
-                                subtitle: nil
+                            VStack(alignment: .center, spacing: 4) {
+                                Text(nutrition.mainText)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                
+                                Text(nutrition.subText)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(viewModel.selectedNutritionQuality == nutrition ? .white.opacity(0.8) : .gray)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(
+                                        viewModel.selectedNutritionQuality == nutrition ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                                    startPoint: .leading,
+                                                    endPoint: .trailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
                             )
                         }
-                        .questionnaireButtonStyle(isSelected: viewModel.selectedNutritionQuality == nutrition)
                         .hapticFeedback(.light)
                     }
-                }
-                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
+                
+                Spacer()
+            }
             .frame(maxHeight: .infinity)
-            .adaptiveSpacing()
+            .ignoresSafeArea(.container, edges: .bottom)
+            .overlay(
+                // Popup overlay
+                Group {
+                    if showPopup {
+                        Color.black.opacity(0.5)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showPopup = false
+                                }
+                            }
+                        
+                        // Popup content
+                        VStack(spacing: 0) {
+                            // Speech bubble arrow
+                            Triangle()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                            .init(color: Color(red: 0.00, green: 0.57, blue: 0.27), location: 0.0),  // #009245
+                                            .init(color: Color(red: 0.49, green: 0.75, blue: 0.20), location: 0.9), // #7EC033
+                                            .init(color: Color(red: 0.99, green: 0.93, blue: 0.13), location: 1.0), // #FCEE21
+                                        ]
+                                        ),
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                                )
+                                .frame(width: 20, height: 12)
+                                .offset(y: 5)
+                            
+                            // Popup content
+                            VStack(spacing: 16) {
+                                Text("Tap to see how this habit impacts lifespan")
+                                    .font(.system(size: 20, weight: .regular))
+                                    .foregroundColor(.white)
+                                    .multilineTextAlignment(.leading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                
+                                Button(action: {
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showPopup = false
+                                    }
+                                }) {
+                                    Text("Okay")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(Color("ampedGreen"))
+                                        .padding(.horizontal, 24)
+                                        .padding(.vertical, 12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 20)
+                                                .fill(Color.white)
+                                        )
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                         LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                           .init(color: Color(red: 0/255, green: 146/255, blue: 69/255), location: 0.0707),
+                                            .init(color: Color(red: 63/255, green: 169/255, blue: 60/255), location: 0.291),
+                                            .init(color: Color(red: 126/255, green: 192/255, blue: 51/255), location: 0.5908),
+                                            .init(color: Color(red: 252/255, green: 238/255, blue: 33/255), location: 0.8026)
+                                        ]
+                                        ),
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                            )
+                            )
+                        }
+                        .padding(.horizontal, 40)
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                }
+            )
+            .overlay(
+                // Drawer overlay
+                Group {
+                    if showDrawer {
+                        ZStack(alignment: .bottom) {
+                            // Transparent background overlay
+                            Color.clear
+                                .ignoresSafeArea(.all)
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showDrawer = false
+                                    }
+                                }
+                            
+                            // Drawer content - positioned at bottom
+                            VStack(spacing: 0) {
+                                // Handle bar (draggable)
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.white)
+                                    .frame(width: 40, height: 4)
+                                    .padding(.top, 8)
+                                    .padding(.bottom, 20)
+                                    .onTapGesture {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showDrawer = false
+                                        }
+                                    }
+                                
+                                VStack(alignment: .leading, spacing: 20) {
+                                    // Header
+                                    HStack {
+                                        Text("Impact score")
+                                            .font(.system(size: 18, weight: .regular))
+                                            .foregroundColor(.white)
+                                        
+                                        Spacer()
+                                        
+                                        Button(action: {
+                                            withAnimation(.easeInOut(duration: 0.3)) {
+                                                showDrawer = false
+                                            }
+                                        }) {
+                                            Image(systemName: "xmark")
+                                                .font(.system(size: 16, weight: .medium))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                    
+                                    // Score display
+                                    HStack(alignment: .bottom, spacing: 0) {
+                                        Text("50")
+                                            .font(.system(size: 48, weight: .bold))
+                                            .foregroundColor(.white)
+                                        
+                                        Text("/100")
+                                            .font(.system(size: 24, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .padding(.bottom, 8)
+                                    }
+                                    
+                                    // Slider
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        // Custom slider
+                                        GeometryReader { geometry in
+                                            ZStack(alignment: .leading) {
+                                                // Background track
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color.white)
+                                                    .frame(height: 8)
+                                                
+                                                // Progress track
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color("ampedYellow"))
+                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                
+                                                // Thumb
+                                                Circle()
+                                                    .fill(Color.gray)
+                                                    .frame(width: 20, height: 20)
+                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                            }
+                                        }
+                                        .frame(height: 20)
+                                        
+                                        // Range labels
+                                        HStack {
+                                            Text("0")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                            
+                                            Spacer()
+                                            
+                                            Text("100")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+                                    
+                                    // Description text
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("This score estimates how your diet quality affects your life expectancy.")
+                                            .font(.system(size: 16, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        
+                                        Text("Diet contributes to 25% of your total lifespan impact. It's important!")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        
+                                        Text("Poor diet increases mortality risk by 35% compared to healthy eating patterns.")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                    
+                                    // Source button
+                                    Button(action: {
+                                        // Handle source link tap
+                                    }) {
+                                        HStack {
+                                            Text("Source: GBD 2019")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                            
+                                            Image(systemName: "arrow.up.right")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.gray.opacity(0.3))
+                                        )
+                                    }
+                                    .padding(.bottom, 20)
+                                }
+                                .padding(.horizontal, 24)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color(red: 0x27/255, green: 0x27/255, blue: 0x27/255)) // #272727
+                            )
+                            .ignoresSafeArea(.all)
+                        }
+                        .ignoresSafeArea(.all)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+            )
+            .onAppear {
+                // Show popup only once when view appears
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showPopup = true
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -635,43 +2006,361 @@ struct QuestionViews {
     struct SmokingQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @Environment(\.adaptiveSpacing) private var spacing
+        @State private var showPopup = false
+        @State private var showDrawer = false
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
-                // Question placed higher
-                VStack(spacing: 0) {
-                    Text("Do you smoke tobacco products?")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.bottom, 10)
-                        .frame(maxWidth: .infinity)
-                    
-                    ScientificCitation(text: "Based on 81 studies, 3.9 million participants", metricType: .smokingStatus)
+                Spacer()
+                
+                // Emma character and question layout
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Do you smoke tobacco products?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        // Research citation with book icon
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showDrawer = true
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image("book_ribbon")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 16, height: 16)
+                                
+                                Text("Tap to see what research based on 195 studies tell us.")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
                 
-                AdaptiveSpacer()
+                Spacer()
+                 .frame(maxHeight: 32)
                 
-                // Options at bottom for thumb access
-                VStack(spacing: spacing.buttonSpacing) {
+                // Smoking status options
+                VStack(spacing: 16) {
                     ForEach(QuestionnaireViewModel.SmokingStatus.allCases, id: \.self) { status in
                         Button(action: {
                             viewModel.selectedSmokingStatus = status
                             viewModel.proceedToNextQuestion()
                         }) {
-                            FormattedButtonText(text: status.displayName)
+                            VStack(alignment: .center, spacing: 4) {
+                                Text(status.mainText)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                
+                                if !status.subText.isEmpty {
+                                    Text(status.subText)
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(viewModel.selectedSmokingStatus == status ? .white.opacity(0.8) : .gray)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, status.subText.isEmpty ? 18 : 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(
+                                        viewModel.selectedSmokingStatus == status ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                                    startPoint: .leading,
+                                                    endPoint: .trailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
+                            )
                         }
-                        .questionnaireButtonStyle(isSelected: viewModel.selectedSmokingStatus == status)
                         .hapticFeedback(.light)
                     }
-                }
-                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
+                
+                Spacer()
+            }
             .frame(maxHeight: .infinity)
-            .adaptiveSpacing()
+            .ignoresSafeArea(.container, edges: .bottom)
+            .overlay(
+                // Popup overlay
+                Group {
+                    if showPopup {
+                        Color.black.opacity(0.5)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showPopup = false
+                                }
+                            }
+                        
+                        // Popup content
+                        VStack(spacing: 0) {
+                            // Speech bubble arrow
+                            Triangle()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                            .init(color: Color(red: 0.00, green: 0.57, blue: 0.27), location: 0.0),  // #009245
+                                            .init(color: Color(red: 0.49, green: 0.75, blue: 0.20), location: 0.9), // #7EC033
+                                            .init(color: Color(red: 0.99, green: 0.93, blue: 0.13), location: 1.0), // #FCEE21
+                                        ]
+                                        ),
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                                )
+                                .frame(width: 20, height: 12)
+                                .offset(y: 5)
+                            
+                            // Popup content
+                            VStack(spacing: 16) {
+                                Text("Tap to see how this habit impacts lifespan")
+                                    .font(.system(size: 20, weight: .regular))
+                                    .foregroundColor(.white)
+                                    .multilineTextAlignment(.leading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                
+                                Button(action: {
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showPopup = false
+                                    }
+                                }) {
+                                    Text("Okay")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(Color("ampedGreen"))
+                                        .padding(.horizontal, 24)
+                                        .padding(.vertical, 12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 20)
+                                                .fill(Color.white)
+                                        )
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                         LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                           .init(color: Color(red: 0/255, green: 146/255, blue: 69/255), location: 0.0707),
+                                            .init(color: Color(red: 63/255, green: 169/255, blue: 60/255), location: 0.291),
+                                            .init(color: Color(red: 126/255, green: 192/255, blue: 51/255), location: 0.5908),
+                                            .init(color: Color(red: 252/255, green: 238/255, blue: 33/255), location: 0.8026)
+                                        ]
+                                        ),
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                            )
+                            )
+                        }
+                        .padding(.horizontal, 40)
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                }
+            )
+            .overlay(
+                // Drawer overlay
+                Group {
+                    if showDrawer {
+                        ZStack(alignment: .bottom) {
+                            // Transparent background overlay
+                            Color.clear
+                                .ignoresSafeArea(.all)
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showDrawer = false
+                                    }
+                                }
+                            
+                            // Drawer content - positioned at bottom
+                            VStack(spacing: 0) {
+                                // Handle bar (draggable)
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.white)
+                                    .frame(width: 40, height: 4)
+                                    .padding(.top, 8)
+                                    .padding(.bottom, 20)
+                                    .onTapGesture {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showDrawer = false
+                                        }
+                                    }
+                                
+                                VStack(alignment: .leading, spacing: 20) {
+                                    // Header
+                                    HStack {
+                                        Text("Impact score")
+                                            .font(.system(size: 18, weight: .regular))
+                                            .foregroundColor(.white)
+                                        
+                                        Spacer()
+                                        
+                                        Button(action: {
+                                            withAnimation(.easeInOut(duration: 0.3)) {
+                                                showDrawer = false
+                                            }
+                                        }) {
+                                            Image(systemName: "xmark")
+                                                .font(.system(size: 16, weight: .medium))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                    
+                                    // Score display
+                                    HStack(alignment: .bottom, spacing: 0) {
+                                        Text("50")
+                                            .font(.system(size: 48, weight: .bold))
+                                            .foregroundColor(.white)
+                                        
+                                        Text("/100")
+                                            .font(.system(size: 24, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .padding(.bottom, 8)
+                                    }
+                                    
+                                    // Slider
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        // Custom slider
+                                        GeometryReader { geometry in
+                                            ZStack(alignment: .leading) {
+                                                // Background track
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color.white)
+                                                    .frame(height: 8)
+                                                
+                                                // Progress track
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color("ampedYellow"))
+                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                
+                                                // Thumb
+                                                Circle()
+                                                    .fill(Color.gray)
+                                                    .frame(width: 20, height: 20)
+                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                            }
+                                        }
+                                        .frame(height: 20)
+                                        
+                                        // Range labels
+                                        HStack {
+                                            Text("0")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                            
+                                            Spacer()
+                                            
+                                            Text("100")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+                                    
+                                    // Description text
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("This score estimates how your smoking habits affect your life expectancy.")
+                                            .font(.system(size: 16, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        
+                                        Text("Smoking contributes to 40% of your total lifespan impact. It's critical!")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        
+                                        Text("Daily smoking reduces life expectancy by 10-15 years compared to non-smokers.")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                    
+                                    // Source button
+                                    Button(action: {
+                                        // Handle source link tap
+                                    }) {
+                                        HStack {
+                                            Text("Source: CDC 2023")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                            
+                                            Image(systemName: "arrow.up.right")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.gray.opacity(0.3))
+                                        )
+                                    }
+                                    .padding(.bottom, 20)
+                                }
+                                .padding(.horizontal, 24)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color(red: 0x27/255, green: 0x27/255, blue: 0x27/255)) // #272727
+                            )
+                            .ignoresSafeArea(.all)
+                        }
+                        .ignoresSafeArea(.all)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+            )
+            .onAppear {
+                // Show popup only once when view appears
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showPopup = true
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -680,43 +2369,332 @@ struct QuestionViews {
     struct AlcoholQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @Environment(\.adaptiveSpacing) private var spacing
+        @State private var showPopup = false
+        @State private var showDrawer = false
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
-                // Question placed higher
-                VStack(spacing: 0) {
-                    Text("How often do you consume alcoholic beverages?")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.bottom, 10)
-                        .frame(maxWidth: .infinity)
-                    
-                    ScientificCitation(text: "Based on 107 studies, 4.8 million participants", metricType: .alcoholConsumption)
+                Spacer()
+                
+                // Emma character and question layout
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("How often do you consume alcoholic beverages?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        // Research citation with book icon
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showDrawer = true
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image("book_ribbon")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 16, height: 16)
+                                
+                                Text("Tap to see what research based on 195 studies tell us.")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
                 
-                AdaptiveSpacer()
+                Spacer()
+                 .frame(maxHeight: 32)
                 
-                // Options at bottom for thumb access
-                VStack(spacing: spacing.buttonSpacing) {
+                // Alcohol frequency options
+                VStack(spacing: 16) {
                     ForEach(QuestionnaireViewModel.AlcoholFrequency.allCases, id: \.self) { frequency in
                         Button(action: {
                             viewModel.selectedAlcoholFrequency = frequency
                             viewModel.proceedToNextQuestion()
                         }) {
-                            FormattedButtonText(text: frequency.displayName)
+                            VStack(alignment: .center, spacing: 4) {
+                                Text(frequency.mainText)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+
+                                if !frequency.subText.isEmpty {
+                                    Text(frequency.subText)
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(viewModel.selectedAlcoholFrequency == frequency ? .white.opacity(0.8) : .gray)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, frequency.subText.isEmpty ? 18 : 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(
+                                        viewModel.selectedAlcoholFrequency == frequency ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                                    startPoint: .leading,
+                                                    endPoint: .trailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
+                            )
                         }
-                        .questionnaireButtonStyle(isSelected: viewModel.selectedAlcoholFrequency == frequency)
                         .hapticFeedback(.light)
                     }
-                }
-                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
+
+                Spacer()
+            }
             .frame(maxHeight: .infinity)
-            .adaptiveSpacing()
+            .ignoresSafeArea(.container, edges: .bottom)
+            .overlay(
+                // Popup overlay
+                Group {
+                    if showPopup {
+                        Color.black.opacity(0.5)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showPopup = false
+                                }
+                            }
+
+                        VStack(spacing: 0) {
+                            Triangle()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                            .init(color: Color(red: 0.00, green: 0.57, blue: 0.27), location: 0.0),
+                                            .init(color: Color(red: 0.49, green: 0.75, blue: 0.20), location: 0.9),
+                                            .init(color: Color(red: 0.99, green: 0.93, blue: 0.13), location: 1.0),
+                                        ]
+                                        ),
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                                )
+                                .frame(width: 20, height: 12)
+                                .offset(y: 5)
+
+                            VStack(spacing: 16) {
+                                Text("Tap to see how this habit impacts lifespan")
+                                    .font(.system(size: 20, weight: .regular))
+                                    .foregroundColor(.white)
+                                    .multilineTextAlignment(.leading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                                Button(action: {
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showPopup = false
+                                    }
+                                }) {
+                                    Text("Okay")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(Color("ampedGreen"))
+                                        .padding(.horizontal, 24)
+                                        .padding(.vertical, 12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 20)
+                                                .fill(Color.white)
+                                        )
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                         LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                           .init(color: Color(red: 0/255, green: 146/255, blue: 69/255), location: 0.0707),
+                                            .init(color: Color(red: 63/255, green: 169/255, blue: 60/255), location: 0.291),
+                                            .init(color: Color(red: 126/255, green: 192/255, blue: 51/255), location: 0.5908),
+                                            .init(color: Color(red: 252/255, green: 238/255, blue: 33/255), location: 0.8026)
+                                        ]
+                                        ),
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                            )
+                            )
+                        }
+                        .padding(.horizontal, 40)
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                }
+            )
+            .overlay(
+                // Drawer overlay
+                Group {
+                    if showDrawer {
+                        ZStack(alignment: .bottom) {
+                            Color.clear
+                                .ignoresSafeArea(.all)
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showDrawer = false
+                                    }
+                                }
+
+                            VStack(spacing: 0) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.white)
+                                    .frame(width: 40, height: 4)
+                                    .padding(.top, 8)
+                                    .padding(.bottom, 20)
+                                    .onTapGesture {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showDrawer = false
+                                        }
+                                    }
+
+                                VStack(alignment: .leading, spacing: 20) {
+                                    HStack {
+                                        Text("Impact score")
+                                            .font(.system(size: 18, weight: .regular))
+                                            .foregroundColor(.white)
+                                        Spacer()
+                                        Button(action: {
+                                            withAnimation(.easeInOut(duration: 0.3)) {
+                                                showDrawer = false
+                                            }
+                                        }) {
+                                            Image(systemName: "xmark")
+                                                .font(.system(size: 16, weight: .medium))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+
+                                    HStack(alignment: .bottom, spacing: 0) {
+                                        Text("50")
+                                            .font(.system(size: 48, weight: .bold))
+                                            .foregroundColor(.white)
+                                        Text("/100")
+                                            .font(.system(size: 24, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .padding(.bottom, 8)
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        GeometryReader { geometry in
+                                            ZStack(alignment: .leading) {
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color.white)
+                                                    .frame(height: 8)
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color("ampedYellow"))
+                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                Circle()
+                                                    .fill(Color.gray)
+                                                    .frame(width: 20, height: 20)
+                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                            }
+                                        }
+                                        .frame(height: 20)
+
+                                        HStack {
+                                            Text("0")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                            Spacer()
+                                            Text("100")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("This score estimates how your alcohol consumption affects your life expectancy.")
+                                            .font(.system(size: 16, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        Text("Alcohol contributes to 15% of your total lifespan impact. It's significant!")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        Text("Heavy drinking reduces life expectancy by 4-5 years compared to moderate consumption.")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                    }
+
+                                    Button(action: { /* Handle source link tap */ }) {
+                                        HStack {
+                                            Text("Source: WHO 2023")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                            Image(systemName: "arrow.up.right")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.gray.opacity(0.3))
+                                        )
+                                    }
+                                    .padding(.bottom, 20)
+                                }
+                                .padding(.horizontal, 24)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color(red: 0x27/255, green: 0x27/255, blue: 0x27/255)) // #272727
+                            )
+                            .ignoresSafeArea(.all)
+                        }
+                        .ignoresSafeArea(.all)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+            )
+            .onAppear {
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showPopup = true
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -725,105 +2703,669 @@ struct QuestionViews {
     struct SocialConnectionsQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @Environment(\.adaptiveSpacing) private var spacing
+        @State private var showPopup = false
+        @State private var showDrawer = false
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
-                // Question placed higher
-                VStack(spacing: 0) {
-                    Text("How would you describe your social connections?")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.bottom, 10)
-                        .frame(maxWidth: .infinity)
-                    
-                    ScientificCitation(text: "Based on 39 studies, 1.8 million participants", metricType: .socialConnectionsQuality)
+                Spacer()
+                
+                // Emma character and question layout
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("How would you describe your social connections?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        // Research citation with book icon
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showDrawer = true
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image("book_ribbon")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 16, height: 16)
+                                
+                                Text("Tap to see what research based on 195 studies tell us.")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
                 
-                AdaptiveSpacer()
+                Spacer()
+                 .frame(maxHeight: 32)
                 
-                // Options at bottom for thumb access
-                VStack(spacing: spacing.buttonSpacing) {
-                    // Show all 4 social connections options (following 4-option maximum rule)
+                // Social connections quality options
+                VStack(spacing: 16) {
                     ForEach(QuestionnaireViewModel.SocialConnectionsQuality.allCases, id: \.self) { quality in
                         Button(action: {
                             viewModel.selectedSocialConnectionsQuality = quality
                             viewModel.proceedToNextQuestion()
                         }) {
-                            FormattedButtonText(
-                                text: quality.displayName,
-                                subtitle: nil
+                            VStack(alignment: .center, spacing: 4) {
+                                Text(quality.mainText)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+
+                                if !quality.subText.isEmpty {
+                                    Text(quality.subText)
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(viewModel.selectedSocialConnectionsQuality == quality ? .white.opacity(0.8) : .gray)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, quality.subText.isEmpty ? 18 : 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(
+                                        viewModel.selectedSocialConnectionsQuality == quality ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                                    startPoint: .leading,
+                                                    endPoint: .trailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
                             )
                         }
-                        .questionnaireButtonStyle(isSelected: viewModel.selectedSocialConnectionsQuality == quality)
                         .hapticFeedback(.light)
                     }
-                }
-                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
+
+                Spacer()
+            }
             .frame(maxHeight: .infinity)
-            .adaptiveSpacing()
+            .ignoresSafeArea(.container, edges: .bottom)
+            .overlay(
+                // Popup overlay
+                Group {
+                    if showPopup {
+                        Color.black.opacity(0.5)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showPopup = false
+                                }
+                            }
+
+                        VStack(spacing: 0) {
+                            Triangle()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                            .init(color: Color(red: 0.00, green: 0.57, blue: 0.27), location: 0.0),
+                                            .init(color: Color(red: 0.49, green: 0.75, blue: 0.20), location: 0.9),
+                                            .init(color: Color(red: 0.99, green: 0.93, blue: 0.13), location: 1.0),
+                                        ]
+                                        ),
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                                )
+                                .frame(width: 20, height: 12)
+                                .offset(y: 5)
+
+                            VStack(spacing: 16) {
+                                Text("Tap to see how this habit impacts lifespan")
+                                    .font(.system(size: 20, weight: .regular))
+                                    .foregroundColor(.white)
+                                    .multilineTextAlignment(.leading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                                Button(action: {
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showPopup = false
+                                    }
+                                }) {
+                                    Text("Okay")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(Color("ampedGreen"))
+                                        .padding(.horizontal, 24)
+                                        .padding(.vertical, 12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 20)
+                                                .fill(Color.white)
+                                        )
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                         LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                           .init(color: Color(red: 0/255, green: 146/255, blue: 69/255), location: 0.0707),
+                                            .init(color: Color(red: 63/255, green: 169/255, blue: 60/255), location: 0.291),
+                                            .init(color: Color(red: 126/255, green: 192/255, blue: 51/255), location: 0.5908),
+                                            .init(color: Color(red: 252/255, green: 238/255, blue: 33/255), location: 0.8026)
+                                        ]
+                                        ),
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                            )
+                            )
+                        }
+                        .padding(.horizontal, 40)
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                }
+            )
+            .overlay(
+                // Drawer overlay
+                Group {
+                    if showDrawer {
+                        ZStack(alignment: .bottom) {
+                            Color.clear
+                                .ignoresSafeArea(.all)
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showDrawer = false
+                                    }
+                                }
+
+                            VStack(spacing: 0) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.white)
+                                    .frame(width: 40, height: 4)
+                                    .padding(.top, 8)
+                                    .padding(.bottom, 20)
+                                    .onTapGesture {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showDrawer = false
+                                        }
+                                    }
+
+                                VStack(alignment: .leading, spacing: 20) {
+                                    HStack {
+                                        Text("Impact score")
+                                            .font(.system(size: 18, weight: .regular))
+                                            .foregroundColor(.white)
+                                        Spacer()
+                                        Button(action: {
+                                            withAnimation(.easeInOut(duration: 0.3)) {
+                                                showDrawer = false
+                                            }
+                                        }) {
+                                            Image(systemName: "xmark")
+                                                .font(.system(size: 16, weight: .medium))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+
+                                    HStack(alignment: .bottom, spacing: 0) {
+                                        Text("50")
+                                            .font(.system(size: 48, weight: .bold))
+                                            .foregroundColor(.white)
+                                        Text("/100")
+                                            .font(.system(size: 24, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .padding(.bottom, 8)
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        GeometryReader { geometry in
+                                            ZStack(alignment: .leading) {
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color.white)
+                                                    .frame(height: 8)
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color("ampedYellow"))
+                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                Circle()
+                                                    .fill(Color.gray)
+                                                    .frame(width: 20, height: 20)
+                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                            }
+                                        }
+                                        .frame(height: 20)
+
+                                        HStack {
+                                            Text("0")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                            Spacer()
+                                            Text("100")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("This score estimates how your social connections affect your life expectancy.")
+                                            .font(.system(size: 16, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        Text("Social connections contribute to 20% of your total lifespan impact. It's important!")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        Text("Strong social connections can increase life expectancy by 2-3 years compared to isolation.")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                    }
+
+                                    Button(action: { /* Handle source link tap */ }) {
+                                        HStack {
+                                            Text("Source: Harvard Study 2023")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                            Image(systemName: "arrow.up.right")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.gray.opacity(0.3))
+                                        )
+                                    }
+                                    .padding(.bottom, 20)
+                                }
+                                .padding(.horizontal, 24)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color(red: 0x27/255, green: 0x27/255, blue: 0x27/255)) // #272727
+                            )
+                            .ignoresSafeArea(.all)
+                        }
+                        .ignoresSafeArea(.all)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+            )
+            .onAppear {
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showPopup = true
+                        }
+                    }
+                }
+            }
         }
     }
     
     // MARK: - Desired Daily Lifespan Gain Question (replaces sleep duration dial)
     struct SleepQualityQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
-        @State private var desiredMinutes: Int = 5 // 5..120
+        @State private var desiredMinutes: Int = 10 // 5..120, will be initialized from viewModel
+        @State private var hasInitialized = false
+        @State private var lastValidAngle: Double = 0
+        @State private var isDragging = false
         @Environment(\.adaptiveSpacing) private var spacing
+        @State private var showDrawer = false
 
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
-                // Prompt and guidance
-                VStack(spacing: spacing.sectionSpacing) {
-                    Text("How much longer do you want to live each day?")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                Spacer()
+                
+                // Emma character and question layout
+                HStack(alignment: .top, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 12){
+                        HStack(alignment: .center, spacing: 0){
+                            // Emma character
+                            Image("emma")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 68, height: 76)
+                            
+                            // Question text
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text("Let's set some goals.")
+                                    .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
+                                    .multilineTextAlignment(.leading)
+                                    .lineLimit(nil)
                         .fixedSize(horizontal: false, vertical: true)
-                        .padding(.horizontal, 20)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Text("Add up to two hours daily")
-                        .font(.system(size: 14))
-                        .foregroundColor(.white.opacity(0.75))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 28)
+                                Text("Please choose number of hours you want to add on daily basis.")
+                                .font(.system(size: 16, weight: .regular))
+                                .foregroundColor(.white.opacity(0.8))
+
+                            }
+                        }
+                    }
+                    Spacer()
                 }
-                .padding(.top, 10)
+                .padding(.leading, 24)
+                
+                Spacer()
+                 .frame(maxHeight: 63)
+                
+                // Circular slider/dial
+                VStack(spacing: 20) {
+                    // Circular dial
+                    ZStack {
+                        // Background circle with bigger stroke
+                        Circle()
+                            .stroke(Color.white, lineWidth: 12)
+                            .frame(width: 200, height: 200)
+                        
+                        // Progress arc with rounder edges
+                        Circle()
+                            .trim(from: 0, to: CGFloat(desiredMinutes) / 120.0)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                ),
+                                style: StrokeStyle(lineWidth: 12, lineCap: .round)
+                            )
+                            .frame(width: 200, height: 200)
+                            .rotationEffect(.degrees(-90))
+                        
+                        // White circle at the end of progress arc
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 16, height: 16)
+                            .offset(
+                                x: sin(Double(desiredMinutes) * 3.0 * .pi / 180) * 100,
+                                y: -cos(Double(desiredMinutes) * 3.0 * .pi / 180) * 100
+                            )
+                        
+                        // Center content
+                        VStack(spacing: 8) {
+                            Image("batteryIcon")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 32, height: 32)
+                            
+                            Text("\(desiredMinutes) Mins")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                let center = CGPoint(x: 100, y: 100)
+                                let vector = CGPoint(x: value.location.x - center.x, y: value.location.y - center.y)
+                                
+                                // Calculate angle from center
+                                let angle = atan2(vector.y, vector.x)
+                                var degrees = angle * 180 / .pi + 90
+                                
+                                // Normalize to 0-360
+                                if degrees < 0 { degrees += 360 }
+                                
+                                // Calculate what minutes this angle represents
+                                let targetMinutes = degrees / 3.0
+                                
+                                // Get current position in degrees
+                                let currentDegrees = Double(desiredMinutes) * 3.0
+                                
+                                // Check if we're at boundaries and trying to go further
+                                let isAtMaxBoundary = desiredMinutes >= 120 && targetMinutes > Double(desiredMinutes)
+                                let isAtMinBoundary = desiredMinutes <= 5 && targetMinutes < Double(desiredMinutes)
+                                
+                                // Prevent wrap-around by checking for large jumps
+                                let angleDifference = abs(degrees - currentDegrees)
+                                let isWrapAroundAttempt = angleDifference > 180
+                                
+                                // Only update if:
+                                // 1. Not at boundary trying to go further
+                                // 2. Not attempting wrap-around
+                                // 3. Within valid minute range
+                                if !isAtMaxBoundary && !isAtMinBoundary && !isWrapAroundAttempt {
+                                    let clampedMinutes = max(5, min(120, Int(targetMinutes)))
+                                    desiredMinutes = clampedMinutes
+                                    lastValidAngle = Double(clampedMinutes) * 3.0
+                                }
+                            }
+                            .onEnded { _ in
+                                isDragging = false
+                            }
+                    )
+                    
+                    Spacer()
+                 .frame(maxHeight: 32)
+                 
+                    // Research citation with book icon - moved below progress
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showDrawer = true
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            Image("book_ribbon")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 16, height: 16)
+                            
+                            Text("Backed by 500+ studies, 15+ million participants")
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
 
-                AdaptiveSpacer(minHeight: 16)
-
-                // Luxury interactive dial
-                LifespanGainDial(minutesPerDay: $desiredMinutes)
-                    .padding(.bottom, ScreenSizeCategory.current == .compact ? 16 : 20)
-
-                // Scientific credibility info
-                ScientificCitation(text: "Backed by 500+ studies, 15+ million participants", metricType: nil)
-
-                // Continue
+                Spacer()
+                 .frame(maxHeight: 32)
+                
+                // Continue button
                 Button(action: {
                     viewModel.desiredDailyLifespanGainMinutes = desiredMinutes
                     // Map the user's aspiration to sleep quality preference proxy for compatibility
-                    // Keep existing model usage minimal (Simplicity is KING)
                     viewModel.selectedSleepQuality = mapDesiredGainToSleepQuality(desiredMinutes)
                     
                     // Setup smart goal-based notifications for this user's target
                     NotificationManager.shared.scheduleGoalBasedNotifications(targetMinutes: desiredMinutes)
                     
+                    // Proceed to next question (deviceTracking)
                     viewModel.proceedToNextQuestion()
                 }) {
                     Text("Continue")
-                }
-                .questionnaireButtonStyle(isSelected: false)
-                .hapticFeedback(.light)
-                .adaptiveBottomPadding()
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(25)
             }
             .padding(.horizontal, 24)
+                .padding(.bottom, 20)
+
+                Spacer()
+            }
             .frame(maxHeight: .infinity)
-            .adaptiveSpacing()
+            .ignoresSafeArea(.container, edges: .bottom)
+            .onAppear {
+                // Initialize slider position from saved value
+                if !hasInitialized {
+                    if let savedSleepQuality = viewModel.selectedSleepQuality {
+                        // Reverse map from sleep quality to minutes for pre-filling
+                        desiredMinutes = mapSleepQualityToDesiredGain(savedSleepQuality)
+                    } else if viewModel.desiredDailyLifespanGainMinutes > 0 {
+                        // Use saved desired minutes if available
+                        desiredMinutes = max(5, min(120, viewModel.desiredDailyLifespanGainMinutes))
+                    }
+                    // Set the last valid angle based on initialized minutes
+                    lastValidAngle = Double(desiredMinutes) * 3.0
+                    hasInitialized = true
+                }
+            }
+            .overlay(
+                // Drawer overlay
+                Group {
+                    if showDrawer {
+                        ZStack(alignment: .bottom) {
+                            Color.clear
+                                .ignoresSafeArea(.all)
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showDrawer = false
+                                    }
+                                }
+
+                            VStack(spacing: 0) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.white)
+                                    .frame(width: 40, height: 4)
+                                    .padding(.top, 8)
+                                    .padding(.bottom, 20)
+                                    .onTapGesture {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showDrawer = false
+                                        }
+                                    }
+
+                                VStack(alignment: .leading, spacing: 20) {
+                                    HStack {
+                                        Text("Impact score")
+                                            .font(.system(size: 18, weight: .regular))
+                                            .foregroundColor(.white)
+                                        Spacer()
+                                        Button(action: {
+                                            withAnimation(.easeInOut(duration: 0.3)) {
+                                                showDrawer = false
+                                            }
+                                        }) {
+                                            Image(systemName: "xmark")
+                                                .font(.system(size: 16, weight: .medium))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+
+                                    HStack(alignment: .bottom, spacing: 0) {
+                                        Text("50")
+                                            .font(.system(size: 48, weight: .bold))
+                                            .foregroundColor(.white)
+                                        Text("/100")
+                                            .font(.system(size: 24, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .padding(.bottom, 8)
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        GeometryReader { geometry in
+                                            ZStack(alignment: .leading) {
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color.white)
+                                                    .frame(height: 8)
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color("ampedYellow"))
+                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                Circle()
+                                                    .fill(Color.gray)
+                                                    .frame(width: 20, height: 20)
+                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                            }
+                                        }
+                                        .frame(height: 20)
+
+                                        HStack {
+                                            Text("0")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                            Spacer()
+                                            Text("100")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("This score estimates how your sleep quality affects your life expectancy.")
+                                            .font(.system(size: 16, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        Text("Sleep quality contributes to 30% of your total lifespan impact. It's crucial!")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        Text("Poor sleep quality can reduce life expectancy by 6-8 years compared to excellent sleep.")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                    }
+
+                                    Button(action: { /* Handle source link tap */ }) {
+                                        HStack {
+                                            Text("Source: Sleep Foundation 2023")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                            Image(systemName: "arrow.up.right")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.gray.opacity(0.3))
+                                        )
+                                    }
+                                    .padding(.bottom, 20)
+                                }
+                                .padding(.horizontal, 24)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color(red: 0x27/255, green: 0x27/255, blue: 0x27/255)) // #272727
+                            )
+                            .ignoresSafeArea(.all)
+                        }
+                        .ignoresSafeArea(.all)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+            )
         }
 
         private func mapDesiredGainToSleepQuality(_ minutes: Int) -> QuestionnaireViewModel.SleepQuality {
@@ -835,53 +3377,348 @@ struct QuestionViews {
             default: return .average
             }
         }
+        
+        private func mapSleepQualityToDesiredGain(_ sleepQuality: QuestionnaireViewModel.SleepQuality) -> Int {
+            // Reverse mapping for pre-filling the slider
+            switch sleepQuality {
+            case .average: return 15
+            case .good: return 30
+            case .excellent: return 60
+            case .poorToVeryPoor: return 10
+            }
+        }
     }
     
     // MARK: - Blood Pressure Awareness Question
     struct BloodPressureAwarenessQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @Environment(\.adaptiveSpacing) private var spacing
+        @State private var showPopup = false
+        @State private var showDrawer = false
 
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
-                // Question title + research citation to mirror other questions
-                VStack(spacing: 0) {
-                    Text("What is your typical blood pressure reading?")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.bottom, 10)
-                        .frame(maxWidth: .infinity)
-
-                    ScientificCitation(text: "Based on 61 studies, 1 million participants", metricType: .bloodPressure)
+                Spacer()
+                
+                // Emma character and question layout
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("What is your typical blood pressure reading?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        // Research citation with book icon
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showDrawer = true
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image("book_ribbon")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 16, height: 16)
+                                
+                                Text("Tap to see what research based on 195 studies tell us.")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
-
-                AdaptiveSpacer()
-
-                // Options at bottom for thumb access
-                VStack(spacing: spacing.buttonSpacing) {
-                    // Show all 4 blood pressure options (following 4-option maximum rule)
+                
+                Spacer()
+                 .frame(maxHeight: 32)
+                
+                // Blood pressure category options
+                VStack(spacing: 16) {
                     ForEach(QuestionnaireViewModel.BloodPressureCategory.allCases, id: \.self) { category in
                         Button(action: {
                             viewModel.selectedBloodPressureCategory = category
                             viewModel.proceedToNextQuestion()
                         }) {
-                            FormattedButtonText(
-                                text: category.displayName,
-                                subtitle: nil
+                            VStack(alignment: .center, spacing: 4) {
+                                Text(category.mainText)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+
+                                if !category.subText.isEmpty {
+                                    Text(category.subText)
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(viewModel.selectedBloodPressureCategory == category ? .white.opacity(0.8) : .gray)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, category.subText.isEmpty ? 18 : 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(
+                                        viewModel.selectedBloodPressureCategory == category ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                                    startPoint: .leading,
+                                                    endPoint: .trailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
                             )
                         }
-                        .questionnaireButtonStyle(isSelected: viewModel.selectedBloodPressureCategory == category)
                         .hapticFeedback(.light)
                     }
-                }
-                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
+
+                Spacer()
+            }
             .frame(maxHeight: .infinity)
-            .adaptiveSpacing()
+            .ignoresSafeArea(.container, edges: .bottom)
+            .overlay(
+                // Popup overlay
+                Group {
+                    if showPopup {
+                        Color.black.opacity(0.5)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showPopup = false
+                                }
+                            }
+
+                        VStack(spacing: 0) {
+                            Triangle()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                            .init(color: Color(red: 0.00, green: 0.57, blue: 0.27), location: 0.0),
+                                            .init(color: Color(red: 0.49, green: 0.75, blue: 0.20), location: 0.9),
+                                            .init(color: Color(red: 0.99, green: 0.93, blue: 0.13), location: 1.0),
+                                        ]
+                                        ),
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                                )
+                                .frame(width: 20, height: 12)
+                                .offset(y: 5)
+
+                            VStack(spacing: 16) {
+                                Text("Tap to see how this habit impacts lifespan")
+                                    .font(.system(size: 20, weight: .regular))
+                                    .foregroundColor(.white)
+                                    .multilineTextAlignment(.leading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                                Button(action: {
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showPopup = false
+                                    }
+                                }) {
+                                    Text("Okay")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(Color("ampedGreen"))
+                                        .padding(.horizontal, 24)
+                                        .padding(.vertical, 12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 20)
+                                                .fill(Color.white)
+                                        )
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                         LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                           .init(color: Color(red: 0/255, green: 146/255, blue: 69/255), location: 0.0707),
+                                            .init(color: Color(red: 63/255, green: 169/255, blue: 60/255), location: 0.291),
+                                            .init(color: Color(red: 126/255, green: 192/255, blue: 51/255), location: 0.5908),
+                                            .init(color: Color(red: 252/255, green: 238/255, blue: 33/255), location: 0.8026)
+                                        ]
+                                        ),
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                            )
+                            )
+                        }
+                        .padding(.horizontal, 40)
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                }
+            )
+            .overlay(
+                // Drawer overlay
+                Group {
+                    if showDrawer {
+                        ZStack(alignment: .bottom) {
+                            Color.clear
+                                .ignoresSafeArea(.all)
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showDrawer = false
+                                    }
+                                }
+
+                            VStack(spacing: 0) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.white)
+                                    .frame(width: 40, height: 4)
+                                    .padding(.top, 8)
+                                    .padding(.bottom, 20)
+                                    .onTapGesture {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showDrawer = false
+                                        }
+                                    }
+
+                                VStack(alignment: .leading, spacing: 20) {
+                                    HStack {
+                                        Text("Impact score")
+                                            .font(.system(size: 18, weight: .regular))
+                                            .foregroundColor(.white)
+                                        Spacer()
+                                        Button(action: {
+                                            withAnimation(.easeInOut(duration: 0.3)) {
+                                                showDrawer = false
+                                            }
+                                        }) {
+                                            Image(systemName: "xmark")
+                                                .font(.system(size: 16, weight: .medium))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+
+                                    HStack(alignment: .bottom, spacing: 0) {
+                                        Text("50")
+                                            .font(.system(size: 48, weight: .bold))
+                                            .foregroundColor(.white)
+                                        Text("/100")
+                                            .font(.system(size: 24, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .padding(.bottom, 8)
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        GeometryReader { geometry in
+                                            ZStack(alignment: .leading) {
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color.white)
+                                                    .frame(height: 8)
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color("ampedYellow"))
+                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                Circle()
+                                                    .fill(Color.gray)
+                                                    .frame(width: 20, height: 20)
+                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                            }
+                                        }
+                                        .frame(height: 20)
+
+                                        HStack {
+                                            Text("0")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                            Spacer()
+                                            Text("100")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("This score estimates how your blood pressure affects your life expectancy.")
+                                            .font(.system(size: 16, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        Text("Blood pressure contributes to 25% of your total lifespan impact. It's critical!")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        Text("High blood pressure can reduce life expectancy by 5-7 years compared to normal readings.")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                    }
+
+                                    Button(action: { /* Handle source link tap */ }) {
+                                        HStack {
+                                            Text("Source: AHA 2023")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                            Image(systemName: "arrow.up.right")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.gray.opacity(0.3))
+                                        )
+                                    }
+                                    .padding(.bottom, 20)
+                                }
+                                .padding(.horizontal, 24)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color(red: 0x27/255, green: 0x27/255, blue: 0x27/255)) // #272727
+                            )
+                            .ignoresSafeArea(.all)
+                        }
+                        .ignoresSafeArea(.all)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+            )
+            .onAppear {
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showPopup = true
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -889,40 +3726,49 @@ struct QuestionViews {
     
     struct DeviceTrackingQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
-        var proceedToHealthKit: () -> Void
-        var skipToLifeMotivation: () -> Void
+        var completeQuestionnaire: () -> Void
         
         @State private var isWaitingForHealthKitAuth = false
         @Environment(\.adaptiveSpacing) private var spacing
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
-                // Fitness tracker image - reduced size for compact screens
-                Image(systemName: "applewatch")
+                Spacer()
+                
+                // Apple Watch image
+                Image("appleWatch")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(
-                        width: ScreenSizeCategory.current == .compact ? 100 : 120,
-                        height: ScreenSizeCategory.current == .compact ? 100 : 120
-                    )
-                    .foregroundColor(.white.opacity(0.9))
-                    .padding(.bottom, ScreenSizeCategory.current == .compact ? 24 : 40)
+                    .frame(width: 200, height: 200)
+                    .padding(.bottom, 40)
                 
-                // Question text - shorter and more scannable
-                Text("Do you track your health\nwith a device?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                // Title
+                Text("Apple Health\nPermissions")
+                    .font(.system(size: 31, weight: .bold))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+                
+                // Description text
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("This is essential for the app to work properly. On the next screen, we will ask permission to read your health data, such as steps, heart rate, and more to calculate your daily health scores.")
+                        .font(.system(size: 12, weight: .light))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.leading)
                     .lineLimit(nil)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity)
-                
-                AdaptiveSpacer()
-                
-                // Options at bottom for thumb access - simplified to 2 options
-                VStack(spacing: spacing.buttonSpacing) {
+                    
+                    Text("Any wearable device with Apple Health works, if you don't have one you can use your phone.")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer()
+                    .frame(height: 6)
+
                     // Yes option
                     Button(action: {
                         viewModel.selectedDeviceTrackingStatus = .yesBoth
@@ -930,27 +3776,63 @@ struct QuestionViews {
                         requestHealthKitAuthorization()
                     }) {
                         Text("Yes, I track with a device")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 25)
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ),
+                                        lineWidth: 2
+                                    )
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 25)
+                                            .fill(Color.black)
+                                    )
+                            )
                     }
-                    .questionnaireButtonStyle(isSelected: viewModel.selectedDeviceTrackingStatus == .yesBoth || 
-                                                       viewModel.selectedDeviceTrackingStatus == .yesActivityOnly ||
-                                                       viewModel.selectedDeviceTrackingStatus == .yesSleepOnly)
                     .hapticFeedback(.light)
                     
                     // No option
                     Button(action: {
                         viewModel.selectedDeviceTrackingStatus = .no
-                        skipToLifeMotivation()
+                        // This is the final question, so complete the questionnaire
+                        completeQuestionnaire()
                     }) {
                         Text("No, I don't use any device")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 25)
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ),
+                                        lineWidth: 2
+                                    )
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 25)
+                                            .fill(Color.black)
+                                    )
+                            )
                     }
-                    .questionnaireButtonStyle(isSelected: viewModel.selectedDeviceTrackingStatus == .no)
                     .hapticFeedback(.light)
                 }
-                .adaptiveBottomPadding()
+                .padding(.horizontal, 20)
+                
+                Spacer()
             }
-            .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
-            .adaptiveSpacing()
+            .ignoresSafeArea(.container, edges: .bottom)
             .onChange(of: viewModel.selectedDeviceTrackingStatus) { newValue in
                 print("🔍 DEVICE TRACKING: Device tracking status changed to: \(String(describing: newValue))")
             }
@@ -967,12 +3849,12 @@ struct QuestionViews {
             HealthKitManager.shared.requestAuthorizationUltraFast {
                 print("🔍 DEVICE TRACKING: HealthKit authorization completed")
                 
-                // Navigate to life motivation question when authorization completes
+                // Complete the questionnaire when authorization completes
                 DispatchQueue.main.async {
                     if self.isWaitingForHealthKitAuth {
-                        print("🔍 DEVICE TRACKING: Navigating to life motivation question")
+                        print("🔍 DEVICE TRACKING: Completing questionnaire")
                         self.isWaitingForHealthKitAuth = false
-                        self.proceedToHealthKit()
+                        self.completeQuestionnaire()
                     }
                 }
             }
@@ -1068,44 +3950,334 @@ struct QuestionViews {
         @ObservedObject var viewModel: QuestionnaireViewModel
         var completeQuestionnaire: () -> Void
         @Environment(\.adaptiveSpacing) private var spacing
+        @State private var showPopup = false
+        @State private var showDrawer = false
         
         var body: some View {
             VStack(alignment: .center, spacing: 0) {
-                // Question placed higher - consistent with other questions
-                Text("What is the main reason you might want to live longer?")
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity)
+                Spacer()
                 
-                AdaptiveSpacer()
+                // Emma character and question layout
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
                 
-                // Options at bottom for thumb access - using consistent questionnaire styling
-                VStack(spacing: spacing.buttonSpacing) {
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("What is the main reason you might want to live longer?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        // Research citation with book icon
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showDrawer = true
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image("book_ribbon")
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 16, height: 16)
+                                
+                                Text("Tap to see what research based on 195 studies tell us.")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
+                }
+                
+                Spacer()
+                 .frame(maxHeight: 32)
+                
+                // Life motivation options
+                VStack(spacing: 16) {
                     ForEach(QuestionnaireViewModel.LifeMotivation.allCases, id: \.self) { motivation in
                         Button(action: {
                             viewModel.selectedLifeMotivation = motivation
                             
-                            // This is the final question, so we need to move to the next onboarding step
-                            completeQuestionnaire()
+                            // Proceed to next question (sleepQuality)
+                            viewModel.proceedToNextQuestion()
                         }) {
-                            FormattedButtonText(
-                                text: motivation.displayName,
-                                subtitle: nil
+                            VStack(alignment: .center, spacing: 4) {
+                                Text(motivation.mainText)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+
+                                if !motivation.subText.isEmpty {
+                                    Text(motivation.subText)
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(viewModel.selectedLifeMotivation == motivation ? .white.opacity(0.8) : .gray)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, motivation.subText.isEmpty ? 18 : 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(
+                                        viewModel.selectedLifeMotivation == motivation ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                                    startPoint: .leading,
+                                                    endPoint: .trailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
                             )
                         }
-                        .questionnaireButtonStyle(isSelected: viewModel.selectedLifeMotivation == motivation)
                         .hapticFeedback(.light)
                     }
-                }
-                .adaptiveBottomPadding()
             }
             .padding(.horizontal, 24)
+
+                Spacer()
+            }
             .frame(maxHeight: .infinity)
-            .adaptiveSpacing()
+            .ignoresSafeArea(.container, edges: .bottom)
+            .overlay(
+                // Popup overlay
+                Group {
+                    if showPopup {
+                        Color.black.opacity(0.5)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showPopup = false
+                                }
+                            }
+
+                        VStack(spacing: 0) {
+                            Triangle()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                            .init(color: Color(red: 0.00, green: 0.57, blue: 0.27), location: 0.0),
+                                            .init(color: Color(red: 0.49, green: 0.75, blue: 0.20), location: 0.9),
+                                            .init(color: Color(red: 0.99, green: 0.93, blue: 0.13), location: 1.0),
+                                        ]
+                                        ),
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                                )
+                                .frame(width: 20, height: 12)
+                                .offset(y: 5)
+
+                            VStack(spacing: 16) {
+                                Text("Tap to see how this habit impacts lifespan")
+                                    .font(.system(size: 20, weight: .regular))
+                                    .foregroundColor(.white)
+                                    .multilineTextAlignment(.leading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                                Button(action: {
+                                    UserDefaults.standard.set(true, forKey: "habitImpactPopupShown")
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showPopup = false
+                                    }
+                                }) {
+                                    Text("Okay")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(Color("ampedGreen"))
+                                        .padding(.horizontal, 24)
+                                        .padding(.vertical, 12)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 20)
+                                                .fill(Color.white)
+                                        )
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                         LinearGradient(
+                                        gradient: Gradient(
+                                        stops: [
+                                           .init(color: Color(red: 0/255, green: 146/255, blue: 69/255), location: 0.0707),
+                                            .init(color: Color(red: 63/255, green: 169/255, blue: 60/255), location: 0.291),
+                                            .init(color: Color(red: 126/255, green: 192/255, blue: 51/255), location: 0.5908),
+                                            .init(color: Color(red: 252/255, green: 238/255, blue: 33/255), location: 0.8026)
+                                        ]
+                                        ),
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
+                                    )
+                            )
+                            )
+                        }
+                        .padding(.horizontal, 40)
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                }
+            )
+            .overlay(
+                // Drawer overlay
+                Group {
+                    if showDrawer {
+                        ZStack(alignment: .bottom) {
+                            Color.clear
+                                .ignoresSafeArea(.all)
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showDrawer = false
+                                    }
+                                }
+
+                            VStack(spacing: 0) {
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.white)
+                                    .frame(width: 40, height: 4)
+                                    .padding(.top, 8)
+                                    .padding(.bottom, 20)
+                                    .onTapGesture {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showDrawer = false
+                                        }
+                                    }
+
+                                VStack(alignment: .leading, spacing: 20) {
+                                    HStack {
+                                        Text("Impact score")
+                                            .font(.system(size: 18, weight: .regular))
+                                            .foregroundColor(.white)
+                                        Spacer()
+                                        Button(action: {
+                                            withAnimation(.easeInOut(duration: 0.3)) {
+                                                showDrawer = false
+                                            }
+                                        }) {
+                                            Image(systemName: "xmark")
+                                                .font(.system(size: 16, weight: .medium))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+
+                                    HStack(alignment: .bottom, spacing: 0) {
+                                        Text("50")
+                                            .font(.system(size: 48, weight: .bold))
+                                            .foregroundColor(.white)
+                                        Text("/100")
+                                            .font(.system(size: 24, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .padding(.bottom, 8)
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        GeometryReader { geometry in
+                                            ZStack(alignment: .leading) {
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color.white)
+                                                    .frame(height: 8)
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color("ampedYellow"))
+                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                Circle()
+                                                    .fill(Color.gray)
+                                                    .frame(width: 20, height: 20)
+                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                            }
+                                        }
+                                        .frame(height: 20)
+
+                                        HStack {
+                                            Text("0")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                            Spacer()
+                                            Text("100")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("This score estimates how your life motivation affects your life expectancy.")
+                                            .font(.system(size: 16, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        Text("Life motivation contributes to 10% of your total lifespan impact. It's meaningful!")
+                                            .font(.system(size: 16, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                        Text("Having a strong life purpose can increase life expectancy by 1-2 years compared to those without clear goals.")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(.white)
+                                            .multilineTextAlignment(.leading)
+                                    }
+
+                                    Button(action: { /* Handle source link tap */ }) {
+                                        HStack {
+                                            Text("Source: JAMA 2023")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                            Image(systemName: "arrow.up.right")
+                                                .font(.system(size: 12, weight: .regular))
+                                                .foregroundColor(.white)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.gray.opacity(0.3))
+                                        )
+                                    }
+                                    .padding(.bottom, 20)
+                                }
+                                .padding(.horizontal, 24)
+                            }
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color(red: 0x27/255, green: 0x27/255, blue: 0x27/255)) // #272727
+                            )
+                            .ignoresSafeArea(.all)
+                        }
+                        .ignoresSafeArea(.all)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+            )
+            .onAppear {
+                if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showPopup = true
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -19,31 +19,32 @@ final class QuestionnaireViewModel: ObservableObject {
     enum Question: Int, CaseIterable, Hashable {
         case name
         case birthdate
-        case stressLevel        // NEW: Question #3 for stress level
+        case stressLevel        // NEW: Question #4 for stress level
         case anxietyLevel       // NEW: Anxiety question
-        case gender
         case nutritionQuality
         case smokingStatus
         case alcoholConsumption
         case socialConnections
-        case sleepQuality // New sleep quality question
         case bloodPressureAwareness // New health markers question
-        case deviceTracking // New question about health tracking devices
+        case lifeMotivation // Moved to last - will be shown after HealthKit
+        case sleepQuality // New sleep quality question
+        case deviceTracking // New question about health tracking devices - FINAL STEP
         case framingComfort          // NEW: tactful framing preference cue
         case urgencyResponse         // NEW: response to urgency cue
-        case lifeMotivation // Moved to last - will be shown after HealthKit
         
         var category: QuestionCategory {
             switch self {
-            case .name, .birthdate, .gender:
+            case .name, .birthdate:
                 return .basics
             case .nutritionQuality, .smokingStatus, .alcoholConsumption:
                 return .lifestyle
             case .stressLevel, .anxietyLevel, .socialConnections, .bloodPressureAwareness:
                 return .currentHealth
-            case .sleepQuality, .lifeMotivation:
+            case .lifeMotivation, .sleepQuality:
                 return .goalsAndMotivation
-            case .deviceTracking, .framingComfort, .urgencyResponse:
+            case .deviceTracking:
+                return .preferences
+            case .framingComfort, .urgencyResponse:
                 return .preferences
             }
         }
@@ -64,6 +65,24 @@ final class QuestionnaireViewModel: ObservableObject {
             case .high: return "130/80+ (High)"
             }
         }
+        
+        var mainText: String {
+            switch self {
+            case .normal: return "Below 120/80"
+            case .unknown: return "I don't know"
+            case .elevatedToStage1: return "120-129"
+            case .high: return "130/80+"
+            }
+        }
+        
+        var subText: String {
+            switch self {
+            case .normal: return "Normal"
+            case .unknown: return ""
+            case .elevatedToStage1: return "Elevated"
+            case .high: return "High"
+            }
+        }
     }
     
     enum StressLevel: CaseIterable {
@@ -78,6 +97,24 @@ final class QuestionnaireViewModel: ObservableObject {
             case .low: return "Low\n(occasionally stressed)"
             case .moderateToHigh: return "Moderate to High\n(regular stress)"
             case .veryHigh: return "Very High\n(constantly stressed)"
+            }
+        }
+        
+        var mainText: String {
+            switch self {
+            case .veryLow: return "Very Low"
+            case .low: return "Low"
+            case .moderateToHigh: return "Moderate to High"
+            case .veryHigh: return "Very High"
+            }
+        }
+        
+        var subText: String {
+            switch self {
+            case .veryLow: return "rarely feel stressed"
+            case .low: return "Occasionally stressed"
+            case .moderateToHigh: return "Regular Stress"
+            case .veryHigh: return "Constantly stressed"
             }
         }
         
@@ -103,6 +140,24 @@ final class QuestionnaireViewModel: ObservableObject {
             case .mildToModerate: return "Mild to Moderate\n(Occasional to regular worry)"
             case .severe: return "Severe\n(Frequent anxiety episodes)"
             case .verySevere: return "Very Severe\n(Constant anxiety/panic)"
+            }
+        }
+        
+        var mainText: String {
+            switch self {
+            case .minimal: return "Minimal"
+            case .mildToModerate: return "Mild to Moderate"
+            case .severe: return "Severe"
+            case .verySevere: return "Very Severe"
+            }
+        }
+        
+        var subText: String {
+            switch self {
+            case .minimal: return "rarely feel anxious"
+            case .mildToModerate: return "Occasionally to regular worry"
+            case .severe: return "Frequent anxiety episodes"
+            case .verySevere: return "Constantly anxiety/panic"
             }
         }
         
@@ -161,6 +216,24 @@ final class QuestionnaireViewModel: ObservableObject {
             }
         }
         
+        var mainText: String {
+            switch self {
+            case .veryHealthy: return "Very Healthy"
+            case .mostlyHealthy: return "Mostly Healthy"
+            case .mixedToUnhealthy: return "Mixed to unhealthy"
+            case .veryUnhealthy: return "Very unhealthy"
+            }
+        }
+        
+        var subText: String {
+            switch self {
+            case .veryHealthy: return "whole foods, plant-based"
+            case .mostlyHealthy: return "balanced diet"
+            case .mixedToUnhealthy: return "same processed foods"
+            case .veryUnhealthy: return "fast food, highly processed"
+            }
+        }
+        
         var nutritionValue: Double {
             switch self {
             case .veryHealthy: return 10.0
@@ -183,6 +256,24 @@ final class QuestionnaireViewModel: ObservableObject {
             case .former: return "Former smoker\n(quit in the past)"
             case .occasionally: return "Occasionally"
             case .daily: return "Daily"
+            }
+        }
+        
+        var mainText: String {
+            switch self {
+            case .never: return "Never"
+            case .former: return "Former smoker"
+            case .occasionally: return "Occasionally"
+            case .daily: return "Daily"
+            }
+        }
+        
+        var subText: String {
+            switch self {
+            case .never: return ""
+            case .former: return "quit in the past"
+            case .occasionally: return ""
+            case .daily: return ""
             }
         }
         
@@ -211,6 +302,24 @@ final class QuestionnaireViewModel: ObservableObject {
             }
         }
         
+        var mainText: String {
+            switch self {
+            case .never: return "Never"
+            case .occasionally: return "Occasionally"
+            case .severalTimesWeek: return "Several Times"
+            case .dailyOrHeavy: return "Daily or Heavy"
+            }
+        }
+        
+        var subText: String {
+            switch self {
+            case .never: return ""
+            case .occasionally: return "weekly or less"
+            case .severalTimesWeek: return "per week"
+            case .dailyOrHeavy: return "one or more daily"
+            }
+        }
+        
         var alcoholValue: Double {
             switch self {
             case .never: return 10.0
@@ -236,6 +345,24 @@ final class QuestionnaireViewModel: ObservableObject {
             }
         }
         
+        var mainText: String {
+            switch self {
+            case .veryStrong: return "Very Strong"
+            case .moderateToGood: return "Moderate to Good"
+            case .limited: return "Limited"
+            case .isolated: return "Isolated"
+            }
+        }
+        
+        var subText: String {
+            switch self {
+            case .veryStrong: return "daily interaction"
+            case .moderateToGood: return "regular connections"
+            case .limited: return "rare interactions"
+            case .isolated: return "minimal social contact"
+            }
+        }
+        
         var socialValue: Double {
             switch self {
             case .veryStrong: return 10.0
@@ -258,6 +385,24 @@ final class QuestionnaireViewModel: ObservableObject {
             case .good: return "Good\n(Usually sleep well)"
             case .average: return "Average\n(Sometimes restless)"
             case .poorToVeryPoor: return "Poor to Very Poor\n(Tired, trouble sleeping/insomnia)"
+            }
+        }
+        
+        var mainText: String {
+            switch self {
+            case .excellent: return "Excellent"
+            case .good: return "Good"
+            case .average: return "Average"
+            case .poorToVeryPoor: return "Poor to Very Poor"
+            }
+        }
+        
+        var subText: String {
+            switch self {
+            case .excellent: return "7-9 hrs, wake refreshed"
+            case .good: return "Usually sleep well"
+            case .average: return "Sometimes restless"
+            case .poorToVeryPoor: return "Tired, trouble sleeping/insomnia"
             }
         }
         
@@ -309,6 +454,19 @@ final class QuestionnaireViewModel: ObservableObject {
             case .experience: return "Simply to experience life longer"
             case .contribution: return "Give more back to the world"
             }
+        }
+        
+        var mainText: String {
+            switch self {
+            case .family: return "Watch my family grow"
+            case .dreams: return "Achieve my dreams"
+            case .experience: return "Simply to experience life longer"
+            case .contribution: return "Give more back to the world"
+            }
+        }
+        
+        var subText: String {
+            return ""
         }
         
         var icon: String {
@@ -385,7 +543,7 @@ final class QuestionnaireViewModel: ObservableObject {
     private static let staticAllMonths = Array(1...12)
 
     // Birthdate (replacing age)
-    @Published var birthdate: Date = Calendar.current.date(byAdding: .year, value: -30, to: Date()) ?? Date() // Default to 30 years ago
+    @Published var birthdate: Date = Date() // Default to today (age = 0, so no pre-filled value)
 
     // Separate month and year selection for improved UX
     // PERFORMANCE FIX: Remove expensive didSet observers that trigger on every picker scroll
@@ -409,6 +567,39 @@ final class QuestionnaireViewModel: ObservableObject {
             _cachedAge = nil
             _cachedBirthdate = nil
         }
+    }
+    
+    // NEW: Direct age setting method for age input
+    func setAge(_ age: Int) {
+        // Calculate birthdate from age
+        let currentYear = calendar.component(.year, from: Date())
+        let birthYear = currentYear - age
+        
+        // Set birthdate to January 1st of the birth year
+        var components = DateComponents()
+        components.year = birthYear
+        components.month = 1
+        components.day = 1
+        
+        if let newBirthdate = calendar.date(from: components) {
+            birthdate = newBirthdate
+            // Update month/year properties for consistency
+            selectedBirthMonth = 1
+            selectedBirthYear = birthYear
+            // Clear cache so age will be recalculated
+            _cachedAge = nil
+            _cachedBirthdate = nil
+        }
+    }
+    
+    // Height setting method (in cm)
+    func setHeight(_ height: Double) {
+        self.height = height
+    }
+    
+    // Weight setting method (in kg)
+    func setWeight(_ weight: Double) {
+        self.weight = weight
     }
 
     // COLD START FIX: Lazy birthdate range to eliminate cold start blocking
@@ -446,6 +637,10 @@ final class QuestionnaireViewModel: ObservableObject {
     
     // Name
     @Published var userName: String = ""
+    
+    // Height and Weight (in cm and kg)
+    @Published var height: Double = 0
+    @Published var weight: Double = 0
     
     // Nutrition
     @Published var selectedNutritionQuality: NutritionQuality?
@@ -485,11 +680,11 @@ final class QuestionnaireViewModel: ObservableObject {
     
     // Progress tracking for indicator
     var currentStep: Int {
-        // Personalization Intro is step 1, so the first question starts at step 2
-        currentQuestion.rawValue + 2 
+        // First question (name) should be step 1
+        currentQuestion.rawValue + 1 
     }
     var totalSteps: Int {
-        17 // Added framing comfort and urgency response tactful questions
+        12 // Updated to match new design requirement
     }
     
     var isComplete: Bool {
@@ -509,8 +704,6 @@ final class QuestionnaireViewModel: ObservableObject {
             return selectedStressLevel != nil
         case .anxietyLevel:
             return selectedAnxietyLevel != nil
-        case .gender:
-            return selectedGender != nil
         case .nutritionQuality:
             return selectedNutritionQuality != nil
         case .smokingStatus:

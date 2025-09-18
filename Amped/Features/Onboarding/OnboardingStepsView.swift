@@ -6,24 +6,9 @@ struct OnboardingStepsView: View {
     
     var body: some View {
         ZStack {
-            // Background gradient
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color("ampedDark").opacity(0.9),
-                    Color("ampedDark")
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .edgesIgnoringSafeArea(.all)
-            
-            // Bottom nature background
-            Image("onboardingBackground")
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .opacity(0.2)
-                .frame(height: UIScreen.main.bounds.height * 0.4)
-                .position(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height * 0.8)
+            // Black background
+            Color.black
+                .ignoresSafeArea(.all)
             
             // Simplified content - focused on questions message
             VStack(spacing: 0) {
@@ -66,8 +51,8 @@ struct OnboardingStepsView: View {
                 
                 Spacer()
                 
-                // Progress indicator - use the segmented version with same 10 steps as the main flow
-                ProgressIndicator(currentStep: 1, totalSteps: 10)
+                // Progress bar stepper - use the new design with 12 steps
+                ProgressBarStepper(currentStep: 1, totalSteps: 12)
                     .padding(.bottom, 40)
             }
         }

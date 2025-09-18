@@ -388,6 +388,8 @@ class LifeImpactService {
             baseVO2Max = 50.0
         case .female:
             baseVO2Max = 40.0
+        case .preferNotToSay:
+            baseVO2Max = 45.0 // Average value
         case .none:
             baseVO2Max = 45.0
         }

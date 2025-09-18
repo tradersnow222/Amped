@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Post-paywall attribution question.
+/// Post-paywall attribution question with friendly turtle character and gradient buttons.
 /// Privacy-safe; stores selection locally to inform marketing and onboarding tuning.
 struct AttributionSourceView: View {
     @State private var selection: AttributionSource? = nil
@@ -10,37 +10,67 @@ struct AttributionSourceView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Color.clear.withDeepBackground()
-            VStack(spacing: 20) {
-                Spacer().frame(height: 60)
-
-                Text("Lastly, how did you hear about us?")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-
+            Color.black
+                .ignoresSafeArea()
+            
+            VStack(spacing: 32) {
+                // Top spacing
                 Spacer()
-
-                VStack(spacing: 12) {
+                // Character and question layout - matching name view pattern
+                HStack(alignment: .center, spacing: 16) {
+                    // Turtle character
+                    Image("steptwo")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 68, height: 76)
+                    
+                    // Question text - matching name view layout
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Lastly, where did you hear from us?")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(.horizontal, 24)
+                // Attribution options with custom gradient border style
+                VStack(spacing: 16) {
                     ForEach(AttributionSource.allCases, id: \.self) { src in
                         Button(action: { 
                             selection = src
                             showingOtherField = (src == .other)
-                        }) {
-                            HStack(spacing: 12) {
-                                Image(systemName: selection == src ? "checkmark.circle.fill" : "circle")
-                                    .foregroundColor(.ampedGreen)
-                                Text(src.title)
-                                    .foregroundColor(.white)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
-                                Spacer()
+                            
+                            // Auto-continue for non-other options
+                            if src != .other {
+                                saveAndContinue()
                             }
-                            .padding(.horizontal, 16)
-                            .frame(height: 52)
-                            .background(Color.white.opacity(0.08))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }) {
+                            Text(src.title)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 52)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 100)
+                                        .fill(Color.black)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 100)
+                                                .stroke(
+                                                    LinearGradient(
+                                                        gradient: Gradient(stops: [
+                                                            .init(color: Color(red: 0/255, green: 146/255, blue: 69/255), location: 0.0),     // #009245
+                                                            .init(color: Color(red: 252/255, green: 238/255, blue: 33/255), location: 1.0)     // #FCEE21
+                                                        ]),
+                                                        startPoint: .leading,
+                                                        endPoint: .trailing
+                                                    ),
+                                                    lineWidth: selection == src ? 2 : 1
+                                                )
+                                        )
+                                )
                         }
                         .hapticFeedback(.light)
                     }
@@ -50,33 +80,38 @@ struct AttributionSourceView: View {
                         VStack(spacing: 8) {
                             TextField("Please specify...", text: $otherText)
                                 .padding(.horizontal, 16)
-                                .frame(height: 44)
-                                .background(Color.white.opacity(0.12))
+                                .frame(height: 52)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 100)
+                                        .fill(Color.black)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 100)
+                                                .stroke(
+                                                    LinearGradient(
+                                                        gradient: Gradient(stops: [
+                                                            .init(color: Color(red: 0/255, green: 146/255, blue: 69/255), location: 0.0),
+                                                            .init(color: Color(red: 252/255, green: 238/255, blue: 33/255), location: 1.0)
+                                                        ]),
+                                                        startPoint: .leading,
+                                                        endPoint: .trailing
+                                                    ),
+                                                    lineWidth: 1
+                                                )
+                                        )
+                                )
                                 .foregroundColor(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .font(.system(size: 16))
+                                .onSubmit {
+                                    // Auto-continue when user presses return/done
+                                    saveAndContinue()
+                                }
                         }
                         .padding(.top, 4)
                     }
                 }
                 .padding(.horizontal, 24)
-
-                Button(action: saveAndContinue) {
-                    Text("Continue")
-                        .fontWeight(.bold)
-                        .font(.system(.title3, design: .rounded))
-                        .frame(maxWidth: .infinity, minHeight: 52)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 16)
-                        .background(Color.ampedGreen)
-                        .foregroundColor(.white)
-                        .cornerRadius(14)
-                }
-                .minTappableArea(52)
-                .hapticFeedback(.medium)
-                .padding(.horizontal, 40)
-                .shadow(color: Color.black.opacity(0.3), radius: 3, x: 0, y: 2)
-                .padding(.bottom, 40)
+                
+                Spacer()
             }
         }
         .bottomSafeAreaPadding() // Keep bottom button clear of the home indicator (iOS 16+ compatible)
@@ -97,14 +132,14 @@ struct AttributionSourceView: View {
 }
 
 enum AttributionSource: String, CaseIterable, Hashable {
-    case friendsFamily, socialMedia, searchEngine, appStore, other
+    case friendsFamily, appStore, twitter, instagram, other
 
     var title: String {
         switch self {
         case .friendsFamily: return "Friends/Family"
-        case .socialMedia: return "Social Media"
-        case .searchEngine: return "Search Engine"
         case .appStore: return "Apple Store"
+        case .twitter: return "X / Twitter"
+        case .instagram: return "Instagram"
         case .other: return "Other"
         }
     }

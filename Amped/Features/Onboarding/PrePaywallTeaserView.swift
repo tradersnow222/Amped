@@ -151,17 +151,44 @@ struct PrePaywallTeaserView: View {
     // MARK: - View
     var body: some View {
         ZStack {
-            // Background handled by parent OnboardingFlow with withDeepBackground()
-            // Following app's consistent background pattern
-
+            // Premium depth background with subtle texture
+            Color.black
+                .ignoresSafeArea()
+            
             VStack(spacing: 40) {
+                // Add top safe area spacing
                 Spacer()
-
+                    .frame(height: 30)
+                
                 // Premium headline with sophisticated typography
-                VStack(spacing: 16) {
+                VStack(spacing: 4) {
+                    // Battery icon in circled gradient
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(red: 0.99, green: 0.93, blue: 0.13), // #FCEE21
+                                        Color(red: 0.0, green: 0.57, blue: 0.27)   // #009245
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 40, height: 40)
+                            .shadow(color: Color(red: 0.0, green: 0.57, blue: 0.27).opacity(0.3), radius: 10, x: 0, y: 5)
+                        
+                        Image("battery-60")
+                            .frame(width: 24, height: 24, alignment: .center)
+                            .foregroundColor(.white)
+                    }
+                    .scaleEffect(animateBattery ? 1.0 : 0.8)
+                    .opacity(animateBattery ? 1.0 : 0.0)
+                    .animation(.spring(response: 1.0, dampingFraction: 0.7).delay(0.2), value: animateBattery)
+                    
                     Text("Your Life Battery")
-                        .font(.system(size: 38, weight: .thin, design: .default))
-                        .tracking(1.2)
+                        .font(.system(size: 24, weight: .semibold, design: .default))
+//                        .tracking(1.2)
                         .foregroundStyle(
                             LinearGradient(
                                 colors: [
@@ -173,37 +200,17 @@ struct PrePaywallTeaserView: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .multilineTextAlignment(.center)
+                    .multilineTextAlignment(.center)
                         .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
                     
                     // Glass morphism container for subtitle
                     Text("You're gaining \(lifeGainMinutes) min/day")
-                        .font(.system(size: 19, weight: .medium, design: .rounded))
+                        .font(.system(size: 14, weight: .regular))
                         .tracking(0.5)
-                        .foregroundColor(primaryBatteryColor)
+                        .foregroundColor(Color(red: 0.835, green: 0.835, blue: 0.835)) // #D5D5D5
                         .padding(.horizontal, 24)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(.ultraThinMaterial)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 20)
-                                        .stroke(
-                                            LinearGradient(
-                                                colors: [
-                                                    primaryBatteryColor.opacity(0.4),
-                                                    primaryBatteryColor.opacity(0.1)
-                                                ],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            ),
-                                            lineWidth: 1.5
-                                        )
-                                )
-                                .shadow(color: primaryBatteryColor.opacity(0.2), radius: 12, x: 0, y: 4)
-                        )
                 }
-
+                
                 // Premium battery visualization with sophisticated effects
                 VStack(spacing: 20) {
                     ZStack {
@@ -213,16 +220,16 @@ struct PrePaywallTeaserView: View {
                                 primaryBatteryColor.opacity(batteryGlow ? 0.4 : 0.2),
                                 lineWidth: 2
                             )
-                            .frame(width: 160, height: 220)
+                            .frame(width: 80, height: 158)
                             .blur(radius: batteryGlow ? 3 : 1)
                             .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true), value: batteryGlow)
                         
                         // Main battery container with glass morphism
                         ZStack {
+                            
                             // Glass background
                             RoundedRectangle(cornerRadius: 18)
-                                .fill(.ultraThinMaterial)
-                                .frame(width: 150, height: 210)
+                                .frame(width: 80, height: 158)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 18)
                                         .stroke(
@@ -240,16 +247,31 @@ struct PrePaywallTeaserView: View {
                                 )
                                 .shadow(color: .black.opacity(0.4), radius: 20, x: 0, y: 10)
                                 .shadow(color: primaryBatteryColor.opacity(0.3), radius: 30, x: 0, y: 5)
+                                .offset(y:2)
                             
-                            // Battery fill with shimmer effect
+                            // Battery fill with new gradient and animation
                             VStack {
                                 Spacer()
                                 ZStack {
-                                    // Main gradient fill
+                                    // Horizontal gradient fill: green to yellow
                                     Rectangle()
-                                        .fill(batteryGradient)
-                                        .frame(width: 142, height: 202 * CGFloat(preliminaryScore) / 100.0)
-                                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color(red: 0.0, green: 0.57, blue: 0.27),   // #009245 (green)
+                                                    Color(red: 0.99, green: 0.93, blue: 0.13)  // #FCEE21 (yellow)
+                                                ],
+                                                startPoint: .bottomLeading,
+                                                endPoint: .topTrailing
+                                            )
+                                        )
+                                        .frame(width: 80 * 0.95, height: 158 * 0.8) // Fill 80% of battery
+                                        .clipShape(
+                                            .rect(
+                                                bottomLeadingRadius: 14,
+                                                bottomTrailingRadius: 14
+                                            )
+                                        )
                                         .overlay(
                                             // Shimmer overlay
                                             LinearGradient(
@@ -270,99 +292,176 @@ struct PrePaywallTeaserView: View {
                                             )
                                             .mask(
                                                 Rectangle()
-                                                    .frame(width: 142, height: 202 * CGFloat(preliminaryScore) / 100.0)
+                                                    .frame(width: 80 * 0.95, height: 158 * 0.8)
                                                     .clipShape(RoundedRectangle(cornerRadius: 14))
                                             )
                                         )
+                                        .scaleEffect(x:1,y : animateBattery ? 1 : 0.1,anchor:.bottom)
+                                        .animation(.spring(response: 1.5, dampingFraction: 0.7), value: animateBattery)
                                 }
                             }
-                            .frame(width: 142, height: 202)
+                            .frame(width: 80, height: 158)
                             
-                            // Premium battery terminal
-                            RoundedRectangle(cornerRadius: 6)
+                            // Zap icon in the center of the battery
+                            Image(systemName: "bolt.fill")
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundColor(.white)
+                                .shadow(color: .black.opacity(0.6), radius: 3, x: 0, y: 2)
+                                .opacity(animateBattery ? 1.0 : 0.0)
+                                .scaleEffect(animateBattery ? 1.0 : 0.5)
+                                .animation(.spring(response: 1.0, dampingFraction: 0.6).delay(0.5), value: animateBattery)
+                            
+                            //top terminal
+                            Ellipse()
                                 .fill(
                                     LinearGradient(
                                         colors: [
-                                            primaryBatteryColor.opacity(0.9),
-                                            primaryBatteryColor,
-                                            primaryBatteryColor.opacity(0.8)
+                                            Color(red: 0.0, green: 0.57, blue: 0.27),   // #009245 (green)
+                                            Color(red: 0.99, green: 0.93, blue: 0.13)  // #FCEE21 (yellow)
                                         ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
+                                        startPoint: .bottomLeading,
+                                        endPoint: .topTrailing
                                     )
                                 )
-                                .frame(width: 44, height: 18)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                                )
-                                .shadow(color: primaryBatteryColor.opacity(0.4), radius: 4, x: 0, y: 2)
-                                .offset(y: -118)
+                                .frame(width: 36, height: 2)
+                                .offset(y:-76)
+                                .blur(radius: 3)
                             
-                            // Remove meaningless percentage text per user feedback
                         }
                         .scaleEffect(animateBattery ? 1.0 : 0.85)
                         .opacity(animateBattery ? 1.0 : 0.0)
                         .animation(.spring(response: 1.2, dampingFraction: 0.8), value: animateBattery)
                     }
                     
-                    // Sophisticated explanation with glass morphism
-                    Text("~\(String(format: "%.1f", lifeGainHours)) extra hours per month")
-                        .font(.system(size: 17, weight: .medium, design: .rounded))
-                        .tracking(0.3)
-                        .foregroundColor(.white.opacity(0.9))
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
-                        .background(
-                            Capsule()
-                                .fill(.thinMaterial)
-                                .overlay(
-                                    Capsule()
-                                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                                )
-                        )
+                    VStack(spacing:16){
+                        // Battery level indicator with gradient border
+                        Text("~\(String(format: "%.1f", lifeGainHours)) hours per month")
+                            .font(.system(size: 17, weight: .medium, design: .rounded))
+                            .tracking(0.3)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(
+                                Capsule()
+                                    .fill(Color(red:0.15, green:0.15, blue:0.15))
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [
+                                                        Color(red: 0.0, green: 0.57, blue: 0.27),   // #009245 (green)
+                                                        Color(red: 0.99, green: 0.93, blue: 0.13)  // #FCEE21 (yellow)
+                                                    ],
+                                                    startPoint: .leading,
+                                                    endPoint: .trailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
+                            )
+                            .opacity(showLifeGain ? 1.0 : 0.0)
+                            .scaleEffect(showLifeGain ? 1.0 : 0.9)
+                            .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(1.0), value: showLifeGain)
+                        
+                        // Add more hours button
+                        Button(action: {
+                            // Action for adding more hours
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 20, weight: .regular))
+                                Text("Add more hours")
+                                    .font(.system(size: 16, weight: .regular))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                        }
                         .opacity(showLifeGain ? 1.0 : 0.0)
                         .scaleEffect(showLifeGain ? 1.0 : 0.9)
-                        .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(1.0), value: showLifeGain)
-                }
-
-                // Premium credibility section with glass morphism
-                VStack(spacing: 16) {
-                    HStack(spacing: 12) {
-                        luxuryCredibilityBadge(icon: "brain.head.profile", text: "AI-Powered")
-                        luxuryCredibilityBadge(icon: "doc.text.magnifyingglass", text: "Research-Based")
-                        luxuryCredibilityBadge(icon: "lock.shield", text: "Private")
+                        .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(1.2), value: showLifeGain)
                     }
-                    
-                    Text("Join 50,000+ users optimizing their life energy")
-                        .font(.system(size: 15, weight: .regular, design: .rounded))
+                }
+                
+                // Call to action and credibility section
+                VStack(spacing: 20) {
+                    // Main call to action text
+                    Text("Unlock your full score and start improving your life span using our research based data.")
+                        .font(.system(size: 16, weight: .regular, design: .rounded))
                         .tracking(0.2)
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(.white)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
+                        .padding(.horizontal, 30)
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    // Credibility badges
+                    HStack(spacing: 2) {
+                        luxuryCredibilityBadge(icon: "", text: "AI-Powered")
+                        luxuryCredibilityBadge(icon: "bolt.fill", text: "Research-based data")
+                        luxuryCredibilityBadge(icon: "bolt.fill", text: "Secure access")
+                    }
+                    .padding(.horizontal,24)
+                    
                 }
                 .opacity(showCredibility ? 1.0 : 0.0)
                 .scaleEffect(showCredibility ? 1.0 : 0.95)
                 .animation(.spring(response: 0.9, dampingFraction: 0.8).delay(1.4), value: showCredibility)
-
-                Spacer()
-
-                // Standard app CTA button to match theme consistency
+                
+                // Main unlock button with padlock icon
                 Button(action: {
                     // Haptic feedback for premium feel
                     let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                     impactFeedback.impactOccurred()
                     onContinue()
                 }) {
-                    Text("Unlock Your Full Score")
+                    VStack(spacing:12){
+                        // Social proof
+                        HStack(spacing: 8) {
+                            Image(systemName: "book")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white.opacity(0.7))
+                            
+                            Text("Join 50,000+ users optimizing their life energy")
+                                .font(.system(size: 14, weight: .regular, design: .rounded))
+                                .tracking(0.1)
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                        HStack(spacing: 12) {
+                            Image("lockopen")
+                                .foregroundColor(.white)
+                                .frame(width: 24, height:24)
+                            
+                            Text("Unlock your full score")
+                                .font(.system(size: 20, weight: .regular, design: .rounded))
+                                .tracking(0.3)
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                        .background(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.0, green: 0.57, blue: 0.27),   // #009245 (green)
+                                    Color(red: 0.99, green: 0.93, blue: 0.13)  // #FCEE21 (yellow)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 100))
+                        .shadow(color: Color(red: 0.0, green: 0.57, blue: 0.27).opacity(0.4), radius: 15, x: 0, y: 8)
+                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
                 }
-                .continueButtonStyle()
-                .padding(.horizontal, 40)
+                .padding(.horizontal, 24)
                 .padding(.bottom, 40)
                 .scaleEffect(showCredibility ? 1.0 : 0.95)
                 .opacity(showCredibility ? 1.0 : 0.0)
                 .animation(.spring(response: 0.8, dampingFraction: 0.7).delay(1.6), value: showCredibility)
                 .accessibilityIdentifier("prepaywall_continue")
+                
+                Spacer()
+                    .frame(height: 30)
             }
         }
         .bottomSafeAreaPadding()
@@ -399,38 +498,25 @@ struct PrePaywallTeaserView: View {
 
     // MARK: - Subviews
     private func luxuryCredibilityBadge(icon: String, text: String) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.system(size: 13, weight: .medium))
-                .foregroundColor(primaryBatteryColor)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.0, green: 0.57, blue: 0.27),   // #009245 (green)
+                            Color(red: 0.99, green: 0.93, blue: 0.13)  // #FCEE21 (yellow)
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
             Text(text)
                 .font(.system(size: 13, weight: .medium, design: .rounded))
                 .tracking(0.2)
                 .foregroundColor(.white.opacity(0.9))
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    primaryBatteryColor.opacity(0.4),
-                                    primaryBatteryColor.opacity(0.2),
-                                    Color.white.opacity(0.1)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-                .shadow(color: primaryBatteryColor.opacity(0.15), radius: 8, x: 0, y: 3)
-                .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
-        )
+        .padding(.vertical, 12)
     }
 }
 

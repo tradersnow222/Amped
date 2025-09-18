@@ -116,6 +116,8 @@ class LifeProjectionService {
             baseLifeExpectancy = 76.3 // US male average
         case .female:
             baseLifeExpectancy = 81.1 // US female average
+        case .preferNotToSay:
+            baseLifeExpectancy = 78.7 // Combined average
         case .none:
             baseLifeExpectancy = 78.7 // Combined average
         }

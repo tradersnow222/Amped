@@ -33,23 +33,34 @@ struct MetricDetailView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 0) {
-                // Time period selector - matching dashboard style
+                // Time period selector - matching dashboard style with swipe gesture support
                 PeriodSelectorView(
                     selectedPeriod: $viewModel.selectedPeriod,
                     onPeriodChanged: { period in
-                        // CRITICAL FIX: Update period with animation AND reload data
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            viewModel.selectedPeriod = period
-                        }
-                        HapticManager.shared.playSelection()
-                        
-                        // CRITICAL FIX: Reload data for the new period
-                        viewModel.loadRealHistoricalData(for: metric, period: period)
+                        changePeriod(to: period)
                     }
                 )
                 .padding(.horizontal)
                 .padding(.top, 8)
                 .padding(.bottom, 16)
+                .gesture(
+                    DragGesture(minimumDistance: 50, coordinateSpace: .local)
+                        .onEnded { value in
+                            let horizontalAmount = value.translation.width
+                            let verticalAmount = abs(value.translation.height)
+                            
+                            // Only respond to horizontal swipes (not vertical)
+                            if abs(horizontalAmount) > verticalAmount {
+                                if horizontalAmount > 0 {
+                                    // Swipe right - go to previous period
+                                    swipeToPreviousPeriod()
+                                } else {
+                                    // Swipe left - go to next period
+                                    swipeToNextPeriod()
+                                }
+                            }
+                        }
+                )
                 
                 // Compact "What is X?" button
                 Button(action: {
@@ -119,6 +130,24 @@ struct MetricDetailView: View {
                 Spacer(minLength: 40)
             }
             .padding(.top)
+            .gesture(
+                DragGesture(minimumDistance: 100, coordinateSpace: .local)
+                    .onEnded { value in
+                        let horizontalAmount = value.translation.width
+                        let verticalAmount = abs(value.translation.height)
+                        
+                        // Only respond to horizontal swipes that are primarily horizontal
+                        if abs(horizontalAmount) > verticalAmount && abs(horizontalAmount) > 100 {
+                            if horizontalAmount > 0 {
+                                // Swipe right - go to previous period
+                                swipeToPreviousPeriod()
+                            } else {
+                                // Swipe left - go to next period
+                                swipeToNextPeriod()
+                            }
+                        }
+                    }
+            )
         }
         .navigationTitle(metric.type.displayName)
         .navigationBarTitleDisplayMode(.inline)
@@ -281,6 +310,42 @@ struct MetricDetailView: View {
             viewModel.logRecommendationAction(recommendation)
             HapticManager.shared.playSelection()
         }
+    }
+    
+    // MARK: - Period Change Methods
+    
+    /// Change to a specific period with animation and haptic feedback
+    private func changePeriod(to period: ImpactDataPoint.PeriodType) {
+        // CRITICAL FIX: Update period with animation AND reload data
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            viewModel.selectedPeriod = period
+        }
+        HapticManager.shared.playSelection()
+        
+        // CRITICAL FIX: Reload data for the new period
+        viewModel.loadRealHistoricalData(for: metric, period: period)
+    }
+    
+    /// Swipe to the next period (Day → Month → Year → Day)
+    private func swipeToNextPeriod() {
+        let periods: [ImpactDataPoint.PeriodType] = [.day, .month, .year]
+        guard let currentIndex = periods.firstIndex(of: viewModel.selectedPeriod) else { return }
+        
+        let nextIndex = (currentIndex + 1) % periods.count
+        let nextPeriod = periods[nextIndex]
+        
+        changePeriod(to: nextPeriod)
+    }
+    
+    /// Swipe to the previous period (Year → Month → Day → Year)
+    private func swipeToPreviousPeriod() {
+        let periods: [ImpactDataPoint.PeriodType] = [.day, .month, .year]
+        guard let currentIndex = periods.firstIndex(of: viewModel.selectedPeriod) else { return }
+        
+        let previousIndex = currentIndex == 0 ? periods.count - 1 : currentIndex - 1
+        let previousPeriod = periods[previousIndex]
+        
+        changePeriod(to: previousPeriod)
     }
     
     // MARK: - Helper Methods

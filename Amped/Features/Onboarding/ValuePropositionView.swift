@@ -1,13 +1,48 @@
 import SwiftUI
+import AVFoundation
+import AVKit
+
+/// DNA video background player
+struct DNAVideoBackgroundView: View {
+    @State private var player = AVPlayer()
+    
+    var body: some View {
+        VideoPlayer(player: player)
+            .disabled(true) // Disable user interaction
+            .onAppear {
+                setupVideo()
+            }
+    }
+    
+    private func setupVideo() {
+        guard let url = Bundle.main.url(forResource: "dna", withExtension: "mov") else {
+            print("❌ Could not find dna.mov in bundle")
+            return
+        }
+        
+        player = AVPlayer(url: url)
+        player.isMuted = true
+        player.play()
+        
+        // Set up looping
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: player.currentItem,
+            queue: .main
+        ) { _ in
+            player.seek(to: .zero)
+            player.play()
+        }
+        
+        print("✅ Video player setup complete")
+    }
+}
 
 /// Value proposition screen explaining how Amped helps users live longer
 struct ValuePropositionView: View {
     // MARK: - Properties
     
     @State private var animateElements = false
-    @State private var batteryFillLevel: CGFloat = 0.0
-    @State private var iconScale: CGFloat = 0.8
-    @State private var glowOpacity: Double = 0.3
     
     // Callback to proceed to next step
     var onContinue: (() -> Void)?
@@ -15,210 +50,138 @@ struct ValuePropositionView: View {
     // MARK: - Body
     
     var body: some View {
-        ZStack(alignment: .top) {
-            // Content without background since parent provides static background
+        ZStack {
+            // Background video with overlay
+            GeometryReader { geometry in
+                DNAVideoBackgroundView()
+                    .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+                    .rotationEffect(.degrees(90)) // Rotate 90 degrees
+                    .scaleEffect(1.8) // Increased scale for wider coverage
+                    .offset(y: -180) // Match the original image offset
+                    .clipped()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                
+                // Linear gradient overlay matching exact specifications
+                LinearGradient(
+                    gradient: Gradient(stops: [
+                        .init(color: Color(red: 102/255, green: 102/255, blue: 102/255).opacity(0.0), location: 0.0),     // rgba(102, 102, 102, 0) at 0%
+                        .init(color: Color(red: 51/255, green: 51/255, blue: 51/255).opacity(0.5), location: 0.3894),     // rgba(51, 51, 51, 0.5) at 38.94%
+                        .init(color: Color.black, location: 0.6635)                                                      // #000000 at 66.35%
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+            .edgesIgnoringSafeArea(.all)
             
-            VStack(spacing: 0) {
-                // Main content - no scroll view needed
-                VStack(spacing: 40) {
-                    // Header section - positioned for rule of thirds
-                    VStack(spacing: 16) {
-                        VStack(spacing: 2) {
-                            Text("Add Years")
-                                .font(.system(size: 38, weight: .semibold, design: .rounded))
-                                .foregroundColor(.white)
-                                .multilineTextAlignment(.center)
-                            Text("to Your Life")
-                                .font(.system(size: 38, weight: .semibold, design: .rounded))
-                                .foregroundColor(.white)
-                                .multilineTextAlignment(.center)
-                        }
-                        .opacity(animateElements ? 1 : 0)
-                        .offset(y: animateElements ? 0 : 20)
-                        .animation(.easeOut(duration: 0.9), value: animateElements)
-                        
-                        // Personalized subtitle - Rules: Strategic personalization for maximum impact
-                        Text(PersonalizationUtils.contextualMessage(firstName: PersonalizationUtils.userFirstName, context: .valueProposition))
-                            .font(.system(size: 18, weight: .regular, design: .rounded))
-                            .foregroundColor(.white.opacity(0.8))
-                            .multilineTextAlignment(.center)
-                            .opacity(animateElements ? 1 : 0)
-                            .offset(y: animateElements ? 0 : 15)
-                            .animation(.easeOut(duration: 0.9).delay(0.15), value: animateElements)
-                    }
-                    .padding(.top, 80)
-                    
-                    // Animated battery visualization
-                    batteryVisualizationView
+            // Main content
+            VStack(spacing: 48) {
+                Spacer()
+                VStack(spacing: 0){
+                    // Heart icon at top
+                    Image("heart")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 24, height: 24)
                         .opacity(animateElements ? 1 : 0)
                         .scaleEffect(animateElements ? 1 : 0.8)
-                        .animation(.spring(response: 0.72, dampingFraction: 0.978).delay(0.25), value: animateElements)
+                        .animation(.easeOut(duration: 0.8), value: animateElements)
                     
-                    // Value propositions - simplified
-                    VStack(spacing: 24) {
-                        valuePropositionItem(
-                            icon: "heart.fill",
-                            title: "Track Impact",
-                            description: "See which habits add or cut time.",
-                            delay: 0.3
-                        )
-                        
-                        valuePropositionItem(
-                            icon: "clock.fill",
-                            title: "Live Updates",
-                            description: "Watch your lifespan change in real time.",
-                            delay: 0.4
-                        )
-                        
-                        valuePropositionItem(
-                            icon: "lightbulb.fill",
-                            title: "Smart Actions",
-                            description: "Get simple steps proven to add years.",
-                            delay: 0.5
-                        )
-                    }
-                    .padding(.horizontal, 8)
-                    
-                    Spacer()
-                }
-                .padding(.horizontal, 24)
-                
-                // Bottom section with button
-                VStack(spacing: 0) {
-                    Button(action: {
-                        onContinue?()
-                    }) {
-                        Text("Start Adding Years")
-                            .fontWeight(.bold)
-                            .font(.system(.title3, design: .rounded))
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 16)
-                            .background(Color.ampedGreen)
+                    // Main headline
+                    VStack(spacing:0){
+                        Text("Welcome")
+                            .font(.system(size: 32, weight: .bold, design: .default))
                             .foregroundColor(.white)
-                            .shadow(color: Color.black.opacity(0.3), radius: 1, x: 0, y: 1)
-                            .cornerRadius(14)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 4)
+                            .opacity(animateElements ? 1 : 0)
+                            .offset(y: animateElements ? 4 : 20)
+                            .animation(.easeOut(duration: 0.8).delay(0.2), value: animateElements)
+                        
+                        // Text("Your Life")
+                        //     .font(.system(size: 32, weight: .bold, design: .default))
+                        //     .foregroundColor(.white)
+                        //     .multilineTextAlignment(.center)
+                        //     .opacity(animateElements ? 1 : 0)
+                        //     .offset(y: animateElements ? 0 : 20)
+                        //     .padding(.top,4)
+                        //     .animation(.easeOut(duration: 0.8).delay(0.2), value: animateElements)
                     }
-                    .minTappableArea(52)
-                    .hapticFeedback(.medium)
-                    .padding(.horizontal, 40)
-                    .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
-                    .opacity(animateElements ? 1 : 0)
-                    .scaleEffect(animateElements ? 1 : 0.9)
-                    .animation(.spring(response: 0.72, dampingFraction: 0.978).delay(0.7), value: animateElements)
+                    // Subtitle
+                    Text("Life is fleeting, but this app can guide you towards a healthier, longer life.")
+                        .font(.system(size: 22, weight: .light, design: .default))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                        .padding(.horizontal, 28)
+                        .padding(.top, 16)
+                        .opacity(animateElements ? 1 : 0)
+                        .offset(y: animateElements ? 0 : 20)
+                        .animation(.easeOut(duration: 0.8).delay(0.4), value: animateElements)
+                    // Feature highlights
+                    HStack(spacing:25) {
+                        featureHighlight(
+                            iconName: "heartline",
+                            title: "Track Impact",
+                            delay: 0.6
+                        )
+                        
+                        featureHighlight(
+                            iconName: "liveupdates",
+                            title: "Live updates",
+                            delay: 0.7
+                        )
+                        
+                        featureHighlight(
+                            iconName: "records",
+                            title: "Live reports",
+                            delay: 0.8
+                        )
+                    }
+                    .padding(.top, 40)
                     
-                    // Add spacer to match other onboarding screens
-                    Spacer().frame(height: 120)
                 }
+                // Get Started button
+                Button(action: {
+                    onContinue?()
+                }) {
+                    Text("Get Started")
+                }
+                .primaryButtonStyle()
+                .padding(.horizontal, 28)
+                .opacity(animateElements ? 1 : 0)
+                .scaleEffect(animateElements ? 1 : 0.9)
+                .animation(.easeOut(duration: 0.8).delay(1.0), value: animateElements)
             }
         }
-        .edgesIgnoringSafeArea(.all)
         .navigationBarHidden(true)
         .onAppear {
-            // Trigger animations
             withAnimation {
                 animateElements = true
-            }
-            
-            // Start battery fill animation after a delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                withAnimation(.easeInOut(duration: 2.8)) {
-                    batteryFillLevel = 0.85
-                }
-                
-                // Add subtle glow pulse animation with limited repetitions
-                withAnimation(.easeInOut(duration: 1.8).repeatCount(3, autoreverses: true)) {
-                    glowOpacity = 0.7
-                    iconScale = 1.1
-                }
             }
         }
     }
     
     // MARK: - Subviews
     
-    private var batteryVisualizationView: some View {
-        VStack(spacing: 16) {
-            // Battery container with fill animation
-            ZStack {
-                // Battery outline
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.ampedGreen, lineWidth: 4)
-                    .frame(width: 140, height: 80)
-                
-                // Battery fill that animates from empty to filled - Rules: Simplicity is KING
-                HStack(spacing: 0) {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    Color.ampedGreen.opacity(0.8),
-                                    Color.ampedGreen
-                                ]),
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: max(0, (140 - 8) * batteryFillLevel), height: 72)
-                    
-                    Spacer(minLength: 0)
-                }
-                .frame(width: 140 - 8, height: 72)
-                .padding(4)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                
-                // Battery tip
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.ampedGreen)
-                    .frame(width: 8, height: 40)
-                    .offset(x: 78)
-                
-                // Glow effect
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.ampedGreen.opacity(glowOpacity), lineWidth: 2)
-                    .frame(width: 150, height: 90)
-                    .blur(radius: 4)
-                
-                // Heart icon in center
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 28))
-                    .foregroundColor(.white)
-                    .scaleEffect(iconScale)
-            }
-        }
-    }
-    
-    private func valuePropositionItem(icon: String, title: String, description: String, delay: Double) -> some View {
-        HStack(alignment: .top, spacing: 16) {
-            // Icon with glow effect
-            ZStack {
-                Circle()
-                    .fill(Color.ampedGreen.opacity(0.2))
-                    .frame(width: 48, height: 48)
-                
-                Image(systemName: icon)
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundColor(.ampedGreen)
-            }
-            .scaleEffect(animateElements ? 1 : 0.8)
-            .animation(.spring(response: 0.72, dampingFraction: 0.978).delay(delay), value: animateElements)
+    private func featureHighlight(iconName: String, title: String, delay: Double) -> some View {
+        HStack(spacing: 6) {
+            // Icon
+            Image(iconName)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 20, height: 20)
+                .foregroundColor(.white)
             
-            VStack(alignment: .leading, spacing: 8) {
-                Text(title)
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white)
-                
-                Text(description)
-                    .font(.system(size: 16, weight: .regular, design: .rounded))
-                    .foregroundColor(.white.opacity(0.8))
-                    .lineSpacing(2)
-            }
-            .opacity(animateElements ? 1 : 0)
-            .offset(x: animateElements ? 0 : 20)
-            .animation(.easeOut(duration: 0.9).delay(delay + 0.15), value: animateElements)
+            // Title
+            Text(title)
+                .font(.system(size: 13, weight: .regular, design: .default))
+                .foregroundColor(.white)
             
-            Spacer()
         }
+        .opacity(animateElements ? 1 : 0)
+        .offset(x: animateElements ? 0 : -20)
+        .animation(.easeOut(duration: 0.8).delay(delay), value: animateElements)
     }
 }
 

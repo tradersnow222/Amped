@@ -13,20 +13,29 @@ struct PrimaryButtonStyle: ButtonStyle {
     
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .fontWeight(.bold)
-            .font(.system(.title3, design: .rounded))
+            .fontWeight(.regular)
+            .font(.system(.title2, design: .rounded))
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
             .multilineTextAlignment(.center)
             // Fitts's Law: primary CTAs should be big and easy to hit
-            .frame(maxWidth: .infinity, minHeight: 52)
-            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
             .padding(.horizontal, 16)
             .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(backgroundColor(configuration: configuration).opacity(0.85))
+                RoundedRectangle(cornerRadius: 100)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.primaryButtonEnd,    // #009245
+                                Color.primaryButtonStart // #FCEE21
+                            ]),
+                            startPoint: UnitPoint(x: 0.0, y: 1.0),   // bottom-left
+                            endPoint: UnitPoint(x: 1.0, y: 0.0)
+                        )
+                    )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 14)
+                        RoundedRectangle(cornerRadius: 100)
                             .stroke(
                                 LinearGradient(
                                     colors: [
@@ -41,7 +50,7 @@ struct PrimaryButtonStyle: ButtonStyle {
                     )
             )
             .foregroundColor(.white)
-            .shadow(color: backgroundColor(configuration: configuration).opacity(0.3), radius: 8, y: 4)
+            .shadow(color: Color.primaryButtonEnd.opacity(0.3), radius: 8, y: 4)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
             .opacity(isEnabled ? 1.0 : 0.6)
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)

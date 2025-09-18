@@ -52,67 +52,41 @@ struct QuestionnaireView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // CRITICAL PERFORMANCE FIX: Use optimized background that doesn't recalculate on keyboard
+                // CRITICAL PERFORMANCE FIX: Use black background that extends to all edges
                 if includeBackground {
-                    Color.clear.withOptimizedDeepBackground()
+                    Color.black
+                        .ignoresSafeArea(.all)
                 }
                 
-                ZStack {
-                    // ULTRA-STABLE: Completely static overlay layer - NEVER transitions, NEVER recreates
-                    VStack(spacing: 0) {
-                        // Back button - static overlay (needs hit testing enabled)
-                        HStack {
-                            if viewModel.canMoveBack {
-                                BackButton(action: {
-                                    gestureHandler.handleBackNavigation()
-                                }, showText: false)
-                                .allowsHitTesting(true) // Ensure back button is tappable
-                            }
-                            Spacer()
-                                .allowsHitTesting(false) // Let spacer pass gestures through
-                        }
-                        .padding(.top, 16)
-                        .padding(.leading, 8)
-                        .frame(height: 42)
-                        
-                        // CategoryHeader - COMPLETELY STATIC OVERLAY (never recreated)
-                        CategoryHeader(category: viewModel.currentQuestionCategory)
-                            .padding(.top, 8)
-                            .frame(maxWidth: .infinity)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .id("static_category_header") // Static ID - never changes
-                            .allowsHitTesting(false) // Let gestures pass through header
-                        
-                        Spacer()
-                            .allowsHitTesting(false) // Let gestures pass through spacer
-                        
-                        // Progress indicator - static overlay  
-                        ProgressIndicator(currentStep: viewModel.currentStep, totalSteps: viewModel.totalSteps)
-                            .padding(.bottom, 10)
-                            .allowsHitTesting(false) // Let gestures pass through progress indicator
-                    }
-                    .zIndex(1000) // Always on top
-                    // Removed global allowsHitTesting(false) and applied selectively instead
+                VStack(spacing: 0) {
+                    // Top spacer to position content below Dynamic Island
+//                    Spacer()
+//                        .frame(height: geometry.safeAreaInsets.top) // Space below Dynamic Island
                     
-                    // Content layer - this animates but overlay stays put
-                    VStack(spacing: 0) {
-                        // Top spacer for CategoryHeader
-                        Spacer().frame(height: 100) // Fixed space for header
-                        
-                        // Animated content - NO ID to prevent view recreation
-                        ZStack {
-                            questionView(for: viewModel.currentQuestion)
-                                .padding()
-                                .transition(getAdaptiveTransition())
+                    // Progress bar stepper with integrated back button
+                    ProgressBarStepper(
+                        currentStep: viewModel.currentStep, 
+                        totalSteps: viewModel.totalSteps,
+                        onBackTap: {
+                            if viewModel.canMoveBack {
+                                gestureHandler.handleBackNavigation()
+                            }
                         }
-                        .clipped()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        
-                        // Bottom spacer for progress indicator
-                        Spacer().frame(height: 60) // Fixed space for progress
+                    )
+                    .allowsHitTesting(true) // Allow back button to be tappable
+                    
+                    // Content layer - this animates
+                    ZStack {
+                        questionView(for: viewModel.currentQuestion)
+                            .transition(getAdaptiveTransition())
                     }
+                    // .clipped()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    
+                    // // Bottom spacer to position content above home indicator
+                    // Spacer()
+                    //     .frame(height: geometry.safeAreaInsets.bottom) // Space above home indicator
                 }
-                .withDeepBackgroundTheme()
             }
             // CRITICAL KEYBOARD FIX: Only apply gestures when keyboard is NOT visible
             .contentShape(Rectangle()) // Ensure the entire area responds to gestures
@@ -144,7 +118,7 @@ struct QuestionnaireView: View {
                     }
             )
         }
-        // Applied rule: Simplicity is KING — let system avoid keyboard on the name screen only
+    // Applied rule: Simplicity is KING — let system avoid keyboard on the name screen only
         .modifier(ConditionalKeyboardIgnore(shouldIgnore: viewModel.currentQuestion != .name))
         .adaptiveSpacing() // Apply adaptive spacing environment
         // CRITICAL KEYBOARD FIX: Track keyboard visibility to disable gestures and prevent lag
@@ -214,10 +188,6 @@ struct QuestionnaireView: View {
                 QuestionViews.AnxietyQuestionView(
                     viewModel: viewModel
                 )
-            case .gender:
-                QuestionViews.GenderQuestionView(
-                    viewModel: viewModel
-                )
             case .nutritionQuality:
                 QuestionViews.NutritionQuestionView(
                     viewModel: viewModel
@@ -245,8 +215,7 @@ struct QuestionnaireView: View {
             case .deviceTracking:
                 QuestionViews.DeviceTrackingQuestionView(
                     viewModel: viewModel,
-                    proceedToHealthKit: proceedToHealthKit,
-                    skipToLifeMotivation: skipToLifeMotivation
+                    completeQuestionnaire: completeQuestionnaire
                 )
             case .framingComfort:
                 QuestionViews.FramingComfortQuestionView(
