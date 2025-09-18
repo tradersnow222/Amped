@@ -50,15 +50,15 @@ struct PaymentView: View {
                         CurvedBottomShape()
                     )
             }
-            .frame(height: UIScreen.main.bounds.height * 0.5)
+            .frame(height: UIScreen.main.bounds.height * 0.45)
             .edgesIgnoringSafeArea(.all)
             
             // Main content - all content grouped together at bottom
             VStack {
-                VStack(spacing: 48) {
+                VStack {
                     VStack(spacing: 0) {
                         // Main headline with gradient text
-                        Spacer()
+//                        Spacer()
                         VStack(spacing: 0) {
                             HStack(spacing: 0) {
                                 Text("Unlock")
@@ -82,7 +82,6 @@ struct PaymentView: View {
                             .opacity(animateElements ? 1 : 0)
                             .offset(y: animateElements ? 0 : 20)
                             .animation(.easeOut(duration: 0.8).delay(0.2), value: animateElements)
-                            .padding(.top,10)
                             
                             HStack(spacing: 0) {
                                 Text("Full ")
@@ -135,9 +134,11 @@ struct PaymentView: View {
                         .padding(.top, 20)
                     }
                     .padding(.horizontal, 24)
-                    
+                    Spacer()
                     // Pricing buttons
                     VStack(spacing: 8) {
+                        Spacer()
+                            .frame(height:40)
                         // Pricing information
                         VStack(spacing: 8) {
                             Text("Limited-time pricing. Cancel anytime")
@@ -148,7 +149,6 @@ struct PaymentView: View {
                                 .offset(y: animateElements ? 0 : 20)
                                 .animation(.easeOut(duration: 0.8).delay(0.7), value: animateElements)
                         }
-                        .padding(.top, 20)
                         // Main pricing button
                         Button(action: {
                             viewModel.selectedPlan = .monthly
@@ -225,6 +225,7 @@ struct PaymentView: View {
                     Spacer()
                 }
             }
+            .offset(y:-30)
             .blur(radius: showExitOffer ? 8 : 0)
             .animation(.easeInOut(duration: 0.25), value: showExitOffer)
             
@@ -427,5 +428,6 @@ struct PaymentView_Previews: PreviewProvider {
         PaymentView(onContinue: {})
             .environmentObject(AppState())
             .environmentObject(BatteryThemeManager())
+            .environmentObject(SubscriptionManager.shared)
     }
 } 

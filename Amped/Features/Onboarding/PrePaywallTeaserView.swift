@@ -161,7 +161,7 @@ struct PrePaywallTeaserView: View {
                     .frame(height: 30)
                 
                 // Premium headline with sophisticated typography
-                VStack(spacing: 16) {
+                VStack(spacing: 4) {
                     // Battery icon in circled gradient
                     ZStack {
                         Circle()
@@ -188,7 +188,7 @@ struct PrePaywallTeaserView: View {
                     
                     Text("Your Life Battery")
                         .font(.system(size: 24, weight: .semibold, design: .default))
-                        .tracking(1.2)
+//                        .tracking(1.2)
                         .foregroundStyle(
                             LinearGradient(
                                 colors: [
@@ -406,8 +406,6 @@ struct PrePaywallTeaserView: View {
                 .opacity(showCredibility ? 1.0 : 0.0)
                 .scaleEffect(showCredibility ? 1.0 : 0.95)
                 .animation(.spring(response: 0.9, dampingFraction: 0.8).delay(1.4), value: showCredibility)
-                
-                Spacer()
                 
                 // Main unlock button with padlock icon
                 Button(action: {
