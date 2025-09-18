@@ -210,29 +210,29 @@ struct QuestionViews {
                 // Main content
                 VStack(spacing: 32) {
                     // Emma character and text
-                HStack(spacing: 0) {
-                        // Emma character (steptwo)
-                        Image("steptwo")
+                    VStack(spacing: 16) {
+                        // Emma character (steptwo) - centered
+                        Image("emma")
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: 68, height: 76)
-                        
+                            .frame(width: 107, height: 121)
+                    
+                        // Text section - left aligned to match fields
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Let's take some of your metrics.")
                                 .font(.system(size: 20, weight: .medium))
                                 .foregroundColor(.white)
                         }
-                        
-                        Spacer()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
                     }
-                    .padding(.horizontal, 24)
                     
                     VStack(spacing: 16) {
                         // Age input field
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Text("Your Age")
-                                    .font(.system(size: 20, weight: .medium))
+                                    .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(.white)
                                 Spacer()
                             }
@@ -276,7 +276,7 @@ struct QuestionViews {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Text("Your Height")
-                                    .font(.system(size: 20, weight: .medium))
+                                    .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(.white)
                                 Spacer()
                             }
@@ -320,7 +320,7 @@ struct QuestionViews {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Text("Your Weight")
-                                    .font(.system(size: 20, weight: .medium))
+                                    .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(.white)
                                 Spacer()
                             }
@@ -484,31 +484,27 @@ struct QuestionViews {
                 // Main content
                 VStack(spacing: 32) {
                     // Emma character and text
-                    HStack(spacing: 0) {
-                        // Emma character (turtle with battery)
-                        Image("steptwo")
+                    VStack(spacing: 16) {
+                        // Emma character (turtle with battery) - centered
+                        Image("emma")
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: 68, height: 76)
+                            .frame(width: 107, height: 121)
                     
-                        // Image(avatarImageName)
-                        //     .resizable()
-                        //     .aspectRatio(contentMode: .fill)
-                        //     .frame(width: 80, height: 80)
-                        
+                        // Text section - left aligned to match fields
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Let's get familiar")
                                 .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.white)
+                                .foregroundColor(.white)
                             
                             Text("I'm \(appState.mascotName), your guide and companion in this journey.")
                                 .font(.system(size: 16, weight: .regular))
                                 .foregroundColor(.white.opacity(0.8))
+                                .multilineTextAlignment(.leading)
                         }
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal, 24)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
+                     }
                     
                     VStack(spacing: 16) {
                     // Question - left aligned, font size 20, weight 500
@@ -681,26 +677,23 @@ struct QuestionViews {
                 Spacer()
                 
                 // Emma character and question layout
-                HStack(alignment: .top, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 12){
-                        HStack(alignment: .center, spacing: 0){
-                            // Emma character
-                            Image("steptwo")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 68, height: 76)
-                            
-                            // Question text
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("How would you describe your typical stress level?")
-                                    .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white)
-                                    .multilineTextAlignment(.leading)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                            }
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("How would you describe your typical stress level?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         // Research citation with book icon
                         Button(action: {
@@ -721,9 +714,9 @@ struct QuestionViews {
                             }
                         }
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
-                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -1062,26 +1055,23 @@ struct QuestionViews {
                 Spacer()
                 
                 // Emma character and question layout
-                HStack(alignment: .top, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 12){
-                        HStack(alignment: .center, spacing: 0){
-                            // Emma character
-                            Image("steptwo")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 68, height: 76)
-                            
-                            // Question text
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("How would you describe your anxiety level?")
-                                    .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white)
-                                    .multilineTextAlignment(.leading)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                            }
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("How would you describe your anxiety level?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         // Research citation with book icon
                         Button(action: {
@@ -1102,9 +1092,9 @@ struct QuestionViews {
                             }
                         }
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
-                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -1431,22 +1421,22 @@ struct QuestionViews {
                 // Main content
                 VStack(spacing: 32) {
                     // Emma character and text
-                    HStack(spacing: 0) {
-                        // Emma character (steptwo)
-                        Image("steptwo")
+                    VStack(spacing: 16) {
+                        // Emma character (steptwo) - centered
+                        Image("emma")
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: 68, height: 76)
-                        
+                            .frame(width: 107, height: 121)
+                    
+                        // Text section - left aligned to match fields
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Quick question: are you Team He, She, or They?")
                                 .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.white)
+                                .foregroundColor(.white)
                         }
-                        
-                        Spacer()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 24)
                     }
-                    .padding(.horizontal, 24)
                     
                     VStack(spacing: 16) {
                         // Dropdown field
@@ -1624,26 +1614,23 @@ struct QuestionViews {
                 Spacer()
                 
                 // Emma character and question layout
-                HStack(alignment: .top, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 12){
-                        HStack(alignment: .center, spacing: 0){
-                            // Emma character
-                            Image("steptwo")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 68, height: 76)
-                            
-                            // Question text
-                            VStack(alignment: .leading, spacing: 8) {
-                    Text("How would you describe your typical diet?")
-                                    .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white)
-                                    .multilineTextAlignment(.leading)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                            }
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("How would you describe your typical diet?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         // Research citation with book icon
                         Button(action: {
@@ -1664,9 +1651,9 @@ struct QuestionViews {
                             }
                         }
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
-                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -1988,26 +1975,23 @@ struct QuestionViews {
                 Spacer()
                 
                 // Emma character and question layout
-                HStack(alignment: .top, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 12){
-                        HStack(alignment: .center, spacing: 0){
-                            // Emma character
-                            Image("steptwo")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 68, height: 76)
-                            
-                            // Question text
-                            VStack(alignment: .leading, spacing: 8) {
-                    Text("Do you smoke tobacco products?")
-                                    .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white)
-                                    .multilineTextAlignment(.leading)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                            }
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Do you smoke tobacco products?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         // Research citation with book icon
                         Button(action: {
@@ -2028,9 +2012,9 @@ struct QuestionViews {
                             }
                         }
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
-                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -2354,26 +2338,23 @@ struct QuestionViews {
                 Spacer()
                 
                 // Emma character and question layout
-                HStack(alignment: .top, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 12){
-                        HStack(alignment: .center, spacing: 0){
-                            // Emma character
-                            Image("steptwo")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 68, height: 76)
-                            
-                            // Question text
-                            VStack(alignment: .leading, spacing: 8) {
-                    Text("How often do you consume alcoholic beverages?")
-                                    .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white)
-                                    .multilineTextAlignment(.leading)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                            }
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("How often do you consume alcoholic beverages?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         // Research citation with book icon
                         Button(action: {
@@ -2394,9 +2375,9 @@ struct QuestionViews {
                             }
                         }
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
-                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -2691,26 +2672,23 @@ struct QuestionViews {
                 Spacer()
                 
                 // Emma character and question layout
-                HStack(alignment: .top, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 12){
-                        HStack(alignment: .center, spacing: 0){
-                            // Emma character
-                            Image("steptwo")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 68, height: 76)
-                            
-                            // Question text
-                            VStack(alignment: .leading, spacing: 8) {
-                    Text("How would you describe your social connections?")
-                                    .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white)
-                                    .multilineTextAlignment(.leading)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                            }
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("How would you describe your social connections?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         // Research citation with book icon
                         Button(action: {
@@ -2731,9 +2709,9 @@ struct QuestionViews {
                             }
                         }
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
-                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -3034,7 +3012,7 @@ struct QuestionViews {
                     VStack(alignment: .leading, spacing: 12){
                         HStack(alignment: .center, spacing: 0){
                             // Emma character
-                            Image("steptwo")
+                            Image("emma")
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .frame(width: 68, height: 76)
@@ -3384,26 +3362,23 @@ struct QuestionViews {
                 Spacer()
                 
                 // Emma character and question layout
-                HStack(alignment: .top, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 12){
-                        HStack(alignment: .center, spacing: 0){
-                            // Emma character
-                            Image("steptwo")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 68, height: 76)
-                            
-                            // Question text
-                            VStack(alignment: .leading, spacing: 8) {
-                    Text("What is your typical blood pressure reading?")
-                                    .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white)
-                                    .multilineTextAlignment(.leading)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                            }
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("What is your typical blood pressure reading?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         // Research citation with book icon
                         Button(action: {
@@ -3424,9 +3399,9 @@ struct QuestionViews {
                             }
                         }
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
-                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)
@@ -3944,26 +3919,23 @@ struct QuestionViews {
                 Spacer()
                 
                 // Emma character and question layout
-                HStack(alignment: .top, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 12){
-                        HStack(alignment: .center, spacing: 0){
-                            // Emma character
-                            Image("steptwo")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 68, height: 76)
-                            
-                            // Question text
-                            VStack(alignment: .leading, spacing: 8) {
-                Text("What is the main reason you might want to live longer?")
-                                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.white)
-                                    .multilineTextAlignment(.leading)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                            }
+                VStack(spacing: 16) {
+                    // Emma character (steptwo) - centered
+                    Image("emma")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 107, height: 121)
+                
+                    // Text section - left aligned to match fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("What is the main reason you might want to live longer?")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         // Research citation with book icon
                         Button(action: {
@@ -3984,9 +3956,9 @@ struct QuestionViews {
                             }
                         }
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
                 }
-                .padding(.leading, 24)
                 
                 Spacer()
                  .frame(maxHeight: 32)

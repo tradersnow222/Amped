@@ -428,6 +428,23 @@ struct PaymentView_Previews: PreviewProvider {
         PaymentView(onContinue: {})
             .environmentObject(AppState())
             .environmentObject(BatteryThemeManager())
-            .environmentObject(SubscriptionManager.shared)
+            .environmentObject(MockSubscriptionManager())
     }
+}
+
+// MARK: - Mock for Previews
+@MainActor
+final class MockSubscriptionManager: ObservableObject {
+    @Published var hasActiveSubscription = false
+    @Published var currentOffering: Offering? = nil
+    @Published var isLoading = false
+    @Published var errorMessage: String? = nil
+    
+    var weeklyPackage: Package? { nil }
+    
+    func checkSubscriptionStatus() {}
+    func loadOfferings() async {}
+    func purchase(package: Package) async -> Bool { false }
+    func restorePurchases() async -> Bool { false }
+    func clearError() {}
 } 
