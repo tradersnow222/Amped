@@ -3020,6 +3020,8 @@ struct QuestionViews {
         @ObservedObject var viewModel: QuestionnaireViewModel
         @State private var desiredMinutes: Int = 10 // 5..120, will be initialized from viewModel
         @State private var hasInitialized = false
+        @State private var lastValidAngle: Double = 0
+        @State private var isDragging = false
         @Environment(\.adaptiveSpacing) private var spacing
         @State private var showDrawer = false
 
@@ -3108,14 +3110,42 @@ struct QuestionViews {
                     .gesture(
                         DragGesture()
                             .onChanged { value in
-                                let angle = atan2(value.location.y - 100, value.location.x - 100)
-                                let degrees = angle * 180 / .pi
-                                let normalizedDegrees = (degrees + 90 + 360).truncatingRemainder(dividingBy: 360)
+                                let center = CGPoint(x: 100, y: 100)
+                                let vector = CGPoint(x: value.location.x - center.x, y: value.location.y - center.y)
                                 
-                                // Prevent going beyond full circle (360 degrees = 120 minutes)
-                                let clampedDegrees = min(360, normalizedDegrees)
-                                let minutes = Int(clampedDegrees / 3.0)
-                                desiredMinutes = max(5, min(120, minutes))
+                                // Calculate angle from center
+                                let angle = atan2(vector.y, vector.x)
+                                var degrees = angle * 180 / .pi + 90
+                                
+                                // Normalize to 0-360
+                                if degrees < 0 { degrees += 360 }
+                                
+                                // Calculate what minutes this angle represents
+                                let targetMinutes = degrees / 3.0
+                                
+                                // Get current position in degrees
+                                let currentDegrees = Double(desiredMinutes) * 3.0
+                                
+                                // Check if we're at boundaries and trying to go further
+                                let isAtMaxBoundary = desiredMinutes >= 120 && targetMinutes > Double(desiredMinutes)
+                                let isAtMinBoundary = desiredMinutes <= 5 && targetMinutes < Double(desiredMinutes)
+                                
+                                // Prevent wrap-around by checking for large jumps
+                                let angleDifference = abs(degrees - currentDegrees)
+                                let isWrapAroundAttempt = angleDifference > 180
+                                
+                                // Only update if:
+                                // 1. Not at boundary trying to go further
+                                // 2. Not attempting wrap-around
+                                // 3. Within valid minute range
+                                if !isAtMaxBoundary && !isAtMinBoundary && !isWrapAroundAttempt {
+                                    let clampedMinutes = max(5, min(120, Int(targetMinutes)))
+                                    desiredMinutes = clampedMinutes
+                                    lastValidAngle = Double(clampedMinutes) * 3.0
+                                }
+                            }
+                            .onEnded { _ in
+                                isDragging = false
                             }
                     )
                     
@@ -3188,6 +3218,8 @@ struct QuestionViews {
                         // Use saved desired minutes if available
                         desiredMinutes = max(5, min(120, viewModel.desiredDailyLifespanGainMinutes))
                     }
+                    // Set the last valid angle based on initialized minutes
+                    lastValidAngle = Double(desiredMinutes) * 3.0
                     hasInitialized = true
                 }
             }
