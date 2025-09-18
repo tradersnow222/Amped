@@ -3018,7 +3018,8 @@ struct QuestionViews {
     // MARK: - Desired Daily Lifespan Gain Question (replaces sleep duration dial)
     struct SleepQualityQuestionView: View {
         @ObservedObject var viewModel: QuestionnaireViewModel
-        @State private var desiredMinutes: Int = 10 // 5..120
+        @State private var desiredMinutes: Int = 10 // 5..120, will be initialized from viewModel
+        @State private var hasInitialized = false
         @Environment(\.adaptiveSpacing) private var spacing
         @State private var showDrawer = false
 
@@ -3110,7 +3111,10 @@ struct QuestionViews {
                                 let angle = atan2(value.location.y - 100, value.location.x - 100)
                                 let degrees = angle * 180 / .pi
                                 let normalizedDegrees = (degrees + 90 + 360).truncatingRemainder(dividingBy: 360)
-                                let minutes = Int(normalizedDegrees / 3.0)
+                                
+                                // Prevent going beyond full circle (360 degrees = 120 minutes)
+                                let clampedDegrees = min(360, normalizedDegrees)
+                                let minutes = Int(clampedDegrees / 3.0)
                                 desiredMinutes = max(5, min(120, minutes))
                             }
                     )
@@ -3174,6 +3178,19 @@ struct QuestionViews {
             }
             .frame(maxHeight: .infinity)
             .ignoresSafeArea(.container, edges: .bottom)
+            .onAppear {
+                // Initialize slider position from saved value
+                if !hasInitialized {
+                    if let savedSleepQuality = viewModel.selectedSleepQuality {
+                        // Reverse map from sleep quality to minutes for pre-filling
+                        desiredMinutes = mapSleepQualityToDesiredGain(savedSleepQuality)
+                    } else if viewModel.desiredDailyLifespanGainMinutes > 0 {
+                        // Use saved desired minutes if available
+                        desiredMinutes = max(5, min(120, viewModel.desiredDailyLifespanGainMinutes))
+                    }
+                    hasInitialized = true
+                }
+            }
             .overlay(
                 // Drawer overlay
                 Group {
@@ -3309,6 +3326,16 @@ struct QuestionViews {
             case 20..<40: return .good
             case 40...: return .excellent
             default: return .average
+            }
+        }
+        
+        private func mapSleepQualityToDesiredGain(_ sleepQuality: QuestionnaireViewModel.SleepQuality) -> Int {
+            // Reverse mapping for pre-filling the slider
+            switch sleepQuality {
+            case .average: return 15
+            case .good: return 30
+            case .excellent: return 60
+            case .poorToVeryPoor: return 10
             }
         }
     }
