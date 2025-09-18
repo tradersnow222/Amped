@@ -203,8 +203,12 @@ struct QuestionViews {
         // Debounce timer for text input
         @State private var debounceTimer: Timer?
         
+        // Keyboard tracking
+        @State private var keyboardHeight: CGFloat = 0
+        
         var body: some View {
-            VStack(spacing: 0) {
+            ScrollView {
+                VStack(spacing: 0) {
                 Spacer()
                 
                 // Main content
@@ -397,6 +401,23 @@ struct QuestionViews {
                     }
                 }
                 Spacer()
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .scrollDisabled(keyboardHeight == 0)
+            .onTapGesture {
+                // Dismiss keyboard when tapping outside input fields
+                isAgeFieldFocused = false
+                isHeightFieldFocused = false
+                isWeightFieldFocused = false
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+                if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                    keyboardHeight = keyboardFrame.height
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                keyboardHeight = 0
             }
             .onAppear {
                 if !hasInitialized {
@@ -476,9 +497,12 @@ struct QuestionViews {
         @State private var localUserName: String = ""
         @State private var hasInitialized = false
         
+        // Keyboard tracking
+        @State private var keyboardHeight: CGFloat = 0
         
         var body: some View {
-            VStack(spacing: 0) {
+            ScrollView {
+                VStack(spacing: 0) {
                 Spacer()
                 
                 // Main content
@@ -604,6 +628,21 @@ struct QuestionViews {
             }
                 }
                 Spacer()
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .scrollDisabled(keyboardHeight == 0)
+            .onTapGesture {
+                // Dismiss keyboard when tapping outside input field
+                isTextFieldFocused = false
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+                if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                    keyboardHeight = keyboardFrame.height
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                keyboardHeight = 0
             }
             .onAppear {
                 if !hasInitialized {
