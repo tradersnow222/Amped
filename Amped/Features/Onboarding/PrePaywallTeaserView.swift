@@ -247,6 +247,7 @@ struct PrePaywallTeaserView: View {
                                 )
                                 .shadow(color: .black.opacity(0.4), radius: 20, x: 0, y: 10)
                                 .shadow(color: primaryBatteryColor.opacity(0.3), radius: 30, x: 0, y: 5)
+                                .offset(y:2)
                             
                             // Battery fill with new gradient and animation
                             VStack {
@@ -462,6 +463,7 @@ struct PrePaywallTeaserView: View {
                 .accessibilityIdentifier("prepaywall_continue")
                 
                 Spacer()
+                    .frame(height: 30)
             }
         }
         .bottomSafeAreaPadding()

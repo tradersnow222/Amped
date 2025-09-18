@@ -74,13 +74,24 @@ final class SubscriptionManager: NSObject, ObservableObject {
             await MainActor.run {
                 self.currentOffering = offerings.current
                 self.isLoading = false
-                self.logger.info("Offerings loaded successfully")
+                
+                if offerings.current == nil {
+                    self.logger.warning("No current offering found. Check StoreKit configuration or App Store Connect setup.")
+                    self.errorMessage = "Subscription options not available. Please check your StoreKit configuration."
+                } else {
+                    self.logger.info("Offerings loaded successfully")
+                }
             }
         } catch {
             await MainActor.run {
                 self.errorMessage = "Failed to load subscription options"
                 self.isLoading = false
                 self.logger.error("Failed to load offerings: \(error.localizedDescription)")
+                
+                // Log specific RevenueCat error for debugging
+                if let rcError = error as? ErrorCode {
+                    self.logger.error("RevenueCat error: \(rcError.localizedDescription)")
+                }
             }
         }
     }

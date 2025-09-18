@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		67FC7AFD2E7B71D300B9109D /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 67FC7AFC2E7B71D300B9109D /* RevenueCat */; };
+		67FC7B012E7B803B00B9109D /* Amped 2.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 67FC7B002E7B803B00B9109D /* Amped 2.storekit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,6 +29,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		67FC7B002E7B803B00B9109D /* Amped 2.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Amped 2.storekit"; sourceTree = "<group>"; };
 		C106F20F2D90ADC6001E151A /* Amped.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Amped.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C106F21F2D90ADC8001E151A /* AmpedTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AmpedTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C106F2292D90ADC8001E151A /* AmpedUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AmpedUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -84,6 +86,7 @@
 				C106F2222D90ADC8001E151A /* AmpedTests */,
 				C106F22C2D90ADC8001E151A /* AmpedUITests */,
 				C106F2102D90ADC6001E151A /* Products */,
+				67FC7B002E7B803B00B9109D /* Amped 2.storekit */,
 			);
 			sourceTree = "<group>";
 		};
@@ -222,6 +225,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				67FC7B012E7B803B00B9109D /* Amped 2.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
