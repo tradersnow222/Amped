@@ -396,7 +396,7 @@ struct DashboardView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     // Animated content based on selected period
-                    let metricsForPeriod = MetricDetailContentView.getMetricsForPeriod(selectedPeriod)
+                    let metricsForPeriod = getMetricsForPeriodWithRealData(selectedPeriod)
                     ForEach(Array(metricsForPeriod.enumerated()), id: \.offset) { index, metric in
                         metricCardButton(for: metric, at: index)
                         .transition(.asymmetric(
@@ -537,14 +537,16 @@ struct DashboardView: View {
 
             }
             
-            // Impact text below battery
+            // Impact text below battery - dynamic based on calculations
             HStack(spacing: 8) {
-                Image(systemName: "arrow.down")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.ampedRed)
+                Image(systemName: totalTimeImpact >= 0 ? "arrow.up" : "arrow.down")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(totalTimeImpact >= 0 ? .ampedGreen : .ampedRed)
                 
-                Text("Current habits costing you 8 mins")
-                    .font(.system(size: 20, weight: .regular))
+                Text(totalTimeImpact >= 0 ? 
+                     "Current habits adding \(formattedTotalImpact)" : 
+                     "Current habits costing you \(formattedTotalImpact)")
+                    .font(.system(size: 18, weight: .regular))
                     .foregroundColor(.white)
             }
         }
@@ -637,23 +639,23 @@ struct DashboardView: View {
     private var habitDetailSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Image(systemName: "moon")
+                Image(systemName: getTopMetricIcon())
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.white)
                     .frame(width: 27, height: 27)
                     .background(
                         Circle()
-                            .fill(Color(red:252/255, green:238/255,blue: 33/255).opacity(0.8))
+                            .fill(getTopMetricIconColor().opacity(0.8))
                     )
                 
-                Text("Suboptimal Sleep")
+                Text(getTopMetricDisplayName())
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.white)
             }
             
-            Text("Costing you 3 minutes")
+            Text(getTopMetricImpactText())
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.ampedRed)
+                .foregroundColor(getTopMetricImpactColor())
             
             Text("Sleep ")
                 .font(.system(size: 14, weight: .regular))
@@ -1495,6 +1497,290 @@ extension DashboardView {
         }
         .buttonStyle(PlainButtonStyle())
         .id("\(metric.title)-\(selectedPeriod)-\(index)")
+    }
+    
+    /// Get metrics for period using real calculated data for the original 5 metrics
+    private func getMetricsForPeriodWithRealData(_ period: ImpactDataPoint.PeriodType) -> [DashboardMetric] {
+        // Keep the original 5 metrics but populate with real data
+        let targetMetrics: [HealthMetricType] = [.restingHeartRate, .steps, .activeEnergyBurned, .sleepHours, .vo2Max, .bodyMass]
+        
+        return targetMetrics.compactMap { metricType in
+            // Find the real health metric data for this type
+            if let realMetric = viewModel.healthMetrics.first(where: { $0.type == metricType }) {
+                return DashboardMetric(
+                    icon: getIconForHealthMetric(realMetric.type),
+                    iconColor: getColorForHealthMetric(realMetric.type),
+                    title: getRealMetricTitle(realMetric.type),
+                    value: realMetric.formattedValue,
+                    unit: getUnitForHealthMetric(realMetric.type),
+                    status: getStatusForHealthMetric(realMetric),
+                    statusColor: getStatusColorForHealthMetric(realMetric),
+                    timestamp: getTimestampForHealthMetric(realMetric)
+                )
+            } else {
+                // If no real data, return placeholder with original card names
+                return getPlaceholderMetric(for: metricType, period: period)
+            }
+        }
+    }
+    
+    /// Get the original card titles to maintain consistency
+    private func getRealMetricTitle(_ type: HealthMetricType) -> String {
+        switch type {
+        case .restingHeartRate: return "Heart Rate"
+        case .steps: return "Steps"
+        case .activeEnergyBurned: return "Active Energy"
+        case .sleepHours: return "Sleep"
+        case .vo2Max: return "Cardio (VO2)"
+        case .bodyMass: return "Weight"
+        default: return type.displayName
+        }
+    }
+    
+    /// Get placeholder metric when real data is not available
+    private func getPlaceholderMetric(for type: HealthMetricType, period: ImpactDataPoint.PeriodType) -> DashboardMetric {
+        switch type {
+        case .restingHeartRate:
+            return DashboardMetric(
+                icon: "heart",
+                iconColor: .red,
+                title: "Heart Rate",
+                value: "--",
+                unit: "BPM",
+                status: "No data",
+                statusColor: .gray,
+                timestamp: "--"
+            )
+        case .steps:
+            return DashboardMetric(
+                icon: "figure.walk",
+                iconColor: .blue,
+                title: "Steps",
+                value: "--",
+                unit: "steps",
+                status: "No data",
+                statusColor: .gray,
+                timestamp: "--"
+            )
+        case .activeEnergyBurned:
+            return DashboardMetric(
+                icon: "flame.fill",
+                iconColor: .orange,
+                title: "Active Energy",
+                value: "--",
+                unit: "kcal",
+                status: "No data",
+                statusColor: .gray,
+                timestamp: "--"
+            )
+        case .sleepHours:
+            return DashboardMetric(
+                icon: "moon.fill",
+                iconColor: .yellow,
+                title: "Sleep",
+                value: "--",
+                unit: "hours",
+                status: "No data",
+                statusColor: .gray,
+                timestamp: "--"
+            )
+        case .vo2Max:
+            return DashboardMetric(
+                icon: "heart.circle.fill",
+                iconColor: .blue,
+                title: "Cardio (VO2)",
+                value: "--",
+                unit: "ml/kg/min",
+                status: "No data",
+                statusColor: .gray,
+                timestamp: "--"
+            )
+        case .bodyMass:
+            return DashboardMetric(
+                icon: "scalemass.fill",
+                iconColor: .purple,
+                title: "Weight",
+                value: "--",
+                unit: "kg",
+                status: "No data",
+                statusColor: .gray,
+                timestamp: "--"
+            )
+        default:
+            return DashboardMetric(
+                icon: "chart.bar.fill",
+                iconColor: .gray,
+                title: type.displayName,
+                value: "--",
+                unit: "",
+                status: "No data",
+                statusColor: .gray,
+                timestamp: "--"
+            )
+        }
+    }
+    
+    // MARK: - Real HealthMetric Helper Functions
+    
+    /// Get icon for a health metric type
+    private func getIconForHealthMetric(_ type: HealthMetricType) -> String {
+        switch type {
+        case .steps: return "figure.walk"
+        case .sleepHours: return "moon.fill"
+        case .restingHeartRate: return "heart.fill"
+        case .activeEnergyBurned: return "flame.fill"
+        case .exerciseMinutes: return "figure.run"
+        case .vo2Max: return "heart.circle.fill"
+        case .bodyMass: return "scalemass.fill"
+        case .heartRateVariability: return "waveform.path.ecg"
+        case .oxygenSaturation: return "lungs.fill"
+        default: return "chart.bar.fill"
+        }
+    }
+    
+    /// Get color for a health metric type
+    private func getColorForHealthMetric(_ type: HealthMetricType) -> Color {
+        switch type {
+        case .steps: return .blue
+        case .sleepHours: return .purple
+        case .restingHeartRate: return .red
+        case .activeEnergyBurned: return .orange
+        case .exerciseMinutes: return .green
+        case .vo2Max: return .blue
+        case .bodyMass: return .gray
+        case .heartRateVariability: return .cyan
+        case .oxygenSaturation: return .blue
+        default: return .gray
+        }
+    }
+    
+    /// Get unit display for a health metric
+    private func getUnitForHealthMetric(_ type: HealthMetricType) -> String {
+        switch type {
+        case .steps: return "steps"
+        case .sleepHours: return "hours"
+        case .restingHeartRate: return "BPM"
+        case .activeEnergyBurned: return "kcal"
+        case .exerciseMinutes: return "mins"
+        case .vo2Max: return "ml/kg/min"
+        case .bodyMass: return "kg"
+        case .heartRateVariability: return "ms"
+        case .oxygenSaturation: return "%"
+        default: return ""
+        }
+    }
+    
+    /// Get status text for a health metric based on its impact
+    private func getStatusForHealthMetric(_ metric: HealthMetric) -> String {
+        guard let impact = metric.impactDetails else {
+            return "No data"
+        }
+        
+        let impactMinutes = impact.lifespanImpactMinutes
+        let absMinutes = abs(impactMinutes)
+        let isPositive = impactMinutes >= 0
+        let arrow = isPositive ? "↑" : "↓"
+        let verb = isPositive ? "added" : "lost"
+        
+        return "\(arrow) \(String(format: "%.0f", absMinutes)) mins \(verb)"
+    }
+    
+    /// Get status color for a health metric based on its impact
+    private func getStatusColorForHealthMetric(_ metric: HealthMetric) -> Color {
+        guard let impact = metric.impactDetails else {
+            return .gray
+        }
+        
+        return impact.lifespanImpactMinutes >= 0 ? .green : .red
+    }
+    
+    /// Get timestamp for a health metric
+    private func getTimestampForHealthMetric(_ metric: HealthMetric) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: metric.date)
+    }
+    
+    // MARK: - Dynamic Metric Helper Functions
+    
+    /// Get the display name of the top impactful metric
+    private func getTopMetricDisplayName() -> String {
+        guard let topMetric = filteredMetrics.first else {
+            return "Connect Health Data"
+        }
+        
+        let metricName = topMetric.type.displayName
+        let isPositive = topMetric.impactDetails?.lifespanImpactMinutes ?? 0 >= 0
+        
+        if isPositive {
+            return "Optimal \(metricName)"
+        } else {
+            return "Suboptimal \(metricName)"
+        }
+    }
+    
+    /// Get the impact text for the top metric
+    private func getTopMetricImpactText() -> String {
+        guard let topMetric = filteredMetrics.first,
+              let impact = topMetric.impactDetails else {
+            return "Track this metric to see your impact"
+        }
+        
+        let impactMinutes = abs(impact.lifespanImpactMinutes)
+        let isPositive = impact.lifespanImpactMinutes >= 0
+        
+        if isPositive {
+            return "Adding \(String(format: "%.0f", impactMinutes)) minutes"
+        } else {
+            return "Costing you \(String(format: "%.0f", impactMinutes)) minutes"
+        }
+    }
+    
+    /// Get the color for the top metric impact
+    private func getTopMetricImpactColor() -> Color {
+        guard let topMetric = filteredMetrics.first,
+              let impact = topMetric.impactDetails else {
+            return .white.opacity(0.7)
+        }
+        
+        let isPositive = impact.lifespanImpactMinutes >= 0
+        return isPositive ? .ampedGreen : .ampedRed
+    }
+    
+    /// Get the icon for the top metric
+    private func getTopMetricIcon() -> String {
+        guard let topMetric = filteredMetrics.first else {
+            return "heart.fill"
+        }
+        
+        switch topMetric.type {
+        case .steps: return "figure.walk"
+        case .sleepHours: return "moon"
+        case .restingHeartRate: return "heart.fill"
+        case .activeEnergyBurned: return "flame.fill"
+        case .exerciseMinutes: return "figure.run"
+        case .vo2Max: return "heart.circle.fill"
+        case .bodyMass: return "scalemass.fill"
+        default: return "chart.bar.fill"
+        }
+    }
+    
+    /// Get the icon color for the top metric
+    private func getTopMetricIconColor() -> Color {
+        guard let topMetric = filteredMetrics.first else {
+            return Color.red
+        }
+        
+        switch topMetric.type {
+        case .steps: return .blue
+        case .sleepHours: return Color(red:252/255, green:238/255, blue: 33/255) // Keep original yellow for sleep
+        case .restingHeartRate: return .red
+        case .activeEnergyBurned: return .orange
+        case .exerciseMinutes: return .green
+        case .vo2Max: return .blue
+        case .bodyMass: return .purple
+        default: return .gray
+        }
     }
     
     // MARK: - Removed duplicate helper functions - now in MetricDetailContentView
