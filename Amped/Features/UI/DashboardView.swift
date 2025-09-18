@@ -557,6 +557,43 @@ struct DashboardView: View {
         )
     }
     
+    // MARK: - Period Change Methods
+    
+    /// Change to a specific period with animation and haptic feedback
+    private func changePeriod(to period: ImpactDataPoint.PeriodType) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            selectedPeriod = period
+            let timePeriod = TimePeriod(from: period)
+            viewModel.selectedTimePeriod = timePeriod
+        }
+        
+        // Add haptic feedback for period change
+        let impact = UIImpactFeedbackGenerator(style: .light)
+        impact.impactOccurred()
+    }
+    
+    /// Swipe to the next period (Day → Month → Year → Day)
+    private func swipeToNextPeriod() {
+        let periods: [ImpactDataPoint.PeriodType] = [.day, .month, .year]
+        guard let currentIndex = periods.firstIndex(of: selectedPeriod) else { return }
+        
+        let nextIndex = (currentIndex + 1) % periods.count
+        let nextPeriod = periods[nextIndex]
+        
+        changePeriod(to: nextPeriod)
+    }
+    
+    /// Swipe to the previous period (Year → Month → Day → Year)
+    private func swipeToPreviousPeriod() {
+        let periods: [ImpactDataPoint.PeriodType] = [.day, .month, .year]
+        guard let currentIndex = periods.firstIndex(of: selectedPeriod) else { return }
+        
+        let previousIndex = currentIndex == 0 ? periods.count - 1 : currentIndex - 1
+        let previousPeriod = periods[previousIndex]
+        
+        changePeriod(to: previousPeriod)
+    }
+    
     // MARK: - Dashboard Views
     
     /// Dashboard Home View (1st & 2nd images) - Main screen with battery character
@@ -569,22 +606,40 @@ struct DashboardView: View {
             dateNavigationBar
             
             // Main content with battery character
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Battery character section
-                    batteryCharacterSection
-                    
-                    // Habits summary section
-                    habitsSummarySection
-                    
-                    // Specific habit detail section
-                    habitDetailSection
-                    
-                    Spacer(minLength: 100) // Space for bottom navigation
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
+            VStack(spacing: 24) {
+                Spacer()
+                // Battery character section
+                batteryCharacterSection
+                
+                // Habits summary section
+                // habitsSummarySection
+                Spacer()
+                
+                // Specific habit detail section
+                habitDetailSection
+                
+                Spacer(minLength: 5) // Space for bottom navigation
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .gesture(
+                DragGesture(minimumDistance: 100, coordinateSpace: .local)
+                    .onEnded { value in
+                        let horizontalAmount = value.translation.width
+                        let verticalAmount = abs(value.translation.height)
+                        
+                        // Only respond to horizontal swipes that are primarily horizontal
+                        if abs(horizontalAmount) > verticalAmount && abs(horizontalAmount) > 100 {
+                            if horizontalAmount > 0 {
+                                // Swipe right - go to previous period
+                                swipeToPreviousPeriod()
+                            } else {
+                                // Swipe left - go to next period
+                                swipeToNextPeriod()
+                            }
+                        }
+                    }
+            )
         }
     }
     
@@ -630,7 +685,53 @@ struct DashboardView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
             }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 50, coordinateSpace: .local)
+                    .onEnded { value in
+                        let horizontalAmount = value.translation.width
+                        let verticalAmount = abs(value.translation.height)
+                        let velocity = value.velocity
+                        
+                        // More lenient detection: horizontal swipe with reasonable velocity
+                        let isHorizontalSwipe = abs(horizontalAmount) > 50 && 
+                                              abs(velocity.width) > abs(velocity.height) &&
+                                              abs(velocity.width) > 200
+                        
+                        if isHorizontalSwipe {
+                            if horizontalAmount > 0 {
+                                // Swipe right - go to previous period
+                                swipeToPreviousPeriod()
+                            } else {
+                                // Swipe left - go to next period
+                                swipeToNextPeriod()
+                            }
+                        }
+                    }
+            )
         }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 40, coordinateSpace: .local)
+                .onEnded { value in
+                    let horizontalAmount = value.translation.width
+                    let verticalAmount = abs(value.translation.height)
+                    let velocity = value.velocity
+                    
+                    // Enhanced detection: lower threshold with velocity check
+                    let isHorizontalSwipe = abs(horizontalAmount) > 40 && 
+                                          abs(velocity.width) > abs(velocity.height) &&
+                                          abs(velocity.width) > 150
+                    
+                    if isHorizontalSwipe {
+                        if horizontalAmount > 0 {
+                            // Swipe right - go to previous period
+                            swipeToPreviousPeriod()
+                        } else {
+                            // Swipe left - go to next period
+                            swipeToNextPeriod()
+                        }
+                    }
+                }
+        )
     }
     
     /// Energy View - Battery page content using EnergyView component
@@ -650,16 +751,12 @@ struct DashboardView: View {
         ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: true)
     }
     
-    /// Date navigation bar with Day/Month/Year tabs
+    /// Date navigation bar with Day/Month/Year tabs and swipe gesture support
     private var dateNavigationBar: some View {
         HStack(spacing: 4) {
             ForEach([ImpactDataPoint.PeriodType.day, .month, .year], id: \.self) { period in
                 Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedPeriod = period
-                        let timePeriod = TimePeriod(from: period)
-                        viewModel.selectedTimePeriod = timePeriod
-                    }
+                    changePeriod(to: period)
                 }) {
                     Text(period.displayName)
                         .font(.system(size: 16, weight: .medium))
@@ -681,6 +778,24 @@ struct DashboardView: View {
         )
         .padding(.horizontal, 24)
         .padding(.vertical,12)
+        .gesture(
+            DragGesture(minimumDistance: 50, coordinateSpace: .local)
+                .onEnded { value in
+                    let horizontalAmount = value.translation.width
+                    let verticalAmount = abs(value.translation.height)
+                    
+                    // Only respond to horizontal swipes (not vertical)
+                    if abs(horizontalAmount) > verticalAmount {
+                        if horizontalAmount > 0 {
+                            // Swipe right - go to previous period
+                            swipeToPreviousPeriod()
+                        } else {
+                            // Swipe left - go to next period
+                            swipeToNextPeriod()
+                        }
+                    }
+                }
+        )
     }
     
     /// Battery character section with steptwo image
