@@ -446,6 +446,20 @@ struct QuestionViews {
                             }
                         }
                         .padding(.horizontal, 24)
+                        
+                        // Gender selection dropdown using reusable component
+                        CustomDropdown(
+                            placeholder: "Select your gender",
+                            selection: Binding(
+                                get: { viewModel.selectedGender },
+                                set: { newValue in
+                                    DispatchQueue.main.async {
+                                        viewModel.selectedGender = newValue
+                                    }
+                                }
+                            ),
+                            displayText: { $0.displayName }
+                        )
                         }
                     
                 // Continue button
@@ -497,7 +511,7 @@ struct QuestionViews {
         
         // Local validation to avoid expensive view model property access
         private var canProceedLocally: Bool {
-            !localUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            !localUserName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && viewModel.selectedGender != nil
         }
         
         
