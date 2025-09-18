@@ -78,15 +78,9 @@ struct OnboardingFlow: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Conditional background based on current step
-                // Welcome screen uses BatteryBackground, questionnaire uses black, others use DeepBackground
-                if appState.currentOnboardingStep == .welcome {
-                    Color.clear.withBatteryBackground()
-                } else if appState.currentOnboardingStep == .questionnaire {
-                    Color.black.ignoresSafeArea(.all)
-                } else {
-                    Color.clear.withDeepBackground()
-                }
+                // Consistent black background for all onboarding screens to prevent flashing
+                // Each individual view handles its own background content
+                Color.black.ignoresSafeArea(.all)
                 
                 // Transitioning content layer
                 ZStack {
@@ -328,13 +322,9 @@ struct OnboardingFlow: View {
         }
     }
 
-    // MARK: - Materialize Transition (Luxury feel)
+    // MARK: - Fade Transition (Clean opacity only)
     private func getMaterializeTransition() -> AnyTransition {
-        let insertion = AnyTransition.opacity
-            .combined(with: .scale(scale: 0.97, anchor: .center))
-        let removal = AnyTransition.opacity
-            .combined(with: .scale(scale: 1.03, anchor: .center))
-        return .asymmetric(insertion: insertion, removal: removal)
+        return .opacity
     }
     
 }
