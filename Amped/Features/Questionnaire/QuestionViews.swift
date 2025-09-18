@@ -743,14 +743,26 @@ struct QuestionViews {
                                 
                                 Text(stressLevel.subText)
                                     .font(.system(size: 14, weight: .regular))
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(viewModel.selectedStressLevel == stressLevel ? .white.opacity(0.8) : .gray)
                                     .frame(maxWidth: .infinity, alignment: .center)
                             }
                             .padding(.horizontal, 20)
                             .padding(.vertical, 8)
                             .background(
                                 RoundedRectangle(cornerRadius: 100)
-                                    .fill(Color.black)
+                                    .fill(
+                                        viewModel.selectedStressLevel == stressLevel ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 100)
                                             .stroke(
@@ -1112,14 +1124,26 @@ struct QuestionViews {
                                 
                                 Text(anxietyLevel.subText)
                                     .font(.system(size: 14, weight: .regular))
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(viewModel.selectedAnxietyLevel == anxietyLevel ? .white.opacity(0.8) : .gray)
                                     .frame(maxWidth: .infinity, alignment: .center)
                             }
                             .padding(.horizontal, 20)
                             .padding(.vertical, 8)
                             .background(
                                 RoundedRectangle(cornerRadius: 100)
-                                    .fill(Color.black)
+                                    .fill(
+                                        viewModel.selectedAnxietyLevel == anxietyLevel ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 100)
                                             .stroke(
@@ -1662,14 +1686,26 @@ struct QuestionViews {
                                 
                                 Text(nutrition.subText)
                                     .font(.system(size: 14, weight: .regular))
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(viewModel.selectedNutritionQuality == nutrition ? .white.opacity(0.8) : .gray)
                                     .frame(maxWidth: .infinity, alignment: .center)
                             }
                             .padding(.horizontal, 20)
                             .padding(.vertical, 8)
                             .background(
                                 RoundedRectangle(cornerRadius: 100)
-                                    .fill(Color.black)
+                                    .fill(
+                                        viewModel.selectedNutritionQuality == nutrition ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 100)
                                             .stroke(
@@ -2015,7 +2051,7 @@ struct QuestionViews {
                                 if !status.subText.isEmpty {
                                     Text(status.subText)
                                         .font(.system(size: 14, weight: .regular))
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(viewModel.selectedSmokingStatus == status ? .white.opacity(0.8) : .gray)
                                         .frame(maxWidth: .infinity, alignment: .center)
                                 }
                             }
@@ -2023,7 +2059,19 @@ struct QuestionViews {
                             .padding(.vertical, status.subText.isEmpty ? 18 : 8)
                             .background(
                                 RoundedRectangle(cornerRadius: 100)
-                                    .fill(Color.black)
+                                    .fill(
+                                        viewModel.selectedSmokingStatus == status ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 100)
                                             .stroke(
@@ -2369,7 +2417,7 @@ struct QuestionViews {
                                 if !frequency.subText.isEmpty {
                                     Text(frequency.subText)
                                         .font(.system(size: 14, weight: .regular))
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(viewModel.selectedAlcoholFrequency == frequency ? .white.opacity(0.8) : .gray)
                                         .frame(maxWidth: .infinity, alignment: .center)
                                 }
                             }
@@ -2377,7 +2425,19 @@ struct QuestionViews {
                             .padding(.vertical, frequency.subText.isEmpty ? 18 : 8)
                             .background(
                                 RoundedRectangle(cornerRadius: 100)
-                                    .fill(Color.black)
+                                    .fill(
+                                        viewModel.selectedAlcoholFrequency == frequency ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 100)
                                             .stroke(
@@ -2694,7 +2754,7 @@ struct QuestionViews {
                                 if !quality.subText.isEmpty {
                                     Text(quality.subText)
                                         .font(.system(size: 14, weight: .regular))
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(viewModel.selectedSocialConnectionsQuality == quality ? .white.opacity(0.8) : .gray)
                                         .frame(maxWidth: .infinity, alignment: .center)
                                 }
                             }
@@ -2702,7 +2762,19 @@ struct QuestionViews {
                             .padding(.vertical, quality.subText.isEmpty ? 18 : 8)
                             .background(
                                 RoundedRectangle(cornerRadius: 100)
-                                    .fill(Color.black)
+                                    .fill(
+                                        viewModel.selectedSocialConnectionsQuality == quality ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 100)
                                             .stroke(
@@ -3316,7 +3388,7 @@ struct QuestionViews {
                                 if !category.subText.isEmpty {
                                     Text(category.subText)
                                         .font(.system(size: 14, weight: .regular))
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(viewModel.selectedBloodPressureCategory == category ? .white.opacity(0.8) : .gray)
                                         .frame(maxWidth: .infinity, alignment: .center)
                                 }
                             }
@@ -3324,7 +3396,19 @@ struct QuestionViews {
                             .padding(.vertical, category.subText.isEmpty ? 18 : 8)
                             .background(
                                 RoundedRectangle(cornerRadius: 100)
-                                    .fill(Color.black)
+                                    .fill(
+                                        viewModel.selectedBloodPressureCategory == category ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 100)
                                             .stroke(
@@ -3866,7 +3950,7 @@ struct QuestionViews {
                                 if !motivation.subText.isEmpty {
                                     Text(motivation.subText)
                                         .font(.system(size: 14, weight: .regular))
-                                        .foregroundColor(.gray)
+                                        .foregroundColor(viewModel.selectedLifeMotivation == motivation ? .white.opacity(0.8) : .gray)
                                         .frame(maxWidth: .infinity, alignment: .center)
                                 }
                             }
@@ -3874,7 +3958,19 @@ struct QuestionViews {
                             .padding(.vertical, motivation.subText.isEmpty ? 18 : 8)
                             .background(
                                 RoundedRectangle(cornerRadius: 100)
-                                    .fill(Color.black)
+                                    .fill(
+                                        viewModel.selectedLifeMotivation == motivation ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 100)
                                             .stroke(
