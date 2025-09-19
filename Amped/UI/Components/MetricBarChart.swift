@@ -65,15 +65,6 @@ struct MetricBarChart: View {
                 }
             }
             .frame(height: 200)
-            
-            // Debug: Test selection button (remove in production)
-            Button("Test Selection") {
-                if let firstDataPoint = realChartData.first {
-                    selectedLabel = firstDataPoint.label
-                }
-            }
-            .foregroundColor(.white)
-            .padding(.top, 8)
         }
     }
     
