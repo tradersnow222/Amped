@@ -2667,9 +2667,9 @@ struct MetricDetailContentView: View {
         return dailyData
     }
     
-    /// Fetch real yearly chart data (monthly breakdown for current year)
+    /// Fetch real yearly chart data (monthly daily averages for current year)
     private func fetchYearlyChartData(for metricType: HealthMetricType) async -> [ChartDataPoint] {
-        print("🔍 📊 Fetching REAL monthly breakdown for current year")
+        print("🔍 📊 Fetching REAL monthly daily averages for current year")
         
         let calendar = Calendar.current
         let now = Date()
@@ -2692,28 +2692,61 @@ struct MetricDetailContentView: View {
             }
             
             let endOfMonth = min(monthInterval.end, now)
-            
-            print("🔍 📊 Fetching data for \(monthFormatter.string(from: currentMonth))")
-            
-            // Fetch real HealthKit data for this entire month
-            let monthMetrics = await viewModel.fetchMetricsForDateRange(from: monthInterval.start, to: endOfMonth)
-            
             let label = monthFormatter.string(from: currentMonth)
             
-            if let monthMetric = monthMetrics.first(where: { $0.type == metricType }) {
-                monthlyData.append(ChartDataPoint(value: monthMetric.value, label: label))
-                print("🔍 📊 ✅ \(label): \(monthMetric.value) (REAL HealthKit)")
-            } else {
-                monthlyData.append(ChartDataPoint(value: 0, label: label))
-                print("🔍 📊 ❌ \(label): No data")
-            }
+            print("🔍 📊 Calculating daily average for \(label)")
+            
+            // Calculate daily average for this month
+            let dailyAverage = await calculateMonthlyDailyAverage(
+                for: metricType, 
+                from: monthInterval.start, 
+                to: endOfMonth
+            )
+            
+            monthlyData.append(ChartDataPoint(value: dailyAverage, label: label))
+            print("🔍 📊 ✅ \(label): \(String(format: "%.1f", dailyAverage)) steps/day (daily average)")
             
             guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) else { break }
             currentMonth = nextMonth
         }
         
-        print("🔍 📊 ✅ Fetched \(monthlyData.count) months of REAL monthly data")
+        print("🔍 📊 ✅ Fetched \(monthlyData.count) months of daily averages")
         return monthlyData
+    }
+    
+    /// Calculate daily average for a specific month
+    private func calculateMonthlyDailyAverage(for metricType: HealthMetricType, from startDate: Date, to endDate: Date) async -> Double {
+        print("🔍 📊 Calculating daily average from \(startDate) to \(endDate)")
+        
+        let calendar = Calendar.current
+        var totalValue: Double = 0
+        var daysWithData: Int = 0
+        var currentDate = startDate
+        
+        // Go through each day of the month
+        while currentDate <= endDate {
+            let startOfDay = calendar.startOfDay(for: currentDate)
+            let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? currentDate
+            
+            // Fetch data for this specific day
+            let dayMetrics = await viewModel.fetchMetricsForDateRange(from: startOfDay, to: endOfDay)
+            
+            if let dayMetric = dayMetrics.first(where: { $0.type == metricType }) {
+                totalValue += dayMetric.value
+                daysWithData += 1
+                print("🔍 📊   Day \(calendar.component(.day, from: currentDate)): \(dayMetric.value)")
+            } else {
+                print("🔍 📊   Day \(calendar.component(.day, from: currentDate)): No data")
+            }
+            
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDate) else { break }
+            currentDate = nextDay
+        }
+        
+        let dailyAverage = daysWithData > 0 ? totalValue / Double(daysWithData) : 0
+        print("🔍 📊 Monthly calculation: \(totalValue) total ÷ \(daysWithData) days = \(String(format: "%.1f", dailyAverage)) avg/day")
+        
+        return dailyAverage
     }
     
     /// Get real daily data for current month (like Apple Health monthly view)
