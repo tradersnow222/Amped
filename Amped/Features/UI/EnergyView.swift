@@ -9,6 +9,10 @@ struct EnergyView: View {
     // MARK: - State Variables
     @State private var selectedLifespanType: LifespanType = .current
     @State private var showingSettings = false
+    @State private var currentTime = Date()
+    
+    // Timer for real-time countdown updates
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     // MARK: - Computed Properties (Dynamic from Scientific Calculations)
     private var currentLifespanData: LifespanData {
@@ -20,28 +24,41 @@ struct EnergyView: View {
             )
         }
         
-        // Calculate remaining time based on real projection
+        // Calculate remaining time based on real projection and current time
         let currentAge = viewModel.currentUserAge
-        let remainingYears = lifeProjection.adjustedLifeExpectancyYears - currentAge
-        let remainingDays = Int(remainingYears * 365.25)
-        let remainingHours = Int((remainingYears * 365.25 * 24).truncatingRemainder(dividingBy: 24))
-        let remainingMinutes = Int((remainingYears * 365.25 * 24 * 60).truncatingRemainder(dividingBy: 60))
-        let remainingSeconds = Int((remainingYears * 365.25 * 24 * 60 * 60).truncatingRemainder(dividingBy: 60))
+        let totalLifespanYears = lifeProjection.adjustedLifeExpectancyYears
+        
+        // Calculate exact birth date based on current age
+        let calendar = Calendar.current
+        let currentYear = calendar.component(.year, from: currentTime)
+        let birthYear = viewModel.userProfile.birthYear ?? (currentYear - Int(currentAge))
+        let birthDate = calendar.date(from: DateComponents(year: birthYear, month: 1, day: 1)) ?? currentTime
+        
+        // Calculate projected end date
+        let endDate = calendar.date(byAdding: .year, value: Int(totalLifespanYears), to: birthDate) ?? currentTime
+        
+        // Calculate real-time remaining time
+        let timeInterval = endDate.timeIntervalSince(currentTime)
+        let remainingSeconds = max(0, timeInterval)
+        
+        let years = Int(remainingSeconds / (365.25 * 24 * 60 * 60))
+        let days = Int((remainingSeconds.truncatingRemainder(dividingBy: 365.25 * 24 * 60 * 60)) / (24 * 60 * 60))
+        let hours = Int((remainingSeconds.truncatingRemainder(dividingBy: 24 * 60 * 60)) / (60 * 60))
+        let minutes = Int((remainingSeconds.truncatingRemainder(dividingBy: 60 * 60)) / 60)
+        let seconds = Int(remainingSeconds.truncatingRemainder(dividingBy: 60))
         
         // Calculate progress through life
         let progress = currentAge / lifeProjection.adjustedLifeExpectancyYears
         
-        // Calculate birth year and end year properly
-        let currentYear = Calendar.current.component(.year, from: Date())
-        let birthYear = viewModel.userProfile.birthYear ?? (currentYear - Int(currentAge))
-        let endYear = currentYear + Int(remainingYears)
+        // Calculate end year from projected end date
+        let endYear = calendar.component(.year, from: endDate)
         
         return LifespanData(
-            years: Int(remainingYears),
-            days: remainingDays,
-            hours: remainingHours,
-            minutes: remainingMinutes,
-            seconds: remainingSeconds,
+            years: years,
+            days: days,
+            hours: hours,
+            minutes: minutes,
+            seconds: seconds,
             progress: progress,
             birthYear: birthYear,
             endYear: endYear
@@ -58,13 +75,28 @@ struct EnergyView: View {
             )
         }
         
-        // Calculate potential lifespan with optimal habits
+        // Calculate potential lifespan with optimal habits and real-time countdown
         let currentAge = viewModel.currentUserAge
-        let remainingYears = optimalProjection.adjustedLifeExpectancyYears - currentAge
-        let remainingDays = Int(remainingYears * 365.25)
-        let remainingHours = Int((remainingYears * 365.25 * 24).truncatingRemainder(dividingBy: 24))
-        let remainingMinutes = Int((remainingYears * 365.25 * 24 * 60).truncatingRemainder(dividingBy: 60))
-        let remainingSeconds = Int((remainingYears * 365.25 * 24 * 60 * 60).truncatingRemainder(dividingBy: 60))
+        let totalOptimalLifespanYears = optimalProjection.adjustedLifeExpectancyYears
+        
+        // Calculate exact birth date and optimal end date
+        let calendar = Calendar.current
+        let currentYear = calendar.component(.year, from: currentTime)
+        let birthYear = viewModel.userProfile.birthYear ?? (currentYear - Int(currentAge))
+        let birthDate = calendar.date(from: DateComponents(year: birthYear, month: 1, day: 1)) ?? currentTime
+        
+        // Calculate projected optimal end date
+        let optimalEndDate = calendar.date(byAdding: .year, value: Int(totalOptimalLifespanYears), to: birthDate) ?? currentTime
+        
+        // Calculate real-time remaining time to optimal end
+        let timeInterval = optimalEndDate.timeIntervalSince(currentTime)
+        let remainingSeconds = max(0, timeInterval)
+        
+        let years = Int(remainingSeconds / (365.25 * 24 * 60 * 60))
+        let days = Int((remainingSeconds.truncatingRemainder(dividingBy: 365.25 * 24 * 60 * 60)) / (24 * 60 * 60))
+        let hours = Int((remainingSeconds.truncatingRemainder(dividingBy: 24 * 60 * 60)) / (60 * 60))
+        let minutes = Int((remainingSeconds.truncatingRemainder(dividingBy: 60 * 60)) / 60)
+        let seconds = Int(remainingSeconds.truncatingRemainder(dividingBy: 60))
         
         // Calculate progress with potential improvements
         let progress = currentAge / optimalProjection.adjustedLifeExpectancyYears
@@ -74,17 +106,15 @@ struct EnergyView: View {
         let optimalRemainingYears = optimalProjection.adjustedLifeExpectancyYears - currentAge
         let extraYears = Double(Int(optimalRemainingYears)) - Double(Int(currentRemainingYears))
         
-        // Calculate birth year and end year properly
-        let currentYear = Calendar.current.component(.year, from: Date())
-        let birthYear = viewModel.userProfile.birthYear ?? (currentYear - Int(currentAge))
-        let endYear = currentYear + Int(remainingYears)
+        // Calculate end year from optimal end date
+        let endYear = calendar.component(.year, from: optimalEndDate)
         
         return LifespanData(
-            years: Int(remainingYears),
-            days: remainingDays,
-            hours: remainingHours,
-            minutes: remainingMinutes,
-            seconds: remainingSeconds,
+            years: years,
+            days: days,
+            hours: hours,
+            minutes: minutes,
+            seconds: seconds,
             progress: progress,
             birthYear: birthYear,
             endYear: endYear,
@@ -137,6 +167,10 @@ struct EnergyView: View {
             // Load real health data and calculations
             print("🔍 📊 EnergyView: Loading real health data and scientific calculations")
             viewModel.loadData()
+        }
+        .onReceive(timer) { time in
+            // Update current time every second for real-time countdown
+            currentTime = time
         }
 //        .background(Color.black)
 //        .navigationBarHidden(true)
