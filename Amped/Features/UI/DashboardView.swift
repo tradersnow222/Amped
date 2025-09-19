@@ -283,7 +283,8 @@ struct DashboardView: View {
                 metricTitle: metricTitle,
                 period: period,
                 periodType: periodType,
-                navigationPath: $navigationPath
+                navigationPath: $navigationPath,
+                viewModel: viewModel
             )
         )
     }
@@ -2195,27 +2196,29 @@ extension DashboardView {
 // MARK: - Metric Detail Content View
 struct MetricDetailContentView: View {
     let metricTitle: String
-    let period: String
-    let periodType: ImpactDataPoint.PeriodType
     @Binding var navigationPath: NavigationPath
+    @ObservedObject var viewModel: DashboardViewModel
     
-    // Cache the data to prevent infinite loops
-    private let metrics: [DashboardMetric]
-    private let chartData: [ChartDataPoint]
-    private let yAxisLabels: [String]
-    private let xAxisLabels: [String]
+    // State for period selection within the detail view
+    @State private var selectedPeriod: ImpactDataPoint.PeriodType
     
-    init(metricTitle: String, period: String, periodType: ImpactDataPoint.PeriodType, navigationPath: Binding<NavigationPath>) {
+    // Cache the initial data to prevent infinite loops, but allow updates for period changes
+    @State private var metrics: [DashboardMetric]
+    @State private var chartData: [ChartDataPoint]
+    @State private var yAxisLabels: [String]
+    @State private var xAxisLabels: [String]
+    
+    init(metricTitle: String, period: String, periodType: ImpactDataPoint.PeriodType, navigationPath: Binding<NavigationPath>, viewModel: DashboardViewModel) {
         self.metricTitle = metricTitle
-        self.period = period
-        self.periodType = periodType
         self._navigationPath = navigationPath
+        self.viewModel = viewModel
+        self._selectedPeriod = State(initialValue: periodType)
         
-        // Cache all data during initialization to prevent recalculation loops
-        self.metrics = Self.getMetricsForPeriod(periodType)
-        self.chartData = Self.getChartDataForMetric(metricTitle, period: period)
-        self.yAxisLabels = Self.getYAxisLabels(for: metricTitle)
-        self.xAxisLabels = Self.getXAxisLabels(for: period)
+        // Cache initial data during initialization
+        self._metrics = State(initialValue: Self.getMetricsForPeriod(periodType))
+        self._chartData = State(initialValue: Self.getRealChartDataForMetric(metricTitle, period: period, viewModel: viewModel))
+        self._yAxisLabels = State(initialValue: Self.getYAxisLabels(for: metricTitle))
+        self._xAxisLabels = State(initialValue: Self.getXAxisLabels(for: period))
     }
     
     var body: some View {
@@ -2260,16 +2263,26 @@ struct MetricDetailContentView: View {
             HStack(spacing: 4) {
                 ForEach(["Day", "Month", "Year"], id: \.self) { periodOption in
                     Button(action: {
-                        // Simple tab action - no complex state management
+                        // Update period and refresh data
+                        let newPeriodType = ImpactDataPoint.PeriodType(rawValue: periodOption) ?? .day
+                        if selectedPeriod != newPeriodType {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedPeriod = newPeriodType
+                                // Update chart data for new period
+                                chartData = Self.getRealChartDataForMetric(metricTitle, period: periodOption.lowercased(), viewModel: viewModel)
+                                xAxisLabels = Self.getXAxisLabels(for: periodOption.lowercased())
+                                metrics = Self.getMetricsForPeriod(newPeriodType)
+                            }
+                        }
                     }) {
                         Text(periodOption)
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(periodOption.lowercased() == period ? .white : .white.opacity(0.6))
+                            .foregroundColor(periodOption.lowercased() == selectedPeriod.rawValue.lowercased() ? .white : .white.opacity(0.6))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .background(
                                 RoundedRectangle(cornerRadius: 100)
-                                    .fill(periodOption.lowercased() == period ? Color.black : Color.clear)
+                                    .fill(periodOption.lowercased() == selectedPeriod.rawValue.lowercased() ? Color.black : Color.clear)
                             )
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -2289,7 +2302,7 @@ struct MetricDetailContentView: View {
                 VStack(spacing: 24) {
                     // Main metric display
                     VStack(spacing: 8) {
-                        if let metric = metrics.first(where: { $0.title == metricTitle }) {
+                        if let metric = Self.getMetricsForPeriod(selectedPeriod).first(where: { $0.title == metricTitle }) {
                             // Large value display
                             HStack(alignment: .bottom, spacing: 12) {
                                 Text(metric.value)
@@ -2569,6 +2582,45 @@ struct MetricDetailContentView: View {
             return getWeightChartData(for: period)
         default:
             return getDefaultChartData(for: period)
+        }
+    }
+    
+    /// Get real chart data from ViewModel's historical data
+    static func getRealChartDataForMetric(_ metricTitle: String, period: String, viewModel: DashboardViewModel) -> [ChartDataPoint] {
+        // Try to use real historical chart data from the ViewModel
+        let historicalData = viewModel.historicalChartData
+        
+        if !historicalData.isEmpty {
+            // Convert real historical data to chart points
+            return historicalData.prefix(7).map { dataPoint in
+                ChartDataPoint(
+                    value: abs(dataPoint.impact), // Use absolute value for chart display
+                    label: formatDateLabel(dataPoint.date, for: period)
+                )
+            }
+        } else {
+            // Fallback to dummy data if no real data available yet
+            return getChartDataForMetric(metricTitle, period: period)
+        }
+    }
+    
+    /// Format date labels for chart based on period
+    static func formatDateLabel(_ date: Date, for period: String) -> String {
+        let formatter = DateFormatter()
+        
+        switch period.lowercased() {
+        case "day":
+            formatter.dateFormat = "HH:mm"
+            return formatter.string(from: date)
+        case "month":
+            formatter.dateFormat = "MMM d"
+            return formatter.string(from: date)
+        case "year":
+            formatter.dateFormat = "MMM"
+            return formatter.string(from: date)
+        default:
+            formatter.dateFormat = "MMM d"
+            return formatter.string(from: date)
         }
     }
     
