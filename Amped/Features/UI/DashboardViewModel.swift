@@ -424,6 +424,12 @@ final class DashboardViewModel: ObservableObject {
         return try await healthDataService.fetchHealthMetricsForPeriod(timePeriod: timePeriod)
     }
     
+    /// Public method to fetch metrics for specific date range (for chart data)
+    func fetchMetricsForDateRange(from startDate: Date, to endDate: Date) async -> [HealthMetric] {
+        logger.info("📊 Fetching metrics from \(startDate) to \(endDate)")
+        return await healthDataService.fetchMetrics(from: startDate, to: endDate)
+    }
+    
     func loadData() {
         logger.info("🔄 Starting data load process")
         isLoading = true

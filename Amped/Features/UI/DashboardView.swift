@@ -2214,6 +2214,8 @@ struct MetricDetailContentView: View {
     @State private var metrics: [DashboardMetric]
     @State private var currentMetricData: HealthMetric?
     @State private var isLoadingData = false
+    @State private var realChartData: [ChartDataPoint] = []
+    @State private var isLoadingChartData = false
     
     init(metricTitle: String, period: String, periodType: ImpactDataPoint.PeriodType, navigationPath: Binding<NavigationPath>, viewModel: DashboardViewModel) {
         print("🔍 DEBUG: MetricDetailContentView init with:")
@@ -2373,7 +2375,7 @@ struct MetricDetailContentView: View {
                             MetricBarChart(
                                 metricTitle: metricTitle,
                                 period: selectedPeriod.rawValue.lowercased(),
-                                realChartData: getRealChartData(for: metricTitle, period: selectedPeriod),
+                                realChartData: realChartData.isEmpty ? getRealChartData(for: metricTitle, period: selectedPeriod) : realChartData,
                                 color: Self.getColorForMetric(metricTitle)
                             )
                             .frame(height: 200)
@@ -2471,18 +2473,34 @@ struct MetricDetailContentView: View {
             do {
                 let periodMetrics = try await viewModel.fetchDataForPeriod(timePeriod)
                 
+                print("🔍 📊 DEBUG: fetchDataForPeriod returned \(periodMetrics.count) metrics for \(timePeriod.displayName)")
+                for metric in periodMetrics {
+                    print("🔍 📊 Metric: \(metric.type.displayName) = \(metric.value) (date: \(metric.date))")
+                }
+                
+                // Also fetch real chart data
+                let chartData = await fetchRealChartData(for: metricType, period: selectedPeriod)
+                
                 await MainActor.run {
                     // Find the metric for this specific type and period
                     if let periodMetric = periodMetrics.first(where: { $0.type == metricType }) {
                         currentMetricData = periodMetric
+                        print("🔍 📊 Set currentMetricData to: \(periodMetric.type.displayName) = \(periodMetric.value)")
                     } else {
                         currentMetricData = nil
+                        print("🔍 📊 No metric found for type: \(metricType.displayName)")
                     }
+                    
+                    // Update chart data with real HealthKit data
+                    realChartData = chartData
+                    print("🔍 📊 ✅ Updated realChartData with \(chartData.count) REAL data points")
+                    
                     isLoadingData = false
                 }
             } catch {
                 await MainActor.run {
                     currentMetricData = nil
+                    realChartData = []
                     isLoadingData = false
                 }
             }
@@ -2494,75 +2512,272 @@ struct MetricDetailContentView: View {
         return currentMetricData
     }
     
-    /// Get real chart data from HealthKit based on period
+    /// Get real chart data from HealthKit based on period (synchronous placeholder)
     private func getRealChartData(for metricTitle: String, period: ImpactDataPoint.PeriodType) -> [ChartDataPoint] {
-        let metricType = Self.getHealthMetricType(from: metricTitle)
-        
-        switch period {
-        case .day:
-            // For daily view, show single bar with today's actual total
-            if let realValue = currentMetricData?.value {
-                let today = Date()
-                let formatter = DateFormatter()
-                formatter.dateFormat = "MMM d"
-                let label = "Today (\(formatter.string(from: today)))"
-                print("🔍 Daily chart - REAL HealthKit value: \(realValue)")
-                return [ChartDataPoint(value: realValue, label: label)]
-            }
-            
-        case .month:
-            // For monthly view, get real weekly data from HealthKit
-            return getRealWeeklyData(for: metricType)
-            
-        case .year:
-            // For yearly view, get real quarterly data from HealthKit
-            return getRealQuarterlyData(for: metricType)
-        }
-        
-        // Fallback if no real data available
+        // Return placeholder data - real data will be loaded asynchronously
         return getPlaceholderData(for: metricTitle, period: period)
     }
     
-    /// Get real weekly data from HealthKit
-    private func getRealWeeklyData(for metricType: HealthMetricType) -> [ChartDataPoint] {
-        // Use the current metric value as baseline and show realistic weekly variations
-        guard let baseValue = currentMetricData?.value else {
+    /// Fetch real chart data from HealthKit asynchronously
+    private func fetchRealChartData(for metricType: HealthMetricType, period: ImpactDataPoint.PeriodType) async -> [ChartDataPoint] {
+        print("🔍 📊 🚀 Fetching REAL chart data from HealthKit for \(metricType.displayName) - \(period)")
+        
+        switch period {
+        case .day:
+            return await fetchDailyChartData(for: metricType)
+        case .month:
+            return await fetchMonthlyChartData(for: metricType)
+        case .year:
+            return await fetchYearlyChartData(for: metricType)
+        }
+    }
+    
+    /// Fetch real daily chart data (single bar for today)
+    private func fetchDailyChartData(for metricType: HealthMetricType) async -> [ChartDataPoint] {
+        let today = Date()
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: today)
+        let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday) ?? today
+        
+        print("🔍 📊 Fetching today's data: \(startOfToday) to \(endOfToday)")
+        
+        let metrics = await viewModel.fetchMetricsForDateRange(from: startOfToday, to: endOfToday)
+        
+        if let todayMetric = metrics.first(where: { $0.type == metricType }) {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM d"
+            let label = "Today (\(formatter.string(from: today)))"
+            print("🔍 📊 ✅ Today's REAL data: \(todayMetric.value)")
+            return [ChartDataPoint(value: todayMetric.value, label: label)]
+        } else {
+            print("🔍 📊 ❌ No data found for today")
+            return [ChartDataPoint(value: 0, label: "Today")]
+        }
+    }
+    
+    /// Fetch real monthly chart data (daily breakdown for current month)
+    private func fetchMonthlyChartData(for metricType: HealthMetricType) async -> [ChartDataPoint] {
+        print("🔍 📊 Fetching REAL daily breakdown for current month")
+        
+        let calendar = Calendar.current
+        let now = Date()
+        
+        guard let monthInterval = calendar.dateInterval(of: .month, for: now) else {
+            print("🔍 📊 ❌ Could not get current month interval")
+            return []
+        }
+        
+        var dailyData: [ChartDataPoint] = []
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MMM d"
+        
+        var currentDate = monthInterval.start
+        
+        while currentDate <= monthInterval.end && currentDate <= now {
+            let startOfDay = calendar.startOfDay(for: currentDate)
+            let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? currentDate
+            
+            print("🔍 📊 Fetching data for \(dateFormatter.string(from: currentDate))")
+            
+            // Fetch real HealthKit data for this specific day
+            let dayMetrics = await viewModel.fetchMetricsForDateRange(from: startOfDay, to: endOfDay)
+            
+            let label = dateFormatter.string(from: currentDate)
+            
+            if let dayMetric = dayMetrics.first(where: { $0.type == metricType }) {
+                dailyData.append(ChartDataPoint(value: dayMetric.value, label: label))
+                print("🔍 📊 ✅ \(label): \(dayMetric.value) (REAL HealthKit)")
+            } else {
+                dailyData.append(ChartDataPoint(value: 0, label: label))
+                print("🔍 📊 ❌ \(label): No data")
+            }
+            
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDate) else { break }
+            currentDate = nextDay
+        }
+        
+        print("🔍 📊 ✅ Fetched \(dailyData.count) days of REAL daily data")
+        return dailyData
+    }
+    
+    /// Fetch real yearly chart data (monthly breakdown for current year)
+    private func fetchYearlyChartData(for metricType: HealthMetricType) async -> [ChartDataPoint] {
+        print("🔍 📊 Fetching REAL monthly breakdown for current year")
+        
+        let calendar = Calendar.current
+        let now = Date()
+        
+        guard let yearInterval = calendar.dateInterval(of: .year, for: now) else {
+            print("🔍 📊 ❌ Could not get current year interval")
+            return []
+        }
+        
+        var monthlyData: [ChartDataPoint] = []
+        let monthFormatter = DateFormatter()
+        monthFormatter.dateFormat = "MMM"
+        
+        var currentMonth = yearInterval.start
+        
+        while currentMonth <= yearInterval.end && currentMonth <= now {
+            guard let monthInterval = calendar.dateInterval(of: .month, for: currentMonth) else {
+                currentMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) ?? currentMonth
+                continue
+            }
+            
+            let endOfMonth = min(monthInterval.end, now)
+            
+            print("🔍 📊 Fetching data for \(monthFormatter.string(from: currentMonth))")
+            
+            // Fetch real HealthKit data for this entire month
+            let monthMetrics = await viewModel.fetchMetricsForDateRange(from: monthInterval.start, to: endOfMonth)
+            
+            let label = monthFormatter.string(from: currentMonth)
+            
+            if let monthMetric = monthMetrics.first(where: { $0.type == metricType }) {
+                monthlyData.append(ChartDataPoint(value: monthMetric.value, label: label))
+                print("🔍 📊 ✅ \(label): \(monthMetric.value) (REAL HealthKit)")
+            } else {
+                monthlyData.append(ChartDataPoint(value: 0, label: label))
+                print("🔍 📊 ❌ \(label): No data")
+            }
+            
+            guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) else { break }
+            currentMonth = nextMonth
+        }
+        
+        print("🔍 📊 ✅ Fetched \(monthlyData.count) months of REAL monthly data")
+        return monthlyData
+    }
+    
+    /// Get real daily data for current month (like Apple Health monthly view)
+    private func getRealDailyData(for metricType: HealthMetricType) -> [ChartDataPoint] {
+        print("🔍 📊 Generating daily breakdown for current month - \(metricType.displayName)")
+        
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // Get current month date range
+        guard let monthInterval = calendar.dateInterval(of: .month, for: now) else {
             return getPlaceholderData(for: metricTitle, period: .month)
         }
         
-        var data: [ChartDataPoint] = []
-        print("🔍 Weekly chart - REAL HealthKit baseline: \(baseValue)")
+        var dailyData: [ChartDataPoint] = []
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MMM d"
         
-        for week in 1...4 {
-            let label = "Week \(week)"
-            // Small realistic variations around actual value (±10%)
-            let variation = Double.random(in: 0.90...1.10)
-            let value = baseValue * variation
-            data.append(ChartDataPoint(value: value, label: label))
+        // Generate data for each day of the current month
+        var currentDate = monthInterval.start
+        var dayCount = 1
+        
+        while currentDate <= monthInterval.end && currentDate <= now {
+            let label = dateFormatter.string(from: currentDate)
+            
+            // TODO: Fetch real daily data from HealthKit for this specific day
+            // For now, use current value as placeholder
+            let dailyValue = currentMetricData?.value ?? 0
+            dailyData.append(ChartDataPoint(value: dailyValue, label: label))
+            
+            print("🔍 📊 Day \(dayCount) (\(label)): \(dailyValue) - TODO: Fetch real daily HealthKit data")
+            
+            // Move to next day
+            guard let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDate) else { break }
+            currentDate = nextDay
+            dayCount += 1
         }
         
-        return data
+        print("🔍 📊 Generated \(dailyData.count) days of data for current month (Apple Health style)")
+        return dailyData
     }
     
-    /// Get real quarterly data from HealthKit
-    private func getRealQuarterlyData(for metricType: HealthMetricType) -> [ChartDataPoint] {
-        // Use the current metric value as baseline and show realistic quarterly variations
-        guard let baseValue = currentMetricData?.value else {
+    /// Fetch real weekly data from HealthKit asynchronously
+    private func fetchAndUpdateWeeklyData(for metricType: HealthMetricType) async {
+        print("🔍 📊 Fetching REAL weekly data from HealthKit for \(metricType.displayName)")
+        
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // Get current month date range
+        guard let monthInterval = calendar.dateInterval(of: .month, for: now) else {
+            print("🔍 📊 ❌ Could not get current month interval")
+            return
+        }
+        
+        var weeklyData: [ChartDataPoint] = []
+        
+        // Fetch data for each week of the current month
+        for week in 0..<4 {
+            guard let weekStart = calendar.date(byAdding: .weekOfYear, value: week, to: monthInterval.start) else { continue }
+            guard let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) else { continue }
+            
+            // Don't fetch future weeks
+            if weekStart > now { break }
+            
+            // Clamp end date to today if needed
+            let actualEndDate = min(weekEnd, now)
+            
+            print("🔍 📊 Fetching week \(week + 1): \(weekStart) to \(actualEndDate)")
+            
+            // Fetch real HealthKit data for this week using ViewModel's public method
+            // Note: This will need to be implemented in ViewModel as a public method
+            // For now, this is a placeholder showing the approach
+            print("🔍 📊 TODO: Need ViewModel.fetchMetricsForDateRange(from: \(weekStart), to: \(actualEndDate))")
+            let weekMetrics: [HealthMetric] = [] // Placeholder
+            
+            if let weekMetric = weekMetrics.first(where: { $0.type == metricType }) {
+                let label = "Week \(week + 1)"
+                weeklyData.append(ChartDataPoint(value: weekMetric.value, label: label))
+                print("🔍 📊 ✅ \(label): \(weekMetric.value) (REAL HealthKit data)")
+            } else {
+                // No data for this week
+                let label = "Week \(week + 1)"
+                weeklyData.append(ChartDataPoint(value: 0, label: label))
+                print("🔍 📊 ❌ \(label): No data")
+            }
+        }
+        
+        // Update the chart with real data (this would need state management)
+        print("🔍 📊 ✅ Fetched \(weeklyData.count) weeks of REAL data")
+        // TODO: Update chart state with real data
+    }
+    
+    /// Get real monthly data for current year (like Apple Health yearly view)
+    private func getRealMonthlyData(for metricType: HealthMetricType) -> [ChartDataPoint] {
+        print("🔍 📊 Generating monthly breakdown for current year - \(metricType.displayName)")
+        
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // Get current year date range
+        guard let yearInterval = calendar.dateInterval(of: .year, for: now) else {
             return getPlaceholderData(for: metricTitle, period: .year)
         }
         
-        var data: [ChartDataPoint] = []
-        print("🔍 Quarterly chart - REAL HealthKit baseline: \(baseValue)")
+        var monthlyData: [ChartDataPoint] = []
+        let monthFormatter = DateFormatter()
+        monthFormatter.dateFormat = "MMM"
         
-        for quarter in 1...4 {
-            let label = "Q\(quarter)"
-            // Small realistic variations around actual value (±5%)
-            let variation = Double.random(in: 0.95...1.05)
-            let value = baseValue * variation
-            data.append(ChartDataPoint(value: value, label: label))
+        // Generate data for each month of the current year
+        var currentMonth = yearInterval.start
+        var monthCount = 1
+        
+        while currentMonth <= yearInterval.end && currentMonth <= now {
+            let label = monthFormatter.string(from: currentMonth)
+            
+            // TODO: Fetch real monthly average from HealthKit for this specific month
+            // For now, use current value as placeholder
+            let monthlyValue = currentMetricData?.value ?? 0
+            monthlyData.append(ChartDataPoint(value: monthlyValue, label: label))
+            
+            print("🔍 📊 Month \(monthCount) (\(label)): \(monthlyValue) - TODO: Fetch real monthly HealthKit average")
+            
+            // Move to next month
+            guard let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentMonth) else { break }
+            currentMonth = nextMonth
+            monthCount += 1
         }
         
-        return data
+        print("🔍 📊 Generated \(monthlyData.count) months of data for current year (Apple Health style)")
+        return monthlyData
     }
     
     /// Get placeholder data when real data is not available

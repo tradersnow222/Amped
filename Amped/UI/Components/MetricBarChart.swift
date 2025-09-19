@@ -77,38 +77,41 @@ struct MetricBarChart: View {
         }
     }
     
-    // MARK: - Chart View (with overlay tap detection)
+    // MARK: - Chart View (scrollable for long data series)
     private var chartView: some View {
-        Chart {
-            ForEach(realChartData) { dataPoint in
-                BarMark(
-                    x: .value("Period", dataPoint.label),
-                    y: .value("Value", dataPoint.value)
-                )
-                .foregroundStyle(color)
-                .cornerRadius(3)
-                .opacity(selectedLabel == dataPoint.label ? 1.0 : 0.8)
+        ScrollView(.horizontal, showsIndicators: false) {
+            Chart {
+                ForEach(realChartData) { dataPoint in
+                    BarMark(
+                        x: .value("Period", dataPoint.label),
+                        y: .value("Value", dataPoint.value)
+                    )
+                    .foregroundStyle(color)
+                    .cornerRadius(3)
+                    .opacity(selectedLabel == dataPoint.label ? 1.0 : 0.8)
+                }
             }
-        }
-        .chartXAxis {
-            xAxisConfiguration
-        }
-        .chartYAxis {
-            yAxisConfiguration
-        }
-        .overlay(
-            // Transparent overlay for reliable tap detection with geometry
-            GeometryReader { chartGeometry in
-                Rectangle()
-                    .fill(.clear)
-                    .contentShape(Rectangle())
-                    .onTapGesture { location in
-                        print("🔍 🚨 OVERLAY TAP DETECTED at: \(location)")
-                        print("🔍 🚨 Chart geometry size: \(chartGeometry.size)")
-                        handleAccurateTap(at: location, chartWidth: chartGeometry.size.width)
-                    }
+            .chartXAxis {
+                xAxisConfiguration
             }
-        )
+            .chartYAxis {
+                yAxisConfiguration
+            }
+            .frame(width: max(300, CGFloat(realChartData.count) * 40)) // Dynamic width based on data points
+            .overlay(
+                // Transparent overlay for reliable tap detection with geometry
+                GeometryReader { chartGeometry in
+                    Rectangle()
+                        .fill(.clear)
+                        .contentShape(Rectangle())
+                        .onTapGesture { location in
+                            print("🔍 🚨 SCROLLABLE CHART TAP at: \(location)")
+                            print("🔍 🚨 Chart has \(realChartData.count) data points")
+                            handleScrollableChartTap(at: location, chartWidth: chartGeometry.size.width)
+                        }
+                }
+            )
+        }
         .onChange(of: selectedLabel) { _ in
             if selectedLabel != nil {
                 // Auto-hide selection after 3 seconds
@@ -117,6 +120,27 @@ struct MetricBarChart: View {
                 }
             }
         }
+    }
+    
+    // MARK: - Scrollable Chart Tap Handler
+    private func handleScrollableChartTap(at location: CGPoint, chartWidth: CGFloat) {
+        print("🔍 🚨 ENTERING scrollable chart tap with location: \(location)")
+        print("🔍 🚨 Chart width: \(chartWidth), Data points: \(realChartData.count)")
+        
+        guard realChartData.count > 0 else { return }
+        
+        // For scrollable charts, calculate bar width dynamically
+        let barWidth = chartWidth / CGFloat(realChartData.count)
+        let rawIndex = Int(location.x / barWidth)
+        let selectedIndex = max(0, min(rawIndex, realChartData.count - 1))
+        
+        print("🔍 Bar width: \(barWidth)")
+        print("🔍 Raw index: \(rawIndex), Clamped index: \(selectedIndex)")
+        
+        let selectedPoint = realChartData[selectedIndex]
+        selectedLabel = selectedPoint.label
+        
+        print("🔍 ✅ Selected: \(selectedPoint.label) = \(selectedPoint.value)")
     }
     
     // MARK: - Accurate Tap Handler (using real chart width)
