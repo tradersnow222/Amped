@@ -398,24 +398,25 @@ struct DashboardView: View {
             // Date navigation bar
             dateNavigationBar
             
-            // Dashboard metrics list with period-based content
+            // Dashboard metrics in new 2-column grid layout
             ScrollView {
-                VStack(spacing: 16) {
-                    // Animated content based on selected period
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 12),
+                    GridItem(.flexible(), spacing: 12)
+                ], spacing: 16) {
                     let metricsForPeriod = getMetricsForPeriodWithRealData(selectedPeriod)
                     ForEach(Array(metricsForPeriod.enumerated()), id: \.offset) { index, metric in
-                        metricCardButton(for: metric, at: index)
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: .trailing)).combined(with: .scale(scale: 0.95)),
-                            removal: .opacity.combined(with: .move(edge: .leading)).combined(with: .scale(scale: 1.05))
-                        ))
-                        .animation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0.2).delay(Double(index) * 0.05), value: selectedPeriod)
+                        newDashboardCard(for: metric, at: index)
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .scale(scale: 0.95)),
+                                removal: .opacity.combined(with: .scale(scale: 1.05))
+                            ))
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(Double(index) * 0.05), value: selectedPeriod)
                     }
-                    
-                    Spacer(minLength: 100) // Space for bottom navigation
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
+                .padding(.bottom, 100) // Space for bottom navigation
             }
             .simultaneousGesture(
                 DragGesture(minimumDistance: 50, coordinateSpace: .local)
@@ -474,6 +475,72 @@ struct DashboardView: View {
     /// Profile View - Profile/settings using ProfileView component
     private var profileView: some View {
         ProfileView()
+    }
+    
+    // MARK: - New Dashboard Card Design
+    
+    /// New dashboard card matching the redesigned layout
+    private func newDashboardCard(for metric: DashboardMetric, at index: Int) -> some View {
+        Button(action: {
+            let destination = "metricDetail-\(metric.title)-\(selectedPeriod.rawValue)"
+            print("🔍 DEBUG: New card navigation - \(destination)")
+            DispatchQueue.main.async {
+                navigationPath.append(destination)
+            }
+        }) {
+            VStack(alignment: .leading, spacing: 12) {
+                // Icon and title row
+                HStack {
+                    Image(systemName: metric.icon)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(metric.iconColor)
+                    
+                    Text(metric.title)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                    
+                    Spacer()
+                }
+                
+                // Large metric value
+                HStack(alignment: .bottom, spacing: 4) {
+                    Text(metric.value)
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    
+                    if !metric.unit.isEmpty {
+                        Text(metric.unit)
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.white.opacity(0.7))
+                            .padding(.bottom, 2)
+                    }
+                    
+                    Spacer()
+                }
+                
+                // Status indicator with full width
+                HStack {
+                    Text(metric.status)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(metric.statusColor)
+                        )
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.white.opacity(0.1))
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
     
     // MARK: - Dashboard Home Components
