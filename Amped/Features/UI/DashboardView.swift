@@ -407,10 +407,10 @@ struct DashboardView: View {
                     let metricsForPeriod = getMetricsForPeriodWithRealData(selectedPeriod)
                     ForEach(Array(metricsForPeriod.enumerated()), id: \.offset) { index, metric in
                         newDashboardCard(for: metric, at: index)
-                            .transition(.asymmetric(
+                        .transition(.asymmetric(
                                 insertion: .opacity.combined(with: .scale(scale: 0.95)),
                                 removal: .opacity.combined(with: .scale(scale: 1.05))
-                            ))
+                        ))
                             .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(Double(index) * 0.05), value: selectedPeriod)
                     }
                 }

@@ -3,35 +3,92 @@ import Combine
 
 /// Energy View - Shows battery-themed energy and activity tracking
 struct EnergyView: View {
+    // MARK: - Dependencies
+    @StateObject private var viewModel = DashboardViewModel()
+    
     // MARK: - State Variables
     @State private var selectedLifespanType: LifespanType = .current
     @State private var showingSettings = false
     
-    // MARK: - Computed Properties
+    // MARK: - Computed Properties (Dynamic from Scientific Calculations)
     private var currentLifespanData: LifespanData {
-        LifespanData(
-            years: 37,
-            days: 207,
-            hours: 8,
-            minutes: 45,
-            seconds: 32,
-            progress: 0.53,
-            birthYear: 1991,
-            endYear: 2051
+        guard let lifeProjection = viewModel.lifeProjection else {
+            // Fallback while data loads
+            return LifespanData(
+                years: 0, days: 0, hours: 0, minutes: 0, seconds: 0,
+                progress: 0.0, birthYear: 1991, endYear: 2024
+            )
+        }
+        
+        // Calculate remaining time based on real projection
+        let currentAge = viewModel.currentUserAge
+        let remainingYears = lifeProjection.adjustedLifeExpectancyYears - currentAge
+        let remainingDays = Int(remainingYears * 365.25)
+        let remainingHours = Int((remainingYears * 365.25 * 24).truncatingRemainder(dividingBy: 24))
+        let remainingMinutes = Int((remainingYears * 365.25 * 24 * 60).truncatingRemainder(dividingBy: 60))
+        let remainingSeconds = Int((remainingYears * 365.25 * 24 * 60 * 60).truncatingRemainder(dividingBy: 60))
+        
+        // Calculate progress through life
+        let progress = currentAge / lifeProjection.adjustedLifeExpectancyYears
+        
+        // Calculate birth year and end year properly
+        let currentYear = Calendar.current.component(.year, from: Date())
+        let birthYear = viewModel.userProfile.birthYear ?? (currentYear - Int(currentAge))
+        let endYear = currentYear + Int(remainingYears)
+        
+        return LifespanData(
+            years: Int(remainingYears),
+            days: remainingDays,
+            hours: remainingHours,
+            minutes: remainingMinutes,
+            seconds: remainingSeconds,
+            progress: progress,
+            birthYear: birthYear,
+            endYear: endYear
         )
     }
     
     private var potentialLifespanData: LifespanData {
-        LifespanData(
-            years: 39,
-            days: 314,
-            hours: 3,
-            minutes: 35,
-            seconds: 58,
-            progress: 0.40,
-            birthYear: 1991,
-            endYear: 2053,
-            extraYears: 2.1
+        guard let optimalProjection = viewModel.optimalHabitsProjection,
+              let currentProjection = viewModel.lifeProjection else {
+            // Fallback while data loads
+            return LifespanData(
+                years: 0, days: 0, hours: 0, minutes: 0, seconds: 0,
+                progress: 0.0, birthYear: 1991, endYear: 2024
+            )
+        }
+        
+        // Calculate potential lifespan with optimal habits
+        let currentAge = viewModel.currentUserAge
+        let remainingYears = optimalProjection.adjustedLifeExpectancyYears - currentAge
+        let remainingDays = Int(remainingYears * 365.25)
+        let remainingHours = Int((remainingYears * 365.25 * 24).truncatingRemainder(dividingBy: 24))
+        let remainingMinutes = Int((remainingYears * 365.25 * 24 * 60).truncatingRemainder(dividingBy: 60))
+        let remainingSeconds = Int((remainingYears * 365.25 * 24 * 60 * 60).truncatingRemainder(dividingBy: 60))
+        
+        // Calculate progress with potential improvements
+        let progress = currentAge / optimalProjection.adjustedLifeExpectancyYears
+        
+        // Calculate extra years gained from optimal habits (rounded for consistency)
+        let currentRemainingYears = currentProjection.adjustedLifeExpectancyYears - currentAge
+        let optimalRemainingYears = optimalProjection.adjustedLifeExpectancyYears - currentAge
+        let extraYears = Double(Int(optimalRemainingYears)) - Double(Int(currentRemainingYears))
+        
+        // Calculate birth year and end year properly
+        let currentYear = Calendar.current.component(.year, from: Date())
+        let birthYear = viewModel.userProfile.birthYear ?? (currentYear - Int(currentAge))
+        let endYear = currentYear + Int(remainingYears)
+        
+        return LifespanData(
+            years: Int(remainingYears),
+            days: remainingDays,
+            hours: remainingHours,
+            minutes: remainingMinutes,
+            seconds: remainingSeconds,
+            progress: progress,
+            birthYear: birthYear,
+            endYear: endYear,
+            extraYears: extraYears
         )
     }
     
@@ -42,22 +99,27 @@ struct EnergyView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header
+            Spacer()
+                .frame(height: 0)
             personalizedHeader
             Spacer()
+                .frame(height: 14)
             // Lifespan Toggle
             lifespanToggle
             
             // Main Content
-            ScrollView {
+//            ScrollView {
                 VStack(spacing: 24) {
                     // Call to Action Section
                     callToActionSection
                         .padding(.horizontal, 20)
                     Spacer()
+                        .frame(height: 20)
                     // Lifespan Display
                     lifespanDisplaySection
                         .padding(.horizontal, 20)
                     Spacer()
+                        .frame(height: 20)
                     // Progress Bar Section
                     progressBarSection
                         .padding(.horizontal, 20)
@@ -69,10 +131,15 @@ struct EnergyView: View {
                 .padding(.top, 20)
             }
             
-            Spacer(minLength: 100) // Space for bottom navigation
+            Spacer() // Space for bottom navigation
+//        }
+        .onAppear {
+            // Load real health data and calculations
+            print("🔍 📊 EnergyView: Loading real health data and scientific calculations")
+            viewModel.loadData()
         }
-        .background(Color.black)
-        .navigationBarHidden(true)
+//        .background(Color.black)
+//        .navigationBarHidden(true)
     }
     
     // MARK: - Header Components
@@ -128,7 +195,7 @@ struct EnergyView: View {
                 .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
         )
         .padding(.horizontal, 24)
-        .padding(.bottom, 20)
+//        .padding(.bottom, 20)
     }
     
     // MARK: - Main Content Sections
@@ -277,7 +344,7 @@ struct EnergyView: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(.yellow)
         }
-        .padding(.top, 20)
+//        .padding(.top, 20)
     }
 }
 
