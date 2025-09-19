@@ -278,6 +278,11 @@ struct DashboardView: View {
         let period = components[2]
         let periodType = ImpactDataPoint.PeriodType(rawValue: period) ?? .day
         
+        print("🔍 DEBUG: Parsing navigation destination: \(destination)")
+        print("🔍 DEBUG: Components: \(components)")
+        print("🔍 DEBUG: Period string: '\(period)'")
+        print("🔍 DEBUG: PeriodType created: \(periodType) (rawValue: \(periodType.rawValue))")
+        
         return AnyView(
             MetricDetailContentView(
                 metricTitle: metricTitle,
@@ -1482,7 +1487,10 @@ extension DashboardView {
         Button(action: {
             // Use DispatchQueue to prevent multiple navigation updates per frame
             DispatchQueue.main.async {
-                navigationPath.append("metricDetail-\(metric.title)-\(selectedPeriod)")
+                let navigationString = "metricDetail-\(metric.title)-\(selectedPeriod.rawValue)"
+                print("🔍 DEBUG: Navigating with: \(navigationString)")
+                print("🔍 DEBUG: Dashboard selectedPeriod: \(selectedPeriod) (rawValue: \(selectedPeriod.rawValue))")
+                navigationPath.append(navigationString)
             }
         }) {
             dashboardMetricCard(
@@ -2207,12 +2215,21 @@ struct MetricDetailContentView: View {
     @State private var chartData: [ChartDataPoint]
     @State private var yAxisLabels: [String]
     @State private var xAxisLabels: [String]
+    @State private var currentMetricData: HealthMetric?
+    @State private var isLoadingData = false
     
     init(metricTitle: String, period: String, periodType: ImpactDataPoint.PeriodType, navigationPath: Binding<NavigationPath>, viewModel: DashboardViewModel) {
+        print("🔍 DEBUG: MetricDetailContentView init with:")
+        print("   - metricTitle: '\(metricTitle)'")
+        print("   - period: '\(period)'")
+        print("   - periodType: \(periodType) (rawValue: '\(periodType.rawValue)')")
+        
         self.metricTitle = metricTitle
         self._navigationPath = navigationPath
         self.viewModel = viewModel
         self._selectedPeriod = State(initialValue: periodType)
+        
+        print("🔍 DEBUG: Setting selectedPeriod to: \(periodType)")
         
         // Cache initial data during initialization
         self._metrics = State(initialValue: Self.getMetricsForPeriod(periodType))
@@ -2273,17 +2290,29 @@ struct MetricDetailContentView: View {
                                 xAxisLabels = Self.getXAxisLabels(for: periodOption.lowercased())
                                 metrics = Self.getMetricsForPeriod(newPeriodType)
                             }
+                            // Load new period-specific data
+                            loadPeriodSpecificData()
                         }
                     }) {
+                        let isSelected = periodOption.lowercased() == selectedPeriod.rawValue.lowercased()
+                        
                         Text(periodOption)
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(periodOption.lowercased() == selectedPeriod.rawValue.lowercased() ? .white : .white.opacity(0.6))
+                            .foregroundColor(isSelected ? .white : .white.opacity(0.6))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .background(
                                 RoundedRectangle(cornerRadius: 100)
-                                    .fill(periodOption.lowercased() == selectedPeriod.rawValue.lowercased() ? Color.black : Color.clear)
+                                    .fill(isSelected ? Color.black : Color.clear)
                             )
+                            .onAppear {
+                                if periodOption == "Day" { // Only debug once to avoid spam
+                                    print("🔍 DEBUG: Period tab comparison:")
+                                    print("   - periodOption: '\(periodOption)' (lowercased: '\(periodOption.lowercased())')")
+                                    print("   - selectedPeriod.rawValue: '\(selectedPeriod.rawValue)' (lowercased: '\(selectedPeriod.rawValue.lowercased())')")
+                                    print("   - isSelected: \(isSelected)")
+                                }
+                            }
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
@@ -2302,22 +2331,33 @@ struct MetricDetailContentView: View {
                 VStack(spacing: 24) {
                     // Main metric display
                     VStack(spacing: 8) {
-                        if let metric = Self.getMetricsForPeriod(selectedPeriod).first(where: { $0.title == metricTitle }) {
-                            // Large value display
+                        // Display real metric data from HealthKit
+                        if let realMetric = getRealMetricForDisplay() {
                             HStack(alignment: .bottom, spacing: 12) {
-                                Text(metric.value)
+                                Text(realMetric.formattedValue)
                                     .font(.system(size: 28, weight: .bold))
                                     .foregroundColor(.white)
                                 
-                                if !metric.unit.isEmpty {
-                                    Text(metric.unit)
-                                        .font(.system(size: 18, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.7))
-                                }
+                                Text(getRealMetricUnit())
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.7))
                                 
-                                Text(metric.status)
+                                Text(getRealMetricStatus())
                                     .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(metric.statusColor)
+                                    .foregroundColor(getRealMetricStatusColor())
+                                
+                                Spacer()
+                            }
+                        } else {
+                            // Fallback to placeholder when no real data
+                            HStack(alignment: .bottom, spacing: 12) {
+                                Text("--")
+                                    .font(.system(size: 28, weight: .bold))
+                                    .foregroundColor(.white)
+                                
+                                Text("No data")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.gray)
                                 
                                 Spacer()
                             }
@@ -2470,9 +2510,123 @@ struct MetricDetailContentView: View {
         }
         .background(Color.black)
         .navigationBarHidden(true)
+        .onAppear {
+            loadPeriodSpecificData()
+        }
+        .onChange(of: selectedPeriod) { _ in
+            loadPeriodSpecificData()
+        }
+    }
+    
+    /// Load period-specific metric data for the selected period
+    private func loadPeriodSpecificData() {
+        isLoadingData = true
+        
+        Task {
+            let metricType = Self.getHealthMetricType(from: metricTitle)
+            
+            // Convert selectedPeriod to TimePeriod
+            let timePeriod: TimePeriod
+            switch selectedPeriod {
+            case .day:
+                timePeriod = .day
+            case .month:
+                timePeriod = .month
+            case .year:
+                timePeriod = .year
+            }
+            
+            // Fetch period-specific data from ViewModel
+            do {
+                let periodMetrics = try await viewModel.fetchDataForPeriod(timePeriod)
+                
+                await MainActor.run {
+                    // Find the metric for this specific type and period
+                    if let periodMetric = periodMetrics.first(where: { $0.type == metricType }) {
+                        currentMetricData = periodMetric
+                    } else {
+                        currentMetricData = nil
+                    }
+                    isLoadingData = false
+                }
+            } catch {
+                await MainActor.run {
+                    currentMetricData = nil
+                    isLoadingData = false
+                }
+            }
+        }
+    }
+    
+    /// Get real metric data for the currently selected period in detail view
+    private func getRealMetricForDisplay() -> HealthMetric? {
+        return currentMetricData
+    }
+    
+    /// Get real metric unit for display with period context
+    private func getRealMetricUnit() -> String {
+        let metricType = Self.getHealthMetricType(from: metricTitle)
+        switch metricType {
+        case .steps: return selectedPeriod == .day ? "steps" : "steps/day avg"
+        case .sleepHours: return selectedPeriod == .day ? "hours" : "hours/day avg"
+        case .restingHeartRate: return "BPM avg"
+        case .activeEnergyBurned: return selectedPeriod == .day ? "kcal" : "kcal/day avg"
+        case .exerciseMinutes: return selectedPeriod == .day ? "mins" : "mins/day avg"
+        case .vo2Max: return "ml/kg/min"
+        case .bodyMass: return "kg"
+        default: return selectedPeriod == .day ? "" : "per day"
+        }
+    }
+    
+    /// Get real metric status based on impact
+    private func getRealMetricStatus() -> String {
+        guard let realMetric = getRealMetricForDisplay(),
+              let impact = realMetric.impactDetails else {
+            return "No impact data"
+        }
+        
+        let impactMinutes = impact.lifespanImpactMinutes
+        let absMinutes = abs(impactMinutes)
+        let isPositive = impactMinutes >= 0
+        let arrow = isPositive ? "↑" : "↓"
+        let verb = isPositive ? "added" : "lost"
+        
+        return "\(arrow) \(String(format: "%.0f", absMinutes)) mins \(verb)"
+    }
+    
+    /// Get real metric status color
+    private func getRealMetricStatusColor() -> Color {
+        guard let realMetric = getRealMetricForDisplay(),
+              let impact = realMetric.impactDetails else {
+            return .gray
+        }
+        
+        return impact.lifespanImpactMinutes >= 0 ? .green : .red
     }
     
     // MARK: - Static Helper Functions (moved from DashboardView)
+    
+    /// Convert metric title to HealthMetricType
+    static func getHealthMetricType(from title: String) -> HealthMetricType {
+        switch title.lowercased() {
+        case "heart rate":
+            return .restingHeartRate
+        case "steps":
+            return .steps
+        case "active energy":
+            return .activeEnergyBurned
+        case "sleep":
+            return .sleepHours
+        case "cardio (vo2)":
+            return .vo2Max
+        case "weight":
+            return .bodyMass
+        case "exercise":
+            return .exerciseMinutes
+        default:
+            return .steps // Default fallback
+        }
+    }
     
     static func getMetricsForPeriod(_ period: ImpactDataPoint.PeriodType) -> [DashboardMetric] {
         switch period {

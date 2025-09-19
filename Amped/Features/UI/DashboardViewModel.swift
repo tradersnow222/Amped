@@ -418,6 +418,12 @@ final class DashboardViewModel: ObservableObject {
         }
     }
     
+    /// Public method to fetch period-specific data for metric detail views
+    func fetchDataForPeriod(_ timePeriod: TimePeriod) async throws -> [HealthMetric] {
+        logger.info("📊 Fetching data for period: \(timePeriod.displayName)")
+        return try await healthDataService.fetchHealthMetricsForPeriod(timePeriod: timePeriod)
+    }
+    
     func loadData() {
         logger.info("🔄 Starting data load process")
         isLoading = true
