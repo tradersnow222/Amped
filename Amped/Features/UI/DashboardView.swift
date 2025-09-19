@@ -15,6 +15,7 @@ struct DashboardView: View {
     
     // MARK: - State Variables
     @State private var selectedTab = 0 // 0 = Home, 1 = Dashboard, 2 = Energy, 3 = Profile
+    @State private var previousTab = 0 // Track previous tab for directional transitions
     @State private var selectedPeriod: ImpactDataPoint.PeriodType = .day
     @State private var showingSettings = false
     @State private var showingUpdateHealthProfile = false
@@ -193,23 +194,29 @@ struct DashboardView: View {
         ZStack {
                 Color.black
                     .ignoresSafeArea()
-                // Main content based on selected tab
+                // Main content based on selected tab with smooth transitions
                 VStack(spacing: 0) {
-                    // Content area
+                    // Content area with slide transitions
                     Group {
                         switch selectedTab {
                         case 0: // Home tab - Dashboard home with battery character
                             dashboardHomeView
+                                .transition(getTransitionForTab(0))
                         case 1: // Dashboard tab - Detailed metrics list
                             dashboardView
+                                .transition(getTransitionForTab(1))
                         case 2: // Energy tab - Battery page content
                             energyView
+                                .transition(getTransitionForTab(2))
                         case 3: // Profile tab - Profile/settings
                             profileView
+                                .transition(getTransitionForTab(3))
                         default:
                             dashboardHomeView
+                                .transition(getTransitionForTab(0))
                         }
                     }
+                    .animation(.spring(response: 0.6, dampingFraction: 0.9, blendDuration: 0), value: selectedTab)
                     
                     // Bottom navigation bar
                     bottomNavigationBar
@@ -338,6 +345,25 @@ struct DashboardView: View {
         let previousPeriod = periods[previousIndex]
         
         changePeriod(to: previousPeriod)
+    }
+    
+    /// Get appropriate transition based on tab navigation direction
+    private func getTransitionForTab(_ tab: Int) -> AnyTransition {
+        let isMovingForward = tab > previousTab
+        
+        if isMovingForward {
+            // Moving to higher tab number - slide in from right
+            return .asymmetric(
+                insertion: .move(edge: .trailing).combined(with: .opacity),
+                removal: .move(edge: .leading).combined(with: .opacity)
+            )
+        } else {
+            // Moving to lower tab number - slide in from left
+            return .asymmetric(
+                insertion: .move(edge: .leading).combined(with: .opacity),
+                removal: .move(edge: .trailing).combined(with: .opacity)
+            )
+        }
     }
     
     // MARK: - Dashboard Views
@@ -984,7 +1010,15 @@ struct DashboardView: View {
     private var bottomNavigationBar: some View {
         HStack(spacing: 0) {
             // Home icon
-            Button(action: { selectedTab = 0 }) {
+            Button(action: { 
+                previousTab = selectedTab
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.9, blendDuration: 0)) {
+                    selectedTab = 0 
+                }
+                // Add haptic feedback
+                let impact = UIImpactFeedbackGenerator(style: .light)
+                impact.impactOccurred()
+            }) {
                 VStack(spacing: 4) {
                     Image(systemName: selectedTab == 0 ? "house.fill" : "house")
                         .font(.system(size: 20, weight: .medium))
@@ -1000,7 +1034,15 @@ struct DashboardView: View {
             Spacer()
             
             // Dashboard icon
-            Button(action: { selectedTab = 1 }) {
+            Button(action: { 
+                previousTab = selectedTab
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.9, blendDuration: 0)) {
+                    selectedTab = 1 
+                }
+                // Add haptic feedback
+                let impact = UIImpactFeedbackGenerator(style: .light)
+                impact.impactOccurred()
+            }) {
                 VStack(spacing: 4) {
                     Image(systemName: selectedTab == 1 ? "square.grid.2x2.fill" : "square.grid.2x2")
                         .font(.system(size: 20, weight: .medium))
@@ -1016,7 +1058,15 @@ struct DashboardView: View {
             Spacer()
             
             // Energy icon
-            Button(action: { selectedTab = 2 }) {
+            Button(action: { 
+                previousTab = selectedTab
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.9, blendDuration: 0)) {
+                    selectedTab = 2 
+                }
+                // Add haptic feedback
+                let impact = UIImpactFeedbackGenerator(style: .light)
+                impact.impactOccurred()
+            }) {
                 VStack(spacing: 4) {
                     Image(systemName: selectedTab == 2 ? "bolt.fill" : "bolt")
                         .font(.system(size: 20, weight: .medium))
@@ -1032,7 +1082,15 @@ struct DashboardView: View {
                         Spacer()
             
             // Profile icon
-            Button(action: { selectedTab = 3 }) {
+            Button(action: { 
+                previousTab = selectedTab
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.9, blendDuration: 0)) {
+                    selectedTab = 3 
+                }
+                // Add haptic feedback
+                let impact = UIImpactFeedbackGenerator(style: .light)
+                impact.impactOccurred()
+            }) {
                 VStack(spacing: 4) {
                     Image(systemName: selectedTab == 3 ? "person.fill" : "person")
                         .font(.system(size: 20, weight: .medium))
