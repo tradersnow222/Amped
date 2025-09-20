@@ -357,6 +357,11 @@ final class AppState: ObservableObject {
     
     /// Save current onboarding progress using advanced persistence
     func saveOnboardingProgress() {
+        // Only save progress if onboarding is not completed
+        guard !hasCompletedOnboarding else {
+            print("🔍 AppState: Skipping onboarding progress save - onboarding is completed")
+            return
+        }
         persistenceManager.saveOnboardingProgress(currentOnboardingStep, hasCompletedOnboarding: hasCompletedOnboarding)
     }
     
@@ -367,6 +372,11 @@ final class AppState: ObservableObject {
     
     /// Update current onboarding step and save progress
     func updateOnboardingStep(_ step: OnboardingStep) {
+        // Only update step if onboarding is not completed
+        guard !hasCompletedOnboarding else {
+            print("🔍 AppState: Skipping onboarding step update - onboarding is completed")
+            return
+        }
         currentOnboardingStep = step
         persistenceManager.saveOnboardingProgress(step, hasCompletedOnboarding: hasCompletedOnboarding)
     }
