@@ -9,6 +9,7 @@ import PhotosUI
 struct ProfileView: View {
     // MARK: - State Variables
     @StateObject private var viewModel = DashboardViewModel()
+    @ObservedObject private var profileManager = ProfileImageManager.shared
     @State private var showingEditProfile = false
     @State private var showingSettings = false
     
@@ -60,7 +61,7 @@ struct ProfileView: View {
             .background(Color.black)
             .navigationBarHidden(true)
             .navigationDestination(isPresented: $showingEditProfile) {
-                EditProfileView(viewModel: viewModel)
+                EditProfileView(viewModel: viewModel, profileManager: profileManager)
             }
         }
     }
@@ -78,19 +79,27 @@ struct ProfileView: View {
             HStack {
                 // Profile Picture
                 ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [.ampedGreen,.ampedGreen, .ampedYellow],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+                    if let profileImage = profileManager.profileImage {
+                        Image(uiImage: profileImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 80, height: 80)
+                            .clipShape(Circle())
+                    } else {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [.ampedGreen,.ampedGreen, .ampedYellow],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                        .frame(width: 80, height: 80)
-                    
-                    Image(systemName: "person")
-                        .font(.system(size: 32, weight: .medium))
-                        .foregroundColor(.white)
+                            .frame(width: 80, height: 80)
+                        
+                        Image(systemName: "person")
+                            .font(.system(size: 32, weight: .medium))
+                            .foregroundColor(.white)
+                    }
                 }
                 
                 Spacer().frame(width:12)
@@ -211,6 +220,7 @@ struct ProfileView: View {
 struct EditProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: DashboardViewModel
+    @ObservedObject var profileManager: ProfileImageManager
     @State private var name: String = ""
     @State private var age: String = ""
     @State private var selectedGender: UserProfile.Gender = .male
@@ -220,7 +230,6 @@ struct EditProfileView: View {
     @State private var selectedItem: PhotosPickerItem?
     @State private var showingCropper = false
     @State private var imageToCrop: UIImage?
-    @ObservedObject private var profileManager = ProfileImageManager.shared
     
     var body: some View {
         VStack(spacing: 24) {
