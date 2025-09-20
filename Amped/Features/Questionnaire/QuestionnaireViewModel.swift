@@ -918,7 +918,8 @@ final class QuestionnaireViewModel: ObservableObject {
             
             // Clear saved data immediately when starting fresh
             UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
-            UserDefaults.standard.removeObject(forKey: "userName")
+            // NOTE: userName is now cleared in OnboardingFlow with proper completion check
+            // UserDefaults.standard.removeObject(forKey: "userName")
         }
         
         // PERFORMANCE: Lazy birthdate initialization - defer expensive calendar operations

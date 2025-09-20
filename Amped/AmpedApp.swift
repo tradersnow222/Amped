@@ -217,6 +217,9 @@ final class AppState: ObservableObject {
             if let restoredStep = persistenceManager.loadOnboardingProgress(closureType: closureType) {
                 currentOnboardingStep = restoredStep
             }
+        } else {
+            // If onboarding is completed, set step to dashboard to prevent clearing userName
+            currentOnboardingStep = .dashboard
         }
         
         // Load saved mascot name
@@ -236,6 +239,11 @@ final class AppState: ObservableObject {
             await MainActor.run {
                 let wasCompleted = self.hasCompletedOnboarding
                 self.hasCompletedOnboarding = wasCompleted || profile.hasCompletedOnboarding
+                
+                // If onboarding is now marked as completed, ensure currentOnboardingStep is set correctly
+                if self.hasCompletedOnboarding && self.currentOnboardingStep == .welcome {
+                    self.currentOnboardingStep = .dashboard
+                }
             }
         }
     }
@@ -281,6 +289,7 @@ final class AppState: ObservableObject {
     /// Mark onboarding as completed and persist to UserDefaults
     func completeOnboarding() {
         hasCompletedOnboarding = true
+        currentOnboardingStep = .dashboard  // Set to dashboard to prevent userName clearing
         saveOnboardingState()
     }
     

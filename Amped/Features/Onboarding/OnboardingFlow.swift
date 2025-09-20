@@ -283,17 +283,21 @@ struct OnboardingFlow: View {
             // ULTRA-PERFORMANCE FIX: Minimize onAppear work to prevent UI blocking
             // Move ALL expensive operations to background with lower priority
             Task.detached(priority: .utility) {
-                // Only clear UserDefaults if starting fresh (at welcome step)
+                // Only clear UserDefaults if starting fresh (at welcome step) AND onboarding is not completed
                 let currentStep = await MainActor.run { appState.currentOnboardingStep }
-                print("🔍 OnboardingFlow: currentStep = \(currentStep)")
-                if currentStep == .welcome {
-                    print("🚨 OnboardingFlow: CLEARING userName because currentStep is .welcome!")
+                let isCompleted = await MainActor.run { appState.hasCompletedOnboarding }
+                print("🔍 OnboardingFlow: currentStep = \(currentStep), isCompleted = \(isCompleted)")
+                
+                if currentStep == .welcome && !isCompleted {
+                    print("🚨 OnboardingFlow: CLEARING userName because currentStep is .welcome and onboarding not completed!")
                     // Clear UserDefaults in background
                     UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
                     UserDefaults.standard.removeObject(forKey: "userName")
                     
                     // Move expensive clearAllData to background with even lower priority
                     QuestionnaireManager().clearAllData()
+                } else {
+                    print("✅ OnboardingFlow: PRESERVING userName because onboarding is completed or not at welcome step")
                 }
             }
         }
