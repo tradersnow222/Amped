@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		67BCC6972E7EF01A00612584 /* SwiftyCrop in Frameworks */ = {isa = PBXBuildFile; productRef = 67BCC6962E7EF01A00612584 /* SwiftyCrop */; };
 		67FC7AFD2E7B71D300B9109D /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 67FC7AFC2E7B71D300B9109D /* RevenueCat */; };
 		67FC7B012E7B803B00B9109D /* Amped 2.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 67FC7B002E7B803B00B9109D /* Amped 2.storekit */; };
 /* End PBXBuildFile section */
@@ -58,6 +59,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				67BCC6972E7EF01A00612584 /* SwiftyCrop in Frameworks */,
 				67FC7AFD2E7B71D300B9109D /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -122,6 +124,7 @@
 			name = Amped;
 			packageProductDependencies = (
 				67FC7AFC2E7B71D300B9109D /* RevenueCat */,
+				67BCC6962E7EF01A00612584 /* SwiftyCrop */,
 			);
 			productName = Amped;
 			productReference = C106F20F2D90ADC6001E151A /* Amped.app */;
@@ -207,6 +210,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				67FC7AFB2E7B71D300B9109D /* XCRemoteSwiftPackageReference "purchases-ios" */,
+				67BCC6952E7EF01A00612584 /* XCRemoteSwiftPackageReference "SwiftyCrop" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C106F2102D90ADC6001E151A /* Products */;
@@ -613,6 +617,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		67BCC6952E7EF01A00612584 /* XCRemoteSwiftPackageReference "SwiftyCrop" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/benedom/SwiftyCrop";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
 		67FC7AFB2E7B71D300B9109D /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/RevenueCat/purchases-ios";
@@ -624,6 +636,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		67BCC6962E7EF01A00612584 /* SwiftyCrop */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 67BCC6952E7EF01A00612584 /* XCRemoteSwiftPackageReference "SwiftyCrop" */;
+			productName = SwiftyCrop;
+		};
 		67FC7AFC2E7B71D300B9109D /* RevenueCat */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 67FC7AFB2E7B71D300B9109D /* XCRemoteSwiftPackageReference "purchases-ios" */;

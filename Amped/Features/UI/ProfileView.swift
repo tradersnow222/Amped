@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import PhotosUI
 
 // Import required models and view models
 // Note: These will be available at runtime from the main app bundle
@@ -215,6 +216,11 @@ struct EditProfileView: View {
     @State private var selectedGender: UserProfile.Gender = .male
     @State private var showingGenderPicker = false
     @State private var showingAgePicker = false
+    @State private var showingImagePicker = false
+    @State private var selectedItem: PhotosPickerItem?
+    @State private var showingCropper = false
+    @State private var imageToCrop: UIImage?
+    @ObservedObject private var profileManager = ProfileImageManager.shared
     
     var body: some View {
         VStack(spacing: 24) {
@@ -265,40 +271,79 @@ struct EditProfileView: View {
     private var profilePictureSection: some View {
         VStack(spacing: 16) {
             ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [.ampedGreen, .ampedYellow],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                // Profile image or default avatar
+                if let profileImage = profileManager.profileImage {
+                    Image(uiImage: profileImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 100, height: 100)
+                        .clipShape(Circle())
+                } else {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.ampedGreen, .ampedYellow],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-                    .frame(width: 100, height: 100)
+                        .frame(width: 100, height: 100)
+                        .overlay(
+                            Image(systemName: "person")
+                                .font(.system(size: 40, weight: .medium))
+                                .foregroundColor(.white)
+                        )
+                }
                 
-                Image(systemName: "person")
-                    .font(.system(size: 40, weight: .medium))
-                    .foregroundColor(.white)
-                
-                // Edit Button - anchored to avatar
-//                VStack {
-//                    Spacer()
-//                    HStack {
-//                        Spacer()
-//                        Button(action: {
-//                            // Handle profile picture edit
-//                        }) {
-//                            RoundedRectangle(cornerRadius: 6)
-//                                .fill(Color.white)
-//                                .frame(width: 24, height: 24)
-//                                .overlay(
-//                                    Image(systemName: "pencil")
-//                                        .font(.system(size: 12, weight: .medium))
-//                                        .foregroundColor(.black)
-//                                )
-//                        }
-//                        .offset(x: 8, y: 8)
-//                    }
-//                }
+                // Edit Button - pencil icon at bottom right corner
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 32, height: 32)
+                            .overlay(
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.black)
+                            )
+                            .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
+                    }
+                }
+            }
+            .frame(width: 100, height: 100)
+            .onTapGesture {
+                showingImagePicker = true
+            }
+        }
+        .photosPicker(isPresented: $showingImagePicker, selection: $selectedItem, matching: .images)
+        .sheet(isPresented: $showingCropper) {
+            if let imageToCrop = imageToCrop {
+                ImageCropperView(
+                    image: imageToCrop,
+                    onCrop: { croppedImage in
+                        profileManager.saveProfileImage(croppedImage)
+                        showingCropper = false
+                        self.imageToCrop = nil
+                    },
+                    onCancel: {
+                        showingCropper = false
+                        self.imageToCrop = nil
+                    }
+                )
+            }
+        }
+        .onChange(of: selectedItem) { newItem in
+            Task {
+                if let newItem = newItem,
+                   let data = try? await newItem.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    await MainActor.run {
+                        imageToCrop = image
+                        showingCropper = true
+                    }
+                }
             }
         }
     }
