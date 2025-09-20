@@ -115,7 +115,9 @@ struct ProfileImageView: View {
     
     private func getUserName() -> String {
         // Single source of truth: UserDefaults from onboarding questionnaire
-        return UserDefaults.standard.string(forKey: "userName") ?? "User"
+        let userName = UserDefaults.standard.string(forKey: "userName") ?? "User"
+        print("🔍 ProfileImageView.getUserName(): Retrieved userName = '\(userName)'")
+        return userName
     }
 }
 

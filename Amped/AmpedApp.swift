@@ -200,6 +200,7 @@ final class AppState: ObservableObject {
     private func loadOnboardingStateSynchronously() {
         // Check both UserDefaults keys for onboarding completion
         let hasCompletedFromDefaults = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+        print("🔍 AppState: Loading onboarding state - hasCompletedFromDefaults = \(hasCompletedFromDefaults)")
         
         // Load app launch count
         appLaunchCount = UserDefaults.standard.integer(forKey: "appLaunchCount")
@@ -210,16 +211,20 @@ final class AppState: ObservableObject {
         
         // Set hasCompletedOnboarding immediately (UserProfile check can be deferred)
         hasCompletedOnboarding = hasCompletedFromDefaults
+        print("🔍 AppState: Set hasCompletedOnboarding = \(hasCompletedOnboarding)")
         
         // CRITICAL: Load onboarding progress using advanced persistence
         if !hasCompletedOnboarding {
+            print("🔍 AppState: Onboarding not completed, loading progress...")
             let closureType = persistenceManager.detectClosureType()
             if let restoredStep = persistenceManager.loadOnboardingProgress(closureType: closureType) {
                 currentOnboardingStep = restoredStep
+                print("🔍 AppState: Restored onboarding step = \(restoredStep)")
             }
         } else {
             // If onboarding is completed, set step to dashboard to prevent clearing userName
             currentOnboardingStep = .dashboard
+            print("🔍 AppState: Onboarding completed, set currentOnboardingStep = .dashboard")
         }
         
         // Load saved mascot name
@@ -262,6 +267,7 @@ final class AppState: ObservableObject {
     
     /// Save onboarding completion state to UserDefaults
     private func saveOnboardingState() {
+        print("🔍 AppState: saveOnboardingState() - saving hasCompletedOnboarding = \(hasCompletedOnboarding)")
         UserDefaults.standard.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding")
         
         // Also update UserProfile if it exists
@@ -270,7 +276,10 @@ final class AppState: ObservableObject {
             profile.completeOnboarding()
             if let updatedData = try? JSONEncoder().encode(profile) {
                 UserDefaults.standard.set(updatedData, forKey: "user_profile")
+                print("🔍 AppState: Updated UserProfile with onboarding completion")
             }
+        } else {
+            print("🔍 AppState: No UserProfile found to update")
         }
     }
     
@@ -288,9 +297,12 @@ final class AppState: ObservableObject {
     
     /// Mark onboarding as completed and persist to UserDefaults
     func completeOnboarding() {
+        print("🔍 AppState: completeOnboarding() called")
         hasCompletedOnboarding = true
         currentOnboardingStep = .dashboard  // Set to dashboard to prevent userName clearing
+        print("🔍 AppState: Set hasCompletedOnboarding = \(hasCompletedOnboarding), currentOnboardingStep = \(currentOnboardingStep)")
         saveOnboardingState()
+        print("🔍 AppState: saveOnboardingState() completed")
     }
     
     /// Set authentication status and persist to UserDefaults

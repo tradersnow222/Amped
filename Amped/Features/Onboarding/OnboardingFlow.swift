@@ -295,7 +295,11 @@ struct OnboardingFlow: View {
                     UserDefaults.standard.removeObject(forKey: "userName")
                     
                     // Move expensive clearAllData to background with even lower priority
-                    QuestionnaireManager().clearAllData()
+                    // Only clear data if onboarding is not completed
+                    let hasCompletedOnboarding = await MainActor.run { appState.hasCompletedOnboarding }
+                    if !hasCompletedOnboarding {
+                        QuestionnaireManager().clearAllData()
+                    }
                 } else {
                     print("✅ OnboardingFlow: PRESERVING userName because onboarding is completed or not at welcome step")
                 }

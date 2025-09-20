@@ -142,7 +142,15 @@ final class OnboardingPersistenceManager: ObservableObject {
         
         // Also clear related onboarding data
         UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
-        UserDefaults.standard.removeObject(forKey: "userName")
+        
+        // Only clear userName if onboarding is not completed
+        let hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+        if !hasCompletedOnboarding {
+            UserDefaults.standard.removeObject(forKey: "userName")
+            logger.info("Cleared userName because onboarding is not completed")
+        } else {
+            logger.info("Preserved userName because onboarding is completed")
+        }
         
         logger.info("Cleared all onboarding progress")
     }
