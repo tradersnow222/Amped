@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import PhotosUI
+import UIKit
 
 // Import required models and view models
 // Note: These will be available at runtime from the main app bundle
@@ -10,8 +11,20 @@ struct ProfileView: View {
     // MARK: - State Variables
     @StateObject private var viewModel = DashboardViewModel()
     @ObservedObject private var profileManager = ProfileImageManager.shared
+    @StateObject private var questionnaireManager = QuestionnaireManager()
     @State private var showingEditProfile = false
     @State private var showingSettings = false
+    
+    // Edit questionnaire metrics states
+    @State private var showingNutritionEdit = false
+    @State private var showingSmokingEdit = false
+    @State private var showingAlcoholEdit = false
+    @State private var showingSocialEdit = false
+    @State private var showingStressEdit = false
+    
+    // Edit height and weight states
+    @State private var showingHeightEdit = false
+    @State private var showingWeightEdit = false
     
     // MARK: - Computed Properties
     private var userProfile: UserProfile {
@@ -62,6 +75,33 @@ struct ProfileView: View {
             .navigationBarHidden(true)
             .navigationDestination(isPresented: $showingEditProfile) {
                 EditProfileView(viewModel: viewModel, profileManager: profileManager)
+            }
+            .onAppear {
+                // Load questionnaire data when view appears
+                Task {
+                    await questionnaireManager.loadDataIfNeeded()
+                }
+            }
+            .sheet(isPresented: $showingNutritionEdit) {
+                NutritionEditView(questionnaireManager: questionnaireManager)
+            }
+            .sheet(isPresented: $showingSmokingEdit) {
+                SmokingEditView(questionnaireManager: questionnaireManager)
+            }
+            .sheet(isPresented: $showingAlcoholEdit) {
+                AlcoholEditView(questionnaireManager: questionnaireManager)
+            }
+            .sheet(isPresented: $showingSocialEdit) {
+                SocialConnectionsEditView(questionnaireManager: questionnaireManager)
+            }
+            .sheet(isPresented: $showingStressEdit) {
+                StressLevelEditView(questionnaireManager: questionnaireManager)
+            }
+            .sheet(isPresented: $showingHeightEdit) {
+                HeightEditView(viewModel: viewModel)
+            }
+            .sheet(isPresented: $showingWeightEdit) {
+                WeightEditView(viewModel: viewModel)
             }
         }
     }
@@ -136,6 +176,67 @@ struct ProfileView: View {
         )
     }
     
+    // MARK: - Questionnaire Metric Helpers
+    
+    private func formatNutritionQuality(_ value: Double?) -> (displayText: String, color: Color) {
+        guard let value = value else { return ("Not Set", .gray) }
+        
+        switch value {
+        case 8.0...10.0: return ("Good (\(Int(value))/10)", .green)
+        case 5.0..<8.0: return ("Moderate (\(Int(value))/10)", .yellow)
+        case 1.0..<5.0: return ("Poor (\(Int(value))/10)", .orange)
+        default: return ("Not Set", .gray)
+        }
+    }
+    
+    private func formatSmokingStatus(_ value: Double?) -> (displayText: String, color: Color) {
+        guard let value = value else { return ("Not Set", .gray) }
+        
+        switch value {
+        case 10.0: return ("Never", .green)
+        case 7.0: return ("Former", .yellow)
+        case 3.0: return ("Occasionally", .orange)
+        case 1.0: return ("Daily", .red)
+        default: return ("Not Set", .gray)
+        }
+    }
+    
+    private func formatAlcoholConsumption(_ value: Double?) -> (displayText: String, color: Color) {
+        guard let value = value else { return ("Not Set", .gray) }
+        
+        switch value {
+        case 8.0...10.0: return ("Never", .green)
+        case 4.0..<8.0: return ("Occasionally", .yellow)
+        case 1.5..<4.0: return ("Several Times/Week", .orange)
+        case 1.0..<1.5: return ("Daily/Heavy", .red)
+        default: return ("Not Set", .gray)
+        }
+    }
+    
+    private func formatSocialConnections(_ value: Double?) -> (displayText: String, color: Color) {
+        guard let value = value else { return ("Not Set", .gray) }
+        
+        switch value {
+        case 8.0...10.0: return ("Strong (\(Int(value))/10)", .green)
+        case 5.0..<8.0: return ("Moderate (\(Int(value))/10)", .yellow)
+        case 2.0..<5.0: return ("Limited (\(Int(value))/10)", .orange)
+        case 1.0..<2.0: return ("Isolated (\(Int(value))/10)", .red)
+        default: return ("Not Set", .gray)
+        }
+    }
+    
+    private func formatStressLevel(_ value: Double?) -> (displayText: String, color: Color) {
+        guard let value = value else { return ("Not Set", .gray) }
+        
+        switch value {
+        case 1.0..<3.0: return ("Low (\(Int(value))/10)", .green)
+        case 3.0..<6.0: return ("Moderate (\(Int(value))/10)", .yellow)
+        case 6.0..<9.0: return ("High (\(Int(value))/10)", .orange)
+        case 9.0...10.0: return ("Very High (\(Int(value))/10)", .red)
+        default: return ("Not Set", .gray)
+        }
+    }
+    
     // MARK: - Health Metrics Section
     
     private var healthMetricsSection: some View {
@@ -145,7 +246,10 @@ struct ProfileView: View {
                 healthMetricRow(
                     title: "Height",
                     answer: String(format: "%.1f cm", height),
-                    color: .green
+                    color: .green,
+                    onTap: {
+                        showingHeightEdit = true
+                    }
                 )
             }
             
@@ -154,36 +258,73 @@ struct ProfileView: View {
                 healthMetricRow(
                     title: "Weight",
                     answer: String(format: "%.1f kg", weight),
-                    color: .green
+                    color: .green,
+                    onTap: {
+                        showingWeightEdit = true
+                    }
                 )
             }
             
-            // HealthKit Status
+            // Nutrition Quality
+            let nutrition = formatNutritionQuality(questionnaireManager.questionnaireData?.nutritionQuality)
             healthMetricRow(
-                title: "HealthKit Access",
-                answer: userProfile.hasGrantedHealthKitPermissions ? "Connected" : "Not Connected",
-                color: userProfile.hasGrantedHealthKitPermissions ? .green : .orange
+                title: "Nutrition Quality",
+                answer: nutrition.displayText,
+                color: nutrition.color,
+                onTap: {
+                    showingNutritionEdit = true
+                }
             )
             
-            // Subscription Status
+            // Smoking Status
+            let smoking = formatSmokingStatus(questionnaireManager.questionnaireData?.smokingStatus)
             healthMetricRow(
-                title: "Subscription",
-                answer: userProfile.isSubscribed ? "Active" : "Free Plan",
-                color: userProfile.isSubscribed ? .green : .orange
+                title: "Smoking Status",
+                answer: smoking.displayText,
+                color: smoking.color,
+                onTap: {
+                    showingSmokingEdit = true
+                }
             )
             
-            // Onboarding Status
+            // Alcohol Consumption
+            let alcohol = formatAlcoholConsumption(questionnaireManager.questionnaireData?.alcoholConsumption)
             healthMetricRow(
-                title: "Setup Complete",
-                answer: userProfile.hasCompletedOnboarding ? "Complete" : "In Progress",
-                color: userProfile.hasCompletedOnboarding ? .green : .orange
+                title: "Alcohol Consumption",
+                answer: alcohol.displayText,
+                color: alcohol.color,
+                onTap: {
+                    showingAlcoholEdit = true
+                }
+            )
+            
+            // Social Connections
+            let social = formatSocialConnections(questionnaireManager.questionnaireData?.socialConnectionsQuality)
+            healthMetricRow(
+                title: "Social Connections",
+                answer: social.displayText,
+                color: social.color,
+                onTap: {
+                    showingSocialEdit = true
+                }
+            )
+            
+            // Stress Level
+            let stress = formatStressLevel(questionnaireManager.questionnaireData?.stressLevel)
+            healthMetricRow(
+                title: "Stress Level",
+                answer: stress.displayText,
+                color: stress.color,
+                onTap: {
+                    showingStressEdit = true
+                }
             )
         }
     }
     
     // MARK: - Health Metric Row
     
-    private func healthMetricRow(title: String, answer: String, value: Int? = nil, maxValue: Int? = nil, color: Color) -> some View {
+    private func healthMetricRow(title: String, answer: String, value: Int? = nil, maxValue: Int? = nil, color: Color, onTap: (() -> Void)? = nil) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -212,6 +353,9 @@ struct ProfileView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
         )
+        .onTapGesture {
+            onTap?()
+        }
     }
 }
 
@@ -570,6 +714,772 @@ struct ProfileGenderPickerView: View {
             .onAppear {
                 tempGender = selectedGender
             }
+        }
+    }
+}
+
+// MARK: - Edit Views for Questionnaire Metrics
+
+struct NutritionEditView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var questionnaireManager: QuestionnaireManager
+    @State private var selectedNutrition: QuestionnaireViewModel.NutritionQuality?
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                // Title
+                VStack(spacing: 8) {
+                    Text("Nutrition Quality")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Text("How would you describe your overall nutrition quality?")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+                }
+                .padding(.top, 20)
+                
+                // Options
+                VStack(spacing: 16) {
+                    ForEach(QuestionnaireViewModel.NutritionQuality.allCases, id: \.self) { nutrition in
+                        Button(action: {
+                            selectedNutrition = nutrition
+                        }) {
+                            VStack(alignment: .center, spacing: 4) {
+                                Text(nutrition.mainText)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                
+                                Text(nutrition.subText)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(selectedNutrition == nutrition ? .white.opacity(0.8) : .gray)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(
+                                        selectedNutrition == nutrition ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color.white.opacity(0.2), Color.white.opacity(0.1)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer()
+            }
+            .background(Color.black)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.white)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        if let selected = selectedNutrition {
+                            saveNutritionQuality(selected)
+                        }
+                        dismiss()
+                    }
+                    .foregroundColor(selectedNutrition != nil ? Color("ampedGreen") : .gray)
+                    .disabled(selectedNutrition == nil)
+                }
+            }
+        }
+        .onAppear {
+            // Set current selection if available
+            if let currentData = questionnaireManager.questionnaireData?.nutritionQuality {
+                selectedNutrition = QuestionnaireViewModel.NutritionQuality.allCases.first { $0.nutritionValue == currentData }
+            }
+        }
+    }
+    
+    private func saveNutritionQuality(_ nutrition: QuestionnaireViewModel.NutritionQuality) {
+        // Update the questionnaire data
+        Task {
+            await questionnaireManager.updateNutritionQuality(nutrition)
+        }
+    }
+}
+
+struct SmokingEditView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var questionnaireManager: QuestionnaireManager
+    @State private var selectedSmoking: QuestionnaireViewModel.SmokingStatus?
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                // Title
+                VStack(spacing: 8) {
+                    Text("Smoking Status")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Text("What is your current smoking status?")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+                }
+                .padding(.top, 20)
+                
+                // Options
+                VStack(spacing: 16) {
+                    ForEach(QuestionnaireViewModel.SmokingStatus.allCases, id: \.self) { status in
+                        Button(action: {
+                            selectedSmoking = status
+                        }) {
+                            VStack(alignment: .center, spacing: 4) {
+                                Text(status.mainText)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                
+                                if !status.subText.isEmpty {
+                                    Text(status.subText)
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(selectedSmoking == status ? .white.opacity(0.8) : .gray)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, status.subText.isEmpty ? 18 : 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(
+                                        selectedSmoking == status ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color.white.opacity(0.2), Color.white.opacity(0.1)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer()
+            }
+            .background(Color.black)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.white)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        if let selected = selectedSmoking {
+                            saveSmokingStatus(selected)
+                        }
+                        dismiss()
+                    }
+                    .foregroundColor(selectedSmoking != nil ? Color("ampedGreen") : .gray)
+                    .disabled(selectedSmoking == nil)
+                }
+            }
+        }
+        .onAppear {
+            // Set current selection if available
+            if let currentData = questionnaireManager.questionnaireData?.smokingStatus {
+                selectedSmoking = QuestionnaireViewModel.SmokingStatus.allCases.first { $0.smokingValue == currentData }
+            }
+        }
+    }
+    
+    private func saveSmokingStatus(_ status: QuestionnaireViewModel.SmokingStatus) {
+        // Update the questionnaire data
+        Task {
+            await questionnaireManager.updateSmokingStatus(status)
+        }
+    }
+}
+
+struct AlcoholEditView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var questionnaireManager: QuestionnaireManager
+    @State private var selectedAlcohol: QuestionnaireViewModel.AlcoholFrequency?
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                // Title
+                VStack(spacing: 8) {
+                    Text("Alcohol Consumption")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Text("How often do you consume alcohol?")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+                }
+                .padding(.top, 20)
+                
+                // Options
+                VStack(spacing: 16) {
+                    ForEach(QuestionnaireViewModel.AlcoholFrequency.allCases, id: \.self) { frequency in
+                        Button(action: {
+                            selectedAlcohol = frequency
+                        }) {
+                            VStack(alignment: .center, spacing: 4) {
+                                Text(frequency.mainText)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+
+                                if !frequency.subText.isEmpty {
+                                    Text(frequency.subText)
+                                        .font(.system(size: 14, weight: .regular))
+                                        .foregroundColor(selectedAlcohol == frequency ? .white.opacity(0.8) : .gray)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, frequency.subText.isEmpty ? 18 : 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(
+                                        selectedAlcohol == frequency ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color.white.opacity(0.2), Color.white.opacity(0.1)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer()
+            }
+            .background(Color.black)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.white)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        if let selected = selectedAlcohol {
+                            saveAlcoholFrequency(selected)
+                        }
+                        dismiss()
+                    }
+                    .foregroundColor(selectedAlcohol != nil ? Color("ampedGreen") : .gray)
+                    .disabled(selectedAlcohol == nil)
+                }
+            }
+        }
+        .onAppear {
+            // Set current selection if available
+            if let currentData = questionnaireManager.questionnaireData?.alcoholConsumption {
+                selectedAlcohol = QuestionnaireViewModel.AlcoholFrequency.allCases.first { $0.alcoholValue == currentData }
+            }
+        }
+    }
+    
+    private func saveAlcoholFrequency(_ frequency: QuestionnaireViewModel.AlcoholFrequency) {
+        // Update the questionnaire data
+        Task {
+            await questionnaireManager.updateAlcoholFrequency(frequency)
+        }
+    }
+}
+
+struct SocialConnectionsEditView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var questionnaireManager: QuestionnaireManager
+    @State private var selectedSocial: QuestionnaireViewModel.SocialConnectionsQuality?
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                // Title
+                VStack(spacing: 8) {
+                    Text("Social Connections")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Text("How would you describe the quality of your social connections?")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+                }
+                .padding(.top, 20)
+                
+                // Options
+                VStack(spacing: 16) {
+                    ForEach(QuestionnaireViewModel.SocialConnectionsQuality.allCases, id: \.self) { quality in
+                        Button(action: {
+                            selectedSocial = quality
+                        }) {
+                            VStack(alignment: .center, spacing: 4) {
+                                Text(quality.mainText)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                
+                                Text(quality.subText)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(selectedSocial == quality ? .white.opacity(0.8) : .gray)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(
+                                        selectedSocial == quality ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color.white.opacity(0.2), Color.white.opacity(0.1)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer()
+            }
+            .background(Color.black)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.white)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        if let selected = selectedSocial {
+                            saveSocialConnections(selected)
+                        }
+                        dismiss()
+                    }
+                    .foregroundColor(selectedSocial != nil ? Color("ampedGreen") : .gray)
+                    .disabled(selectedSocial == nil)
+                }
+            }
+        }
+        .onAppear {
+            // Set current selection if available
+            if let currentData = questionnaireManager.questionnaireData?.socialConnectionsQuality {
+                selectedSocial = QuestionnaireViewModel.SocialConnectionsQuality.allCases.first { $0.socialValue == currentData }
+            }
+        }
+    }
+    
+    private func saveSocialConnections(_ quality: QuestionnaireViewModel.SocialConnectionsQuality) {
+        // Update the questionnaire data
+        Task {
+            await questionnaireManager.updateSocialConnections(quality)
+        }
+    }
+}
+
+struct StressLevelEditView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var questionnaireManager: QuestionnaireManager
+    @State private var selectedStress: QuestionnaireViewModel.StressLevel?
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                // Title
+                VStack(spacing: 8) {
+                    Text("Stress Level")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Text("How would you describe your typical stress level?")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+                }
+                .padding(.top, 20)
+                
+                // Options
+                VStack(spacing: 16) {
+                    ForEach(QuestionnaireViewModel.StressLevel.allCases, id: \.self) { level in
+                        Button(action: {
+                            selectedStress = level
+                        }) {
+                            VStack(alignment: .center, spacing: 4) {
+                                Text(level.mainText)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                
+                                Text(level.subText)
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(selectedStress == level ? .white.opacity(0.8) : .gray)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 100)
+                                    .fill(
+                                        selectedStress == level ? 
+                                        LinearGradient(
+                                            colors: [Color("ampedGreen"), Color("ampedYellow")],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        ) :
+                                        LinearGradient(
+                                            colors: [Color.black, Color.black],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 100)
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [Color.white.opacity(0.2), Color.white.opacity(0.1)],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 1
+                                            )
+                                    )
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer()
+            }
+            .background(Color.black)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.white)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        if let selected = selectedStress {
+                            saveStressLevel(selected)
+                        }
+                        dismiss()
+                    }
+                    .foregroundColor(selectedStress != nil ? Color("ampedGreen") : .gray)
+                    .disabled(selectedStress == nil)
+                }
+            }
+        }
+        .onAppear {
+            // Set current selection if available
+            if let currentData = questionnaireManager.questionnaireData?.stressLevel {
+                selectedStress = QuestionnaireViewModel.StressLevel.allCases.first { $0.stressValue == currentData }
+            }
+        }
+    }
+    
+    private func saveStressLevel(_ level: QuestionnaireViewModel.StressLevel) {
+        // Update the questionnaire data
+        Task {
+            await questionnaireManager.updateStressLevel(level)
+        }
+    }
+}
+
+// MARK: - Height and Weight Edit Views
+
+struct HeightEditView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: DashboardViewModel
+    @State private var heightText: String = ""
+    @FocusState private var isTextFieldFocused: Bool
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                // Title
+                VStack(spacing: 8) {
+                    Text("Height")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Text("Enter your height in centimeters")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+                }
+                .padding(.top, 20)
+                
+                // Input Field
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Height (cm)")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                    
+                    TextField("Enter height", text: $heightText)
+                        .keyboardType(.decimalPad)
+                        .focused($isTextFieldFocused)
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
+                        )
+                        .foregroundColor(.white)
+                        .font(.system(size: 16, weight: .medium))
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer()
+            }
+            .background(Color.black)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.white)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        saveHeight()
+                        dismiss()
+                    }
+                    .foregroundColor(isValidHeight ? Color("ampedGreen") : .gray)
+                    .disabled(!isValidHeight)
+                }
+            }
+        }
+        .onAppear {
+            // Set current height if available
+            if let height = viewModel.userProfile.height {
+                heightText = String(format: "%.1f", height)
+            }
+            // Focus the text field
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isTextFieldFocused = true
+            }
+        }
+    }
+    
+    private var isValidHeight: Bool {
+        guard let height = Double(heightText), height > 0, height < 300 else {
+            return false
+        }
+        return true
+    }
+    
+    private func saveHeight() {
+        guard let height = Double(heightText), height > 0, height < 300 else { return }
+        
+        // Update the user profile
+        Task {
+            await viewModel.updateUserProfile(height: height)
+        }
+    }
+}
+
+struct WeightEditView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: DashboardViewModel
+    @State private var weightText: String = ""
+    @FocusState private var isTextFieldFocused: Bool
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                // Title
+                VStack(spacing: 8) {
+                    Text("Weight")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Text("Enter your weight in kilograms")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+                }
+                .padding(.top, 20)
+                
+                // Input Field
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Weight (kg)")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                    
+                    TextField("Enter weight", text: $weightText)
+                        .keyboardType(.decimalPad)
+                        .focused($isTextFieldFocused)
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
+                        )
+                        .foregroundColor(.white)
+                        .font(.system(size: 16, weight: .medium))
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer()
+            }
+            .background(Color.black)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.white)
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        saveWeight()
+                        dismiss()
+                    }
+                    .foregroundColor(isValidWeight ? Color("ampedGreen") : .gray)
+                    .disabled(!isValidWeight)
+                }
+            }
+        }
+        .onAppear {
+            // Set current weight if available
+            if let weight = viewModel.userProfile.weight {
+                weightText = String(format: "%.1f", weight)
+            }
+            // Focus the text field
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isTextFieldFocused = true
+            }
+        }
+    }
+    
+    private var isValidWeight: Bool {
+        guard let weight = Double(weightText), weight > 0, weight < 500 else {
+            return false
+        }
+        return true
+    }
+    
+    private func saveWeight() {
+        guard let weight = Double(weightText), weight > 0, weight < 500 else { return }
+        
+        // Update the user profile
+        Task {
+            await viewModel.updateUserProfile(weight: weight)
         }
     }
 }

@@ -1465,6 +1465,37 @@ final class DashboardViewModel: ObservableObject {
         }
     }
     
+    /// Update user profile height and weight
+    func updateUserProfile(height: Double? = nil, weight: Double? = nil) {
+        logger.info("🔄 Updating user profile - height: \(height?.description ?? "nil"), weight: \(weight?.description ?? "nil")")
+        
+        // Create updated user profile to trigger @Published updates
+        var updatedProfile = userProfile
+        
+        if let height = height {
+            updatedProfile.height = height
+        }
+        
+        if let weight = weight {
+            updatedProfile.weight = weight
+        }
+        
+        updatedProfile.lastActive = Date()
+        
+        // Update the published property to trigger UI updates (this will notify all observers)
+        DispatchQueue.main.async { [weak self] in
+            self?.userProfile = updatedProfile
+        }
+        
+        // Save to UserDefaults
+        if let encoded = try? JSONEncoder().encode(updatedProfile) {
+            UserDefaults.standard.set(encoded, forKey: "userProfile")
+            logger.info("✅ User profile height/weight updated and saved to UserDefaults")
+        } else {
+            logger.error("❌ Failed to encode user profile for saving")
+        }
+    }
+    
     /// Cleanup when view model is deallocated
     deinit {
         // Direct timer cleanup is synchronous and safe in deinit

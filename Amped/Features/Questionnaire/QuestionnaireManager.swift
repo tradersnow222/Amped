@@ -142,6 +142,212 @@ final class QuestionnaireManager: ObservableObject {
     
     // MARK: - Public Methods
     
+    /// Update individual questionnaire metrics
+    func updateNutritionQuality(_ nutrition: QuestionnaireViewModel.NutritionQuality) async {
+        await MainActor.run {
+            if questionnaireData == nil {
+                questionnaireData = QuestionnaireData(
+                    deviceTrackingStatus: nil,
+                    lifeMotivation: nil,
+                    desiredDailyLifespanGainMinutes: nil,
+                    nutritionQuality: nutrition.nutritionValue,
+                    smokingStatus: nil,
+                    alcoholConsumption: nil,
+                    socialConnectionsQuality: nil,
+                    stressLevel: nil,
+                    emotionalSensitivity: nil,
+                    framingComfortScore: nil,
+                    urgencyResponseScore: nil,
+                    bloodPressureCategory: nil,
+                    savedDate: Date()
+                )
+            } else {
+                var updatedData = questionnaireData!
+                updatedData = QuestionnaireData(
+                    deviceTrackingStatus: updatedData.deviceTrackingStatus,
+                    lifeMotivation: updatedData.lifeMotivation,
+                    desiredDailyLifespanGainMinutes: updatedData.desiredDailyLifespanGainMinutes,
+                    nutritionQuality: nutrition.nutritionValue,
+                    smokingStatus: updatedData.smokingStatus,
+                    alcoholConsumption: updatedData.alcoholConsumption,
+                    socialConnectionsQuality: updatedData.socialConnectionsQuality,
+                    stressLevel: updatedData.stressLevel,
+                    emotionalSensitivity: updatedData.emotionalSensitivity,
+                    framingComfortScore: updatedData.framingComfortScore,
+                    urgencyResponseScore: updatedData.urgencyResponseScore,
+                    bloodPressureCategory: updatedData.bloodPressureCategory,
+                    savedDate: Date()
+                )
+                questionnaireData = updatedData
+            }
+            saveQuestionnaireData(questionnaireData!)
+        }
+    }
+    
+    func updateSmokingStatus(_ status: QuestionnaireViewModel.SmokingStatus) async {
+        await MainActor.run {
+            if questionnaireData == nil {
+                questionnaireData = QuestionnaireData(
+                    deviceTrackingStatus: nil,
+                    lifeMotivation: nil,
+                    desiredDailyLifespanGainMinutes: nil,
+                    nutritionQuality: nil,
+                    smokingStatus: status.smokingValue,
+                    alcoholConsumption: nil,
+                    socialConnectionsQuality: nil,
+                    stressLevel: nil,
+                    emotionalSensitivity: nil,
+                    framingComfortScore: nil,
+                    urgencyResponseScore: nil,
+                    bloodPressureCategory: nil,
+                    savedDate: Date()
+                )
+            } else {
+                var updatedData = questionnaireData!
+                updatedData = QuestionnaireData(
+                    deviceTrackingStatus: updatedData.deviceTrackingStatus,
+                    lifeMotivation: updatedData.lifeMotivation,
+                    desiredDailyLifespanGainMinutes: updatedData.desiredDailyLifespanGainMinutes,
+                    nutritionQuality: updatedData.nutritionQuality,
+                    smokingStatus: status.smokingValue,
+                    alcoholConsumption: updatedData.alcoholConsumption,
+                    socialConnectionsQuality: updatedData.socialConnectionsQuality,
+                    stressLevel: updatedData.stressLevel,
+                    emotionalSensitivity: updatedData.emotionalSensitivity,
+                    framingComfortScore: updatedData.framingComfortScore,
+                    urgencyResponseScore: updatedData.urgencyResponseScore,
+                    bloodPressureCategory: updatedData.bloodPressureCategory,
+                    savedDate: Date()
+                )
+                questionnaireData = updatedData
+            }
+            saveQuestionnaireData(questionnaireData!)
+        }
+    }
+    
+    func updateAlcoholFrequency(_ frequency: QuestionnaireViewModel.AlcoholFrequency) async {
+        await MainActor.run {
+            if questionnaireData == nil {
+                questionnaireData = QuestionnaireData(
+                    deviceTrackingStatus: nil,
+                    lifeMotivation: nil,
+                    desiredDailyLifespanGainMinutes: nil,
+                    nutritionQuality: nil,
+                    smokingStatus: nil,
+                    alcoholConsumption: frequency.alcoholValue,
+                    socialConnectionsQuality: nil,
+                    stressLevel: nil,
+                    emotionalSensitivity: nil,
+                    framingComfortScore: nil,
+                    urgencyResponseScore: nil,
+                    bloodPressureCategory: nil,
+                    savedDate: Date()
+                )
+            } else {
+                var updatedData = questionnaireData!
+                updatedData = QuestionnaireData(
+                    deviceTrackingStatus: updatedData.deviceTrackingStatus,
+                    lifeMotivation: updatedData.lifeMotivation,
+                    desiredDailyLifespanGainMinutes: updatedData.desiredDailyLifespanGainMinutes,
+                    nutritionQuality: updatedData.nutritionQuality,
+                    smokingStatus: updatedData.smokingStatus,
+                    alcoholConsumption: frequency.alcoholValue,
+                    socialConnectionsQuality: updatedData.socialConnectionsQuality,
+                    stressLevel: updatedData.stressLevel,
+                    emotionalSensitivity: updatedData.emotionalSensitivity,
+                    framingComfortScore: updatedData.framingComfortScore,
+                    urgencyResponseScore: updatedData.urgencyResponseScore,
+                    bloodPressureCategory: updatedData.bloodPressureCategory,
+                    savedDate: Date()
+                )
+                questionnaireData = updatedData
+            }
+            saveQuestionnaireData(questionnaireData!)
+        }
+    }
+    
+    func updateSocialConnections(_ quality: QuestionnaireViewModel.SocialConnectionsQuality) async {
+        await MainActor.run {
+            if questionnaireData == nil {
+                questionnaireData = QuestionnaireData(
+                    deviceTrackingStatus: nil,
+                    lifeMotivation: nil,
+                    desiredDailyLifespanGainMinutes: nil,
+                    nutritionQuality: nil,
+                    smokingStatus: nil,
+                    alcoholConsumption: nil,
+                    socialConnectionsQuality: quality.socialValue,
+                    stressLevel: nil,
+                    emotionalSensitivity: nil,
+                    framingComfortScore: nil,
+                    urgencyResponseScore: nil,
+                    bloodPressureCategory: nil,
+                    savedDate: Date()
+                )
+            } else {
+                var updatedData = questionnaireData!
+                updatedData = QuestionnaireData(
+                    deviceTrackingStatus: updatedData.deviceTrackingStatus,
+                    lifeMotivation: updatedData.lifeMotivation,
+                    desiredDailyLifespanGainMinutes: updatedData.desiredDailyLifespanGainMinutes,
+                    nutritionQuality: updatedData.nutritionQuality,
+                    smokingStatus: updatedData.smokingStatus,
+                    alcoholConsumption: updatedData.alcoholConsumption,
+                    socialConnectionsQuality: quality.socialValue,
+                    stressLevel: updatedData.stressLevel,
+                    emotionalSensitivity: updatedData.emotionalSensitivity,
+                    framingComfortScore: updatedData.framingComfortScore,
+                    urgencyResponseScore: updatedData.urgencyResponseScore,
+                    bloodPressureCategory: updatedData.bloodPressureCategory,
+                    savedDate: Date()
+                )
+                questionnaireData = updatedData
+            }
+            saveQuestionnaireData(questionnaireData!)
+        }
+    }
+    
+    func updateStressLevel(_ level: QuestionnaireViewModel.StressLevel) async {
+        await MainActor.run {
+            if questionnaireData == nil {
+                questionnaireData = QuestionnaireData(
+                    deviceTrackingStatus: nil,
+                    lifeMotivation: nil,
+                    desiredDailyLifespanGainMinutes: nil,
+                    nutritionQuality: nil,
+                    smokingStatus: nil,
+                    alcoholConsumption: nil,
+                    socialConnectionsQuality: nil,
+                    stressLevel: level.stressValue,
+                    emotionalSensitivity: nil,
+                    framingComfortScore: nil,
+                    urgencyResponseScore: nil,
+                    bloodPressureCategory: nil,
+                    savedDate: Date()
+                )
+            } else {
+                var updatedData = questionnaireData!
+                updatedData = QuestionnaireData(
+                    deviceTrackingStatus: updatedData.deviceTrackingStatus,
+                    lifeMotivation: updatedData.lifeMotivation,
+                    desiredDailyLifespanGainMinutes: updatedData.desiredDailyLifespanGainMinutes,
+                    nutritionQuality: updatedData.nutritionQuality,
+                    smokingStatus: updatedData.smokingStatus,
+                    alcoholConsumption: updatedData.alcoholConsumption,
+                    socialConnectionsQuality: updatedData.socialConnectionsQuality,
+                    stressLevel: level.stressValue,
+                    emotionalSensitivity: updatedData.emotionalSensitivity,
+                    framingComfortScore: updatedData.framingComfortScore,
+                    urgencyResponseScore: updatedData.urgencyResponseScore,
+                    bloodPressureCategory: updatedData.bloodPressureCategory,
+                    savedDate: Date()
+                )
+                questionnaireData = updatedData
+            }
+            saveQuestionnaireData(questionnaireData!)
+        }
+    }
+    
     /// Save questionnaire data and update user profile
     func saveQuestionnaireData(from viewModel: QuestionnaireViewModel) {
         logger.info("💾 Saving questionnaire data to user profile")
