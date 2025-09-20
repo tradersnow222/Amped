@@ -5,6 +5,7 @@ import OSLog
 /// Settings view that exactly matches native iOS Settings design and layout
 struct SettingsView: View {
     @EnvironmentObject private var settingsManager: SettingsManager
+    @StateObject private var dashboardViewModel = DashboardViewModel()
     @State private var showResetConfirmation = false
     @State private var showingHealthDetails = false
     @Environment(\.dismiss) private var dismiss
@@ -29,7 +30,7 @@ struct SettingsView: View {
                             Button {
                                 // Future: Handle photo selection
                             } label: {
-                                ProfileImageView(size: 60, showBorder: false, showEditIndicator: false)
+                                ProfileImageView(size: 60, showBorder: false, showEditIndicator: false, userProfile: dashboardViewModel.userProfile)
                             }
                             .buttonStyle(.plain)
                             
@@ -349,11 +350,12 @@ private struct LegalRow: View {
 
 struct ProfileDetailsView: View {
     @StateObject private var viewModel = ProfileDetailsViewModel()
+    @StateObject private var dashboardViewModel = DashboardViewModel()
     @State private var showingPhotoPicker = false
     
     var body: some View {
         // ULTRA-FAST: Always show content immediately - no loading state blocking UI
-        profileContent
+        profileContent(dashboardViewModel: dashboardViewModel)
             .navigationTitle("Profile Details")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingPhotoPicker) {
@@ -366,7 +368,7 @@ struct ProfileDetailsView: View {
     }
     
     @ViewBuilder
-    private var profileContent: some View {
+    private func profileContent(dashboardViewModel: DashboardViewModel) -> some View {
         List {
             // Profile Photo Section - No grey background
             HStack {
@@ -375,7 +377,7 @@ struct ProfileDetailsView: View {
                 Button {
                     showingPhotoPicker = true
                 } label: {
-                    ProfileImageView(size: 100, showBorder: true, showEditIndicator: true)
+                    ProfileImageView(size: 100, showBorder: true, showEditIndicator: true, userProfile: dashboardViewModel.userProfile)
                 }
                 .buttonStyle(.plain)
                 

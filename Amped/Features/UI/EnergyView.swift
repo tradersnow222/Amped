@@ -179,7 +179,7 @@ struct EnergyView: View {
     // MARK: - Header Components
     
     private var personalizedHeader: some View {
-        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: true)
+        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: true, userProfile: viewModel.userProfile)
     }
     
     private var lifespanToggle: some View {

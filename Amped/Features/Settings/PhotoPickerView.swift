@@ -4,6 +4,7 @@ import OSLog
 
 /// Photo picker view for selecting profile images
 struct PhotoPickerView: View {
+    @StateObject private var viewModel = DashboardViewModel()
     @Environment(\.dismiss) private var dismiss
     @State private var selectedItem: PhotosPickerItem?
     @State private var showingActionSheet = false
@@ -18,7 +19,7 @@ struct PhotoPickerView: View {
             VStack(spacing: 20) {
                 // Current profile image
                 VStack(spacing: 16) {
-                    ProfileImageView(size: 120, showBorder: true, showEditIndicator: false)
+                    ProfileImageView(size: 120, showBorder: true, showEditIndicator: false, userProfile: viewModel.userProfile)
                     
                     Text("Profile Photo")
                         .font(.title2)

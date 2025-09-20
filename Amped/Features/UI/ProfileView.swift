@@ -1,26 +1,38 @@
 import SwiftUI
 import Combine
 
+// Import required models and view models
+// Note: These will be available at runtime from the main app bundle
+
 /// Profile View - User profile and health metrics overview
 struct ProfileView: View {
     // MARK: - State Variables
+    @StateObject private var viewModel = DashboardViewModel()
     @State private var showingEditProfile = false
     @State private var showingSettings = false
     
     // MARK: - Computed Properties
-    private var userProfile: UserProfileData {
-        UserProfileData(
-            name: "Matt Snow",
-            dob: "1 January 1995",
-            age: 29,
-            gender: "Male",
-            profileImage: nil,
-            nutritionQuality: 5,
-            smokingStatus: "Never",
-            alcoholConsumption: "Never",
-            socialConnections: 5,
-            stressLevel: 5
-        )
+    private var userProfile: UserProfile {
+        viewModel.userProfile
+    }
+    
+    private var displayName: String {
+        userProfile.firstName ?? "User"
+    }
+    
+    private var displayAge: Int {
+        userProfile.age ?? 0
+    }
+    
+    private var displayGender: String {
+        userProfile.gender?.displayName ?? "Not specified"
+    }
+    
+    private var displayBirthYear: String {
+        if let birthYear = userProfile.birthYear {
+            return "Born: \(birthYear)"
+        }
+        return "Birth year: Not set"
     }
     
     var body: some View {
@@ -55,7 +67,7 @@ struct ProfileView: View {
     // MARK: - Header Components
     
     private var personalizedHeader: some View {
-        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: true)
+        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: true, userProfile: userProfile)
     }
     
     // MARK: - Profile Information Card
@@ -84,14 +96,14 @@ struct ProfileView: View {
                 
                 // Profile Details
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Not Set")
+                    Text(displayName)
                         .font(.system(size: 18, weight: .medium))
                         .foregroundColor(.white)
-                    Text("DOB: \(userProfile.dob)")
+                    Text(displayBirthYear)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white.opacity(0.8))
                     
-                    Text("Age: \(userProfile.age) Sex: \(userProfile.gender)")
+                    Text("Age: \(displayAge) • \(displayGender)")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white.opacity(0.8))
                 }
@@ -118,45 +130,43 @@ struct ProfileView: View {
     
     private var healthMetricsSection: some View {
         VStack(spacing: 12) {
-            // Nutrition Quality
+            // Height
+            if let height = userProfile.height {
+                healthMetricRow(
+                    title: "Height",
+                    answer: String(format: "%.1f cm", height),
+                    color: .green
+                )
+            }
+            
+            // Weight
+            if let weight = userProfile.weight {
+                healthMetricRow(
+                    title: "Weight",
+                    answer: String(format: "%.1f kg", weight),
+                    color: .green
+                )
+            }
+            
+            // HealthKit Status
             healthMetricRow(
-                title: "Nutrition Quality",
-                answer: "Good",
-                value: userProfile.nutritionQuality,
-                maxValue: 10,
-                color: .green
+                title: "HealthKit Access",
+                answer: userProfile.hasGrantedHealthKitPermissions ? "Connected" : "Not Connected",
+                color: userProfile.hasGrantedHealthKitPermissions ? .green : .orange
             )
             
-            // Smoking Status
+            // Subscription Status
             healthMetricRow(
-                title: "Smoking Status",
-                answer: userProfile.smokingStatus,
-                color: .green
+                title: "Subscription",
+                answer: userProfile.isSubscribed ? "Active" : "Free Plan",
+                color: userProfile.isSubscribed ? .green : .orange
             )
             
-            // Alcohol Consumption
+            // Onboarding Status
             healthMetricRow(
-                title: "Alcohol Consumption",
-                answer: userProfile.alcoholConsumption,
-                color: .green
-            )
-            
-            // Social Connections
-            healthMetricRow(
-                title: "Social Connections",
-                answer: "Moderate (\(userProfile.socialConnections)/10)",
-                value: userProfile.socialConnections,
-                maxValue: 10,
-                color: .orange
-            )
-            
-            // Stress Level
-            healthMetricRow(
-                title: "Stress Level",
-                answer: "Moderate (\(userProfile.stressLevel)/10)",
-                value: userProfile.stressLevel,
-                maxValue: 10,
-                color: .orange
+                title: "Setup Complete",
+                answer: userProfile.hasCompletedOnboarding ? "Complete" : "In Progress",
+                color: userProfile.hasCompletedOnboarding ? .green : .orange
             )
         }
     }
@@ -357,19 +367,7 @@ struct EditProfileView: View {
 }
 
 // MARK: - Data Models
-
-struct UserProfileData {
-    let name: String
-    let dob: String
-    let age: Int
-    let gender: String
-    let profileImage: String?
-    let nutritionQuality: Int
-    let smokingStatus: String
-    let alcoholConsumption: String
-    let socialConnections: Int
-    let stressLevel: Int
-}
+// Note: Using UserProfile from Core/Models/UserProfile.swift for dynamic data
 
 // MARK: - Preview
 

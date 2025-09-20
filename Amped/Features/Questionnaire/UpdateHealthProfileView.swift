@@ -7,6 +7,7 @@ import PhotosUI // Added for profile picture functionality
 struct UpdateHealthProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = UpdateHealthProfileViewModel()
+    @StateObject private var dashboardViewModel = DashboardViewModel()
     @State private var showingConfirmation = false
     @State private var hasChanges = false
     
@@ -268,6 +269,7 @@ struct UpdateHealthProfileView: View {
 struct CompleteProfileEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = CompleteProfileEditorViewModel()
+    @StateObject private var dashboardViewModel = DashboardViewModel()
     @State private var showingPhotoPicker = false
     
     private var birthDateDisplay: String {
@@ -289,7 +291,7 @@ struct CompleteProfileEditorView: View {
                             Button {
                                 showingPhotoPicker = true
                             } label: {
-                                ProfileImageView(size: 100, showBorder: true)
+                                ProfileImageView(size: 100, showBorder: true, userProfile: dashboardViewModel.userProfile)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Profile photo")

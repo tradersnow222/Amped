@@ -10,12 +10,17 @@ struct ProfileImageView: View {
     let showEditIndicator: Bool
     let showWelcomeMessage: Bool
     
-    init(size: CGFloat, showBorder: Bool = false, showEditIndicator: Bool = false, showWelcomeMessage: Bool = false) {
+    // Optional: Allow passing a user profile directly for more reliable data access
+    let userProfile: UserProfile?
+    
+    init(size: CGFloat, showBorder: Bool = false, showEditIndicator: Bool = false, showWelcomeMessage: Bool = false, userProfile: UserProfile? = nil) {
         self.size = size
         self.showBorder = showBorder
         self.showEditIndicator = showEditIndicator
         self.showWelcomeMessage = showWelcomeMessage
+        self.userProfile = userProfile
     }
+    
     
     var body: some View {
         if showWelcomeMessage {
@@ -101,15 +106,31 @@ struct ProfileImageView: View {
     }
     
     private func getInitials() -> String {
-        let userName = UserDefaults.standard.string(forKey: "userName") ?? "Matt Snow"
+        let userName = getUserName()
         let components = userName.components(separatedBy: " ")
-        let firstInitial = components.first?.prefix(1).uppercased() ?? "M"
-        let lastInitial = components.dropFirst().first?.prefix(1).uppercased() ?? "S"
+        let firstInitial = components.first?.prefix(1).uppercased() ?? "U"
+        let lastInitial = components.dropFirst().first?.prefix(1).uppercased() ?? ""
         return "\(firstInitial)\(lastInitial)"
     }
     
     private func getUserName() -> String {
-        return UserDefaults.standard.string(forKey: "userName") ?? "Matt Snow"
+        // Priority 1: Use passed userProfile if available
+        if let userProfile = userProfile, let firstName = userProfile.firstName, !firstName.isEmpty {
+            return firstName
+        }
+        
+        // Priority 2: Try to get from UserDefaults (from questionnaire)
+        if let userName = UserDefaults.standard.string(forKey: "userName"), !userName.isEmpty {
+            return userName
+        }
+        
+        // Priority 3: Fallback to firstName from UserDefaults
+        if let firstName = UserDefaults.standard.string(forKey: "userFirstName"), !firstName.isEmpty {
+            return firstName
+        }
+        
+        // Default fallback
+        return "User"
     }
 }
 
