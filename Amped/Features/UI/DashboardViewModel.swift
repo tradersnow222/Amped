@@ -1432,6 +1432,39 @@ final class DashboardViewModel: ObservableObject {
         return isPositive ? minutes : -minutes
     }
     
+    // MARK: - Profile Update Methods
+    
+    /// Update user profile with new data
+    func updateUserProfile(name: String, age: Int, gender: UserProfile.Gender) {
+        logger.info("🔄 Updating user profile - name: \(name), age: \(age), gender: \(gender.displayName)")
+        
+        // Update UserDefaults with new name
+        UserDefaults.standard.set(name, forKey: "userName")
+        
+        // Calculate birth year from age
+        let currentYear = Calendar.current.component(.year, from: Date())
+        let birthYear = currentYear - age
+        
+        // Create updated user profile to trigger @Published updates
+        var updatedProfile = userProfile
+        updatedProfile.birthYear = birthYear
+        updatedProfile.gender = gender
+        updatedProfile.lastActive = Date()
+        
+        // Update the published property to trigger UI updates (this will notify all observers)
+        DispatchQueue.main.async { [weak self] in
+            self?.userProfile = updatedProfile
+        }
+        
+        // Save to UserDefaults
+        if let encoded = try? JSONEncoder().encode(updatedProfile) {
+            UserDefaults.standard.set(encoded, forKey: "userProfile")
+            logger.info("✅ User profile updated and saved to UserDefaults")
+        } else {
+            logger.error("❌ Failed to encode user profile for saving")
+        }
+    }
+    
     /// Cleanup when view model is deallocated
     deinit {
         // Direct timer cleanup is synchronous and safe in deinit

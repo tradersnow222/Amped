@@ -155,7 +155,6 @@ final class QuestionnaireManager: ObservableObject {
         // Create or update user profile
         let profile = UserProfile(
             id: currentUserProfile?.id ?? UUID().uuidString,
-            firstName: viewModel.userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : viewModel.userName.components(separatedBy: " ").first,
             birthYear: birthYear,
             gender: viewModel.selectedGender,
             height: viewModel.height > 0 ? viewModel.height : nil,

@@ -3,7 +3,6 @@ import Foundation
 /// Minimal user profile with anonymous ID for future analytics
 struct UserProfile: Codable, Equatable {
     let id: String
-    var firstName: String?
     var birthYear: Int?
     var gender: Gender?
     var height: Double?
@@ -18,7 +17,6 @@ struct UserProfile: Codable, Equatable {
     /// Standard initialization
     init(
         id: String = UUID().uuidString,
-        firstName: String? = nil,
         birthYear: Int? = nil,
         gender: Gender? = nil,
         height: Double? = nil,
@@ -31,7 +29,6 @@ struct UserProfile: Codable, Equatable {
         lastActive: Date = Date()
     ) {
         self.id = id
-        self.firstName = firstName
         self.birthYear = birthYear
         self.gender = gender
         self.height = height
@@ -78,10 +75,7 @@ struct UserProfile: Codable, Equatable {
     }
     
     /// Update profile with questionnaire data
-    mutating func updateFromQuestionnaire(firstName: String? = nil, birthYear: Int?, gender: Gender?, height: Double?, weight: Double?) {
-        if let firstName = firstName {
-            self.firstName = firstName
-        }
+    mutating func updateFromQuestionnaire(birthYear: Int?, gender: Gender?, height: Double?, weight: Double?) {
         self.birthYear = birthYear
         self.gender = gender
         self.height = height

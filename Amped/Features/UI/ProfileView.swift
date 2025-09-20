@@ -17,7 +17,7 @@ struct ProfileView: View {
     }
     
     private var displayName: String {
-        userProfile.firstName ?? "User"
+        UserDefaults.standard.string(forKey: "userName") ?? "User"
     }
     
     private var displayAge: Int {
@@ -59,7 +59,7 @@ struct ProfileView: View {
             .background(Color.black)
             .navigationBarHidden(true)
             .navigationDestination(isPresented: $showingEditProfile) {
-                EditProfileView()
+                EditProfileView(viewModel: viewModel)
             }
         }
     }
@@ -209,9 +209,12 @@ struct ProfileView: View {
 
 struct EditProfileView: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: DashboardViewModel
     @State private var name: String = ""
-    @State private var dob: String = "1 January 1995"
-    @State private var gender: String = "Male"
+    @State private var age: String = ""
+    @State private var selectedGender: UserProfile.Gender = .male
+    @State private var showingGenderPicker = false
+    @State private var showingAgePicker = false
     
     var body: some View {
         VStack(spacing: 24) {
@@ -221,8 +224,8 @@ struct EditProfileView: View {
             // Input Fields
             inputFieldsSection
             
-            // Continue Button
-            continueButton
+            // Save Button
+            saveButton
             
             Spacer()
         }
@@ -231,6 +234,9 @@ struct EditProfileView: View {
         .background(Color.black)
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            loadCurrentProfileData()
+        }
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button(action: {
@@ -319,55 +325,200 @@ struct EditProfileView: View {
             )
             .accentColor(.black)
             
-            // Date of Birth Field
-            HStack {
-                Text(dob)
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
-                
-                Spacer()
+            // Age Field
+            Button(action: {
+                showingAgePicker = true
+            }) {
+                HStack {
+                    Text(age.isEmpty ? "Select your age" : "\(age) years old")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(age.isEmpty ? Color(red: 39/255, green: 39/255, blue: 39/255, opacity: 0.4) : Color(red:35/255,green:57/255, blue:32/255))
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.white)
+                )
             }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white)
-            )
+            .sheet(isPresented: $showingAgePicker) {
+                ProfileAgePickerView(selectedAge: $age)
+            }
             
             // Gender Field
-            HStack {
-                Text(gender)
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
-                
-                Spacer()
+            Button(action: {
+                showingGenderPicker = true
+            }) {
+                HStack {
+                    Text(selectedGender.displayName)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.white)
+                )
             }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white)
-            )
+            .sheet(isPresented: $showingGenderPicker) {
+                ProfileGenderPickerView(selectedGender: $selectedGender)
+            }
         }
     }
     
-    private var continueButton: some View {
+    private var saveButton: some View {
         Button(action: {
-            dismiss()
+            saveProfile()
         }) {
-            Text("Continue")
+            Text("Save Changes")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.gray.opacity(0.3))
+                        .fill(isFormValid ? Color.ampedGreen : Color.gray.opacity(0.3))
                 )
+        }
+        .disabled(!isFormValid)
+    }
+    
+    // MARK: - Computed Properties
+    
+    private var isFormValid: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !age.isEmpty &&
+        Int(age) != nil
+    }
+    
+    // MARK: - Methods
+    
+    private func loadCurrentProfileData() {
+        // Load current name from UserDefaults
+        name = UserDefaults.standard.string(forKey: "userName") ?? ""
+        
+        // Load current age from userProfile
+        if let currentAge = viewModel.userProfile.age {
+            age = String(currentAge)
+        }
+        
+        // Load current gender from userProfile
+        if let currentGender = viewModel.userProfile.gender {
+            selectedGender = currentGender
+        }
+    }
+    
+    private func saveProfile() {
+        guard let ageInt = Int(age) else { return }
+        
+        // Update the profile through the view model
+        viewModel.updateUserProfile(
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            age: ageInt,
+            gender: selectedGender
+        )
+        
+        // Dismiss the view
+        dismiss()
+    }
+}
+
+// MARK: - Picker Views
+
+struct ProfileAgePickerView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedAge: String
+    @State private var tempAge: String = ""
+    
+    private let ages = Array(18...100)
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                Picker("Age", selection: $tempAge) {
+                    ForEach(ages, id: \.self) { age in
+                        Text("\(age) years old").tag(String(age))
+                    }
+                }
+                .pickerStyle(WheelPickerStyle())
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Select Age")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        selectedAge = tempAge
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                tempAge = selectedAge
+            }
         }
     }
 }
 
-// MARK: - Data Models
-// Note: Using UserProfile from Core/Models/UserProfile.swift for dynamic data
+struct ProfileGenderPickerView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedGender: UserProfile.Gender
+    @State private var tempGender: UserProfile.Gender = .male
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                Picker("Gender", selection: $tempGender) {
+                    ForEach(UserProfile.Gender.allCases, id: \.self) { gender in
+                        Text(gender.displayName).tag(gender)
+                    }
+                }
+                .pickerStyle(WheelPickerStyle())
+                
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Select Gender")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        selectedGender = tempGender
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                tempGender = selectedGender
+            }
+        }
+    }
+}
 
 // MARK: - Preview
 

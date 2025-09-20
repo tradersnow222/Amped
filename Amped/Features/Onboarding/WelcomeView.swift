@@ -290,7 +290,7 @@ private func performUltraPerformanceOrchestration(startTime: Double) async {
     let viewModelStart = CFAbsoluteTimeGetCurrent()
     
     // Pre-initialize QuestionnaireViewModel in background
-    let _ = QuestionnaireViewModel(startFresh: true)
+    let _ = QuestionnaireViewModel()
     print("🚀 ORCHESTRATION: ✅ QuestionnaireViewModel pre-initialized")
     
     // Pre-initialize other critical managers on main actor

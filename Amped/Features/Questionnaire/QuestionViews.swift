@@ -507,6 +507,7 @@ struct QuestionViews {
                 
                 // Main content
                 VStack(spacing: 32) {
+                    Spacer()
                     // Emma character and text
                     VStack(spacing: 16) {
                         // Emma character (turtle with battery) - centered

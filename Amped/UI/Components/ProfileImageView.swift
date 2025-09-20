@@ -114,23 +114,8 @@ struct ProfileImageView: View {
     }
     
     private func getUserName() -> String {
-        // Priority 1: Use passed userProfile if available
-        if let userProfile = userProfile, let firstName = userProfile.firstName, !firstName.isEmpty {
-            return firstName
-        }
-        
-        // Priority 2: Try to get from UserDefaults (from questionnaire)
-        if let userName = UserDefaults.standard.string(forKey: "userName"), !userName.isEmpty {
-            return userName
-        }
-        
-        // Priority 3: Fallback to firstName from UserDefaults
-        if let firstName = UserDefaults.standard.string(forKey: "userFirstName"), !firstName.isEmpty {
-            return firstName
-        }
-        
-        // Default fallback
-        return "User"
+        // Single source of truth: UserDefaults from onboarding questionnaire
+        return UserDefaults.standard.string(forKey: "userName") ?? "User"
     }
 }
 

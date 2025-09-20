@@ -61,7 +61,7 @@ struct ContentView: View {
                         PersonalizationIntroView(onContinue: {})
                     case .questionnaire:
                         QuestionnaireView(
-                            viewModel: QuestionnaireViewModel(startFresh: true),
+                            viewModel: QuestionnaireViewModel(),
                             exitToPersonalizationIntro: .constant(false), 
                             proceedToHealthPermissions: .constant(false)
                         )

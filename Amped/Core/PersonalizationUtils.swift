@@ -6,14 +6,14 @@ struct PersonalizationUtils {
     
     // MARK: - Name Retrieval
     
-    /// Get the user's first name from UserDefaults (legacy compatibility)
+    /// Get the user's first name from UserDefaults (single source of truth)
     static var userFirstName: String? {
         return UserDefaults.standard.string(forKey: "userName")?.components(separatedBy: " ").first
     }
     
-    /// Get the user's first name from UserProfile
+    /// Get the user's first name from UserDefaults (for consistency with existing API)
     static func userFirstName(from profile: UserProfile?) -> String? {
-        return profile?.firstName ?? userFirstName
+        return userFirstName
     }
     
     // MARK: - Strategic Personalization Messages

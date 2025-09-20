@@ -285,7 +285,9 @@ struct OnboardingFlow: View {
             Task.detached(priority: .utility) {
                 // Only clear UserDefaults if starting fresh (at welcome step)
                 let currentStep = await MainActor.run { appState.currentOnboardingStep }
+                print("🔍 OnboardingFlow: currentStep = \(currentStep)")
                 if currentStep == .welcome {
+                    print("🚨 OnboardingFlow: CLEARING userName because currentStep is .welcome!")
                     // Clear UserDefaults in background
                     UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
                     UserDefaults.standard.removeObject(forKey: "userName")
