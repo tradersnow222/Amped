@@ -124,11 +124,17 @@ struct PrePaywallTeaserView: View {
         }
     }
     
-    // Calculate life gain for conversion value
+    // Calculate life gain for conversion value - use actual calculated impact if available
     private var lifeGainMinutes: Int {
-        let baseGain = 2
-        let scoreBonus = max(0, preliminaryScore - 50) / 10
-        return baseGain + scoreBonus
+        if let actualMinutes = dailyImpactMinutes {
+            // Use the actual calculated daily impact from questionnaire data
+            return Int(round(abs(actualMinutes)))
+        } else {
+            // Fallback to preliminary calculation if actual data not yet loaded
+            let baseGain = 2
+            let scoreBonus = max(0, preliminaryScore - 50) / 10
+            return baseGain + scoreBonus
+        }
     }
     
     private var lifeGainHours: Double {

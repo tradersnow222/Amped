@@ -3,6 +3,7 @@
 struct ContentView: View {
     @State private var selectedView: AppView = .onboardingFlow
     @State private var showDebugControls: Bool = false
+    @State private var showPaymentFromPaywall: Bool = false
     
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var settingsManager: SettingsManager
@@ -35,9 +36,9 @@ struct ContentView: View {
         ZStack {
                     // The main content view takes up the full screen
                     Group {
-                        // PRODUCTION LOGIC: Show dashboard if onboarding is complete, otherwise show onboarding flow
-                        if appState.hasCompletedOnboarding && !showDebugControls {
-                            // Show main dashboard for completed users
+                        // PRODUCTION LOGIC: Show dashboard if onboarding is complete AND user has subscription
+                        if appState.hasCompletedOnboarding && appState.isPremiumUser && !showDebugControls {
+                            // Show main dashboard for subscribed users
                             if #available(iOS 16.0, *) {
                                 NavigationStack {
                                     DashboardView()
@@ -47,6 +48,25 @@ struct ContentView: View {
                                     DashboardView()
                                 }
                                 .navigationViewStyle(StackNavigationViewStyle())
+                            }
+                        } else if appState.hasCompletedOnboarding && !appState.isPremiumUser && !showDebugControls {
+                            if showPaymentFromPaywall {
+                                // Show payment screen when user clicks continue from paywall
+                                PaymentView(onContinue: { 
+                                    // Payment successful, update subscription status
+                                    appState.updateSubscriptionStatus(true)
+                                    showPaymentFromPaywall = false
+                                })
+                            } else {
+                                // Show paywall for non-subscribers who completed onboarding
+                                // Use PrePaywallTeaserView with a mock questionnaire view model for scoring
+                                PrePaywallTeaserView(
+                                    viewModel: QuestionnaireViewModel(startFresh: false),
+                                    onContinue: {
+                                        // Navigate to payment screen for subscription
+                                        showPaymentFromPaywall = true
+                                    }
+                                )
                             }
                 } else if !showDebugControls {
                     // Show onboarding flow for new users

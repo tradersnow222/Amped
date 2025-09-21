@@ -191,7 +191,7 @@ struct BatteryScorePreviewView: View {
                         .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
                     
                     // Glass morphism container for subtitle
-                    Text("Currently, you're gaining 2 mins per day")
+                    Text("Currently, you're gaining \(lifeGainMinutes) mins per day")
                         .font(.system(size: 14, weight: .regular))
                         .tracking(0.5)
                         .foregroundColor(Color(red: 0.835, green: 0.835, blue: 0.835)) // #D5D5D5
@@ -321,7 +321,7 @@ struct BatteryScorePreviewView: View {
                     
                     VStack(spacing:16){
                         // Battery level indicator with gradient border
-                        Text("~2 mins per day")
+                        Text("~\(lifeGainMinutes) mins per day")
                             .font(.system(size: 17, weight: .medium, design: .rounded))
                             .tracking(0.3)
                             .foregroundColor(.white)

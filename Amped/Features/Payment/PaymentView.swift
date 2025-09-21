@@ -189,11 +189,28 @@ struct PaymentView: View {
                         .scaleEffect(animateElements ? 1 : 0.9)
                         .animation(.easeOut(duration: 0.8).delay(0.8), value: animateElements)
                         
-                        // Trial offer text
+                        // Trial offer text - now clickable
                         VStack(spacing: 4) {
-                            Text("Try for 0 USD")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.white)
+                            Button(action: {
+                                viewModel.selectedPlan = .monthly
+                                processPurchase()
+                            }) {
+                                Text("Try for 0 USD")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.white)
+                            }
+                            .buttonStyle(.plain)
+                            .scaleEffect(monthlyButtonPressed ? 0.95 : 1.0)
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.1)) {
+                                    monthlyButtonPressed = true
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    withAnimation(.easeInOut(duration: 0.1)) {
+                                        monthlyButtonPressed = false
+                                    }
+                                }
+                            }
                             
                             Text("3 days free trial then $3.99 per week")
                                 .font(.system(size: 12, weight: .regular))
@@ -249,6 +266,7 @@ struct PaymentView: View {
                             showExitOffer = false
                         }
                         viewModel.skipPayment {
+                            // Don't update subscription status - user will see paywall
                             onContinue?()
                         }
                     }
