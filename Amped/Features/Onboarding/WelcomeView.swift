@@ -338,53 +338,65 @@ struct BatteryFillingView: View {
     @State private var textTimer: Timer?
     
     var body: some View {
-        ZStack {
-            // Battery fill with wave animation (no border)
-            BatteryWaveView(percent: batteryLevel)
-                .frame(width: 100, height: 196)
-                .clipShape(RoundedRectangle(cornerRadius: 24))
+        VStack {
+            Spacer()
             
-            // Battery cap that fades in starting at 20% with gradient
-            BatteryCapShape()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.0, green: 0.8, blue: 0.0),      // Dark Green
-                            Color(red: 0.0, green: 0.9, blue: 0.0),      // Medium Green
-                            Color(red: 0.2, green: 1.0, blue: 0.2),      // Light Green
-                            Color(red: 0.8, green: 1.0, blue: 0.0)       // Yellow-Green
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
+            ZStack {
+                // Battery fill with wave animation (no border)
+                BatteryWaveView(percent: batteryLevel)
+                    .frame(width: 100, height: 196)
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
+                
+                // Battery cap that fades in starting at 20% with gradient
+                BatteryCapShape()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.0, green: 0.8, blue: 0.0),      // Dark Green
+                                Color(red: 0.0, green: 0.9, blue: 0.0),      // Medium Green
+                                Color(red: 0.2, green: 1.0, blue: 0.2),      // Light Green
+                                Color(red: 0.8, green: 1.0, blue: 0.0)       // Yellow-Green
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
                     )
-                )
-                .frame(width: 20, height: 6)
-                .offset(y: -101) // Position above the battery
-                .opacity(batteryCapOpacity)
-                .animation(.easeInOut(duration: 0.8), value: batteryCapOpacity)
+                    .frame(width: 20, height: 6)
+                    .offset(y: -101) // Position above the battery
+                    .opacity(batteryCapOpacity)
+                    .animation(.easeInOut(duration: 0.8), value: batteryCapOpacity)
+                
+                // Percentage display with push transition in a transparent rectangle
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.clear)
+                    .frame(width: 80, height: 60)
+                    .overlay(
+                        HStack(alignment: .center, spacing: 0) {
+                            Text("\(currentPercentage)")
+                                .font(.system(size: 24, weight: .regular, design: .rounded))
+                                .foregroundColor(.white)
+                            Text("%")
+                                .font(.system(size: 18, weight: .medium, design: .rounded))
+                                .foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            removal: .move(edge: .top).combined(with: .opacity)
+                        ))
+                        .id(currentPercentage)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                
+            }
             
-            // Percentage display with push transition in a transparent rectangle
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.clear)
-                .frame(width: 80, height: 60)
-                .overlay(
-                    HStack(alignment: .center, spacing: 0) {
-                        Text("\(currentPercentage)")
-                            .font(.system(size: 24, weight: .regular, design: .rounded))
-                            .foregroundColor(.white)
-                        Text("%")
-                            .font(.system(size: 18, weight: .medium, design: .rounded))
-                            .foregroundColor(.white)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .bottom).combined(with: .opacity),
-                        removal: .move(edge: .top).combined(with: .opacity)
-                    ))
-                    .id(currentPercentage)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+            Spacer()
             
+            // Version text at the bottom
+            Text("Version 1.0")
+                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .foregroundColor(.white.opacity(0.7))
+                .padding(.bottom, 50)
         }
         .onAppear {
             startAnimations()
