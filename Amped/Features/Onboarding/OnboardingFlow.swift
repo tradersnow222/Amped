@@ -8,10 +8,10 @@ enum OnboardingStep: String, Equatable, CaseIterable {
     case mascotIntroduction // Position 4: Introduce the mascot
     case mascotNaming // Position 5: Let user name the mascot
     case questionnaire
-    case notificationPermission // Moved: Right after goal setting for logical flow
     case valueProposition // Position 5: Reinforce value after notifications
     case prePaywallTease // Position 6: Personalized score right before paywall
     case payment
+    case notificationPermission // Moved: After payment for logical flow
     case attribution // New: How did you hear about us?
     case dashboard
 }
@@ -210,12 +210,12 @@ struct OnboardingFlow: View {
                             onContinue: {
                                 isButtonNavigating = true
                                 dragDirection = nil
-                                navigateTo(.prePaywallTease)
+                                navigateTo(.attribution)
                             },
                             onBackTap: {
                                 isButtonNavigating = true
                                 dragDirection = nil
-                                navigateTo(.personalizationIntro)
+                                navigateTo(.payment)
                             }
                         )
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
@@ -239,7 +239,7 @@ struct OnboardingFlow: View {
                         PaymentView(onContinue: { 
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.attribution) 
+                            navigateTo(.notificationPermission) 
                         })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .payment ? 1 : 0)

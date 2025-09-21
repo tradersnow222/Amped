@@ -3756,14 +3756,14 @@ struct QuestionViews {
                     Text("This is essential for the app to work properly. On the next screen, we will ask permission to read your health data, such as steps, heart rate, and more to calculate your daily health scores.")
                         .font(.system(size: 12, weight: .light))
                         .foregroundColor(.white)
-                        .multilineTextAlignment(.leading)
+                        .multilineTextAlignment(.center)
                     .lineLimit(nil)
                     .fixedSize(horizontal: false, vertical: true)
                     
                     Text("Any wearable device with Apple Health works, if you don't have one you can use your phone.")
                         .font(.system(size: 16, weight: .regular))
                         .foregroundColor(.white)
-                        .multilineTextAlignment(.leading)
+                        .multilineTextAlignment(.center)
                         .lineLimit(nil)
                         .fixedSize(horizontal: false, vertical: true)
 
