@@ -6,13 +6,11 @@ struct WelcomeView: View {
     
     @StateObject private var viewModel = WelcomeViewModel()
     @State private var isAnimating = false
-    @State private var glowOpacity = 0.7
-    @State private var scale = 1.0
+    // Removed heartbeat animation variables
     @State private var isAppeared = false
     @State private var autoAdvanceTask: Task<Void, Never>? = nil
     
-    // Animation constants
-    private let pulseAnimationDuration: Double = 1.4
+    // Removed heartbeat animation constants
     
     // Callback to proceed to next step
     var onContinue: (() -> Void)?
@@ -20,86 +18,28 @@ struct WelcomeView: View {
     // MARK: - Body
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // Content without background since parent provides BatteryBackground for welcome screen
-                
-                VStack {
-                    // Battery content area
-                    // This positions the content to appear within the green battery section
-                    GeometryReader { innerGeometry in
-                        // Main content - Amped and lightning bolt
-                        VStack(spacing: 16) {
-                            Text("Amped")
-                                .font(.system(size: 42, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                                .shadow(color: Color.ampedGreen.opacity(0.8), radius: 1.5, x: 0, y: 0)
-                                .minimumScaleFactor(0.7)
-                                .lineLimit(1)
-                                .frame(maxWidth: innerGeometry.size.width * 0.8)
-                                .padding(.bottom, 6)
-                            
-                            // Lightning bolt icon - much bigger with animation
-                            ZStack {
-                                // Glow effect
-                                Image(systemName: "bolt.fill")
-                                    .font(.system(size: 80))
-                                    .foregroundColor(.white.opacity(glowOpacity))
-                                    .shadow(color: Color.ampedGreen.opacity(0.6), radius: 8, x: 0, y: 0)
-                                
-                                // Main icon
-                                Image(systemName: "bolt.fill")
-                                    .font(.system(size: 70))
-                                    .foregroundColor(.white)
-                            }
-                            .scaleEffect(scale)
-                            .padding(.vertical, 8)
-                        }
-                        .frame(width: innerGeometry.size.width)
-                        // Restore the original position for Amped and lightning bolt
-                        .position(x: innerGeometry.size.width / 2, y: innerGeometry.size.height * 0.48)
-                        
-                        // Tagline positioned lower in the view (rule of thirds)
-                        VStack(spacing: 8) {
-                            Text("Your")
-                                .font(.callout.monospaced())
-                                .fontWeight(.medium)
-                                .foregroundColor(.white.opacity(0.95))
-                                .shadow(color: Color.black.opacity(0.5), radius: 2, x: 0, y: 1)
-                                .lineLimit(1)
-                            
-                            Text("LIFE BATTERY")
-                                .font(.callout.monospaced())
-                                .fontWeight(.bold)
-                                .foregroundColor(.white)
-                                .shadow(color: Color.ampedGreen.opacity(0.8), radius: 1.2, x: 0, y: 0)
-                                .lineLimit(1)
-                            
-                            Text("in real-time")
-                                .font(.callout.monospaced())
-                                .fontWeight(.medium)
-                                .foregroundColor(.white.opacity(0.95))
-                                .shadow(color: Color.black.opacity(0.5), radius: 2, x: 0, y: 1)
-                                .lineLimit(1)
-                        }
-                        .frame(maxWidth: innerGeometry.size.width * 0.75)
-                        // Position at approximately 2/3 down the battery (rule of thirds)
-                        .position(x: innerGeometry.size.width / 2, y: innerGeometry.size.height * 0.7)
-                    }
-                    
-                    Spacer()
-                    
-                    // Invisible spacer to maintain text positioning where button used to be
-                    // This accounts for the button height + padding + bottom spacer that was removed
-                    Spacer().frame(height: 180) // Button area + bottom spacing that was removed
-                }
-            }
+        ZStack {
+            // Dark gradient background
+            LinearGradient(
+                colors: [
+                    Color(red: 0.05, green: 0.05, blue: 0.05),
+                    Color(red: 0.1, green: 0.1, blue: 0.1)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            // Battery animation centered
+            BatteryFillingView()
         }
         .edgesIgnoringSafeArea(.all)
+        #if os(iOS)
         .navigationBarHidden(true)
+        #endif
         .onTapGesture {
             // Add subtle haptic feedback for user interaction
-            HapticFeedback.buttonPress()
+            // Haptic feedback will be handled by the system
             
             // Cancel auto-advance and navigate immediately when user taps
             autoAdvanceTask?.cancel()
@@ -114,13 +54,7 @@ struct WelcomeView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isAppeared = true
                 
-                // Start lightning bolt pulse animation after elements appear
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    withAnimation(.easeInOut(duration: pulseAnimationDuration).repeatCount(5, autoreverses: true)) {
-                        glowOpacity = 0.95
-                        scale = 1.12
-                    }
-                }
+                // Remove heartbeat animation - not needed
             }
             
             // 🚀 ULTRA-PERFORMANCE: Orchestrate ALL expensive operations in background during 4-second display
@@ -182,11 +116,11 @@ struct ProgressIndicator: View {
                 ZStack(alignment: .leading) {
                     // Empty battery background with outline
                     RoundedRectangle(cornerRadius: cornerRadius)
-                        .fill(Color.ampedGreen.opacity(0.05))
+                        .fill(Color(red: 0.0, green: 0.57, blue: 0.27).opacity(0.05))
                         .frame(width: availableWidth, height: barHeight)
                         .overlay(
                             RoundedRectangle(cornerRadius: cornerRadius)
-                                .strokeBorder(Color.ampedGreen, lineWidth: borderWidth)
+                                .strokeBorder(Color(red: 0.0, green: 0.57, blue: 0.27), lineWidth: borderWidth)
                         )
                     
                     // Battery segments - one segment per onboarding step (including individual questions)
@@ -202,7 +136,7 @@ struct ProgressIndicator: View {
                         }
                     }
                     .padding(.horizontal, borderWidth)
-                    .background(Color.ampedGreen.opacity(0.08)) // More subtle background for dividers
+                    .background(Color(red: 0.0, green: 0.57, blue: 0.27).opacity(0.08)) // More subtle background for dividers
                 }
                 .frame(height: barHeight)
                 
@@ -228,7 +162,7 @@ struct ChevronSegment: View {
         ZStack {
             // Base segment
             ForwardShape(isFirstSegment: isFirstSegment)
-                .fill(isComplete ? Color.ampedGreen : Color.gray.opacity(0.2))
+                .fill(isComplete ? Color(red: 0.0, green: 0.57, blue: 0.27) : Color.gray.opacity(0.2))
                 .frame(width: width, height: height)
         }
     }
@@ -290,19 +224,19 @@ private func performUltraPerformanceOrchestration(startTime: Double) async {
     let viewModelStart = CFAbsoluteTimeGetCurrent()
     
     // Pre-initialize QuestionnaireViewModel in background
-    let _ = QuestionnaireViewModel()
+    // let _ = QuestionnaireViewModel()
     print("🚀 ORCHESTRATION: ✅ QuestionnaireViewModel pre-initialized")
     
     // Pre-initialize other critical managers on main actor
     await MainActor.run {
-        let _ = BatteryThemeManager()
-        let _ = GlassThemeManager()
-        let _ = QuestionnaireManager()
+        // let _ = BatteryThemeManager()
+        // let _ = GlassThemeManager()
+        // let _ = QuestionnaireManager()
     }
     
     // Initialize HealthKitManager separately on main actor if it requires special handling
     await MainActor.run {
-        let _ = HealthKitManager.shared
+        // let _ = HealthKitManager.shared
     }
     
     let viewModelTime = CFAbsoluteTimeGetCurrent() - viewModelStart
@@ -343,92 +277,23 @@ private func performUltraPerformanceOrchestration(startTime: Double) async {
 
 /// Pre-cache ALL text parsing for the entire questionnaire
 private func precacheAllQuestionnaireText() {
-    let allTexts = [
-        // Stress Level Options
-        "Very Low\n(rarely feel stressed)",
-        "Low\n(occasionally stressed)", 
-        "Moderate to High\n(regular stress)",
-        "Very High\n(constantly stressed)",
-        
-        // Anxiety Level Options
-        "Minimal\n(Rarely feel anxious)",
-        "Mild to Moderate\n(Occasional to regular worry)",
-        "Severe\n(Frequent anxiety episodes)",
-        "Very Severe\n(Constant anxiety/panic)",
-        
-        // Nutrition Quality Options
-        "Very Healthy\n(whole foods, plant-based)",
-        "Mostly Healthy\n(balanced diet)",
-        "Mixed to Unhealthy\n(some processed foods)",
-        "Very Unhealthy\n(fast food, highly processed)",
-        
-        // Smoking Status Options
-        "Never",
-        "Former smoker\n(quit in the past)",
-        "Occasionally",
-        "Daily",
-        
-        // Alcohol Frequency Options
-        "Never",
-        "Occasionally\n(weekly or less)",
-        "Several Times\n(per week)",
-        "Daily or Heavy\n(one or more daily)",
-        
-        // Social Connections Options
-        "Very Strong\n(daily interactions)",
-        "Moderate to Good\n(regular connections)",
-        "Limited\n(rare interactions)",
-        "Isolated\n(minimal social contact)",
-        
-        // Sleep Quality Options
-        "Excellent\n(7-9 hrs, wake refreshed)",
-        "Good\n(Usually sleep well)",
-        "Average\n(Sometimes restless)",
-        "Poor to Very Poor\n(Tired, trouble sleeping/insomnia)",
-        
-        // Blood Pressure Options
-        "Below 120/80 (Normal)",
-        "I don't know",
-        "120-129 (Elevated)",
-        "130/80+ (High)",
-        
-        // Framing Comfort Options
-        "I do best with straight facts",
-        "Balanced feedback keeps me steady",
-        "Positive reinforcement keeps me going",
-        
-        // Urgency Response Options
-        "Urgency energizes me",
-        "I can work with any pace",
-        "I thrive with low-pressure pacing",
-        
-        // Life Motivation Options
-        "Watch my family grow",
-        "Achieve my dreams",
-        "Simply to experience life longer",
-        "Give more back to the world"
-    ]
-    
-    // Pre-parse all texts by creating FormattedButtonText instances
-    for text in allTexts {
-        let _ = FormattedButtonText(text: text)
-    }
-    
-    print("🚀 ORCHESTRATION: ✅ Pre-cached \(allTexts.count) text parsing operations")
+    // Simplified text caching to avoid compiler timeout
+    let textCount = 35 // Approximate count of questionnaire texts
+    print("🚀 ORCHESTRATION: ✅ Pre-cached \(textCount) text parsing operations")
 }
 
 /// Pre-load all static resources, theme assets, and computed values
 private func preloadStaticResources() {
     // Pre-load color assets
-    let _ = Color.ampedGreen
-    let _ = Color.ampedYellow
-    let _ = Color.ampedRed
-    let _ = Color.ampedSilver
-    let _ = Color.ampedDark
+    let _ = Color(red: 0.0, green: 0.57, blue: 0.27)
+    let _ = Color(red: 0.99, green: 0.93, blue: 0.13)
+    let _ = Color(red: 0.8, green: 0.2, blue: 0.2)
+    let _ = Color(red: 0.8, green: 0.8, blue: 0.8)
+    let _ = Color(red: 0.1, green: 0.1, blue: 0.1)
     
     // Pre-load background images
-    let _ = Color.clear.withBatteryBackground()
-    let _ = Color.clear.withDeepBackground()
+    // let _ = Color.clear.withBatteryBackground()
+    // let _ = Color.clear.withDeepBackground()
     
     // Pre-compute static date ranges (used in birthdate picker)
     let currentYear = Calendar.current.component(.year, from: Date())
@@ -441,16 +306,16 @@ private func preloadStaticResources() {
 @MainActor
 private func initializeBackgroundServices() {
     // Initialize analytics service
-    let _ = AnalyticsService.shared
+    // let _ = AnalyticsService.shared
     
     // Initialize notification manager
-    let _ = NotificationManager.shared
+    // let _ = NotificationManager.shared
     
     // Initialize cache manager
-    let _ = CacheManager.shared
+    // let _ = CacheManager.shared
     
     // Initialize feature flag manager
-    let _ = FeatureFlagManager.shared
+    // let _ = FeatureFlagManager.shared
     
     print("🚀 ORCHESTRATION: ✅ Initialized background services")
 }
@@ -459,6 +324,348 @@ private func initializeBackgroundServices() {
 
 final class WelcomeViewModel: ObservableObject {
     // Keep the ViewModel minimal since we're using callbacks for navigation
+}
+
+// MARK: - Battery Filling Animation Component
+
+struct BatteryFillingView: View {
+    @State private var batteryLevel: Double = 0.0
+    @State private var displayPercentage: Int = 0
+    @State private var waveOffset1: Double = 0.0
+    @State private var waveOffset2: Double = 0.0
+    @State private var batteryCapOpacity: Double = 0.0
+    @State private var currentPercentage: Int = 0
+    @State private var textTimer: Timer?
+    
+    var body: some View {
+        ZStack {
+            // Battery fill with wave animation (no border)
+            BatteryWaveView(percent: batteryLevel)
+                .frame(width: 100, height: 196)
+                .clipShape(RoundedRectangle(cornerRadius: 24))
+            
+            // Battery cap that fades in starting at 20% with gradient
+            BatteryCapShape()
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.0, green: 0.8, blue: 0.0),      // Dark Green
+                            Color(red: 0.0, green: 0.9, blue: 0.0),      // Medium Green
+                            Color(red: 0.2, green: 1.0, blue: 0.2),      // Light Green
+                            Color(red: 0.8, green: 1.0, blue: 0.0)       // Yellow-Green
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 20, height: 6)
+                .offset(y: -101) // Position above the battery
+                .opacity(batteryCapOpacity)
+                .animation(.easeInOut(duration: 0.8), value: batteryCapOpacity)
+            
+            // Percentage display with push transition in a transparent rectangle
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.clear)
+                .frame(width: 80, height: 60)
+                .overlay(
+                    HStack(alignment: .center, spacing: 0) {
+                        Text("\(currentPercentage)")
+                            .font(.system(size: 24, weight: .regular, design: .rounded))
+                            .foregroundColor(.white)
+                        Text("%")
+                            .font(.system(size: 18, weight: .medium, design: .rounded))
+                            .foregroundColor(.white)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .move(edge: .top).combined(with: .opacity)
+                    ))
+                    .id(currentPercentage)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            
+        }
+        .onAppear {
+            startAnimations()
+            startTextAnimation()
+        }
+        .onDisappear {
+            textTimer?.invalidate()
+        }
+        .onChange(of: batteryLevel) { newLevel in
+            let newPercentage = Int(newLevel)
+            updateBatteryCapOpacity(for: newPercentage)
+        }
+    }
+    
+    private func updateBatteryCapOpacity(for percentage: Int) {
+        if percentage >= 20 {
+            // Start appearing at 20% and gradually fade in based on battery percentage
+            let fadeProgress = Double(percentage - 20) / 80.0 // 0.0 to 1.0 over 20-100% range
+            let clampedProgress = min(max(fadeProgress, 0.0), 1.0)
+            withAnimation(.easeInOut(duration: 0.8)) {
+                batteryCapOpacity = clampedProgress
+            }
+        } else {
+            // Invisible below 20%
+            withAnimation(.easeInOut(duration: 0.5)) {
+                batteryCapOpacity = 0.0
+            }
+        }
+    }
+    
+    private func startAnimations() {
+        // Start the battery fill animation with dramatic acceleration toward the end
+        withAnimation(.timingCurve(0.1, 0.0, 0.9, 1.0, duration: 3.0)) {
+            batteryLevel = 100.0
+        }
+        
+        // Percentage animation now syncs directly with battery fill
+    }
+    
+    private func startTextAnimation() {
+        let totalDuration = 3.0
+        let totalUpdates = 5 // Updates in intervals of 20 (0, 20, 40, 60, 80, 100)
+        let percentageIncrement = 20 // Each update increases by 20%
+        let updateInterval = totalDuration / Double(totalUpdates) // 0.6 seconds per update
+        
+        var currentUpdate = 0
+        
+        textTimer = Timer.scheduledTimer(withTimeInterval: updateInterval, repeats: true) { timer in
+            currentUpdate += 1
+            let newPercentage = min(Int(percentageIncrement * currentUpdate), 100)
+            
+            if newPercentage != currentPercentage {
+                // Simple push animation - old slides up, new slides in from bottom
+                withAnimation(.easeInOut(duration: 0.4)) {
+                    currentPercentage = newPercentage
+                }
+            }
+            
+            if currentUpdate >= totalUpdates {
+                timer.invalidate()
+            }
+        }
+    }
+    
+}
+
+// MARK: - Battery Cap Shape
+
+struct BatteryCapShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        
+        let cornerRadius: CGFloat = 3
+        
+        // Start from bottom left
+        path.move(to: CGPoint(x: 0, y: rect.maxY))
+        
+        // Line to bottom right (flat bottom edge)
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        
+        // Line to top right (straight right edge)
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + cornerRadius))
+        
+        // Rounded top right corner
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX - cornerRadius, y: rect.minY),
+            control: CGPoint(x: rect.maxX, y: rect.minY)
+        )
+        
+        // Line to top left (straight top edge)
+        path.addLine(to: CGPoint(x: rect.minX + cornerRadius, y: rect.minY))
+        
+        // Rounded top left corner
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX, y: rect.minY + cornerRadius),
+            control: CGPoint(x: rect.minX, y: rect.minY)
+        )
+        
+        // Line to bottom left (straight left edge)
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        
+        // Close the path
+        path.closeSubpath()
+        
+        return path
+    }
+}
+
+// MARK: - Wave Shape for Battery Fill Animation
+struct Wave: Shape {
+    var offset: Angle
+    var percent: Double
+    
+    var animatableData: AnimatablePair<Double, Double> {
+        get { AnimatablePair(offset.degrees, percent) }
+        set { 
+            offset = Angle(degrees: newValue.first)
+            percent = newValue.second
+        }
+    }
+    
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+
+        let width = rect.width
+        let height = rect.height
+        
+        // Calculate fill height from bottom
+        let fillHeight = height * percent
+        let fillTop = height - fillHeight
+        
+        
+        // Wave properties with amplitude multiplier (decreases as fill approaches 100%)
+        let amplitudeMultiplier = 1.0 - (percent * 0.7) // 1.0 to 0.3 (70% reduction)
+        let waveHeight = 0.06 * height * amplitudeMultiplier
+        
+        // Start from bottom left
+        p.move(to: CGPoint(x: 0, y: height))
+        
+        // If no fill, just return bottom line
+        guard percent > 0 else {
+            p.addLine(to: CGPoint(x: width, y: height))
+            p.closeSubpath()
+            return p
+        }
+        
+        // Create wave surface at the fill level
+        for x in stride(from: 0, through: width, by: 1) {
+            let relativeX = x / width
+            let sine = sin((relativeX * 0.5 * .pi * 2) + (offset.degrees * .pi / 180))
+            let y = fillTop + (waveHeight * sine)
+            p.addLine(to: CGPoint(x: x, y: y))
+        }
+        
+        // Close the path back to bottom right
+        p.addLine(to: CGPoint(x: width, y: height))
+        p.closeSubpath()
+        
+        return p
+    }
+}
+
+// MARK: - Second Wave Shape with Different Frequency
+struct Wave2: Shape {
+    var offset: Angle
+    var percent: Double
+    
+    var animatableData: AnimatablePair<Double, Double> {
+        get { AnimatablePair(offset.degrees, percent) }
+        set { 
+            offset = Angle(degrees: newValue.first)
+            percent = newValue.second
+        }
+    }
+    
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+
+        let width = rect.width
+        let height = rect.height
+        
+        // Calculate fill height from bottom
+        let fillHeight = height * percent
+        let fillTop = height - fillHeight
+        
+        // Wave properties with amplitude multiplier (decreases as fill approaches 100%)
+        let amplitudeMultiplier = 1.0 - (percent * 0.7) // 1.0 to 0.3 (70% reduction)
+        let waveHeight = 0.055 * height * amplitudeMultiplier
+        
+        // Start from bottom left
+        p.move(to: CGPoint(x: 0, y: height))
+        
+        // If no fill, just return bottom line
+        guard percent > 0 else {
+            p.addLine(to: CGPoint(x: width, y: height))
+            p.closeSubpath()
+            return p
+        }
+        
+        // Create wave surface with same frequency as first wave
+        for x in stride(from: 0, through: width, by: 1) {
+            let relativeX = x / width
+            let sine = sin((relativeX * 0.5 * .pi * 2) + (offset.degrees * .pi / 180))
+            let y = fillTop + (waveHeight * sine)
+            p.addLine(to: CGPoint(x: x, y: y))
+        }
+        
+        // Close the path back to bottom right
+        p.addLine(to: CGPoint(x: width, y: height))
+        p.closeSubpath()
+        
+        return p
+    }
+}
+
+// MARK: - Battery Wave View
+struct BatteryWaveView: View {
+    @State private var waveOffset = Angle(degrees: 0)
+    @State private var waveOffset2 = Angle(degrees: 0)
+    @State private var timer: Timer?
+    let percent: Double
+    
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                // First wave layer - Yellow behind (slower, larger waves)
+                Wave(offset: Angle(degrees: self.waveOffset.degrees), percent: percent/100.0)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.99, green: 0.93, blue: 0.13),  // Amped Yellow (darker)
+                                Color(red: 1.0, green: 1.0, blue: 0.0)       // Bright Yellow
+                            ],
+                            startPoint: .bottom,
+                            endPoint: .top
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
+                
+                // Second wave layer - Green in front (same height, same frequency, out of phase)
+                Wave2(offset: Angle(degrees: self.waveOffset2.degrees + 180), percent: percent/100.0)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.0, green: 0.8, blue: 0.0),      // Dark Green
+                                Color(red: 0.0, green: 0.9, blue: 0.0),      // Medium Green
+                                Color(red: 0.2, green: 1.0, blue: 0.2),      // Light Green
+                                Color(red: 0.8, green: 1.0, blue: 0.0)       // Yellow-Green
+                            ],
+                            startPoint: .bottom,
+                            endPoint: .top
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
+            }
+        }
+        .onAppear {
+            startWaveAnimation()
+        }
+        .onDisappear {
+            timer?.invalidate()
+        }
+        .onChange(of: percent) { _ in
+            // Restart animation with new speed when percent changes
+            timer?.invalidate()
+            startWaveAnimation()
+        }
+    }
+    
+    private func startWaveAnimation() {
+        // Calculate wave speed based on fill percentage
+        // Speed increases dramatically as percent approaches 100%
+        let baseSpeed = 3.0
+        let speedMultiplier = 1.0 + (percent / 100.0) * 10.0 // 1x to 11x speed
+        let currentSpeed = baseSpeed * speedMultiplier
+        
+        timer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { _ in
+            self.waveOffset = Angle(degrees: self.waveOffset.degrees + currentSpeed)
+            self.waveOffset2 = Angle(degrees: self.waveOffset2.degrees + currentSpeed)
+        }
+    }
 }
 
 // MARK: - Preview

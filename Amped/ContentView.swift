@@ -33,21 +33,21 @@ struct ContentView: View {
     var body: some View {
         // DEBUG development mode with view switcher controls
         ZStack {
-            // The main content view takes up the full screen
-            Group {
-                // PRODUCTION LOGIC: Show dashboard if onboarding is complete, otherwise show onboarding flow
-                if appState.hasCompletedOnboarding && !showDebugControls {
-                    // Show main dashboard for completed users
-                    if #available(iOS 16.0, *) {
-                        NavigationStack {
-                            DashboardView()
-                        }
-                    } else {
-                        NavigationView {
-                            DashboardView()
-                        }
-                        .navigationViewStyle(StackNavigationViewStyle())
-                    }
+                    // The main content view takes up the full screen
+                    Group {
+                        // PRODUCTION LOGIC: Show dashboard if onboarding is complete, otherwise show onboarding flow
+                        if appState.hasCompletedOnboarding && !showDebugControls {
+                            // Show main dashboard for completed users
+                            if #available(iOS 16.0, *) {
+                                NavigationStack {
+                                    DashboardView()
+                                }
+                            } else {
+                                NavigationView {
+                                    DashboardView()
+                                }
+                                .navigationViewStyle(StackNavigationViewStyle())
+                            }
                 } else if !showDebugControls {
                     // Show onboarding flow for new users
                     OnboardingFlow()

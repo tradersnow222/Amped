@@ -126,19 +126,19 @@ struct ProfileView: View {
                             .frame(width: 80, height: 80)
                             .clipShape(Circle())
                     } else {
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.ampedGreen,.ampedGreen, .ampedYellow],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.ampedGreen,.ampedGreen, .ampedYellow],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
                             )
-                            .frame(width: 80, height: 80)
-                        
-                        Image(systemName: "person")
-                            .font(.system(size: 32, weight: .medium))
-                            .foregroundColor(.white)
+                        )
+                        .frame(width: 80, height: 80)
+                    
+                    Image(systemName: "person")
+                        .font(.system(size: 32, weight: .medium))
+                        .foregroundColor(.white)
                     }
                 }
                 
@@ -432,19 +432,19 @@ struct EditProfileView: View {
                         .frame(width: 100, height: 100)
                         .clipShape(Circle())
                 } else {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [.ampedGreen, .ampedYellow],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [.ampedGreen, .ampedYellow],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
-                        .frame(width: 100, height: 100)
+                    )
+                    .frame(width: 100, height: 100)
                         .overlay(
-                            Image(systemName: "person")
-                                .font(.system(size: 40, weight: .medium))
-                                .foregroundColor(.white)
+                Image(systemName: "person")
+                    .font(.system(size: 40, weight: .medium))
+                    .foregroundColor(.white)
                         )
                 }
                 
@@ -527,22 +527,22 @@ struct EditProfileView: View {
             Button(action: {
                 showingAgePicker = true
             }) {
-                HStack {
+            HStack {
                     Text(age.isEmpty ? "Select your age" : "\(age) years old")
-                        .font(.system(size: 14, weight: .regular))
+                    .font(.system(size: 14, weight: .regular))
                         .foregroundColor(age.isEmpty ? Color(red: 39/255, green: 39/255, blue: 39/255, opacity: 0.4) : Color(red:35/255,green:57/255, blue:32/255))
-                    
-                    Spacer()
+                
+                Spacer()
                     
                     Image(systemName: "chevron.down")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
-                }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.white)
-                )
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.white)
+            )
             }
             .sheet(isPresented: $showingAgePicker) {
                 ProfileAgePickerView(selectedAge: $age)
@@ -552,22 +552,22 @@ struct EditProfileView: View {
             Button(action: {
                 showingGenderPicker = true
             }) {
-                HStack {
+            HStack {
                     Text(selectedGender.displayName)
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
-                    
-                    Spacer()
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
+                
+                Spacer()
                     
                     Image(systemName: "chevron.down")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
-                }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.white)
-                )
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.white)
+            )
             }
             .sheet(isPresented: $showingGenderPicker) {
                 ProfileGenderPickerView(selectedGender: $selectedGender)
