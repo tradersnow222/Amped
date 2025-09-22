@@ -495,7 +495,10 @@ struct DashboardView: View {
     
     /// Energy View - Battery page content using EnergyView component
     private var energyView: some View {
-        EnergyView()
+        EnergyView(onNavigateToProfile: {
+            // Navigate to Profile tab (tab index 3)
+            selectedTab = 3
+        })
     }
     
     /// Profile View - Profile/settings using ProfileView component
@@ -573,7 +576,17 @@ struct DashboardView: View {
     
     /// Personalized header with greeting and avatar
     private var personalizedHeader: some View {
-        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: true, userProfile: viewModel.userProfile)
+        ProfileImageView(
+            size: 44, 
+            showBorder: false, 
+            showEditIndicator: false, 
+            showWelcomeMessage: true, 
+            userProfile: viewModel.userProfile,
+            onTap: {
+                // Navigate to Profile tab (tab index 3)
+                selectedTab = 3
+            }
+        )
     }
     
     /// Date navigation bar with Day/Month/Year tabs and swipe gesture support
@@ -1097,29 +1110,31 @@ struct DashboardView: View {
                 }
             }
             
-                        Spacer()
+                        // Spacer()
             
-            // Profile icon
-            Button(action: { 
-                previousTab = selectedTab
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.9, blendDuration: 0)) {
-                    selectedTab = 3 
-                }
-                // Add haptic feedback
-                let impact = UIImpactFeedbackGenerator(style: .light)
-                impact.impactOccurred()
-            }) {
-                VStack(spacing: 4) {
-                    Image(systemName: selectedTab == 3 ? "person.fill" : "person")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(width: 24, height: 24)
-                        .background(
-                            Circle()
-                                .fill(selectedTab == 3 ? Color.white.opacity(0.2) : Color.clear)
-                        )
-                }
-            }
+            // Profile icon - Hidden with zero dimensions but still accessible programmatically
+            // Button(action: { 
+            //     previousTab = selectedTab
+            //     withAnimation(.spring(response: 0.6, dampingFraction: 0.9, blendDuration: 0)) {
+            //         selectedTab = 3 
+            //     }
+            //     // Add haptic feedback
+            //     let impact = UIImpactFeedbackGenerator(style: .light)
+            //     impact.impactOccurred()
+            // }) {
+            //     VStack(spacing: 4) {
+            //         Image(systemName: selectedTab == 3 ? "person.fill" : "person")
+            //             .font(.system(size: 20, weight: .medium))
+            //             .foregroundColor(.white)
+            //             .frame(width: 24, height: 24)
+            //             .background(
+            //                 Circle()
+            //                     .fill(selectedTab == 3 ? Color.white.opacity(0.2) : Color.clear)
+            //             )
+            //     }
+            // }
+            // .frame(width: 0, height: 0) // Hide with zero dimensions
+            // .clipped() // Ensure content is clipped to zero bounds
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 16)

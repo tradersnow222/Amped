@@ -13,6 +13,13 @@ struct EnergyView: View {
     @State private var animatedYears: Int = 0
     @State private var hasAnimated = false
     
+    // Navigation callback
+    let onNavigateToProfile: (() -> Void)?
+    
+    init(onNavigateToProfile: (() -> Void)? = nil) {
+        self.onNavigateToProfile = onNavigateToProfile
+    }
+    
     // Timer for real-time countdown updates
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
@@ -268,7 +275,17 @@ struct EnergyView: View {
     // MARK: - Header Components
     
     private var personalizedHeader: some View {
-        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: true, userProfile: viewModel.userProfile)
+        ProfileImageView(
+            size: 44, 
+            showBorder: false, 
+            showEditIndicator: false, 
+            showWelcomeMessage: true, 
+            userProfile: viewModel.userProfile,
+            onTap: {
+                // Navigate to Profile tab via callback from parent DashboardView
+                onNavigateToProfile?()
+            }
+        )
     }
     
     private var lifespanToggle: some View {

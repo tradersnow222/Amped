@@ -13,12 +13,16 @@ struct ProfileImageView: View {
     // Optional: Allow passing a user profile directly for more reliable data access
     let userProfile: UserProfile?
     
-    init(size: CGFloat, showBorder: Bool = false, showEditIndicator: Bool = false, showWelcomeMessage: Bool = false, userProfile: UserProfile? = nil) {
+    // Optional: Callback for when avatar is tapped
+    let onTap: (() -> Void)?
+    
+    init(size: CGFloat, showBorder: Bool = false, showEditIndicator: Bool = false, showWelcomeMessage: Bool = false, userProfile: UserProfile? = nil, onTap: (() -> Void)? = nil) {
         self.size = size
         self.showBorder = showBorder
         self.showEditIndicator = showEditIndicator
         self.showWelcomeMessage = showWelcomeMessage
         self.userProfile = userProfile
+        self.onTap = onTap
     }
     
     
@@ -44,9 +48,15 @@ struct ProfileImageView: View {
             .padding(.horizontal, 20)
             .padding(.top, 4)
             .padding(.bottom, 8)
+            .onTapGesture {
+                onTap?()
+            }
         } else {
             // Just the avatar
             avatarView
+                .onTapGesture {
+                    onTap?()
+                }
         }
     }
     
