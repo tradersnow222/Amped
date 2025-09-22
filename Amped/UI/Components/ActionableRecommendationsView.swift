@@ -328,7 +328,7 @@ struct ActionableRecommendationsView: View {
         case .steps: return "figure.walk"
         case .exerciseMinutes: return "figure.run"
         case .sleepHours: return "moon.fill"
-        case .restingHeartRate: return "heart.fill"
+        case .restingHeartRate: return "heart"
         case .heartRateVariability: return "waveform.path.ecg"
         case .bodyMass: return "scalemass.fill"
         case .nutritionQuality: return "leaf.fill"

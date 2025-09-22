@@ -82,7 +82,7 @@ struct EnhancedLoadingView: View {
                         // Person/Heart icon in center of the entire bar
                         ZStack {
                             // Heart shape (body)
-                            Image(systemName: "heart.fill")
+                            Image(systemName: "heart")
                                 .font(.system(size: 18, weight: .medium))
                                 .foregroundColor(.white)
                             

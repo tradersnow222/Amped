@@ -31,6 +31,30 @@ struct ProfileView: View {
         viewModel.userProfile
     }
     
+    // MARK: - Unit Conversion Helpers
+    
+    private func formatHeight(_ heightInCm: Double) -> String {
+        let heightUnit = userProfile.heightUnit ?? .cm
+        if heightUnit == .cm {
+            return String(format: "%.1f cm", heightInCm)
+        } else {
+            let inches = heightInCm / 2.54
+            let feet = Int(inches / 12)
+            let remainingInches = Int(inches.truncatingRemainder(dividingBy: 12))
+            return "\(feet)'\(remainingInches)\""
+        }
+    }
+    
+    private func formatWeight(_ weightInKg: Double) -> String {
+        let weightUnit = userProfile.weightUnit ?? .kg
+        if weightUnit == .kg {
+            return String(format: "%.1f kg", weightInKg)
+        } else {
+            let pounds = weightInKg * 2.20462
+            return String(format: "%.1f lbs", pounds)
+        }
+    }
+    
     private var displayName: String {
         UserDefaults.standard.string(forKey: "userName") ?? "User"
     }
@@ -63,7 +87,18 @@ struct ProfileView: View {
                         profileInformationCard
                         
                         // Health Metrics Section
-                        healthMetricsSection
+                        VStack(alignment: .leading, spacing: 16) {
+                            // Current Metrics Header
+                            HStack {
+                                Text("Current Metrics")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.white)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 4)
+                            
+                            healthMetricsSection
+                        }
                         
                         Spacer(minLength: 100) // Space for bottom navigation
                     }
@@ -245,7 +280,7 @@ struct ProfileView: View {
             if let height = userProfile.height {
                 healthMetricRow(
                     title: "Height",
-                    answer: String(format: "%.1f cm", height),
+                    answer: formatHeight(height),
                     color: .green,
                     onTap: {
                         showingHeightEdit = true
@@ -257,7 +292,7 @@ struct ProfileView: View {
             if let weight = userProfile.weight {
                 healthMetricRow(
                     title: "Weight",
-                    answer: String(format: "%.1f kg", weight),
+                    answer: formatWeight(weight),
                     color: .green,
                     onTap: {
                         showingWeightEdit = true
@@ -1300,7 +1335,9 @@ struct HeightEditView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: DashboardViewModel
     @State private var heightText: String = ""
+    @State private var selectedUnit: HeightUnit = .cm
     @FocusState private var isTextFieldFocused: Bool
+    
     
     var body: some View {
         NavigationView {
@@ -1319,22 +1356,42 @@ struct HeightEditView: View {
                 }
                 .padding(.top, 20)
                 
-                // Input Field
+                // Height Input with Unit Selection
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Height (cm)")
+                    Text("Height")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white)
                     
-                    TextField("Enter height", text: $heightText)
-                        .keyboardType(.decimalPad)
-                        .focused($isTextFieldFocused)
-                        .padding(16)
+                    HStack(spacing: 12) {
+                        // Input Field
+                        TextField(placeholderText, text: $heightText)
+                            .keyboardType(.decimalPad)
+                            .focused($isTextFieldFocused)
+                            .frame(height: 48)
+                            .padding(.horizontal, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
+                            )
+                            .foregroundColor(.white)
+                            .font(.system(size: 16, weight: .medium))
+                        
+                        // Unit Selection
+                        Picker("Unit", selection: $selectedUnit) {
+                            ForEach(HeightUnit.allCases, id: \.self) { unit in
+                                Text(unit.rawValue).tag(unit)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .frame(height: 48)
+                        .frame(width: 80)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
                         )
                         .foregroundColor(.white)
                         .font(.system(size: 16, weight: .medium))
+                    }
                 }
                 .padding(.horizontal, 20)
                 
@@ -1364,28 +1421,71 @@ struct HeightEditView: View {
         .onAppear {
             // Set current height if available
             if let height = viewModel.userProfile.height {
-                heightText = String(format: "%.1f", height)
+                // Use the unit preference from the user profile (from questionnaire)
+                selectedUnit = viewModel.userProfile.heightUnit ?? .cm
+                
+                if selectedUnit == .cm {
+                    heightText = String(format: "%.1f", height)
+                } else {
+                    // Convert cm to feet and inches
+                    let inches = height / 2.54
+                    let feet = Int(inches / 12)
+                    let remainingInches = Int(inches.truncatingRemainder(dividingBy: 12))
+                    heightText = "\(feet).\(remainingInches)"
+                }
+            } else {
+                // Default to the user's preferred unit from questionnaire
+                selectedUnit = viewModel.userProfile.heightUnit ?? .cm
             }
             // Focus the text field
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 isTextFieldFocused = true
             }
         }
+        .onChange(of: selectedUnit) { _ in
+            // Clear text when unit changes
+            heightText = ""
+        }
+    }
+    
+    private var placeholderText: String {
+        switch selectedUnit {
+        case .cm:
+            return "Enter height in cm"
+        case .ft:
+            return "Enter height as feet.inches (e.g., 5.10)"
+        }
     }
     
     private var isValidHeight: Bool {
-        guard let height = Double(heightText), height > 0, height < 300 else {
-            return false
+        guard let value = Double(heightText), value > 0 else { return false }
+        
+        switch selectedUnit {
+        case .cm:
+            return value > 0 && value < 300
+        case .ft:
+            let feet = Int(value)
+            let inches = (value - Double(feet)) * 10
+            return feet >= 3 && feet <= 8 && inches >= 0 && inches <= 11
         }
-        return true
     }
     
     private func saveHeight() {
-        guard let height = Double(heightText), height > 0, height < 300 else { return }
+        guard let value = Double(heightText), value > 0 else { return }
         
-        // Update the user profile
+        let heightInCm: Double
+        switch selectedUnit {
+        case .cm:
+            heightInCm = value
+        case .ft:
+            let feet = Int(value)
+            let inches = (value - Double(feet)) * 10
+            heightInCm = (Double(feet) * 12 + inches) * 2.54
+        }
+        
+        // Update the user profile with both height and unit preference
         Task {
-            await viewModel.updateUserProfile(height: height)
+            await viewModel.updateUserProfile(height: heightInCm, heightUnit: selectedUnit)
         }
     }
 }
@@ -1394,7 +1494,9 @@ struct WeightEditView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: DashboardViewModel
     @State private var weightText: String = ""
+    @State private var selectedUnit: WeightUnit = .kg
     @FocusState private var isTextFieldFocused: Bool
+    
     
     var body: some View {
         NavigationView {
@@ -1413,22 +1515,42 @@ struct WeightEditView: View {
                 }
                 .padding(.top, 20)
                 
-                // Input Field
+                // Weight Input with Unit Selection
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Weight (kg)")
+                    Text("Weight")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white)
                     
-                    TextField("Enter weight", text: $weightText)
-                        .keyboardType(.decimalPad)
-                        .focused($isTextFieldFocused)
-                        .padding(16)
+                    HStack(spacing: 12) {
+                        // Input Field
+                        TextField("Enter weight in \(selectedUnit.rawValue)", text: $weightText)
+                            .keyboardType(.decimalPad)
+                            .focused($isTextFieldFocused)
+                            .frame(height: 48)
+                            .padding(.horizontal, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
+                            )
+                            .foregroundColor(.white)
+                            .font(.system(size: 16, weight: .medium))
+                        
+                        // Unit Selection
+                        Picker("Unit", selection: $selectedUnit) {
+                            ForEach(WeightUnit.allCases, id: \.self) { unit in
+                                Text(unit.rawValue).tag(unit)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .frame(height: 48)
+                        .frame(width: 80)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
                         )
                         .foregroundColor(.white)
                         .font(.system(size: 16, weight: .medium))
+                    }
                 }
                 .padding(.horizontal, 20)
                 
@@ -1458,28 +1580,56 @@ struct WeightEditView: View {
         .onAppear {
             // Set current weight if available
             if let weight = viewModel.userProfile.weight {
-                weightText = String(format: "%.1f", weight)
+                // Use the unit preference from the user profile (from questionnaire)
+                selectedUnit = viewModel.userProfile.weightUnit ?? .kg
+                
+                if selectedUnit == .kg {
+                    weightText = String(format: "%.1f", weight)
+                } else {
+                    // Convert kg to pounds
+                    let pounds = weight * 2.20462
+                    weightText = String(format: "%.1f", pounds)
+                }
+            } else {
+                // Default to the user's preferred unit from questionnaire
+                selectedUnit = viewModel.userProfile.weightUnit ?? .kg
             }
             // Focus the text field
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 isTextFieldFocused = true
             }
         }
+        .onChange(of: selectedUnit) { _ in
+            // Clear text when unit changes
+            weightText = ""
+        }
     }
     
     private var isValidWeight: Bool {
-        guard let weight = Double(weightText), weight > 0, weight < 500 else {
-            return false
+        guard let value = Double(weightText), value > 0 else { return false }
+        
+        switch selectedUnit {
+        case .kg:
+            return value > 0 && value < 500
+        case .lbs:
+            return value > 0 && value < 1100 // Roughly 500kg in lbs
         }
-        return true
     }
     
     private func saveWeight() {
-        guard let weight = Double(weightText), weight > 0, weight < 500 else { return }
+        guard let value = Double(weightText), value > 0 else { return }
         
-        // Update the user profile
+        let weightInKg: Double
+        switch selectedUnit {
+        case .kg:
+            weightInKg = value
+        case .lbs:
+            weightInKg = value / 2.20462
+        }
+        
+        // Update the user profile with both weight and unit preference
         Task {
-            await viewModel.updateUserProfile(weight: weight)
+            await viewModel.updateUserProfile(weight: weightInKg, weightUnit: selectedUnit)
         }
     }
 }

@@ -940,7 +940,7 @@ final class MetricDetailViewModel: ObservableObject {
                 id: UUID(),
                 title: "Healthy Habits",
                 description: "Consistent healthy habits have the greatest impact on longevity and wellbeing.",
-                iconName: "heart.fill",
+                iconName: "heart",
                 actionText: "Learn More"
             )
         }

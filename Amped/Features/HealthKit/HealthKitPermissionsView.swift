@@ -53,7 +53,7 @@ struct HealthKitPermissionsView: View {
                         .rotationEffect(.degrees(10))
                     
                     // Heart icon
-                    Image(systemName: "heart.fill")
+                    Image(systemName: "heart")
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 50, height: 50)
@@ -89,7 +89,7 @@ struct HealthKitPermissionsView: View {
                                 .scaleEffect(0.8)
                                 .padding(.trailing, 6)
                         } else {
-                            Image(systemName: "heart.fill")
+                            Image(systemName: "heart")
                                 .foregroundColor(.white)
                                 .font(.system(size: 16))
                                 .padding(.trailing, 4)

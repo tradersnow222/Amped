@@ -275,7 +275,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .steps: return "figure.walk"
         case .exerciseMinutes: return "figure.run"
-        case .restingHeartRate: return "heart.fill"
+        case .restingHeartRate: return "heart"
         case .heartRateVariability: return "waveform.path.ecg"
         case .sleepHours: return "bed.double.fill"
         case .bodyMass: return "scalemass.fill"
@@ -447,7 +447,7 @@ enum MetricFunctionalGroup: String, CaseIterable {
         case .energySources: return "bolt.fill"
         case .recoveryIndicators: return "moon.fill"
         case .performanceMetrics: return "speedometer"
-        case .lifestyleFactors: return "heart.fill"
+        case .lifestyleFactors: return "heart"
         case .healthRisks: return "shield.fill"
         }
     }

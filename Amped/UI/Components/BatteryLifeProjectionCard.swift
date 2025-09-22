@@ -398,7 +398,7 @@ extension LifeProjection.ImpactFactor {
         switch factor.lowercased() {
         case "exercise", "activity": return "figure.run"
         case "sleep": return "bed.double.fill"
-        case "heart", "cardiovascular": return "heart.fill"
+        case "heart", "cardiovascular": return "heart"
         case "nutrition", "diet": return "leaf.fill"
         case "stress": return "brain.head.profile"
         case "weight", "bmi": return "scalemass.fill"

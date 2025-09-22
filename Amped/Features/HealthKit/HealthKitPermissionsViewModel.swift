@@ -199,7 +199,7 @@ import OSLog
             ),
             HealthMetricUIItem(
                 type: .restingHeartRate,
-                icon: "heart.fill",
+                icon: "heart",
                 title: "Resting Heart Rate",
                 description: "Your resting heart rate is a key indicator of cardiovascular health.",
                 isGranted: false,

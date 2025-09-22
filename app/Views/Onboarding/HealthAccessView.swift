@@ -59,7 +59,7 @@ struct HealthAccessView: View {
                     )
                     
                     healthMetricRow(
-                        icon: "heart.fill",
+                        icon: "heart",
                         title: "Resting Heart Rate",
                         description: "Heart efficiency optimizes your battery life"
                     )
@@ -82,7 +82,7 @@ struct HealthAccessView: View {
                 onContinue?()
             }) {
                 HStack {
-                    Image(systemName: "heart.fill")
+                    Image(systemName: "heart")
                         .font(.headline)
                     Text("Continue")
                         .fontWeight(.semibold)

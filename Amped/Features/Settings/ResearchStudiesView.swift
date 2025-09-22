@@ -118,7 +118,7 @@ struct ResearchStudiesView: View {
             )) {
                 studiesList(cardiovascularStudies)
             } label: {
-                Label("Cardiovascular", systemImage: "heart.fill")
+                Label("Cardiovascular", systemImage: "heart")
             }
 
             DisclosureGroup(isExpanded: Binding(

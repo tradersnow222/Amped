@@ -1467,9 +1467,9 @@ final class DashboardViewModel: ObservableObject {
         }
     }
     
-    /// Update user profile height and weight
-    func updateUserProfile(height: Double? = nil, weight: Double? = nil) {
-        logger.info("🔄 Updating user profile - height: \(height?.description ?? "nil"), weight: \(weight?.description ?? "nil")")
+    /// Update user profile height and weight with unit preferences
+    func updateUserProfile(height: Double? = nil, weight: Double? = nil, heightUnit: HeightUnit? = nil, weightUnit: WeightUnit? = nil) {
+        logger.info("🔄 Updating user profile - height: \(height?.description ?? "nil"), weight: \(weight?.description ?? "nil"), heightUnit: \(heightUnit?.rawValue ?? "nil"), weightUnit: \(weightUnit?.rawValue ?? "nil")")
         
         // Create updated user profile to trigger @Published updates
         var updatedProfile = userProfile
@@ -1480,6 +1480,14 @@ final class DashboardViewModel: ObservableObject {
         
         if let weight = weight {
             updatedProfile.weight = weight
+        }
+        
+        if let heightUnit = heightUnit {
+            updatedProfile.heightUnit = heightUnit
+        }
+        
+        if let weightUnit = weightUnit {
+            updatedProfile.weightUnit = weightUnit
         }
         
         updatedProfile.lastActive = Date()

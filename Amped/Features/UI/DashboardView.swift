@@ -1172,7 +1172,7 @@ struct DashboardView: View {
                 VStack(spacing: 16) {
                 // Heart Rate Card
                 detailedAnalysisCard(
-                    icon: "heart.fill",
+                    icon: "heart",
                     title: "Heart Rate",
                     titleColor: .red,
                     status: "Costing you 8 mins",
@@ -1371,7 +1371,7 @@ struct DashboardView: View {
     func getIconForMetric(_ metricTitle: String) -> String {
         switch metricTitle {
         case "Heart Rate":
-            return "heart.fill"
+            return "heart"
         case "Steps":
             return "figure.walk"
         case "Active Energy":
@@ -1381,7 +1381,7 @@ struct DashboardView: View {
         case "Cardio (VO2)":
             return "heart.circle.fill"
         default:
-            return "heart.fill"
+            return "heart"
         }
     }
     
@@ -1439,12 +1439,12 @@ struct DashboardView: View {
     /// Get icon for metric type
     private func metricIcon(for type: HealthMetricType) -> String {
         switch type {
-        case .restingHeartRate: return "heart.fill"
+        case .restingHeartRate: return "heart"
         case .steps: return "figure.walk"
         case .activeEnergyBurned: return "bolt.fill"
         case .sleepHours: return "moon.fill"
         case .vo2Max: return "waveform.path.ecg"
-        default: return "heart.fill"
+        default: return "heart"
         }
     }
     
@@ -1779,7 +1779,7 @@ extension DashboardView {
         switch type {
         case .steps: return "figure.walk"
         case .sleepHours: return "moon.fill"
-        case .restingHeartRate: return "heart.fill"
+        case .restingHeartRate: return "heart"
         case .activeEnergyBurned: return "flame.fill"
         case .exerciseMinutes: return "figure.run"
         case .vo2Max: return "heart.circle.fill"
@@ -1902,13 +1902,13 @@ extension DashboardView {
     /// Get the icon for the top metric
     private func getTopMetricIcon() -> String {
         guard let topMetric = filteredMetrics.first else {
-            return "heart.fill"
+            return "heart"
         }
         
         switch topMetric.type {
         case .steps: return "figure.walk"
         case .sleepHours: return "moon"
-        case .restingHeartRate: return "heart.fill"
+        case .restingHeartRate: return "heart"
         case .activeEnergyBurned: return "flame.fill"
         case .exerciseMinutes: return "figure.run"
         case .vo2Max: return "heart.circle.fill"
@@ -1943,7 +1943,7 @@ extension DashboardView {
         case .day:
             return [
                 DashboardMetric(
-                    icon: "heart.fill",
+                    icon: "heart",
                     iconColor: .red,
                     title: "Heart Rate",
                     value: "75",
@@ -1996,7 +1996,7 @@ extension DashboardView {
         case .month:
             return [
                 DashboardMetric(
-                    icon: "heart.fill",
+                    icon: "heart",
                     iconColor: .red,
                     title: "Heart Rate",
                     value: "78",
@@ -2049,7 +2049,7 @@ extension DashboardView {
         case .year:
             return [
                 DashboardMetric(
-                    icon: "heart.fill",
+                    icon: "heart",
                     iconColor: .red,
                     title: "Heart Rate",
                     value: "76",
@@ -3067,7 +3067,7 @@ struct MetricDetailContentView: View {
         case .day:
             return [
                 DashboardMetric(
-                    icon: "heart.fill",
+                    icon: "heart",
                     iconColor: .red,
                     title: "Heart Rate",
                     value: "75",
@@ -3120,7 +3120,7 @@ struct MetricDetailContentView: View {
         case .month:
             return [
                 DashboardMetric(
-                    icon: "heart.fill",
+                    icon: "heart",
                     iconColor: .red,
                     title: "Heart Rate",
                     value: "78",
@@ -3143,7 +3143,7 @@ struct MetricDetailContentView: View {
         case .year:
             return [
                 DashboardMetric(
-                    icon: "heart.fill",
+                    icon: "heart",
                     iconColor: .red,
                     title: "Heart Rate",
                     value: "76",
@@ -3270,7 +3270,7 @@ struct MetricDetailContentView: View {
         case "steps":
             return "figure.walk"
         case "heart rate":
-            return "heart.fill"
+            return "heart"
         case "exercise":
             return "flame.fill"
         case "weight":
