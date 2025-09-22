@@ -98,7 +98,7 @@ private struct LegalLinksInlineView: View {
             .font(.system(size: 12))
             .foregroundColor(.secondary.opacity(0.6))
             .sheet(isPresented: $showPrivacy) {
-                NavigationStack { PrivacyPolicyView() }
+                PrivacyPolicyView()
             }
             
             Text("•")
@@ -115,7 +115,7 @@ private struct LegalLinksInlineView: View {
             .font(.system(size: 12))
             .foregroundColor(.secondary.opacity(0.6))
             .sheet(isPresented: $showTerms) {
-                NavigationStack { TermsOfServiceView() }
+                TermsOfUseView()
             }
         }
     }

@@ -339,7 +339,7 @@ private struct LegalRow: View {
                 if isPrivacy {
                     PrivacyPolicyView()
                 } else {
-                    TermsOfServiceView()
+                    TermsOfUseView()
                 }
             }
         }
@@ -908,51 +908,6 @@ class ProfileDetailsViewModel: ObservableObject {
 
 // MARK: - Privacy Views
 
-struct PrivacyPolicyView: View {
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Privacy Policy")
-                    .font(.largeTitle)
-                    .bold()
-                    .foregroundColor(.primary)
-                    .padding(.bottom)
-                
-                Group {
-                    Text("Data Collection")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    
-                    Text("Amped processes all health data locally on your device. We do not collect, store, or transmit your health data to any external servers.")
-                        .foregroundColor(.secondary)
-                    
-                    Text("With your explicit permission, we may collect anonymous usage data to improve the app experience. This data is never linked to your personal identity.")
-                        .foregroundColor(.secondary)
-                    
-                    Text("User Rights & Data Deletion")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    
-                    Text("You can delete your profile and related app data at any time from Settings → Reset All Data. This removes your on-device profile, questionnaire responses, and manual metrics. For additional assistance, contact support at support@ampedlife.ai.")
-                        .foregroundColor(.secondary)
-
-                    Text("Analytics")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-
-                    Text("If you opt in to analytics, we collect anonymized information about app usage, features used, and performance metrics. You can disable this at any time in Settings.")
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-            }
-            .padding()
-        }
-        .navigationTitle("Privacy Policy")
-        .navigationBarTitleDisplayMode(.inline)
-        .background(Color(.systemGroupedBackground))
-    }
-}
 
 struct TermsOfServiceView: View {
     var body: some View {

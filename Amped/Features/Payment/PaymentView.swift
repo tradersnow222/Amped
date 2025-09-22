@@ -16,6 +16,8 @@ struct PaymentView: View {
     @State private var annualButtonPressed = false
     @State private var monthlyButtonPressed = false
     @State private var userProfile: UserProfile?
+    @State private var showTermsOfUse = false
+    @State private var showPrivacyPolicy = false
     
     // Callback to proceed to next step
     var onContinue: (() -> Void)?
@@ -223,13 +225,13 @@ struct PaymentView: View {
                         // Legal links
                         HStack(spacing: 16) {
                             Button("Privacy Policy") {
-                                // Handle privacy policy
+                                showPrivacyPolicy = true
                             }
                             .font(.system(size: 12, weight: .regular))
                             .foregroundColor(.white.opacity(0.6))
                             
                             Button("Terms of Use") {
-                                // Handle terms of use
+                                showTermsOfUse = true
                             }
                             .font(.system(size: 12, weight: .regular))
                             .foregroundColor(.white.opacity(0.6))
@@ -282,6 +284,12 @@ struct PaymentView: View {
                 message: Text(viewModel.errorMessage),
                 dismissButton: .default(Text("Got it"))
             )
+        }
+        .sheet(isPresented: $showTermsOfUse) {
+            TermsOfUseView()
+        }
+        .sheet(isPresented: $showPrivacyPolicy) {
+            PrivacyPolicyView()
         }
         .navigationBarHidden(true)
         .onAppear {
