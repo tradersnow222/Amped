@@ -365,6 +365,8 @@ final class QuestionnaireManager: ObservableObject {
             gender: viewModel.selectedGender,
             height: viewModel.height > 0 ? viewModel.height : nil,
             weight: viewModel.weight > 0 ? viewModel.weight : nil,
+            heightUnit: viewModel.heightUnit,
+            weightUnit: viewModel.weightUnit,
             isSubscribed: currentUserProfile?.isSubscribed ?? false,
             hasCompletedOnboarding: currentUserProfile?.hasCompletedOnboarding ?? false,
             hasCompletedQuestionnaire: true,

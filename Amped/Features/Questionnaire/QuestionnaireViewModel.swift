@@ -642,6 +642,10 @@ final class QuestionnaireViewModel: ObservableObject {
     @Published var height: Double = 0
     @Published var weight: Double = 0
     
+    // Unit preferences
+    @Published var heightUnit: HeightUnit = .cm
+    @Published var weightUnit: WeightUnit = .kg
+    
     // Nutrition
     @Published var selectedNutritionQuality: NutritionQuality?
     

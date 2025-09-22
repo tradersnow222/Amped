@@ -197,6 +197,10 @@ struct QuestionViews {
         @FocusState private var isHeightFieldFocused: Bool
         @FocusState private var isWeightFieldFocused: Bool
         
+        // Unit selections
+        @State private var heightUnit: HeightUnit? = .cm
+        @State private var weightUnit: WeightUnit? = .kg
+        
         // Screen size adaptive spacing
         @Environment(\.adaptiveSpacing) private var spacing
         
@@ -276,7 +280,7 @@ struct QuestionViews {
                             .padding(.horizontal, 24)
                         }
                         
-                        // Height input field
+                        // Height input field with unit dropdown
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Text("Your Height")
@@ -286,41 +290,63 @@ struct QuestionViews {
                             }
                             .padding(.horizontal, 24)
                             
-                            ZStack(alignment: .leading) {
-                                if localHeight.isEmpty {
-                                    Text("Enter your height (eg. 135)")
+                            HStack(spacing: 12) {
+                                // Height text field
+                                ZStack(alignment: .leading) {
+                                    if localHeight.isEmpty {
+                                        Text("Enter your height")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4))
+                                            .padding(.horizontal, 20)
+                                            .allowsHitTesting(false)
+                                    }
+                                    
+                                    TextField("", text: $localHeight)
                                         .font(.system(size: 14, weight: .regular))
-                                        .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4))
+                                        .foregroundColor(.black)
+                                        .multilineTextAlignment(.leading)
+                                        .padding(.vertical, 14)
                                         .padding(.horizontal, 20)
-                                        .allowsHitTesting(false)
+                                        .keyboardType(.numberPad)
+                                }
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color.white)
+                                )
+                                .accentColor(.black)
+                                .focused($isHeightFieldFocused)
+                                .submitLabel(.next)
+                                .disableAutocorrection(true)
+                                .onChange(of: localHeight) { newValue in
+                                    debounceTimer?.invalidate()
+                                    debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                                        syncToViewModel()
+                                    }
                                 }
                                 
-                                TextField("", text: $localHeight)
-                                    .font(.system(size: 14, weight: .regular))
-                                    .foregroundColor(.black)
-                                    .multilineTextAlignment(.leading)
-                                    .padding(.vertical, 14)
-                                    .padding(.horizontal, 20)
-                                    .keyboardType(.numberPad)
-                            }
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color.white)
-                            )
-                            .accentColor(.black)
-                            .focused($isHeightFieldFocused)
-                            .submitLabel(.next)
-                            .disableAutocorrection(true)
-                            .onChange(of: localHeight) { newValue in
-                                debounceTimer?.invalidate()
-                                debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                                // Height unit picker
+                                Picker("Height Unit", selection: $heightUnit) {
+                                    ForEach(HeightUnit.allCases, id: \.self) { unit in
+                                        Text(unit.displayName)
+                                            .foregroundColor(.black)
+                                            .tag(unit as HeightUnit?)
+                                    }
+                                }
+                                .pickerStyle(MenuPickerStyle())
+                                .frame(width: 80, height: 48)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color.white)
+                                )
+                                .foregroundColor(.black)
+                                .onChange(of: heightUnit) { _ in
                                     syncToViewModel()
                                 }
                             }
                             .padding(.horizontal, 24)
                         }
                         
-                        // Weight input field
+                        // Weight input field with unit dropdown
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Text("Your Weight")
@@ -330,40 +356,62 @@ struct QuestionViews {
                             }
                             .padding(.horizontal, 24)
                             
-                            ZStack(alignment: .leading) {
-                                if localWeight.isEmpty {
-                                    Text("Enter your weight (eg. 85)")
+                            HStack(spacing: 12) {
+                                // Weight text field
+                                ZStack(alignment: .leading) {
+                                    if localWeight.isEmpty {
+                                        Text("Enter your weight")
+                                            .font(.system(size: 14, weight: .regular))
+                                            .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4))
+                                            .padding(.horizontal, 20)
+                                            .allowsHitTesting(false)
+                                    }
+                                    
+                                    TextField("", text: $localWeight)
                                         .font(.system(size: 14, weight: .regular))
-                                        .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15, opacity: 0.4))
+                                        .foregroundColor(.black)
+                                        .multilineTextAlignment(.leading)
+                                        .padding(.vertical, 14)
                                         .padding(.horizontal, 20)
-                                        .allowsHitTesting(false)
+                                        .keyboardType(.numberPad)
+                                }
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color.white)
+                                )
+                                .accentColor(.black)
+                                .focused($isWeightFieldFocused)
+                                .submitLabel(.continue)
+                                .disableAutocorrection(true)
+                                .onSubmit {
+                                    syncToViewModel()
+                                    if canProceedLocally {
+                                        proceedToNext()
+                                    }
+                                }
+                                .onChange(of: localWeight) { newValue in
+                                    debounceTimer?.invalidate()
+                                    debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                                        syncToViewModel()
+                                    }
                                 }
                                 
-                                TextField("", text: $localWeight)
-                                    .font(.system(size: 14, weight: .regular))
-                                    .foregroundColor(.black)
-                                    .multilineTextAlignment(.leading)
-                                    .padding(.vertical, 14)
-                                    .padding(.horizontal, 20)
-                                    .keyboardType(.numberPad)
-                            }
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color.white)
-                            )
-                            .accentColor(.black)
-                            .focused($isWeightFieldFocused)
-                            .submitLabel(.continue)
-                            .disableAutocorrection(true)
-                            .onSubmit {
-                                syncToViewModel()
-                                if canProceedLocally {
-                                    proceedToNext()
+                                // Weight unit picker
+                                Picker("Weight Unit", selection: $weightUnit) {
+                                    ForEach(WeightUnit.allCases, id: \.self) { unit in
+                                        Text(unit.displayName)
+                                            .foregroundColor(.black)
+                                            .tag(unit as WeightUnit?)
+                                    }
                                 }
-                            }
-                            .onChange(of: localWeight) { newValue in
-                                debounceTimer?.invalidate()
-                                debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+                                .pickerStyle(MenuPickerStyle())
+                                .frame(width: 80, height: 48)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color.white)
+                                )
+                                .foregroundColor(.black)
+                                .onChange(of: weightUnit) { _ in
                                     syncToViewModel()
                                 }
                             }
@@ -425,6 +473,11 @@ struct QuestionViews {
                     localAge = viewModel.age > 0 ? String(viewModel.age) : ""
                     localHeight = viewModel.height > 0 ? String(Int(viewModel.height)) : ""
                     localWeight = viewModel.weight > 0 ? String(Int(viewModel.weight)) : ""
+                    
+                    // Initialize units from view model
+                    heightUnit = viewModel.heightUnit
+                    weightUnit = viewModel.weightUnit
+                    
                     hasInitialized = true
                 }
             }
@@ -462,6 +515,12 @@ struct QuestionViews {
             if let weightInt = Int(localWeight.trimmingCharacters(in: .whitespacesAndNewlines)),
                weightInt >= 30 && weightInt <= 300 {
                 viewModel.setWeight(Double(weightInt))
+            }
+            
+            // Sync units
+            DispatchQueue.main.async {
+                viewModel.heightUnit = heightUnit ?? .cm
+                viewModel.weightUnit = weightUnit ?? .kg
             }
         }
         

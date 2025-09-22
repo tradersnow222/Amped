@@ -166,6 +166,8 @@ final class DashboardViewModel: ObservableObject {
                 gender: nil,
                 height: nil,
                 weight: nil,
+                heightUnit: nil,
+                weightUnit: nil,
                 isSubscribed: false,
                 hasCompletedOnboarding: false,
                 hasCompletedQuestionnaire: false,
