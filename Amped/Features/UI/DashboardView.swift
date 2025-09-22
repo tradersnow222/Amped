@@ -2519,9 +2519,10 @@ struct MetricDetailContentView: View {
                                 metricTitle: metricTitle,
                                 period: selectedPeriod.rawValue.lowercased(),
                                 realChartData: realChartData.isEmpty ? getRealChartData(for: metricTitle, period: selectedPeriod) : realChartData,
-                                color: Self.getColorForMetric(metricTitle)
+                                color: Self.getColorForMetric(metricTitle),
+                                isLoading: isLoadingChartData
                             )
-                            .frame(height: 200)
+                            .frame(height: 200) // Back to original height
                             .padding(.horizontal, 0)
                         }
                     }
@@ -2597,6 +2598,7 @@ struct MetricDetailContentView: View {
     /// Load period-specific metric data for the selected period
     private func loadPeriodSpecificData() {
         isLoadingData = true
+        isLoadingChartData = true
         
         Task {
             let metricType = Self.getHealthMetricType(from: metricTitle)
@@ -2639,12 +2641,14 @@ struct MetricDetailContentView: View {
                     print("🔍 📊 ✅ Updated realChartData with \(chartData.count) REAL data points")
                     
                     isLoadingData = false
+                    isLoadingChartData = false
                 }
             } catch {
                 await MainActor.run {
                     currentMetricData = nil
                     realChartData = []
                     isLoadingData = false
+                    isLoadingChartData = false
                 }
             }
         }
@@ -3241,15 +3245,19 @@ struct MetricDetailContentView: View {
     static func getColorForMetric(_ metricTitle: String) -> Color {
         switch metricTitle.lowercased() {
         case "sleep":
-            return .blue
+            return .yellow
         case "steps":
-            return .green
+            return .blue
         case "heart rate":
             return .red
-        case "exercise":
+        case "active energy":
             return .orange
+        case "cardio (vo2)":
+            return .blue
         case "weight":
             return .purple
+        case "exercise":
+            return .green
         default:
             return .gray
         }
@@ -3292,17 +3300,21 @@ struct MetricDetailContentView: View {
     static func getActionForMetric(_ metricTitle: String) -> String {
         switch metricTitle.lowercased() {
         case "sleep":
-            return "Set a bedtime reminder"
+            return "Add 10 mins by taking 8 hours of sleep"
         case "steps":
-            return "Take a 10-minute walk"
+            return "Add 15 mins by walking 10,000 steps daily"
         case "heart rate":
-            return "Do 5 minutes of cardio"
+            return "Add 10 mins by maintaining optimal heart rate"
+        case "active energy":
+            return "Add 20 mins by burning 500 calories daily"
+        case "cardio (vo2)":
+            return "Add 25 mins by improving cardio fitness"
         case "exercise":
-            return "Schedule workout time"
+            return "Add 15 mins by exercising 30 minutes daily"
         case "weight":
-            return "Log your meals"
+            return "Add 5 mins by maintaining healthy weight"
         default:
-            return "Track this metric"
+            return "Add time by optimizing this metric"
         }
     }
     

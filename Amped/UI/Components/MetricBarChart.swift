@@ -15,6 +15,7 @@ struct MetricBarChart: View {
     let period: String
     let realChartData: [ChartDataPoint] // Accept real data instead of generating dummy data
     let color: Color
+    let isLoading: Bool // Add loading state parameter
     
     // MARK: - State
     @State private var selectedLabel: String?
@@ -24,62 +25,163 @@ struct MetricBarChart: View {
         VStack {
             GeometryReader { containerGeometry in
                 ZStack(alignment: .topLeading) {
-                    chartView
-                    
-                    // Tooltip positioned at center of selected bar
-                    if let selectedLabel = selectedLabel,
-                       let dataPoint = realChartData.first(where: { $0.label == selectedLabel }) {
-                        let barIndex = realChartData.firstIndex(where: { $0.label == selectedLabel }) ?? 0
-                        let containerWidth = containerGeometry.size.width
-                        let barWidth = containerWidth / CGFloat(realChartData.count)
-                        let barCenterX = CGFloat(barIndex) * barWidth + (barWidth / 2)
+                    if isLoading {
+                        // Loading state with skeleton bars
+                        loadingView
+                    } else {
+                        chartView
                         
-                        VStack(alignment: .center, spacing: 2) {
-                            Text(dataPoint.label)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(formatAxisValue(dataPoint.value))
-                                .font(.title3.bold())
-                                .foregroundColor(.primary)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
-                        .shadow(radius: 2)
-                        .offset(
-                            x: max(10, min(barCenterX - 60, containerWidth - 130)),
-                            y: 10
-                        )
-                        .transition(.opacity.combined(with: .scale))
-                        
-                        // Debug: Show the positioning calculation
-                        .onAppear {
-                            print("🔍 Tooltip positioning:")
-                            print("   - Container width: \(containerWidth)")
-                            print("   - Bar width: \(barWidth)")
-                            print("   - Bar index: \(barIndex)")
-                            print("   - Bar center X: \(barCenterX)")
-                            print("   - Final tooltip X: \(max(10, min(barCenterX - 60, containerWidth - 130)))")
+                        // Tooltip positioned at center of selected bar
+                        if let selectedLabel = selectedLabel,
+                           let dataPoint = realChartData.first(where: { $0.label == selectedLabel }) {
+                            let barIndex = realChartData.firstIndex(where: { $0.label == selectedLabel }) ?? 0
+                            let containerWidth = containerGeometry.size.width
+                            let barWidth = containerWidth / CGFloat(realChartData.count)
+                            let barCenterX = CGFloat(barIndex) * barWidth + (barWidth / 2)
+                            
+                            VStack(alignment: .center, spacing: 2) {
+                                Text(dataPoint.label)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text(formatAxisValue(dataPoint.value))
+                                    .font(.title3.bold())
+                                    .foregroundColor(.primary)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                            .shadow(radius: 2)
+                            .offset(
+                                x: max(10, min(barCenterX - 60, containerWidth - 130)),
+                                y: 10
+                            )
+                            .transition(.opacity.combined(with: .scale))
                         }
                     }
                 }
             }
-            .frame(height: 200)
+            .frame(height: 200) // Back to original height
         }
     }
+    
+    // MARK: - Loading View
+    private var loadingView: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                
+                // Chart area with skeleton bars
+                VStack(spacing: 12) {
+                    // Y-axis labels skeleton
+                    HStack {
+                        VStack(alignment: .trailing, spacing: 8) {
+                            ForEach(0..<4, id: \.self) { index in
+                                RoundedRectangle(cornerRadius: 2)
+                                    .fill(Color.white.opacity(0.15))
+                                    .frame(width: 30, height: 8)
+                                    .shimmerEffect(delay: Double(index) * 0.1)
+                            }
+                        }
+                        .frame(width: 40)
+                        
+                        // Main chart area
+                        VStack(spacing: 8) {
+                            // Skeleton bars with two-tone design
+                            HStack(alignment: .bottom, spacing: 10) { // Reduced spacing to match tighter X-axis
+                                ForEach(0..<6, id: \.self) { index in
+                                    VStack(spacing: 0) {
+                                        // Upper grey portion (remaining capacity)
+                                        RoundedRectangle(cornerRadius: 12) // More rounded corners like remaining space
+                                            .fill(Color.gray.opacity(0.2))
+                                            .frame(
+                                                width: 14, // Thinner bars (14pt width, 26pt gap)
+                                                height: getRemainingHeight(for: index)
+                                            )
+                                            .shimmerEffect(delay: Double(index) * 0.15)
+                                        
+                                        // Lower yellow portion (data value)
+                                        RoundedRectangle(cornerRadius: 12) // More rounded corners like remaining space
+                                            .fill(Color.yellow.opacity(0.3))
+                                            .frame(
+                                                width: 14, // Thinner bars (14pt width, 26pt gap)
+                                                height: getRealisticBarHeight(for: index)
+                                            )
+                                            .shimmerEffect(delay: Double(index) * 0.15)
+                                            .pulseEffect(delay: Double(index) * 0.2)
+                                    }
+                                }
+                            }
+                            .frame(height: 120) // Back to original height
+                            
+                            // X-axis labels skeleton
+                            HStack(spacing: 8) { // Reduced spacing to match tighter X-axis
+                                ForEach(0..<6, id: \.self) { index in
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(Color.white.opacity(0.15))
+                                        .frame(width: 35, height: 10)
+                                        .shimmerEffect(delay: Double(index) * 0.2)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        
+                        Spacer()
+                            .frame(width: 20)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+            }
+            .frame(width: max(300, CGFloat(6) * 50)) // Dynamic width based on expected data points
+        }
+    }
+    
+    /// Generate realistic bar heights for loading skeleton
+    private func getRealisticBarHeight(for index: Int) -> CGFloat {
+        // Create a more realistic distribution of bar heights (data values)
+        let heights: [CGFloat] = [50, 70, 45, 80, 55, 65]
+        return heights[index % heights.count]
+    }
+    
+    /// Generate remaining height for two-tone skeleton bars
+    private func getRemainingHeight(for index: Int) -> CGFloat {
+        // Calculate remaining height to complete the bar
+        let dataHeight = getRealisticBarHeight(for: index)
+        let maxHeight: CGFloat = 100
+        return max(0, maxHeight - dataHeight)
+    }
+    
     
     // MARK: - Chart View (scrollable for long data series)
     private var chartView: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             Chart {
                 ForEach(realChartData) { dataPoint in
+                    // Calculate range for two-tone bars - remaining space should fill full grid
+                    let maxValue = realChartData.map(\.value).max() ?? dataPoint.value
+                    let maxInterval = Double(Int(ceil(maxValue / 1000)) * 1000 + 1000)
+                    let remainingValue = maxInterval - dataPoint.value
+                    
+                    // Data value bar (yellow/lower portion) - fully rounded
                     BarMark(
                         x: .value("Period", dataPoint.label),
-                        y: .value("Value", dataPoint.value)
+                        y: .value("Value", dataPoint.value),
+                        width: .ratio(0.35) // Thinner bars (35% width, 65% gap)
                     )
-                    .foregroundStyle(color)
-                    .cornerRadius(3)
-                    .opacity(selectedLabel == dataPoint.label ? 1.0 : 0.8)
+                    .foregroundStyle(Color.yellow)
+                    .clipShape(RoundedRectangle(cornerRadius: 12)) // Fully rounded (top and bottom)
+                    .opacity(selectedLabel == dataPoint.label ? 1.0 : 0.9)
+                    
+                    // Remaining capacity bar (dark grey/upper portion) - fully rounded
+                    if remainingValue > 0 {
+                        BarMark(
+                            x: .value("Period", dataPoint.label),
+                            y: .value("Remaining", remainingValue),
+                            width: .ratio(0.35) // Thinner bars (35% width, 65% gap)
+                        )
+                        .foregroundStyle(Color.gray.opacity(0.3))
+                        .clipShape(RoundedRectangle(cornerRadius: 12)) // Fully rounded (top and bottom)
+                        .opacity(selectedLabel == dataPoint.label ? 0.8 : 0.6)
+                    }
                 }
             }
             .chartXAxis {
@@ -88,7 +190,7 @@ struct MetricBarChart: View {
             .chartYAxis {
                 yAxisConfiguration
             }
-            .frame(width: max(300, CGFloat(realChartData.count) * 40)) // Dynamic width based on data points
+            .frame(width: max(300, CGFloat(realChartData.count) * 35)) // Reduced spacing between data points
             .overlay(
                 // Transparent overlay for reliable tap detection with geometry
                 GeometryReader { chartGeometry in
@@ -284,26 +386,77 @@ struct MetricBarChart: View {
     // MARK: - Axis Configurations
     private var xAxisConfiguration: some AxisContent {
         AxisMarks { _ in
-            AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
-                .foregroundStyle(.white.opacity(0.1))
-            AxisTick(stroke: StrokeStyle(lineWidth: 1))
-                .foregroundStyle(.white.opacity(0.3))
+            // Remove grid lines for cleaner look
             AxisValueLabel()
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.white.opacity(0.6))
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.white.opacity(0.8))
         }
     }
     
     private var yAxisConfiguration: some AxisContent {
-        AxisMarks(position: .leading) { value in
-            AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
-                .foregroundStyle(.white.opacity(0.1))
-            AxisTick(stroke: StrokeStyle(lineWidth: 1))
-                .foregroundStyle(.white.opacity(0.3))
+        AxisMarks(position: .leading, values: yAxisValues) { value in
+            AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [1, 3]))
+                .foregroundStyle(.white.opacity(0.15))
+            
             AxisValueLabel(anchor: .trailing) {
-                Text(formatAxisValue(value.as(Double.self) ?? 0))
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.6))
+                Text(formatYAxisValue(value.as(Double.self) ?? 0))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.8))
+            }
+        }
+    }
+    
+    /// Generate Y-axis values for grid-like appearance
+    private var yAxisValues: [Double] {
+        guard !realChartData.isEmpty else { return [0, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000] }
+        
+        let maxValue = realChartData.map(\.value).max() ?? 1000
+        
+        // Always go 1000 above the max data point, but use 500 intervals for tighter grid
+        let maxInterval = Double(Int(ceil(maxValue / 1000)) * 1000 + 1000)
+        
+        // Create intervals of 500 for tighter grid lines
+        let numberOfIntervals = Int(maxInterval / 500)
+        
+        var intervals: [Double] = []
+        for i in 0...numberOfIntervals {
+            intervals.append(Double(i * 500))
+        }
+        
+        return intervals
+    }
+    
+    /// Format Y-axis values for display
+    private func formatYAxisValue(_ value: Double) -> String {
+        // Only show labels for 1000 intervals to keep it clean
+        guard Int(value) % 1000 == 0 else { return "" }
+        
+        switch metricTitle.lowercased() {
+        case "steps":
+            if value >= 1000 {
+                return String(format: "%.0fK", value / 1000)
+            } else {
+                return String(format: "%.0f", value)
+            }
+        case "active energy":
+            if value >= 1000 {
+                return String(format: "%.0fK", value / 1000)
+            } else {
+                return String(format: "%.0f", value)
+            }
+        case "sleep":
+            return String(format: "%.0f", value)
+        case "heart rate":
+            return String(format: "%.0f", value)
+        case "cardio (vo2)":
+            return String(format: "%.0f", value)
+        case "weight":
+            return String(format: "%.0f", value)
+        default:
+            if value >= 1000 {
+                return String(format: "%.0fK", value / 1000)
+            } else {
+                return String(format: "%.0f", value)
             }
         }
     }
@@ -351,7 +504,8 @@ struct MetricBarChart: View {
             metricTitle: "Steps",
             period: "day",
             realChartData: [ChartDataPoint(value: 8000, label: "Today (Jan 15)")],
-            color: .blue
+            color: .blue,
+            isLoading: false
         )
         .padding()
         
@@ -369,9 +523,101 @@ struct MetricBarChart: View {
                 ChartDataPoint(value: 7800, label: "Week 3"),
                 ChartDataPoint(value: 8100, label: "Week 4")
             ],
-            color: .blue
+            color: .blue,
+            isLoading: false
         )
         .padding()
     }
     .background(Color.black)
+}
+
+// MARK: - Loading Animation Extensions
+extension View {
+    func shimmerEffect(delay: Double = 0.0) -> some View {
+        self
+            .overlay(
+                ShimmerOverlay(delay: delay)
+            )
+            .clipped()
+    }
+    
+    func pulseEffect(delay: Double = 0.0) -> some View {
+        self
+            .overlay(
+                PulseOverlay(delay: delay)
+            )
+    }
+}
+
+struct ShimmerOverlay: View {
+    let delay: Double
+    @State private var isAnimating = false
+    
+    var body: some View {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color.white.opacity(0.0),
+                Color.white.opacity(0.4),
+                Color.white.opacity(0.0)
+            ]),
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+        .rotationEffect(.degrees(30))
+        .offset(x: isAnimating ? 300 : -200)
+        .animation(
+            Animation.linear(duration: 1.8)
+                .repeatForever(autoreverses: false)
+                .delay(delay),
+            value: isAnimating
+        )
+        .onAppear {
+            isAnimating = true
+        }
+    }
+}
+
+struct PulseOverlay: View {
+    let delay: Double
+    @State private var isPulsing = false
+    
+    var body: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.1))
+            .scaleEffect(isPulsing ? 1.05 : 1.0)
+            .opacity(isPulsing ? 0.7 : 1.0)
+            .animation(
+                Animation.easeInOut(duration: 1.2)
+                    .repeatForever(autoreverses: true)
+                    .delay(delay),
+                value: isPulsing
+            )
+            .onAppear {
+                isPulsing = true
+            }
+    }
+}
+
+struct LoadingDotsView: View {
+    @State private var animatingDots: [Bool] = [false, false, false]
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<3, id: \.self) { index in
+                Circle()
+                    .fill(Color.white.opacity(0.6))
+                    .frame(width: 4, height: 4)
+                    .scaleEffect(animatingDots[index] ? 1.3 : 1.0)
+                    .animation(
+                        Animation.easeInOut(duration: 0.6)
+                            .repeatForever(autoreverses: true)
+                            .delay(Double(index) * 0.2),
+                        value: animatingDots[index]
+                    )
+            }
+        }
+        .onAppear {
+            animatingDots = [true, true, true]
+        }
+    }
 }
