@@ -642,11 +642,29 @@ struct DashboardView: View {
                     .font(.system(size: 18, weight: .medium))
                     .foregroundColor(totalTimeImpact >= 0 ? .ampedGreen : .ampedRed)
                 
-                Text(totalTimeImpact >= 0 ? 
-                     "Current habits adding \(formattedTotalImpact)" : 
-                     "Current habits costing you \(formattedTotalImpact)")
-                    .font(.system(size: 18, weight: .regular))
-                    .foregroundColor(.white)
+                Group {
+                    if totalTimeImpact >= 0 {
+                        Text("Current habits adding ")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.white) +
+                        Text(formattedTotalImpact)
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white) +
+                        Text(" to your life")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.white)
+                    } else {
+                        Text("Current habits costing you ")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.white) +
+                        Text(formattedTotalImpact)
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white) +
+                        Text(" from your life")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.white)
+                    }
+                }
             }
         }
     }
@@ -3539,6 +3557,8 @@ struct DashboardView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
             DashboardView()
+                .environmentObject(SettingsManager())
+                .environmentObject(AppState())
         }
     }
 }

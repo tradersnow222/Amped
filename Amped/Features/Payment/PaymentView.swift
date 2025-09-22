@@ -156,9 +156,12 @@ struct PaymentView: View {
                             viewModel.selectedPlan = .monthly
                             processPurchase()
                         }) {
-                            HStack {
-                                Text("$3.99 per week")
+                            VStack {
+                                Text("Try for Free")
                                     .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.white)
+                                Text("then $4.99 per month")
+                                    .font(.system(size: 14, weight: .regular))
                                     .foregroundColor(.white)
                             }
                             .frame(maxWidth: .infinity)
@@ -192,35 +195,35 @@ struct PaymentView: View {
                         .animation(.easeOut(duration: 0.8).delay(0.8), value: animateElements)
                         
                         // Trial offer text - now clickable
-                        VStack(spacing: 4) {
-                            Button(action: {
-                                viewModel.selectedPlan = .monthly
-                                processPurchase()
-                            }) {
-                                Text("Try for 0 USD")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.white)
-                            }
-                            .buttonStyle(.plain)
-                            .scaleEffect(monthlyButtonPressed ? 0.95 : 1.0)
-                            .onTapGesture {
-                                withAnimation(.easeInOut(duration: 0.1)) {
-                                    monthlyButtonPressed = true
-                                }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    withAnimation(.easeInOut(duration: 0.1)) {
-                                        monthlyButtonPressed = false
-                                    }
-                                }
-                            }
-                            
-                            Text("3 days free trial then $3.99 per week")
-                                .font(.system(size: 12, weight: .regular))
-                                .foregroundColor(.white.opacity(0.7))
-                        }
-                        .opacity(animateElements ? 1 : 0)
-                        .offset(y: animateElements ? 0 : 20)
-                        .animation(.easeOut(duration: 0.8).delay(0.9), value: animateElements)
+//                        VStack(spacing: 4) {
+//                            Button(action: {
+//                                viewModel.selectedPlan = .monthly
+//                                processPurchase()
+//                            }) {
+//                                Text("Try for 0 USD")
+//                                    .font(.system(size: 16, weight: .medium))
+//                                    .foregroundColor(.white)
+//                            }
+//                            .buttonStyle(.plain)
+//                            .scaleEffect(monthlyButtonPressed ? 0.95 : 1.0)
+//                            .onTapGesture {
+//                                withAnimation(.easeInOut(duration: 0.1)) {
+//                                    monthlyButtonPressed = true
+//                                }
+//                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+//                                    withAnimation(.easeInOut(duration: 0.1)) {
+//                                        monthlyButtonPressed = false
+//                                    }
+//                                }
+//                            }
+//                            
+//                            Text("3 days free trial then $3.99 per week")
+//                                .font(.system(size: 12, weight: .regular))
+//                                .foregroundColor(.white.opacity(0.7))
+//                        }
+//                        .opacity(animateElements ? 1 : 0)
+//                        .offset(y: animateElements ? 0 : 20)
+//                        .animation(.easeOut(duration: 0.8).delay(0.9), value: animateElements)
                         Spacer()
                         // Legal links
                         HStack(spacing: 16) {
@@ -454,7 +457,7 @@ struct PaymentView_Previews: PreviewProvider {
         PaymentView(onContinue: {})
             .environmentObject(AppState())
             .environmentObject(BatteryThemeManager())
-            .environmentObject(MockSubscriptionManager())
+            .environmentObject(SubscriptionManager.shared)
     }
 }
 

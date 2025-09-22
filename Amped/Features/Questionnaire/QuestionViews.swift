@@ -1014,7 +1014,7 @@ struct QuestionViews {
                                     
                                     // Score display
                                     HStack(alignment: .bottom, spacing: 0) {
-                                        Text("50")
+                                        Text("30")
                                             .font(.system(size: 48, weight: .bold))
                                             .foregroundColor(.white)
                                         
@@ -1037,13 +1037,13 @@ struct QuestionViews {
                                                 // Progress track
                                                 RoundedRectangle(cornerRadius: 4)
                                                     .fill(Color("ampedYellow"))
-                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                    .frame(width: geometry.size.width * 0.3, height: 8)
                                                 
                                                 // Thumb
                                                 Circle()
                                                     .fill(Color.gray)
                                                     .frame(width: 20, height: 20)
-                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                                    .offset(x: geometry.size.width * 0.3 - 10)
                                             }
                                         }
                                         .frame(height: 20)
@@ -1063,11 +1063,7 @@ struct QuestionViews {
                                     }
                                     
                                     // Description text
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("This score estimates how your stress level affects your life expectancy.")
-                                            .font(.system(size: 16, weight: .regular))
-                                            .foregroundColor(.white)
-                                            .multilineTextAlignment(.leading)
+                                    VStack(alignment: .leading, spacing: 16) {
                                         
                                         Text("Stress contributes to 30% of your total lifespan impact. It's important!")
                                             .font(.system(size: 16, weight: .bold))
@@ -1392,7 +1388,7 @@ struct QuestionViews {
                                     
                                     // Score display
                                     HStack(alignment: .bottom, spacing: 0) {
-                                        Text("50")
+                                        Text("30")
                                             .font(.system(size: 48, weight: .bold))
                                             .foregroundColor(.white)
                                         
@@ -1415,13 +1411,13 @@ struct QuestionViews {
                                                 // Progress track
                                                 RoundedRectangle(cornerRadius: 4)
                                                     .fill(Color("ampedYellow"))
-                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                    .frame(width: geometry.size.width * 0.3, height: 8)
                                                 
                                                 // Thumb
                                                 Circle()
                                                     .fill(Color.gray)
                                                     .frame(width: 20, height: 20)
-                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                                    .offset(x: geometry.size.width * 0.3 - 10)
                                             }
                                         }
                                         .frame(height: 20)
@@ -1441,11 +1437,7 @@ struct QuestionViews {
                                     }
                                     
                                     // Description text
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("This score estimates how your anxiety level affects your life expectancy.")
-                                            .font(.system(size: 16, weight: .regular))
-                                            .foregroundColor(.white)
-                                            .multilineTextAlignment(.leading)
+                                    VStack(alignment: .leading, spacing: 16) {
                                         
                                         Text("Anxiety contributes to 30% of your total lifespan impact. It's important!")
                                             .font(.system(size: 16, weight: .bold))
@@ -1947,7 +1939,7 @@ struct QuestionViews {
                                     
                                     // Score display
                                     HStack(alignment: .bottom, spacing: 0) {
-                                        Text("50")
+                                        Text("25")
                                             .font(.system(size: 48, weight: .bold))
                                             .foregroundColor(.white)
                                         
@@ -1970,13 +1962,13 @@ struct QuestionViews {
                                                 // Progress track
                                                 RoundedRectangle(cornerRadius: 4)
                                                     .fill(Color("ampedYellow"))
-                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                    .frame(width: geometry.size.width * 0.25, height: 8)
                                                 
                                                 // Thumb
                                                 Circle()
                                                     .fill(Color.gray)
                                                     .frame(width: 20, height: 20)
-                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                                    .offset(x: geometry.size.width * 0.25 - 10)
                                             }
                                         }
                                         .frame(height: 20)
@@ -1996,11 +1988,7 @@ struct QuestionViews {
                                     }
                                     
                                     // Description text
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("This score estimates how your diet quality affects your life expectancy.")
-                                            .font(.system(size: 16, weight: .regular))
-                                            .foregroundColor(.white)
-                                            .multilineTextAlignment(.leading)
+                                    VStack(alignment: .leading, spacing: 16) {
                                         
                                         Text("Diet contributes to 25% of your total lifespan impact. It's important!")
                                             .font(.system(size: 16, weight: .bold))
@@ -2310,7 +2298,7 @@ struct QuestionViews {
                                     
                                     // Score display
                                     HStack(alignment: .bottom, spacing: 0) {
-                                        Text("50")
+                                        Text("40")
                                             .font(.system(size: 48, weight: .bold))
                                             .foregroundColor(.white)
                                         
@@ -2333,13 +2321,13 @@ struct QuestionViews {
                                                 // Progress track
                                                 RoundedRectangle(cornerRadius: 4)
                                                     .fill(Color("ampedYellow"))
-                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                    .frame(width: geometry.size.width * 0.4, height: 8)
                                                 
                                                 // Thumb
                                                 Circle()
                                                     .fill(Color.gray)
                                                     .frame(width: 20, height: 20)
-                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                                    .offset(x: geometry.size.width * 0.4 - 10)
                                             }
                                         }
                                         .frame(height: 20)
@@ -2359,12 +2347,7 @@ struct QuestionViews {
                                     }
                                     
                                     // Description text
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("This score estimates how your smoking habits affect your life expectancy.")
-                                            .font(.system(size: 16, weight: .regular))
-                                            .foregroundColor(.white)
-                                            .multilineTextAlignment(.leading)
-                                        
+                                    VStack(alignment: .leading, spacing: 16) {
                                         Text("Smoking contributes to 40% of your total lifespan impact. It's critical!")
                                             .font(.system(size: 16, weight: .bold))
                                             .foregroundColor(.white)
@@ -2663,7 +2646,7 @@ struct QuestionViews {
                                     }
 
                                     HStack(alignment: .bottom, spacing: 0) {
-                                        Text("50")
+                                        Text("15")
                                             .font(.system(size: 48, weight: .bold))
                                             .foregroundColor(.white)
                                         Text("/100")
@@ -2680,11 +2663,11 @@ struct QuestionViews {
                                                     .frame(height: 8)
                                                 RoundedRectangle(cornerRadius: 4)
                                                     .fill(Color("ampedYellow"))
-                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                    .frame(width: geometry.size.width * 0.15, height: 8)
                                                 Circle()
                                                     .fill(Color.gray)
                                                     .frame(width: 20, height: 20)
-                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                                    .offset(x: geometry.size.width * 0.15 - 10)
                                             }
                                         }
                                         .frame(height: 20)
@@ -2700,11 +2683,7 @@ struct QuestionViews {
                                         }
                                     }
 
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("This score estimates how your alcohol consumption affects your life expectancy.")
-                                            .font(.system(size: 16, weight: .regular))
-                                            .foregroundColor(.white)
-                                            .multilineTextAlignment(.leading)
+                                    VStack(alignment: .leading, spacing: 16) {
                                         Text("Alcohol contributes to 15% of your total lifespan impact. It's significant!")
                                             .font(.system(size: 16, weight: .bold))
                                             .foregroundColor(.white)
@@ -2997,7 +2976,7 @@ struct QuestionViews {
                                     }
 
                                     HStack(alignment: .bottom, spacing: 0) {
-                                        Text("50")
+                                        Text("20")
                                             .font(.system(size: 48, weight: .bold))
                                             .foregroundColor(.white)
                                         Text("/100")
@@ -3014,11 +2993,11 @@ struct QuestionViews {
                                                     .frame(height: 8)
                                                 RoundedRectangle(cornerRadius: 4)
                                                     .fill(Color("ampedYellow"))
-                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                    .frame(width: geometry.size.width * 0.2, height: 8)
                                                 Circle()
                                                     .fill(Color.gray)
                                                     .frame(width: 20, height: 20)
-                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                                    .offset(x: geometry.size.width * 0.2 - 10)
                                             }
                                         }
                                         .frame(height: 20)
@@ -3034,11 +3013,7 @@ struct QuestionViews {
                                         }
                                     }
 
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("This score estimates how your social connections affect your life expectancy.")
-                                            .font(.system(size: 16, weight: .regular))
-                                            .foregroundColor(.white)
-                                            .multilineTextAlignment(.leading)
+                                    VStack(alignment: .leading, spacing: 16) {
                                         Text("Social connections contribute to 20% of your total lifespan impact. It's important!")
                                             .font(.system(size: 16, weight: .bold))
                                             .foregroundColor(.white)
@@ -3126,7 +3101,7 @@ struct QuestionViews {
                         .fixedSize(horizontal: false, vertical: true)
                                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                                Text("Please choose number of hours you want to add on daily basis.")
+                                Text("Choose how much time you'd like to extend your lifespan by each day")
                                 .font(.system(size: 16, weight: .regular))
                                 .foregroundColor(.white.opacity(0.8))
 
@@ -3343,7 +3318,7 @@ struct QuestionViews {
                                     }
 
                                     HStack(alignment: .bottom, spacing: 0) {
-                                        Text("50")
+                                        Text("30")
                                             .font(.system(size: 48, weight: .bold))
                                             .foregroundColor(.white)
                                         Text("/100")
@@ -3360,11 +3335,11 @@ struct QuestionViews {
                                                     .frame(height: 8)
                                                 RoundedRectangle(cornerRadius: 4)
                                                     .fill(Color("ampedYellow"))
-                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                    .frame(width: geometry.size.width * 0.3, height: 8)
                                                 Circle()
                                                     .fill(Color.gray)
                                                     .frame(width: 20, height: 20)
-                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                                    .offset(x: geometry.size.width * 0.3 - 10)
                                             }
                                         }
                                         .frame(height: 20)
@@ -3380,11 +3355,7 @@ struct QuestionViews {
                                         }
                                     }
 
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("This score estimates how your sleep quality affects your life expectancy.")
-                                            .font(.system(size: 16, weight: .regular))
-                                            .foregroundColor(.white)
-                                            .multilineTextAlignment(.leading)
+                                    VStack(alignment: .leading, spacing: 16) {
                                         Text("Sleep quality contributes to 30% of your total lifespan impact. It's crucial!")
                                             .font(.system(size: 16, weight: .bold))
                                             .foregroundColor(.white)
@@ -3687,7 +3658,7 @@ struct QuestionViews {
                                     }
 
                                     HStack(alignment: .bottom, spacing: 0) {
-                                        Text("50")
+                                        Text("25")
                                             .font(.system(size: 48, weight: .bold))
                                             .foregroundColor(.white)
                                         Text("/100")
@@ -3704,11 +3675,11 @@ struct QuestionViews {
                                                     .frame(height: 8)
                                                 RoundedRectangle(cornerRadius: 4)
                                                     .fill(Color("ampedYellow"))
-                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                    .frame(width: geometry.size.width * 0.25, height: 8)
                                                 Circle()
                                                     .fill(Color.gray)
                                                     .frame(width: 20, height: 20)
-                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                                    .offset(x: geometry.size.width * 0.25 - 10)
                                             }
                                         }
                                         .frame(height: 20)
@@ -3724,11 +3695,7 @@ struct QuestionViews {
                                         }
                                     }
 
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("This score estimates how your blood pressure affects your life expectancy.")
-                                            .font(.system(size: 16, weight: .regular))
-                                            .foregroundColor(.white)
-                                            .multilineTextAlignment(.leading)
+                                    VStack(alignment: .leading, spacing: 16) {
                                         Text("Blood pressure contributes to 25% of your total lifespan impact. It's critical!")
                                             .font(.system(size: 16, weight: .bold))
                                             .foregroundColor(.white)
@@ -4246,7 +4213,7 @@ struct QuestionViews {
                                     }
 
                                     HStack(alignment: .bottom, spacing: 0) {
-                                        Text("50")
+                                        Text("10")
                                             .font(.system(size: 48, weight: .bold))
                                             .foregroundColor(.white)
                                         Text("/100")
@@ -4263,11 +4230,11 @@ struct QuestionViews {
                                                     .frame(height: 8)
                                                 RoundedRectangle(cornerRadius: 4)
                                                     .fill(Color("ampedYellow"))
-                                                    .frame(width: geometry.size.width * 0.5, height: 8)
+                                                    .frame(width: geometry.size.width * 0.1, height: 8)
                                                 Circle()
                                                     .fill(Color.gray)
                                                     .frame(width: 20, height: 20)
-                                                    .offset(x: geometry.size.width * 0.5 - 10)
+                                                    .offset(x: geometry.size.width * 0.1 - 10)
                                             }
                                         }
                                         .frame(height: 20)
@@ -4283,11 +4250,7 @@ struct QuestionViews {
                                         }
                                     }
 
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("This score estimates how your life motivation affects your life expectancy.")
-                                            .font(.system(size: 16, weight: .regular))
-                                            .foregroundColor(.white)
-                                            .multilineTextAlignment(.leading)
+                                    VStack(alignment: .leading, spacing: 16) {
                                         Text("Life motivation contributes to 10% of your total lifespan impact. It's meaningful!")
                                             .font(.system(size: 16, weight: .bold))
                                             .foregroundColor(.white)

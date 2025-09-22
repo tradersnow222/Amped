@@ -61,7 +61,7 @@ struct NotificationPermissionView: View {
                         .font(.system(size: 32, weight: .bold, design: .default))
                         .foregroundColor(.white)
                     
-                    Text("Get personalised reminders based on your daily goals")
+                    Text("Get personalised reminders based on your lifespan goals")
                         .font(.system(size: 16, weight: .regular))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
@@ -82,14 +82,14 @@ struct NotificationPermissionView: View {
                         .fill(Color.gray.opacity(0.5))
                         .frame(width:310, height: 80)
                         .cornerRadius(12)
-                        .offset(x: 18, y: 40)
+                        .offset(x: 18, y: 60)
                     
                     // Background card 2 (middle) - extends beyond main card
                     Rectangle()
                         .fill(Color.gray.opacity(0.9))
                         .frame(width:330, height: 80)
                         .cornerRadius(12)
-                        .offset(x: 9, y: 32)
+                        .offset(x: 9, y: 52)
                     
                     // Main notification card (front)
                     VStack(spacing: 12) {
@@ -98,7 +98,7 @@ struct NotificationPermissionView: View {
                                 Image(systemName: "bell")
                                     .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(.gray)
-                                Text("AMPLED")
+                                Text("AMPED")
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(.black.opacity(0.8))
                             }
@@ -108,7 +108,7 @@ struct NotificationPermissionView: View {
                                 .foregroundColor(.gray)
                         }
                         
-                        Text("Congratulations! your life span has increased.")
+                        Text("Congratulations! You just added 30 minutes to your lifespan")
                             .font(.system(size: 14, weight: .regular))
                             .foregroundColor(.black.opacity(0.8))
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -137,12 +137,12 @@ struct NotificationPermissionView: View {
                     
                     benefitRow(
                         icon: "progress",
-                        title: "Quick updates on your health gains"
+                        title: "Quick updates on your lifespan gains"
                     )
                     
                     benefitRow(
                         icon: "verified",
-                        title: "Honor your achievements!"
+                        title: "Celebrate your achievements!"
                     )
                 }
                 .padding(.leading, 24)
