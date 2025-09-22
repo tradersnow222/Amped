@@ -10,6 +10,8 @@ struct EnergyView: View {
     @State private var selectedLifespanType: LifespanType = .current
     @State private var showingSettings = false
     @State private var currentTime = Date()
+    @State private var animatedYears: Int = 0
+    @State private var hasAnimated = false
     
     // Timer for real-time countdown updates
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -166,14 +168,101 @@ struct EnergyView: View {
         .onAppear {
             // Load real health data and calculations
             print("🔍 📊 EnergyView: Loading real health data and scientific calculations")
+            print("🔍 📊 EnergyView: Current years before load: \(currentData.years)")
+            print("🔍 📊 EnergyView: Life projection before load: \(viewModel.lifeProjection?.adjustedLifeExpectancyYears ?? 0)")
+            
             viewModel.loadData()
+            
+            // Start animation after a longer delay to ensure data is fully loaded
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                print("🔍 📊 EnergyView: After 1s delay - Current years: \(currentData.years)")
+                print("🔍 📊 EnergyView: After 1s delay - Life projection: \(viewModel.lifeProjection?.adjustedLifeExpectancyYears ?? 0)")
+                animateYearsCountdown()
+            }
         }
         .onReceive(timer) { time in
             // Update current time every second for real-time countdown
             currentTime = time
         }
+        .onChange(of: selectedLifespanType) { _ in
+            // Reset animation state when switching tabs so it can animate again
+            hasAnimated = false
+            animateYearsCountdown()
+        }
+        .onChange(of: currentData.years) { newValue in
+            // Always animate when years value changes and we have a meaningful value
+            if newValue > 0 && !hasAnimated {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    animateYearsCountdown()
+                }
+            }
+        }
+        .onChange(of: viewModel.lifeProjection) { newProjection in
+            // Animate when life projection data becomes available
+            print("🔍 📊 LifeProjection changed: \(newProjection?.adjustedLifeExpectancyYears ?? 0)")
+            if currentData.years > 0 && !hasAnimated {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    animateYearsCountdown()
+                }
+            }
+        }
+        .onChange(of: viewModel.currentUserAge) { newAge in
+            // Animate when user age becomes available (indicates data is loaded)
+            print("🔍 📊 UserAge changed: \(newAge)")
+            if currentData.years > 0 && !hasAnimated {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    animateYearsCountdown()
+                }
+            }
+        }
 //        .background(Color.black)
 //        .navigationBarHidden(true)
+    }
+    
+    // MARK: - Animation Functions
+    
+    /// Animate the years countdown from 0 to the target value
+    private func animateYearsCountdown() {
+        let targetYears = currentData.years
+        
+        print("🔍 📊 Animation: Starting animation with targetYears: \(targetYears)")
+        print("🔍 📊 Animation: Life projection available: \(viewModel.lifeProjection != nil)")
+        print("🔍 📊 Animation: Current user age: \(viewModel.currentUserAge)")
+        
+        // Don't animate if we don't have meaningful data
+        guard targetYears > 0 else {
+            print("🔍 📊 Animation: No meaningful data to animate, targetYears: \(targetYears)")
+            return
+        }
+        
+        // Reset animation state
+        animatedYears = 0
+        hasAnimated = false
+        
+        // Calculate animation parameters
+        let duration = min(3.0, max(1.5, Double(targetYears) * 0.03)) // Faster animation
+        let totalSteps = targetYears
+        let stepInterval = duration / Double(max(totalSteps, 1))
+        
+        print("🔍 📊 Animation: Duration: \(duration), Steps: \(totalSteps), Interval: \(stepInterval)")
+        
+        // Create a timer-based counter animation
+        var currentStep = 0
+        let timer = Timer.scheduledTimer(withTimeInterval: stepInterval, repeats: true) { timer in
+            currentStep += 1
+            
+            if currentStep >= totalSteps {
+                // Animation complete
+                animatedYears = targetYears
+                timer.invalidate()
+                hasAnimated = true
+                print("🔍 📊 Animation: Animation complete, final value: \(targetYears)")
+            } else {
+                // Update counter
+                animatedYears = currentStep
+                print("🔍 📊 Animation: Step \(currentStep) of \(totalSteps)")
+            }
+        }
     }
     
     // MARK: - Header Components
@@ -273,7 +362,7 @@ struct EnergyView: View {
         VStack(spacing: 16) {
             // Main years display
             HStack(alignment: .bottom, spacing: 8) {
-                Text("\(currentData.years)")
+                Text("\(animatedYears)")
                     .font(.system(size: 64, weight: .bold))
                     .foregroundColor(selectedLifespanType == .current ? .yellow : .green)
                 
