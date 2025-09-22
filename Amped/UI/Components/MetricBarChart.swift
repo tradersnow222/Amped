@@ -158,7 +158,7 @@ struct MetricBarChart: View {
                 ForEach(realChartData) { dataPoint in
                     // Calculate range for two-tone bars - remaining space should fill full grid
                     let maxValue = realChartData.map(\.value).max() ?? dataPoint.value
-                    let maxInterval = Double(Int(ceil(maxValue / 1000)) * 1000 + 1000)
+                    let maxInterval = maxValue < 200 ? maxValue + 50 : maxValue + 1000
                     let remainingValue = maxInterval - dataPoint.value
                     
                     // Data value bar (yellow/lower portion) - fully rounded
@@ -408,19 +408,33 @@ struct MetricBarChart: View {
     
     /// Generate Y-axis values for grid-like appearance
     private var yAxisValues: [Double] {
-        guard !realChartData.isEmpty else { return [0, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000] }
+        guard !realChartData.isEmpty else { 
+            // Fallback with reasonable default range
+            return [0, 500, 1000, 1500, 2000]
+        }
         
         let maxValue = realChartData.map(\.value).max() ?? 1000
         
-        // Always go 1000 above the max data point, but use 500 intervals for tighter grid
-        let maxInterval = Double(Int(ceil(maxValue / 1000)) * 1000 + 1000)
+        // Determine appropriate interval size based on data range
+        let intervalSize: Double
+        let maxInterval: Double
         
-        // Create intervals of 500 for tighter grid lines
-        let numberOfIntervals = Int(maxInterval / 500)
+        if maxValue < 200 {
+            // For smaller values (< 200), use 50-unit intervals for better granularity
+            intervalSize = 50
+            maxInterval = maxValue + 50
+        } else {
+            // For larger values (≥ 200), use 500-unit intervals
+            intervalSize = 500
+            maxInterval = maxValue + 1000
+        }
+        
+        // Create intervals based on determined size
+        let numberOfIntervals = Int(maxInterval / intervalSize)
         
         var intervals: [Double] = []
         for i in 0...numberOfIntervals {
-            intervals.append(Double(i * 500))
+            intervals.append(Double(i) * intervalSize)
         }
         
         return intervals
@@ -428,8 +442,19 @@ struct MetricBarChart: View {
     
     /// Format Y-axis values for display
     private func formatYAxisValue(_ value: Double) -> String {
-        // Only show labels for 1000 intervals to keep it clean
-        guard Int(value) % 1000 == 0 else { return "" }
+        // Determine which intervals to show labels for based on data range
+        let maxValue = realChartData.map(\.value).max() ?? 1000
+        let shouldShowLabel: Bool
+        
+        if maxValue < 200 {
+            // For smaller values (< 200), show labels at 50-unit intervals
+            shouldShowLabel = Int(value) % 50 == 0
+        } else {
+            // For larger values (≥ 200), show labels at 1000-unit intervals
+            shouldShowLabel = Int(value) % 1000 == 0
+        }
+        
+        guard shouldShowLabel else { return "" }
         
         switch metricTitle.lowercased() {
         case "steps":
