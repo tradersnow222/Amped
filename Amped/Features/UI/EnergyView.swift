@@ -359,7 +359,7 @@ struct EnergyView: View {
                 
                 Spacer()
                 
-                Text("End of Life*")
+                Text("Projected lifespan*")
                     .font(.system(size: 14, weight: .regular))
                     .foregroundColor(.white.opacity(0.6))
             }.padding(.top,6)
