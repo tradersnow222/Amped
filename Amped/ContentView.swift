@@ -38,16 +38,26 @@ struct ContentView: View {
                     Group {
                         // PRODUCTION LOGIC: Show dashboard if onboarding is complete AND user has subscription
                         if appState.hasCompletedOnboarding && appState.isPremiumUser && !showDebugControls {
-                            // Show main dashboard for subscribed users
-                            if #available(iOS 16.0, *) {
-                                NavigationStack {
-                                    DashboardView()
-                                }
+                            // Show loading screen before dashboard if needed
+                            if appState.shouldShowLoadingScreen {
+                                EnhancedLoadingView(
+                                    loadingType: .healthImpact,
+                                    onComplete: {
+                                        appState.completeHealthDataLoading()
+                                    }
+                                )
                             } else {
-                                NavigationView {
-                                    DashboardView()
+                                // Show main dashboard for subscribed users
+                                if #available(iOS 16.0, *) {
+                                    NavigationStack {
+                                        DashboardView()
+                                    }
+                                } else {
+                                    NavigationView {
+                                        DashboardView()
+                                    }
+                                    .navigationViewStyle(StackNavigationViewStyle())
                                 }
-                                .navigationViewStyle(StackNavigationViewStyle())
                             }
                         } else if appState.hasCompletedOnboarding && !appState.isPremiumUser && !showDebugControls {
                             if showPaymentFromPaywall {

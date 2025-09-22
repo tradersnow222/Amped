@@ -166,6 +166,10 @@ final class AppState: ObservableObject {
     @Published var hasUserPermanentlyDismissedSignIn: Bool = false
     @Published var appLaunchCount: Int = 0
     
+    // LOADING STATE: Track when app should show loading screen before dashboard
+    @Published var isLoadingHealthData: Bool = false
+    @Published var shouldShowLoadingScreen: Bool = false
+    
     // ONBOARDING PROGRESS TRACKING: Advanced persistence with soft/hard close detection
     @Published var currentOnboardingStep: OnboardingStep = .welcome
     
@@ -225,6 +229,9 @@ final class AppState: ObservableObject {
             // If onboarding is completed, set step to dashboard to prevent clearing userName
             currentOnboardingStep = .dashboard
             print("🔍 AppState: Onboarding completed, set currentOnboardingStep = .dashboard")
+            
+            // Show loading screen when app reopens for existing users
+            startHealthDataLoading()
         }
         
         // Load saved mascot name
@@ -303,6 +310,9 @@ final class AppState: ObservableObject {
         print("🔍 AppState: Set hasCompletedOnboarding = \(hasCompletedOnboarding), currentOnboardingStep = \(currentOnboardingStep)")
         saveOnboardingState()
         print("🔍 AppState: saveOnboardingState() completed")
+        
+        // Show loading screen when onboarding is completed (before first dashboard view)
+        startHealthDataLoading()
     }
     
     /// Set authentication status and persist to UserDefaults
@@ -321,6 +331,18 @@ final class AppState: ObservableObject {
     func markSignInPermanentlyDismissed() {
         hasUserPermanentlyDismissedSignIn = true
         UserDefaults.standard.set(true, forKey: "hasUserPermanentlyDismissedSignIn")
+    }
+    
+    /// Start loading health data (show loading screen)
+    func startHealthDataLoading() {
+        isLoadingHealthData = true
+        shouldShowLoadingScreen = true
+    }
+    
+    /// Complete health data loading (hide loading screen)
+    func completeHealthDataLoading() {
+        isLoadingHealthData = false
+        shouldShowLoadingScreen = false
     }
     
     /// Mark dashboard animations as shown
