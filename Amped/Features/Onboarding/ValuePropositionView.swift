@@ -89,7 +89,7 @@ struct ValuePropositionView: View {
                     
                     // Main headline
                     VStack(spacing:0){
-                        Text("Welcome")
+                        Text("Welcome to Amped")
                             .font(.system(size: 32, weight: .bold, design: .default))
                             .foregroundColor(.white)
                             .multilineTextAlignment(.center)
@@ -108,7 +108,7 @@ struct ValuePropositionView: View {
                         //     .animation(.easeOut(duration: 0.8).delay(0.2), value: animateElements)
                     }
                     // Subtitle
-                    Text("Life is fleeting, but this app can guide you towards a healthier, longer life.")
+                    Text("Life is short, but we're here to help you live as long as possible.")
                         .font(.system(size: 22, weight: .light, design: .default))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
@@ -122,19 +122,19 @@ struct ValuePropositionView: View {
                     HStack(spacing:25) {
                         featureHighlight(
                             iconName: "heartline",
-                            title: "Track Impact",
+                            title: "Track lifespan",
                             delay: 0.6
                         )
                         
                         featureHighlight(
                             iconName: "liveupdates",
-                            title: "Live updates",
+                            title: "Improve habits",
                             delay: 0.7
                         )
                         
                         featureHighlight(
                             iconName: "records",
-                            title: "Live reports",
+                            title: "Live longer",
                             delay: 0.8
                         )
                     }

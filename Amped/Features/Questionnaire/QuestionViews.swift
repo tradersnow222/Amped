@@ -521,11 +521,11 @@ struct QuestionViews {
                             Text("Let's get familiar")
                                 .font(.system(size: 20, weight: .medium))
                                 .foregroundColor(.white)
-                            
-                            Text("I'm \(appState.mascotName), your guide and companion in this journey.")
-                                .font(.system(size: 16, weight: .regular))
-                                .foregroundColor(.white.opacity(0.8))
-                                .multilineTextAlignment(.leading)
+//                            
+//                            Text("I'm \(appState.mascotName), your guide and companion in this journey.")
+//                                .font(.system(size: 16, weight: .regular))
+//                                .foregroundColor(.white.opacity(0.8))
+//                                .multilineTextAlignment(.leading)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 24)
@@ -1061,7 +1061,7 @@ struct QuestionViews {
                 if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
-                            showPopup = true
+                            // showPopup = true // Disabled tooltip
                         }
                     }
                 }
@@ -1439,7 +1439,7 @@ struct QuestionViews {
                 if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
-                            showPopup = true
+                            // showPopup = true // Disabled tooltip
                         }
                     }
                 }
@@ -1994,7 +1994,7 @@ struct QuestionViews {
                 if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
-                            showPopup = true
+                            // showPopup = true // Disabled tooltip
                         }
                     }
                 }
@@ -2357,7 +2357,7 @@ struct QuestionViews {
                 if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
-                            showPopup = true
+                            // showPopup = true // Disabled tooltip
                         }
                     }
                 }
@@ -2691,7 +2691,7 @@ struct QuestionViews {
                 if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
-                            showPopup = true
+                            // showPopup = true // Disabled tooltip
                         }
                     }
                 }
@@ -3025,7 +3025,7 @@ struct QuestionViews {
                 if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
-                            showPopup = true
+                            // showPopup = true // Disabled tooltip
                         }
                     }
                 }
@@ -3715,7 +3715,7 @@ struct QuestionViews {
                 if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
-                            showPopup = true
+                            // showPopup = true // Disabled tooltip
                         }
                     }
                 }
@@ -4274,7 +4274,7 @@ struct QuestionViews {
                 if !UserDefaults.standard.bool(forKey: "habitImpactPopupShown") {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         withAnimation(.easeInOut(duration: 0.3)) {
-                            showPopup = true
+                            // showPopup = true // Disabled tooltip
                         }
                     }
                 }

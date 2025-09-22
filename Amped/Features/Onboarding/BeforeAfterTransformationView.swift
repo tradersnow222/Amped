@@ -56,18 +56,18 @@ struct BeforeAfterTransformationView: View {
                     // Main headline
                     VStack(spacing: 8) {
                         HStack(spacing: 0) {
-                            Text("Discover The ")
+                            Text("Add time to your ")
                                 .font(.system(size: 32, weight: .bold))
                                 .foregroundColor(.white)
                             
-                            Text("Healthier")
+                            Text("Life")
                                 .font(.system(size: 32, weight: .bold))
                                 .foregroundColor(Color.green)
                         }
                         
-                        Text("You!")
-                            .font(.system(size: 32, weight: .bold))
-                            .foregroundColor(.white)
+//                        Text("You!")
+//                            .font(.system(size: 32, weight: .bold))
+//                            .foregroundColor(.white)
                     }
                     .multilineTextAlignment(.center)
                     .opacity(animateElements ? 1 : 0)

@@ -35,7 +35,7 @@ struct MascotIntroductionView: View {
                         .animation(.easeOut(duration: 0.8).delay(0.2), value: animateElements)
                     
                     // Greeting text
-                    Text("Hi, I am Amped battery.")
+                    Text("Hi")
                         .font(.system(size: 24, weight: .medium))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
@@ -74,16 +74,16 @@ struct MascotIntroductionView: View {
                     .animation(.easeOut(duration: 0.8).delay(1.0), value: animateElements)
                     
                     // Secondary button - "Skip & Continue"
-                    Button(action: {
-                        // Skip naming and continue with default name
-                        onSkip?()
-                    }) {
-                        Text("Skip & Continue")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.gray)
-                    }
-                    .opacity(animateElements ? 1 : 0)
-                    .animation(.easeOut(duration: 0.8).delay(1.2), value: animateElements)
+//                    Button(action: {
+//                        // Skip naming and continue with default name
+//                        onSkip?()
+//                    }) {
+//                        Text("Skip & Continue")
+//                            .font(.system(size: 16, weight: .medium))
+//                            .foregroundColor(.gray)
+//                    }
+//                    .opacity(animateElements ? 1 : 0)
+//                    .animation(.easeOut(duration: 0.8).delay(1.2), value: animateElements)
                 }
                 
                 Spacer()
