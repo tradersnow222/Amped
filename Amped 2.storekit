@@ -19,7 +19,54 @@
   "settings" : {
     "_failTransactionsEnabled" : false,
     "_locale" : "en_US",
-    "_storefront" : "USA"
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
   },
   "subscriptionGroups" : [
     {
@@ -36,11 +83,15 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "3.99",
+          "displayPrice" : "4.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "6F409A53",
-          "introductoryOffer" : null,
+          "introductoryOffer" : {
+            "internalID" : "0A1045A3",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P3D"
+          },
           "localizations" : [
             {
               "description" : "",
@@ -48,9 +99,9 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "ai.ampedlife.amped.weekly",
-          "recurringSubscriptionPeriod" : "P1W",
-          "referenceName" : "Premium Weekly",
+          "productID" : "ai.ampedlife.amped.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Premium Monthly",
           "subscriptionGroupID" : "037709D4",
           "type" : "RecurringSubscription",
           "winbackOffers" : [

@@ -347,14 +347,14 @@ struct PaymentView: View {
                 await subscriptionManager.loadOfferings()
             }
             
-            // Get the weekly package
-            guard let weeklyPackage = subscriptionManager.weeklyPackage else {
-                print("❌ Weekly package not found")
+            // Get the monthly package
+            guard let monthlyPackage = subscriptionManager.monthlyPackage else {
+                print("❌ Monthly package not found")
                 return
             }
             
             // Attempt purchase
-            let success = await subscriptionManager.purchase(package: weeklyPackage)
+            let success = await subscriptionManager.purchase(package: monthlyPackage)
             
             if success {
                 // Update app state

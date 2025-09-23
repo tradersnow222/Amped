@@ -178,10 +178,10 @@ final class SubscriptionManager: NSObject, ObservableObject {
     
     // MARK: - Helper Methods
     
-    /// Get the weekly subscription package from current offering
-    var weeklyPackage: Package? {
+    /// Get the monthly subscription package from current offering
+    var monthlyPackage: Package? {
         return currentOffering?.availablePackages.first { package in
-            package.storeProduct.productIdentifier == RevenueCatConfig.ProductID.weekly
+            package.storeProduct.productIdentifier == RevenueCatConfig.ProductID.monthly
         }
     }
     
