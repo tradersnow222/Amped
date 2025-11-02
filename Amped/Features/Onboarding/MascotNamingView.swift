@@ -1,127 +1,140 @@
 import SwiftUI
 
-/// Second mascot screen - "What do you want to call me?" with text input
 struct MascotNamingView: View {
     // MARK: - Properties
+    @State private var userName: String = ""
+    @State private var progress: CGFloat = 1
     
-    @State private var animateElements = false
-    @State private var mascotName: String = ""
-    @FocusState private var isTextFieldFocused: Bool
-    
-    // Callback to proceed to next step with the chosen name
     var onContinue: ((String) -> Void)?
     
     // MARK: - Body
-    
     var body: some View {
         ZStack {
-            // Black background
-            Color.black
-                .edgesIgnoringSafeArea(.all)
+            // Gradient Overlay
+            LinearGradient.grayGradient
+                .ignoresSafeArea()
             
-            // Main content
-            VStack(spacing: 0) {
-                Spacer()
+            VStack(spacing: 30) {
+                               
+                // MARK: - Cute Character
+                Image("battery") // Replace with your image asset name
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 120, height: 120)
+                    .shadow(color: Color.green.opacity(0.5), radius: 15, x: 0, y: 5)
+                    .padding(.top, 100)
                 
-                VStack(spacing: 23) {
-                    // Mascot character (smaller than previous screen)
-                    Image("steptwo")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 174, height: 174)
-                        .opacity(animateElements ? 1 : 0)
-                        .scaleEffect(animateElements ? 1 : 0.8)
-                        .animation(.easeOut(duration: 0.8).delay(0.2), value: animateElements)
+                // MARK: - Title
+                Text("Let’s get familiar!")
+                    .font(.poppins(26, weight: .bold))
+                    .foregroundColor(.white)
+                
+                // MARK: - Progress Bar
+                VStack(spacing: 4) {
+                    ProgressView(value: progress, total: 13)
+                        .progressViewStyle(ThickProgressViewStyle(height: 12))
+                        .frame(width: 220)
                     
-                    // Question text
-                    Text("What do you want to call me?")
-                        .font(.system(size: 24, weight: .medium))
+                    Text("\(Int(progress))%")
+                        .font(.poppins(12))
+                        .foregroundColor(.white.opacity(0.8))
+                }
+                .padding(.bottom, 30)
+                
+                // MARK: - Question
+                Text("What should we call you?")
+                    .font(.poppins(18, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.bottom, 10)
+                
+                // MARK: - TextField
+                ZStack {
+                    if userName.isEmpty {
+                        Text("Enter your name")
+                            .foregroundColor(Color.white.opacity(0.2)) // 👈 placeholder color
+                    }
+                    TextField("", text: $userName)
+                        .padding()
+                        .frame(height: 52)
+                        .frame(maxWidth: .infinity)
+                        .font(.poppins(14))
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(Color(hex: "#0E8929"), lineWidth: 1)
+                        )
+                        .padding(.horizontal, 40)
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
-                        .opacity(animateElements ? 1 : 0)
-                        .offset(y: animateElements ? 0 : 20)
-                        .animation(.easeOut(duration: 0.8).delay(0.6), value: animateElements)
-                    
-                    // Text input field
-                    TextField("", text: $mascotName)
-                        .font(.system(size: 18))
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.white)
-                        )
-                        .focused($isTextFieldFocused)
-                        .opacity(animateElements ? 1 : 0)
-                        .scaleEffect(animateElements ? 1 : 0.9)
-                        .animation(.easeOut(duration: 0.8).delay(0.8), value: animateElements)
-                        .padding(.horizontal, 28)
+                        .textInputAutocapitalization(.words)
+                        .disableAutocorrection(true)
                 }
-                .padding(.bottom, 40)
                 
-                // Continue button
+                // MARK: - Continue Button
                 Button(action: {
-                    let finalName = mascotName.isEmpty ? "Emma" : mascotName
-                    onContinue?(finalName)
+                    withAnimation {
+                        onContinue?(userName)
+                    }
                 }) {
                     Text("Continue")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
+                        .font(.system(size: 17, weight: .semibold))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                        .frame(height: 52)
                         .background(
-                            RoundedRectangle(cornerRadius: 25)
-                                .fill(
-                                    mascotName.isEmpty ? 
+                            Group {
+                                if userName.isEmpty {
+                                    // Disabled state
+                                    Color.gray.opacity(0.4)
+                                } else {
+                                    // Enabled gradient
                                     LinearGradient(
-                                        gradient: Gradient(colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.3)]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    ) :
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color(red:0/255, green:146/255, blue:69/255),
-                                            Color(red:252/255, green:238/255, blue:33/255)
-                                        ]),
+                                        colors: [
+                                            Color(hex: "#18EF47"),
+                                            Color(hex: "#0E8929")
+                                        ],
                                         startPoint: .leading,
                                         endPoint: .trailing
                                     )
-                                )
+                                }
+                            }
+                        )
+                        .cornerRadius(30)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 40)
+                        .shadow(
+                            color: userName.isEmpty ? .clear : Color.black.opacity(0.25),
+                            radius: 5, x: 0, y: 3
                         )
                 }
-                .padding(.horizontal, 28)
-                .opacity(animateElements ? 1 : 0)
-                .scaleEffect(animateElements ? 1 : 0.9)
-                .animation(.easeOut(duration: 0.8).delay(1.0), value: animateElements)
+                .disabled(userName.isEmpty)
+                .padding(.top, 10)
+
                 
                 Spacer()
             }
         }
         .navigationBarHidden(true)
-        .onAppear {
-            withAnimation {
-                animateElements = true
-            }
-            // Auto-focus the text field after a delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                isTextFieldFocused = true
-            }
-        }
-        .onTapGesture {
-            // Dismiss keyboard when tapping outside
-            isTextFieldFocused = false
-        }
     }
 }
 
-// MARK: - Preview
-
-struct MascotNamingView_Previews: PreviewProvider {
-    static var previews: some View {
-        MascotNamingView(onContinue: { name in
-            print("Mascot named: \(name)")
-        })
-        .preferredColorScheme(.dark)
+struct ThickProgressViewStyle: ProgressViewStyle {
+    var height: CGFloat = 10
+    var backgroundColor: Color = Color.white.opacity(0.2)
+    var foregroundColor: Color = Color(hex: "#00E676")
+    
+    func makeBody(configuration: Configuration) -> some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(backgroundColor)
+                    .frame(height: height)
+                
+                Capsule()
+                    .fill(foregroundColor)
+                    .frame(width: geo.size.width * CGFloat(configuration.fractionCompleted ?? 0),
+                           height: height)
+            }
+        }
+        .frame(height: height)
     }
 }
+

@@ -41,6 +41,17 @@ extension LinearGradient {
             endPoint: .trailing
         )
     }
+    
+    static var grayGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(hex: "#3FA9F5").opacity(0.3),
+                Color(hex: "#262626")
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomLeading
+        )
+    }
 }
 
 extension Color {

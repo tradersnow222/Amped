@@ -142,7 +142,7 @@ struct WelcomeView: View {
     private func animateCircularLoader() {
         progress = 0.0
         
-        Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { timer in
+        Timer.scheduledTimer(withTimeInterval: 0.03, repeats: true) { timer in
             progress += 0.01
             
             if progress >= 1.0 {

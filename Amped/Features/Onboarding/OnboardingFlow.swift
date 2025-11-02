@@ -84,77 +84,58 @@ struct OnboardingFlow: View {
                 
                 // Transitioning content layer
                 ZStack {
-                if appState.currentOnboardingStep == .welcome {
-                    WelcomeView(onContinue: { 
-                        isButtonNavigating = true
-                        dragDirection = nil
-                        navigateTo(.valueProposition) 
-                    })
-                    .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
-                    .zIndex(appState.currentOnboardingStep == .welcome ? 1 : 0)
-                }
-                    
-                if appState.currentOnboardingStep == .valueProposition {
-                    ValuePropositionView(onContinue: { 
-                        isButtonNavigating = true
-                        dragDirection = nil
-                        navigateTo(.personalizationIntro) 
-                    })
-                    .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
-                    .zIndex(appState.currentOnboardingStep == .valueProposition ? 1 : 0)
-                }
-                    
-                if appState.currentOnboardingStep == .personalizationIntro {
-                    PersonalizationIntroView(onContinue: { 
-                        isButtonNavigating = true
-                        dragDirection = nil
-                        navigateTo(.beforeAfterTransformation) 
-                    })
-                    .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
-                    .zIndex(appState.currentOnboardingStep == .personalizationIntro ? 1 : 0)
-                }
-                    
-                if appState.currentOnboardingStep == .beforeAfterTransformation {
-                    BeforeAfterTransformationView(onContinue: { 
-                        isButtonNavigating = true
-                        dragDirection = nil
-                        navigateTo(.mascotIntroduction) 
-                    })
-                    .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
-                    .zIndex(appState.currentOnboardingStep == .beforeAfterTransformation ? 1 : 0)
-                }
-                    
-                if appState.currentOnboardingStep == .mascotIntroduction {
-                    MascotIntroductionView(
-                        onContinue: { 
+                    if appState.currentOnboardingStep == .welcome {
+                        WelcomeView(onContinue: {
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.mascotNaming) 
-                        },
-                        onSkip: {
-                            // Use default name and skip to questionnaire
-                            appState.saveMascotName("Emma")
+                            navigateTo(.valueProposition)
+                        })
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .welcome ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .valueProposition {
+                        ValuePropositionView(onContinue: {
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.personalizationIntro)
+                        })
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .valueProposition ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .personalizationIntro {
+                        PersonalizationIntroView(onContinue: {
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.beforeAfterTransformation)
+                        })
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .personalizationIntro ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .beforeAfterTransformation {
+                        BeforeAfterTransformationView(onContinue: {
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.mascotNaming)
+                        })
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .beforeAfterTransformation ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .mascotNaming {
+                        MascotNamingView(onContinue: { name in
+                            appState.saveMascotName(name) // Store the chosen name globally
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.questionnaire)
-                        }
-                    )
-                    .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
-                    .zIndex(appState.currentOnboardingStep == .mascotIntroduction ? 1 : 0)
-                }
+                        })
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .mascotNaming ? 1 : 0)
+                    }
                     
-                if appState.currentOnboardingStep == .mascotNaming {
-                    MascotNamingView(onContinue: { name in
-                        appState.saveMascotName(name) // Store the chosen name globally
-                        isButtonNavigating = true
-                        dragDirection = nil
-                        navigateTo(.questionnaire) 
-                    })
-                    .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
-                    .zIndex(appState.currentOnboardingStep == .mascotNaming ? 1 : 0)
-                }
-                    
-                if appState.currentOnboardingStep == .questionnaire {
+                    if appState.currentOnboardingStep == .questionnaire {
                         // CRITICAL PERFORMANCE FIX: Pass lazy-initialized viewModel to prevent double initialization
                         QuestionnaireView(
                             viewModel: getQuestionnaireViewModel(),
@@ -162,45 +143,45 @@ struct OnboardingFlow: View {
                             proceedToHealthPermissions: $shouldCompleteQuestionnaire,
                             includeBackground: false  // Parent OnboardingFlow provides static background
                         )
-        .onChange(of: shouldExitQuestionnaire) { newValue in
-            if newValue {
-                // Reset flag first
-                shouldExitQuestionnaire = false
-                
-                // Important: First set drag direction, then navigate
-                isButtonNavigating = false
-                dragDirection = .trailing
-                
-                // Navigate back with trailing edge animation
-                // Use a slight delay to ensure the direction is set properly
-                Task { @MainActor in
-                    navigateTo(.valueProposition)
-                    
-                    // Reset drag direction after animation
-                    try? await Task.sleep(for: .seconds(0.7))
-                    dragDirection = nil
-                }
-            }
-        }
-        .onChange(of: shouldCompleteQuestionnaire) { newValue in
-            if newValue {
-                // Reset flag first
-                shouldCompleteQuestionnaire = false
-                
-                // Navigate forward with leading edge animation
-                isButtonNavigating = false
-                dragDirection = .leading
-                
-                // Questionnaire completed - go to pre-paywall teaser
-                Task { @MainActor in
-                    navigateTo(.prePaywallTease)
-                    
-                    // Reset drag direction after animation
-                    try? await Task.sleep(for: .seconds(0.7))
-                    dragDirection = nil
-                }
-            }
-        }
+                        .onChange(of: shouldExitQuestionnaire) { newValue in
+                            if newValue {
+                                // Reset flag first
+                                shouldExitQuestionnaire = false
+                                
+                                // Important: First set drag direction, then navigate
+                                isButtonNavigating = false
+                                dragDirection = .trailing
+                                
+                                // Navigate back with trailing edge animation
+                                // Use a slight delay to ensure the direction is set properly
+                                Task { @MainActor in
+                                    navigateTo(.valueProposition)
+                                    
+                                    // Reset drag direction after animation
+                                    try? await Task.sleep(for: .seconds(0.7))
+                                    dragDirection = nil
+                                }
+                            }
+                        }
+                        .onChange(of: shouldCompleteQuestionnaire) { newValue in
+                            if newValue {
+                                // Reset flag first
+                                shouldCompleteQuestionnaire = false
+                                
+                                // Navigate forward with leading edge animation
+                                isButtonNavigating = false
+                                dragDirection = .leading
+                                
+                                // Questionnaire completed - go to pre-paywall teaser
+                                Task { @MainActor in
+                                    navigateTo(.prePaywallTease)
+                                    
+                                    // Reset drag direction after animation
+                                    try? await Task.sleep(for: .seconds(0.7))
+                                    dragDirection = nil
+                                }
+                            }
+                        }
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .questionnaire ? 1 : 0)
                     }
@@ -234,12 +215,12 @@ struct OnboardingFlow: View {
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .prePaywallTease ? 1 : 0)
                     }
-
+                    
                     if appState.currentOnboardingStep == .payment {
-                        PaymentView(onContinue: { 
+                        PaymentView(onContinue: {
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.attribution) 
+                            navigateTo(.attribution)
                         })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .payment ? 1 : 0)
