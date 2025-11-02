@@ -189,3 +189,20 @@ extension View {
         self.modifier(FuturisticTextModifier(size: size, weight: weight))
     }
 } 
+
+extension Font {
+    static func poppins(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        switch weight {
+        case .bold:
+            return .custom("Poppins-Bold", size: size)
+        case .semibold:
+            return .custom("Poppins-SemiBold", size: size)
+        case .medium:
+            return .custom("Poppins-Medium", size: size)
+        case .thin:
+            return .custom("Poppins-Thin", size: size)
+        default:
+            return .custom("Poppins-Regular", size: size)
+        }
+    }
+}

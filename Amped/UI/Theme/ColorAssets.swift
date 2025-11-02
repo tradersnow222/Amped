@@ -157,3 +157,7 @@ struct ColorAssets {
  
  Note: This approach provides type-safe color access and supports dark mode
  */ 
+
+extension Color {
+    
+}

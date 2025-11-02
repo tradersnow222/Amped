@@ -106,8 +106,8 @@ struct SignInWithAppleView: View {
             .padding(.bottom, 12)
             
             // Progress indicator
-            ProgressIndicator(currentStep: 9, totalSteps: 10)
-                .padding(.vertical, 24)
+//            ProgressIndicator(currentStep: 9, totalSteps: 10)
+//                .padding(.vertical, 24)
         }
         .alert(isPresented: $viewModel.showError) {
             Alert(
