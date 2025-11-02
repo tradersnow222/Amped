@@ -7,6 +7,7 @@ enum OnboardingStep: String, Equatable, CaseIterable {
     case beforeAfterTransformation // Position 3: Show transformation journey
     case mascotIntroduction // Position 4: Introduce the mascot
     case mascotNaming // Position 5: Let user name the mascot
+    case genderSelection
     case questionnaire
     case notificationPermission // Moved: Right after goal setting for logical flow
     case valueProposition // Position 5: Reinforce value after notifications
@@ -129,10 +130,21 @@ struct OnboardingFlow: View {
                             appState.saveMascotName(name) // Store the chosen name globally
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.questionnaire)
+                            navigateTo(.genderSelection)
                         })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .mascotNaming ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .genderSelection {
+                        GenderSelectionView { name in
+                            appState.saveMascotName(name) // Store the chosen name globally
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.questionnaire)
+                        }
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .genderSelection ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .questionnaire {
