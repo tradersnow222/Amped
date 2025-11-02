@@ -29,7 +29,8 @@ struct GenderSelectionView: View {
                 VStack(spacing: 4) {
                     ProgressView(value: progress, total: 13)
                         .progressViewStyle(ThickProgressViewStyle(height: 12))
-                        .frame(width: 220)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 40)
 
                     Text("8%")
                         .font(.poppins(12))

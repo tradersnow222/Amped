@@ -8,6 +8,7 @@ enum OnboardingStep: String, Equatable, CaseIterable {
     case mascotIntroduction // Position 4: Introduce the mascot
     case mascotNaming // Position 5: Let user name the mascot
     case genderSelection
+    case ageSelection
     case questionnaire
     case notificationPermission // Moved: Right after goal setting for logical flow
     case valueProposition // Position 5: Reinforce value after notifications
@@ -138,13 +139,24 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .genderSelection {
                         GenderSelectionView { name in
-                            appState.saveMascotName(name) // Store the chosen name globally
+//                            appState.saveMascotName(name) // Store the chosen name globally
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.ageSelection)
+                        }
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .genderSelection ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .ageSelection {
+                        AgeSelectionView { date in
+//                            appState.saveMascotName("") // Store the chosen name globally
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.questionnaire)
                         }
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
-                        .zIndex(appState.currentOnboardingStep == .genderSelection ? 1 : 0)
+                        .zIndex(appState.currentOnboardingStep == .ageSelection ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .questionnaire {
