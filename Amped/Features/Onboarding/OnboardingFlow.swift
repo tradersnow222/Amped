@@ -11,6 +11,14 @@ enum OnboardingStep: String, Equatable, CaseIterable {
     case ageSelection
     case heightStats
     case weightStats
+    case stressStats
+    case anxietyStats
+    case dietStats
+    case smokeStats
+    case alcoholicStats
+    case socialConnectionStats
+    case bloodPressureStats
+    case mainReasonStats
     case questionnaire
     case notificationPermission // Moved: Right after goal setting for logical flow
     case valueProposition // Position 5: Reinforce value after notifications
@@ -175,11 +183,92 @@ struct OnboardingFlow: View {
                         WeightStatsView { weight in
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.questionnaire)
+                            navigateTo(.stressStats)
                         }
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .weightStats ? 1 : 0)
                     }
+                    
+                    if appState.currentOnboardingStep == .stressStats {
+                        StressStatsView { stressStats in
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.anxietyStats)
+                        }
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .stressStats ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .anxietyStats {
+                        AnxietyStatsView { anxietyStats in
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.dietStats)
+                        }
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .anxietyStats ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .dietStats {
+                        DietStatsView { dietStats in
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.smokeStats)
+                        }
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .dietStats ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .smokeStats {
+                        SmokeStatsView { smokeStats in
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.alcoholicStats)
+                        }
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .smokeStats ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .alcoholicStats {
+                        AlcoholicStatsView { alcoholStats in
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.socialConnectionStats)
+                        }
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .alcoholicStats ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .socialConnectionStats {
+                        SocialConnectionStatsView { socialConnectionStats in
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.bloodPressureStats)
+                        }
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .socialConnectionStats ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .bloodPressureStats {
+                        BloodPressureReadingView { bloodPressureStats in
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.mainReasonStats)
+                        }
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .bloodPressureStats ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .mainReasonStats {
+                        MainReasonStatsView { mainReasonStats in
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.questionnaire)
+                        }
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .mainReasonStats ? 1 : 0)
+                    }
+
                     
                     if appState.currentOnboardingStep == .questionnaire {
                         // CRITICAL PERFORMANCE FIX: Pass lazy-initialized viewModel to prevent double initialization
