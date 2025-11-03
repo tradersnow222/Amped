@@ -13,6 +13,7 @@ struct GoalsStatsView: View {
     @State private var minutes: Int = 0
     
     var onContinue: ((String) -> Void)?
+    var onBack: (() -> Void)?
     
     var body: some View {
         ZStack {
@@ -20,7 +21,23 @@ struct GoalsStatsView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 40) {
+                
                 VStack(spacing: 8) {
+                    HStack {
+                        Button(action: {
+                            // back action
+                            onBack?()
+                        }) {
+                            Image("backIcon")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 20, height: 20)
+                        }
+                        .padding(.leading, 30)
+                        
+                        Spacer() // pushes button to leading
+                    }
+                    
                     Text("Let's set some goals!")
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundColor(.white)

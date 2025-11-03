@@ -770,7 +770,7 @@ final class QuestionnaireViewModel: ObservableObject {
     
     // Proceed to next question with animation - CRITICAL PERFORMANCE FIX
     func proceedToNextQuestion() {
-        guard canProceed else { return }
+//        guard canProceed else { return }
         
         if let nextQuestion = getNextQuestion() {
             // Set forward direction for iOS-standard right-to-left transition

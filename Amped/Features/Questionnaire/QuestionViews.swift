@@ -599,7 +599,7 @@ struct QuestionViews {
                         }
                     
                 // Continue button
-                if canProceedLocally {
+                if true {
                     Button(action: {
                         proceedToNext()
                     }) {
@@ -675,7 +675,7 @@ struct QuestionViews {
         }
         
         private func proceedToNext() {
-            guard canProceedLocally else { return }
+//            guard canProceedLocally else { return }
             
             // KEYBOARD TRANSITION FIX: Dismiss keyboard immediately to prevent animation conflicts
             isTextFieldFocused = false

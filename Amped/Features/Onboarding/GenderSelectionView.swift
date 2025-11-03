@@ -4,6 +4,7 @@ struct GenderSelectionView: View {
 //    let userName: String
     @State var progress: CGFloat = 2
     var onContinue: ((String) -> Void)?
+    var onBack: (() -> Void)?
 
     @State private var selected: Gender? = nil
 
@@ -15,12 +16,29 @@ struct GenderSelectionView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 30) {
+                
+                HStack {
+                    Button(action: {
+                        // back action
+                        onBack?()
+                    }) {
+                        Image("backIcon")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                    }
+                    .padding(.leading, 30)
+                    .padding(.top, 10)
+                    
+                    Spacer() // pushes button to leading
+                }
+                
                 Image("battery")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 120, height: 120)
                     .shadow(color: Color.green.opacity(0.5), radius: 15, x: 0, y: 5)
-                    .padding(.top, 100)
+                    .padding(.top, 20)
 
                 Text("Let’s get familiar!")
                     .font(.poppins(26, weight: .bold))

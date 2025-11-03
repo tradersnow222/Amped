@@ -11,6 +11,7 @@ struct AnxietyStatsView: View {
     @State private var selectedStressLevel: StressLevel? = nil
     let progress: Double = 7
     var onContinue: ((String) -> Void)?
+    var onBack: (() -> Void)?
     
     enum StressLevel: String, CaseIterable {
         case low = "Mild"
@@ -35,13 +36,30 @@ struct AnxietyStatsView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 24) {
+                
+                HStack {
+                    Button(action: {
+                        // back action
+                        onBack?()
+                    }) {
+                        Image("backIcon")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                    }
+                    .padding(.leading, 30)
+                    .padding(.top, 10)
+                    
+                    Spacer() // pushes button to leading
+                }
+                
                 // Top mascot image
                 Image("battery")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 120, height: 120)
                     .shadow(color: Color.green.opacity(0.35), radius: 18, x: 0, y: 6)
-                    .padding(.top, 48)
+                    .padding(.top, 25)
 
                 Text("Let's get familiar!")
                     .font(.poppins(26, weight: .bold))

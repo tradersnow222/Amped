@@ -20,6 +20,7 @@ enum OnboardingStep: String, Equatable, CaseIterable {
     case bloodPressureStats
     case mainReasonStats
     case goalsStats
+    case syncDeviceStats
     case questionnaire
     case notificationPermission // Moved: Right after goal setting for logical flow
     case valueProposition // Position 5: Reinforce value after notifications
@@ -35,9 +36,6 @@ struct OnboardingFlow: View {
     @State private var dragDirection: Edge? = nil
     @State private var isButtonNavigating: Bool = false
     
-    // DIRECT REFERENCE: Use appState.currentOnboardingStep directly in view conditions
-    // This ensures SwiftUI properly reacts to @Published changes
-    
     // Add binding for questionnaire navigation
     @State private var shouldExitQuestionnaire: Bool = false
     @State private var shouldCompleteQuestionnaire: Bool = false
@@ -45,48 +43,6 @@ struct OnboardingFlow: View {
     // ULTRA-PERFORMANCE FIX: Pre-initialize ViewModel in background during PersonalizationIntro
     @State private var questionnaireViewModel: QuestionnaireViewModel?
     @State private var isViewModelReady: Bool = false
-    
-    // Mascot name is now stored globally in AppState
-    
-    // Background initialization helper
-    private func getQuestionnaireViewModel() -> QuestionnaireViewModel {
-        if let existingViewModel = questionnaireViewModel {
-            return existingViewModel
-        } else {
-            // Fallback synchronous creation if background init didn't complete
-            let startTime = CFAbsoluteTimeGetCurrent()
-            // CRITICAL FIX: Only start fresh if we're at the welcome step
-            // If we're restoring from a soft close, preserve questionnaire progress
-            let shouldStartFresh = appState.currentOnboardingStep == .welcome
-            let newViewModel = QuestionnaireViewModel(startFresh: shouldStartFresh)
-            questionnaireViewModel = newViewModel
-            isViewModelReady = true
-            _ = CFAbsoluteTimeGetCurrent() - startTime  // Performance timing (unused in release)
-            return newViewModel
-        }
-    }
-    
-    // Pre-initialize ViewModel in background during PersonalizationIntro
-    private func preInitializeQuestionnaireViewModel() {
-        guard questionnaireViewModel == nil else { return }
-        
-        Task.detached(priority: .userInitiated) {
-            let startTime = CFAbsoluteTimeGetCurrent()
-            // CRITICAL FIX: Only start fresh if we're at the welcome step
-            let shouldStartFresh = await MainActor.run { 
-                appState.currentOnboardingStep == .welcome 
-            }
-            let newViewModel = QuestionnaireViewModel(startFresh: shouldStartFresh)
-            _ = CFAbsoluteTimeGetCurrent() - startTime  // Performance timing (unused in release)
-            
-            await MainActor.run {
-                questionnaireViewModel = newViewModel
-                isViewModelReady = true
-            }
-        }
-    }
-    
-
     
     var body: some View {
         GeometryReader { geometry in
@@ -149,237 +105,171 @@ struct OnboardingFlow: View {
                     }
                     
                     if appState.currentOnboardingStep == .genderSelection {
-                        GenderSelectionView { name in
-//                            appState.saveMascotName(name) // Store the chosen name globally
+                        GenderSelectionView( onContinue: { name in
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.ageSelection)
-                        }
+                        }, onBack: {
+                            navigateTo(.mascotNaming)
+                        })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .genderSelection ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .ageSelection {
-                        AgeSelectionView { date in
-//                            appState.saveMascotName("") // Store the chosen name globally
+                        AgeSelectionView (onContinue: { date in
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.heightStats)
-                        }
+                        }, onBack: {
+                            navigateTo(.genderSelection)
+                        })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .ageSelection ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .heightStats {
-                        HeightStatsView { height in
+                        HeightStatsView(onContinue: { height in
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.weightStats)
-                        }
+                        }, onBack: {
+                            navigateTo(.ageSelection)
+                        })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .heightStats ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .weightStats {
-                        WeightStatsView { weight in
+                        WeightStatsView(onContinue: { weight in
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.stressStats)
-                        }
+                        }, onBack: {
+                            navigateTo(.heightStats)
+                        })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .weightStats ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .stressStats {
-                        StressStatsView { stressStats in
+                        StressStatsView(onContinue: { stressStats in
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.anxietyStats)
-                        }
+                        }, onBack: {
+                            navigateTo(.weightStats)
+                        })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .stressStats ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .anxietyStats {
-                        AnxietyStatsView { anxietyStats in
+                        AnxietyStatsView(onContinue: { anxietyStats in
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.dietStats)
-                        }
+                        }, onBack: {
+                            navigateTo(.stressStats)
+                        })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .anxietyStats ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .dietStats {
-                        DietStatsView { dietStats in
+                        DietStatsView(onContinue: { dietStats in
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.smokeStats)
-                        }
+                        }, onBack: {
+                            navigateTo(.anxietyStats)
+                        })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .dietStats ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .smokeStats {
-                        SmokeStatsView { smokeStats in
+                        SmokeStatsView(onContinue: { smokeStats in
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.alcoholicStats)
-                        }
+                        }, onBack: {
+                            navigateTo(.dietStats)
+                        })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .smokeStats ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .alcoholicStats {
-                        AlcoholicStatsView { alcoholStats in
+                        AlcoholicStatsView(onContinue: { alcoholStats in
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.socialConnectionStats)
-                        }
+                        }, onBack: {
+                            navigateTo(.smokeStats)
+                        })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .alcoholicStats ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .socialConnectionStats {
-                        SocialConnectionStatsView { socialConnectionStats in
+                        SocialConnectionStatsView(onContinue: { socialConnectionStats in
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.bloodPressureStats)
-                        }
+                        }, onBack: {
+                            navigateTo(.alcoholicStats)
+                        })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .socialConnectionStats ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .bloodPressureStats {
-                        BloodPressureReadingView { bloodPressureStats in
+                        BloodPressureReadingView(onContinue: { bloodPressureStats in
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.mainReasonStats)
-                        }
+                        }, onBack: {
+                            navigateTo(.socialConnectionStats)
+                        })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .bloodPressureStats ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .mainReasonStats {
-                        MainReasonStatsView { mainReasonStats in
+                        MainReasonStatsView(onContinue: { mainReasonStats in
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.goalsStats)
-                        }
+                        }, onBack: {
+                            navigateTo(.bloodPressureStats)
+                        })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .mainReasonStats ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .goalsStats {
-                        GoalsStatsView { mainReasonStats in
+                        GoalsStatsView(onContinue: { mainReasonStats in
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.questionnaire)
-                        }
+                            navigateTo(.syncDeviceStats)
+                        }, onBack: {
+                            navigateTo(.mainReasonStats)
+                        })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .goalsStats ? 1 : 0)
                     }
-
                     
-                    if appState.currentOnboardingStep == .questionnaire {
-                        // CRITICAL PERFORMANCE FIX: Pass lazy-initialized viewModel to prevent double initialization
-                        QuestionnaireView(
-                            viewModel: getQuestionnaireViewModel(),
-                            exitToPersonalizationIntro: $shouldExitQuestionnaire,
-                            proceedToHealthPermissions: $shouldCompleteQuestionnaire,
-                            includeBackground: false  // Parent OnboardingFlow provides static background
-                        )
-                        .onChange(of: shouldExitQuestionnaire) { newValue in
-                            if newValue {
-                                // Reset flag first
-                                shouldExitQuestionnaire = false
-                                
-                                // Important: First set drag direction, then navigate
-                                isButtonNavigating = false
-                                dragDirection = .trailing
-                                
-                                // Navigate back with trailing edge animation
-                                // Use a slight delay to ensure the direction is set properly
-                                Task { @MainActor in
-                                    navigateTo(.valueProposition)
-                                    
-                                    // Reset drag direction after animation
-                                    try? await Task.sleep(for: .seconds(0.7))
-                                    dragDirection = nil
-                                }
-                            }
-                        }
-                        .onChange(of: shouldCompleteQuestionnaire) { newValue in
-                            if newValue {
-                                // Reset flag first
-                                shouldCompleteQuestionnaire = false
-                                
-                                // Navigate forward with leading edge animation
-                                isButtonNavigating = false
-                                dragDirection = .leading
-                                
-                                // Questionnaire completed - go to pre-paywall teaser
-                                Task { @MainActor in
-                                    navigateTo(.prePaywallTease)
-                                    
-                                    // Reset drag direction after animation
-                                    try? await Task.sleep(for: .seconds(0.7))
-                                    dragDirection = nil
-                                }
-                            }
-                        }
-                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
-                        .zIndex(appState.currentOnboardingStep == .questionnaire ? 1 : 0)
-                    }
-                    
-                    if appState.currentOnboardingStep == .notificationPermission {
-                        NotificationPermissionView(
-                            onContinue: {
-                                isButtonNavigating = true
-                                dragDirection = nil
-                                navigateTo(.prePaywallTease)
-                            },
-                            onBackTap: {
-                                isButtonNavigating = true
-                                dragDirection = nil
-                                navigateTo(.personalizationIntro)
-                            }
-                        )
-                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
-                        .zIndex(appState.currentOnboardingStep == .notificationPermission ? 1 : 0)
-                    }
-                    
-                    if appState.currentOnboardingStep == .prePaywallTease {
-                        PrePaywallTeaserView(
-                            viewModel: getQuestionnaireViewModel(),
-                            onContinue: {
-                                isButtonNavigating = true
-                                dragDirection = nil
-                                navigateTo(.payment)
-                            }
-                        )
-                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
-                        .zIndex(appState.currentOnboardingStep == .prePaywallTease ? 1 : 0)
-                    }
-                    
-                    if appState.currentOnboardingStep == .payment {
-                        PaymentView(onContinue: {
-                            isButtonNavigating = true
-                            dragDirection = nil
-                            navigateTo(.attribution)
-                        })
-                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
-                        .zIndex(appState.currentOnboardingStep == .payment ? 1 : 0)
-                    }
-                    
-                    if appState.currentOnboardingStep == .attribution {
-                        AttributionSourceView(onContinue: {
+                    if appState.currentOnboardingStep == .syncDeviceStats {
+                        SyncDeviceView(onContinue: { deviceSync in
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.dashboard)
+                        }, onBack: {
+                            navigateTo(.goalsStats)
                         })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
-                        .zIndex(appState.currentOnboardingStep == .attribution ? 1 : 0)
+                        .zIndex(appState.currentOnboardingStep == .syncDeviceStats ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .dashboard {
@@ -400,8 +290,6 @@ struct OnboardingFlow: View {
                     }
                 }
             }
-            // UX RULE: Simplicity is KING — gestures removed. Navigation is button-driven or
-            // programmatic (e.g., questionnaire back/forward) with direction hints via dragDirection.
         }
         .onAppear {
             // Save initial onboarding progress when flow appears

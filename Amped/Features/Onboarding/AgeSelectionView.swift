@@ -3,6 +3,7 @@ import SwiftUI
 struct AgeSelectionView: View {
     @State var progress: CGFloat = 3
     var onContinue: ((Date) -> Void)?
+    var onBack:(() -> Void)?
     @State private var dateOfBirth: Date = Calendar.current.date(byAdding: .year, value: -18, to: Date()) ?? Date()
     
     private let minDate: Date = {
@@ -21,12 +22,27 @@ struct AgeSelectionView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 20) {
+                HStack {
+                    Button(action: {
+                        // back action
+                        onBack?()
+                    }) {
+                        Image("backIcon")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                    }
+                    .padding(.leading, 30)
+                    .padding(.top, 10)
+                    
+                    Spacer() // pushes button to leading
+                }
                 Image("battery")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 120, height: 120)
                     .shadow(color: Color.green.opacity(0.5), radius: 15, x: 0, y: 5)
-                    .padding(.top, 50)
+                    .padding(.top, 20)
 
                 Text("Let's set your stats!")
                     .font(.poppins(26, weight: .bold))

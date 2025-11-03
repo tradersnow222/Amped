@@ -11,6 +11,7 @@ struct HeightStatsView: View {
     @State private var heightValue: String = ""
     let progress: Double = 4
     var onContinue: ((String) -> Void)?
+    var onBack: (() -> Void)?
     
     private var isInputValid: Bool {
         !heightValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -33,13 +34,29 @@ struct HeightStatsView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 24) {
+                
+                HStack {
+                    Button(action: {
+                        // back action
+                        onBack?()
+                    }) {
+                        Image("backIcon")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                    }
+                    .padding(.leading, 30)
+                    
+                    Spacer() // pushes button to leading
+                }
+                
                 // Top mascot image
                 Image("battery")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 120, height: 120)
                     .shadow(color: Color.green.opacity(0.35), radius: 18, x: 0, y: 6)
-                    .padding(.top, 48)
+                    .padding(.top, 25)
 
                 Text("Let's set your stats!")
                     .font(.poppins(26, weight: .bold))
