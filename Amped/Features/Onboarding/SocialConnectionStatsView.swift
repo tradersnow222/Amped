@@ -9,7 +9,7 @@ import SwiftUI
 
 struct SocialConnectionStatsView: View {
     @State private var selectedStressLevel: StressLevel? = nil
-    let progress: Double = 0.39
+    let progress: Double = 11
     var onContinue: ((String) -> Void)?
     
     enum StressLevel: String, CaseIterable {
@@ -48,33 +48,18 @@ struct SocialConnectionStatsView: View {
                     .foregroundColor(.white)
                     .padding(.top, 4)
 
-                // Progress with percentage below
-                VStack(spacing: 6) {
-                    GeometryReader { proxy in
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.white.opacity(0.15))
-                                .frame(height: 10)
-
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color(hex: "#18EF47"), Color(hex: "#0E8929")],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(width: max(0, min(proxy.size.width * progress, proxy.size.width)), height: 10)
-                        }
-                    }
-                    .frame(height: 10)
-                    .padding(.horizontal, 40)
-
+                // MARK: - Progress Bar
+                VStack(spacing: 4) {
+                    ProgressView(value: progress, total: 13)
+                        .progressViewStyle(ThickProgressViewStyle(height: 12))
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 40)
+                    
                     Text("85%")
                         .font(.poppins(12))
                         .foregroundColor(.white.opacity(0.8))
                 }
-                .padding(.bottom, 8)
+                .padding(.bottom, 30)
 
                 VStack(spacing: 8) {
                     Text("How would you describe your \nsocial connections?")

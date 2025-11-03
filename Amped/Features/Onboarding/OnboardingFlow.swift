@@ -19,6 +19,7 @@ enum OnboardingStep: String, Equatable, CaseIterable {
     case socialConnectionStats
     case bloodPressureStats
     case mainReasonStats
+    case goalsStats
     case questionnaire
     case notificationPermission // Moved: Right after goal setting for logical flow
     case valueProposition // Position 5: Reinforce value after notifications
@@ -263,10 +264,20 @@ struct OnboardingFlow: View {
                         MainReasonStatsView { mainReasonStats in
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.questionnaire)
+                            navigateTo(.goalsStats)
                         }
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .mainReasonStats ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .goalsStats {
+                        GoalsStatsView { mainReasonStats in
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.questionnaire)
+                        }
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .goalsStats ? 1 : 0)
                     }
 
                     

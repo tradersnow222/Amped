@@ -9,7 +9,7 @@ import SwiftUI
 struct HeightStatsView: View {
     @State private var selectedUnit: HeightUnit = .feet
     @State private var heightValue: String = ""
-    let progress: Double = 0.25
+    let progress: Double = 4
     var onContinue: ((String) -> Void)?
     
     private var isInputValid: Bool {
@@ -47,32 +47,18 @@ struct HeightStatsView: View {
                     .padding(.top, 4)
 
                 // Progress with percentage below
-                VStack(spacing: 6) {
-                    GeometryReader { proxy in
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.white.opacity(0.15))
-                                .frame(height: 10)
-
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color(hex: "#18EF47"), Color(hex: "#0E8929")],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(width: max(0, min(proxy.size.width * progress, proxy.size.width)), height: 10)
-                        }
-                    }
-                    .frame(height: 10)
-                    .padding(.horizontal, 40)
-
+                // MARK: - Progress Bar
+                VStack(spacing: 4) {
+                    ProgressView(value: progress, total: 13)
+                        .progressViewStyle(ThickProgressViewStyle(height: 12))
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 40)
+                    
                     Text("23%")
                         .font(.poppins(12))
                         .foregroundColor(.white.opacity(0.8))
                 }
-                .padding(.bottom, 8)
+                .padding(.bottom, 30)
 
                 Text("How tall are you?")
                     .font(.poppins(18, weight: .medium))
