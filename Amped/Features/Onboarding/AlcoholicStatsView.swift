@@ -99,14 +99,18 @@ struct AlcoholicStatsView: View {
                                 onContinue?(level.rawValue)
                             }
                         }) {
-                            VStack(spacing: 4) {
+                            VStack(spacing: 1) {
                                 Text(level.rawValue)
                                     .font(.poppins(18, weight: .semibold))
                                     .foregroundColor(selectedStressLevel == level ? .white : .white.opacity(0.9))
+                                    .multilineTextAlignment(.center)
                                 
-                                Text(level.subtitle)
-                                    .font(.poppins(13, weight: .regular))
-                                    .foregroundColor(selectedStressLevel == level ? .white.opacity(0.9) : .white.opacity(0.6))
+                                // Subtitle (only show if not empty)
+                                    if !level.subtitle.isEmpty {
+                                        Text(level.subtitle)
+                                            .font(.poppins(13, weight: .regular))
+                                            .foregroundColor(selectedStressLevel == level ? .white.opacity(0.9) : .white.opacity(0.6))
+                                    }
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 54)
