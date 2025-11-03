@@ -9,6 +9,7 @@ enum OnboardingStep: String, Equatable, CaseIterable {
     case mascotNaming // Position 5: Let user name the mascot
     case genderSelection
     case ageSelection
+    case heightStats
     case questionnaire
     case notificationPermission // Moved: Right after goal setting for logical flow
     case valueProposition // Position 5: Reinforce value after notifications
@@ -153,10 +154,20 @@ struct OnboardingFlow: View {
 //                            appState.saveMascotName("") // Store the chosen name globally
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.questionnaire)
+                            navigateTo(.heightStats)
                         }
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .ageSelection ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .heightStats {
+                        HeightStatsView { height in
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.questionnaire)
+                        }
+                        .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
+                        .zIndex(appState.currentOnboardingStep == .heightStats ? 1 : 0)
                     }
                     
                     if appState.currentOnboardingStep == .questionnaire {
