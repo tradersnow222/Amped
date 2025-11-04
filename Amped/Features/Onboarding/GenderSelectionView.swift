@@ -3,7 +3,7 @@ import SwiftUI
 struct GenderSelectionView: View {
 //    let userName: String
     @State var progress: CGFloat = 2
-    var onContinue: ((String) -> Void)?
+    var onContinue: ((Gender) -> Void)?
     var onBack: (() -> Void)?
 
     @State private var selected: Gender? = nil
@@ -72,7 +72,7 @@ struct GenderSelectionView: View {
 
                 Button(action: {
                     if let onContinue, let selected {
-                        onContinue(selected.rawValue)
+                        onContinue(selected)
                     }
                 }) {
                     Text("Continue")

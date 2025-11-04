@@ -95,7 +95,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .mascotNaming {
                         MascotNamingView(onContinue: { name in
-                            appState.saveMascotName(name) // Store the chosen name globally
+                            appState.saveToUserDefault(keyname: "user_name", value: name)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.genderSelection)
@@ -105,7 +105,8 @@ struct OnboardingFlow: View {
                     }
                     
                     if appState.currentOnboardingStep == .genderSelection {
-                        GenderSelectionView( onContinue: { name in
+                        GenderSelectionView( onContinue: { genderEnum in
+                            appState.saveToUserDefault(keyname: "user_gender", value: genderEnum.rawValue)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.ageSelection)
@@ -118,6 +119,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .ageSelection {
                         AgeSelectionView (onContinue: { date in
+                            appState.saveToUserDefault(keyname: "user_date_of_birth", value: date)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.heightStats)
@@ -130,6 +132,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .heightStats {
                         HeightStatsView(onContinue: { height in
+                            appState.saveToUserDefault(keyname: "user_height", value: height)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.weightStats)
