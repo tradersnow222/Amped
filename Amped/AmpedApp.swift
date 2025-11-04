@@ -52,6 +52,7 @@ struct AmpedApp: App {
             ZStack {
                 
                 ContentView()
+                    .background(Color.black)
                     .environmentObject(appState)
                     .environmentObject(settingsManager)
                     .environmentObject(glassTheme)
@@ -59,6 +60,7 @@ struct AmpedApp: App {
                     .environmentObject(backgroundHealthManager)
                     .environmentObject(subscriptionManager)
             }
+            .background(Color.clear)
             .onChange(of: scenePhase) { newPhase in
 //                handleScenePhaseChange(to: newPhase)
             }
@@ -126,7 +128,7 @@ final class AppState: ObservableObject {
     @Published var appLaunchCount: Int = 0
     
     // ONBOARDING PROGRESS TRACKING: Advanced persistence with soft/hard close detection
-    @Published var currentOnboardingStep: OnboardingStep = .welcome
+    @Published var currentOnboardingStep: OnboardingStep = .valueProposition
     
     // MASCOT PERSONALIZATION: Store user's chosen mascot name globally
     @Published var mascotName: String = "Emma" // Default name
@@ -276,7 +278,7 @@ final class AppState: ObservableObject {
     /// Reset onboarding state (for testing/debugging)
     func resetOnboarding() {
         hasCompletedOnboarding = false
-        currentOnboardingStep = .welcome
+        currentOnboardingStep = .valueProposition
         
         // Use advanced persistence manager for comprehensive reset
         persistenceManager.resetAllData()

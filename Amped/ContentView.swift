@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var selectedView: AppView = .onboardingFlow
     @State private var showDebugControls: Bool = false
+    @State private var showSplash: Bool = true
     
     @EnvironmentObject var appState: AppState
     
@@ -25,23 +26,15 @@ struct ContentView: View {
         ZStack {
             // The main content view takes up the full screen
             Group {
-                
-                if appState.hasCompletedOnboarding && !showDebugControls {
-                    // Show main dashboard for completed users
-                    if #available(iOS 16.0, *) {
-                        NavigationStack {
-                            DashboardView()
-                        }
-                    } else {
-                        NavigationView {
-                            DashboardView()
-                        }
-                        .navigationViewStyle(StackNavigationViewStyle())
-                    }
+                if showSplash {
+                    WelcomeView(onContinue: {
+                        showSplash = false
+                        appState.currentOnboardingStep = .valueProposition
+                    })
+                    .environmentObject(appState)
                 } else {
-                    // DEBUG MODE: Show selected view
-                    switch selectedView {
-                    case .dashboard:
+                    if appState.hasCompletedOnboarding && !showDebugControls {
+                        // Show main dashboard for completed users
                         if #available(iOS 16.0, *) {
                             NavigationStack {
                                 DashboardView()
@@ -52,9 +45,24 @@ struct ContentView: View {
                             }
                             .navigationViewStyle(StackNavigationViewStyle())
                         }
-                    case .onboardingFlow:
-                        OnboardingFlow()
-                            .environmentObject(appState)
+                    } else {
+                        // DEBUG MODE: Show selected view
+                        switch selectedView {
+                        case .dashboard:
+                            if #available(iOS 16.0, *) {
+                                NavigationStack {
+                                    DashboardView()
+                                }
+                            } else {
+                                NavigationView {
+                                    DashboardView()
+                                }
+                                .navigationViewStyle(StackNavigationViewStyle())
+                            }
+                        case .onboardingFlow:
+                            OnboardingFlow()
+                                .environmentObject(appState)
+                        }
                     }
                 }
             }
@@ -81,3 +89,4 @@ struct ContentView: View {
         )
     }
 }
+
