@@ -329,9 +329,7 @@ struct OnboardingFlow: View {
     }
     
         private func navigateTo(_ step: OnboardingStep) {
-        // Use spring animation for smoother transitions
-        
-        // Luxury slow — softer/longer spring for materialize transitions across onboarding
+
         withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
             appState.updateOnboardingStep(step)
         }

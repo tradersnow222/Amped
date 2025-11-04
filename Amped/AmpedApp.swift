@@ -46,23 +46,10 @@ struct AmpedApp: App {
     // MARK: - Scene Phase Tracking for Intro Animations
     @Environment(\.scenePhase) private var scenePhase
     
-    init() {
-        // OPTIMIZATION: Use LaunchOptimizer for deferred initialization
-        // Rules: Minimize main thread blocking during app launch
-        LaunchOptimizer.shared.performCriticalInitialization()
-        LaunchOptimizer.shared.performDeferredInitialization()
-        
-        // Configure RevenueCat
-        RevenueCatConfig.configure()
-    }
-    
-    // MARK: - Scene Configuration
-    
     /// Main app scene
     var body: some Scene {
         WindowGroup {
             ZStack {
-                backgroundView
                 
                 ContentView()
                     .environmentObject(appState)
@@ -73,40 +60,12 @@ struct AmpedApp: App {
                     .environmentObject(subscriptionManager)
             }
             .onChange(of: scenePhase) { newPhase in
-                handleScenePhaseChange(to: newPhase)
+//                handleScenePhaseChange(to: newPhase)
             }
         }
         // SwiftUI background task for health data refresh
         .backgroundTask(.appRefresh("ai.ampedlife.amped.health-refresh")) {
-            await BackgroundHealthManager.shared.handleHealthDataRefreshTask()
-        }
-    }
-    
-    // MARK: - Background View
-    
-    /// Deep, immersive background for the app - Rules: Split into computed property for readability
-    private var backgroundView: some View {
-        ZStack {
-            // Deep background image
-            GeometryReader { geometry in
-                Color.black.ignoresSafeArea()
-            }
-            .ignoresSafeArea()
-            
-            // Glass-compatible overlay for better material effects
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.black.opacity(0.3),
-                            Color.black.opacity(0.5),
-                            Color.black.opacity(0.4)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .ignoresSafeArea()
+//            await BackgroundHealthManager.shared.handleHealthDataRefreshTask()
         }
     }
     

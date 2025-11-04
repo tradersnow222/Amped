@@ -124,11 +124,16 @@ struct SyncDeviceView: View {
         healthStore.requestAuthorization(toShare: [], read: readTypes) { success, error in
             if success {
                 print("✅ HealthKit permission granted!")
-                onContinue?(true)
+                DispatchQueue.main.async {
+                    onContinue?(true)
+                }
                 // Navigate to next screen
             } else {
                 print("❌ HealthKit permission denied: \(error?.localizedDescription ?? "Unknown error")")
-                onContinue?(false)
+                
+                DispatchQueue.main.async {
+                    onContinue?(true)
+                }
             }
         }
     }
