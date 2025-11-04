@@ -16,13 +16,12 @@ struct GoalsStatsView: View {
     var onBack: (() -> Void)?
     
     var body: some View {
-        ZStack {
+        ZStack (alignment: .topLeading) {
             LinearGradient.grayGradient
                 .ignoresSafeArea()
             
             VStack(spacing: 40) {
                 
-                VStack(spacing: 8) {
                     HStack {
                         Button(action: {
                             // back action
@@ -34,7 +33,7 @@ struct GoalsStatsView: View {
                                 .frame(width: 20, height: 20)
                         }
                         .padding(.leading, 30)
-                        
+                        .padding(.top, 10)
                         Spacer() // pushes button to leading
                     }
                     
@@ -46,7 +45,6 @@ struct GoalsStatsView: View {
                         .font(.poppins(14))
                         .multilineTextAlignment(.center)
                         .foregroundColor(.white.opacity(0.8))
-                }
                 
                 // MARK: - Circular Timer
                 ZStack {
@@ -114,8 +112,13 @@ struct GoalsStatsView: View {
                 }
                 .padding(.bottom, 50)
             }
+//            .frame(maxWidth: .infinity, alignment: .top)
+//            .padding(.top, 10)
         }
     }
 }
 
 
+#Preview {
+    GoalsStatsView()
+}
