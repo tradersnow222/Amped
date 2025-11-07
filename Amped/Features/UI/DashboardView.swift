@@ -191,8 +191,9 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
         ZStack {
-                Color.black
-                    .ignoresSafeArea()
+            // Background gradient
+            LinearGradient.grayGradient
+                .ignoresSafeArea()
                 // Main content based on selected tab
                 VStack(spacing: 0) {
                     // Content area
@@ -201,7 +202,9 @@ struct DashboardView: View {
                         case 0: // Home tab - Dashboard home with battery character
                             dashboardHomeView
                         case 1: // Dashboard tab - Detailed metrics list
-                            dashboardView
+//                            dashboardView
+                            metricView
+                            
                         case 2: // Energy tab - Battery page content
                             energyView
                         case 3: // Profile tab - Profile/settings
@@ -383,33 +386,50 @@ struct DashboardView: View {
         }
     }
     
+    private var metricView: some View {
+        MetricGridView()
+    }
+    
     /// Dashboard View (3rd image) - Detailed metrics list
     private var dashboardView: some View {
         VStack(spacing: 0) {
             // Personalized greeting header
             personalizedHeader
-            
+
             // Date navigation bar
             dateNavigationBar
-            
-            // Dashboard metrics list with period-based content
+
+            // Dashboard metrics grid
             ScrollView {
-                VStack(spacing: 16) {
-                    // Animated content based on selected period
-                    let metricsForPeriod = getMetricsForPeriodWithRealData(selectedPeriod)
+                let metricsForPeriod = getMetricsForPeriodWithRealData(selectedPeriod)
+                
+                // Define two flexible columns
+                let columns = [
+                    GridItem(.flexible(), spacing: 16),
+                    GridItem(.flexible(), spacing: 16)
+                ]
+
+                LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(Array(metricsForPeriod.enumerated()), id: \.offset) { index, metric in
                         metricCardButton(for: metric, at: index)
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: .trailing)).combined(with: .scale(scale: 0.95)),
-                            removal: .opacity.combined(with: .move(edge: .leading)).combined(with: .scale(scale: 1.05))
-                        ))
-                        .animation(.spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0.2).delay(Double(index) * 0.05), value: selectedPeriod)
+                            .transition(.asymmetric(
+                                insertion: .opacity
+                                    .combined(with: .move(edge: .trailing))
+                                    .combined(with: .scale(scale: 0.95)),
+                                removal: .opacity
+                                    .combined(with: .move(edge: .leading))
+                                    .combined(with: .scale(scale: 1.05))
+                            ))
+                            .animation(
+                                .spring(response: 0.6, dampingFraction: 0.8, blendDuration: 0.2)
+                                    .delay(Double(index) * 0.05),
+                                value: selectedPeriod
+                            )
                     }
-                    
-                    Spacer(minLength: 100) // Space for bottom navigation
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
+                .padding(.bottom, 100) // Space for bottom navigation
             }
             .simultaneousGesture(
                 DragGesture(minimumDistance: 50, coordinateSpace: .local)
@@ -418,47 +438,22 @@ struct DashboardView: View {
                         let verticalAmount = abs(value.translation.height)
                         let velocity = value.velocity
                         
-                        // More lenient detection: horizontal swipe with reasonable velocity
-                        let isHorizontalSwipe = abs(horizontalAmount) > 50 && 
-                                              abs(velocity.width) > abs(velocity.height) &&
-                                              abs(velocity.width) > 200
+                        let isHorizontalSwipe = abs(horizontalAmount) > 50 &&
+                                                abs(velocity.width) > abs(velocity.height) &&
+                                                abs(velocity.width) > 200
                         
                         if isHorizontalSwipe {
                             if horizontalAmount > 0 {
-                                // Swipe right - go to previous period
                                 swipeToPreviousPeriod()
                             } else {
-                                // Swipe left - go to next period
                                 swipeToNextPeriod()
                             }
                         }
                     }
             )
         }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 40, coordinateSpace: .local)
-                .onEnded { value in
-                    let horizontalAmount = value.translation.width
-                    let verticalAmount = abs(value.translation.height)
-                    let velocity = value.velocity
-                    
-                    // Enhanced detection: lower threshold with velocity check
-                    let isHorizontalSwipe = abs(horizontalAmount) > 40 && 
-                                          abs(velocity.width) > abs(velocity.height) &&
-                                          abs(velocity.width) > 150
-                    
-                    if isHorizontalSwipe {
-                        if horizontalAmount > 0 {
-                            // Swipe right - go to previous period
-                            swipeToPreviousPeriod()
-                        } else {
-                            // Swipe left - go to next period
-                            swipeToNextPeriod()
-                        }
-                    }
-                }
-        )
     }
+
     
     /// Energy View - Battery page content using EnergyView component
     private var energyView: some View {
