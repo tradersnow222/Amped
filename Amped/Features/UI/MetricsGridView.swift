@@ -67,8 +67,7 @@ struct MetricGridView: View {
                             title: "Weight",
                             value: "56×27",
                             change: "↑4 mins gained",
-                            isPositive: true,
-                            badge: "56×21"
+                            isPositive: true
                         )
                     }
                     .padding(.top, 20)
