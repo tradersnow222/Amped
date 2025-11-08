@@ -5,6 +5,72 @@ struct MetricGridView: View {
     @State private var selectedPeriod: ImpactDataPoint.PeriodType = .day
     @StateObject private var viewModel = DashboardViewModel()
     
+    private struct CardData: Identifiable {
+        let id = UUID()
+        let type: HealthMetricType
+        let title: String
+        let icon: String
+        let value: String
+        let changeText: String
+        let isPositive: Bool
+    }
+
+    private var cards: [CardData] {
+        // Target metric order similar to DashboardView
+        let targetMetrics: [HealthMetricType] = [.restingHeartRate, .steps, .activeEnergyBurned, .sleepHours, .vo2Max, .bodyMass]
+
+        func title(for type: HealthMetricType) -> String {
+            switch type {
+            case .restingHeartRate: return "Heart Rate"
+            case .steps: return "Steps"
+            case .activeEnergyBurned: return "Activity"
+            case .sleepHours: return "Sleep"
+            case .vo2Max: return "Cardio (VO2)"
+            case .bodyMass: return "Weight"
+            default: return type.displayName
+            }
+        }
+
+        func iconName(for type: HealthMetricType) -> String {
+            // These map to your existing asset names used by MetricCard (e.g., "heartRateIcon", "stepsIcon", etc.)
+            switch type {
+            case .restingHeartRate: return "heartRateIcon"
+            case .steps: return "stepsIcon"
+            case .activeEnergyBurned: return "activityIcon"
+            case .sleepHours: return "sleepIcon"
+            case .vo2Max: return "cardioIcon"
+            case .bodyMass: return "weightIcon"
+            default: return "heartRateIcon"
+            }
+        }
+
+        return targetMetrics.map { metricType in
+            if let metric = viewModel.healthMetrics.first(where: { $0.type == metricType }) {
+                let minutes = metric.impactDetails?.lifespanImpactMinutes ?? 0
+                let isPositive = minutes >= 0
+                let changeText = String(format: "%@%.0f mins %@", isPositive ? "↑" : "↓", abs(minutes), isPositive ? "gained" : "lost")
+                return CardData(
+                    type: metricType,
+                    title: title(for: metricType),
+                    icon: iconName(for: metricType),
+                    value: metric.formattedValue,
+                    changeText: changeText,
+                    isPositive: isPositive
+                )
+            } else {
+                // Placeholder when no data exists
+                return CardData(
+                    type: metricType,
+                    title: title(for: metricType),
+                    icon: iconName(for: metricType),
+                    value: "--",
+                    changeText: "0 mins",
+                    isPositive: true
+                )
+            }
+        }
+    }
+    
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
@@ -22,53 +88,15 @@ struct MetricGridView: View {
                         GridItem(.flexible(), spacing: 16),
                         GridItem(.flexible(), spacing: 16)
                     ], spacing: 16) {
-                        MetricCard(
-                            icon: "heartRateIcon",
-                            title: "Heart Rate",
-                            value: "75 BPM",
-                            change: "↑4 mins gained",
-                            isPositive: true
-                        )
-                        
-                        MetricCard(
-                            icon: "stepsIcon",
-                            title: "Steps",
-                            value: "3,453",
-                            change: "↑4 mins gained",
-                            isPositive: true
-                        )
-                        
-                        MetricCard(
-                            icon: "activityIcon",
-                            title: "Activity",
-                            value: "250 Kcal",
-                            change: "↑4 mins gained",
-                            isPositive: true
-                        )
-                        
-                        MetricCard(
-                            icon: "sleepIcon",
-                            title: "Sleep",
-                            value: "6h 32m",
-                            change: "↓4 mins lost",
-                            isPositive: false
-                        )
-                        
-                        MetricCard(
-                            icon: "cardioIcon",
-                            title: "Cardio (VO2)",
-                            value: "56ml/65/min",
-                            change: "↓4 mins lost",
-                            isPositive: false
-                        )
-                        
-                        MetricCard(
-                            icon: "weightIcon",
-                            title: "Weight",
-                            value: "56×27",
-                            change: "↑4 mins gained",
-                            isPositive: true
-                        )
+                        ForEach(cards) { card in
+                            MetricCard(
+                                icon: card.icon,
+                                title: card.title,
+                                value: card.value,
+                                change: card.changeText,
+                                isPositive: card.isPositive
+                            )
+                        }
                     }
                     .padding(.top, 20)
                     .padding(.horizontal, 20)
