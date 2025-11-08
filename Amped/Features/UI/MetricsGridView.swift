@@ -4,6 +4,7 @@ import Combine
 struct MetricGridView: View {
     @State private var selectedPeriod: ImpactDataPoint.PeriodType = .day
     @StateObject private var viewModel = DashboardViewModel()
+    var onCardTap: ((String, ImpactDataPoint.PeriodType) -> Void)? = nil
     
     private struct CardData: Identifiable {
         let id = UUID()
@@ -89,13 +90,18 @@ struct MetricGridView: View {
                         GridItem(.flexible(), spacing: 16)
                     ], spacing: 16) {
                         ForEach(cards) { card in
-                            MetricCard(
-                                icon: card.icon,
-                                title: card.title,
-                                value: card.value,
-                                change: card.changeText,
-                                isPositive: card.isPositive
-                            )
+                            Button {
+                                onCardTap?(card.title, selectedPeriod)
+                            } label: {
+                                MetricCard(
+                                    icon: card.icon,
+                                    title: card.title,
+                                    value: card.value,
+                                    change: card.changeText,
+                                    isPositive: card.isPositive
+                                )
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.top, 20)
