@@ -5,6 +5,9 @@ struct MetricDetailContentView: View {
     let period: String
     let periodType: ImpactDataPoint.PeriodType
     @Binding var navigationPath: NavigationPath
+    
+    @State private var selectedPeriod: ImpactDataPoint.PeriodType = .day
+    @StateObject private var viewModel = DashboardViewModel()
 
     // Cache the data to prevent infinite loops
     private let metrics: [DashboardMetric]
@@ -23,246 +26,231 @@ struct MetricDetailContentView: View {
         self.chartData = Self.getChartDataForMetric(metricTitle, period: period)
         self.yAxisLabels = Self.getYAxisLabels(for: metricTitle)
         self.xAxisLabels = Self.getXAxisLabels(for: period)
+        
+        selectedPeriod = periodType
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Custom header
-            HStack {
-                Button(action: {
-                    // Use DispatchQueue to prevent multiple navigation updates per frame
-                    DispatchQueue.main.async {
-                        navigationPath.removeLast()
-                    }
-                }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(width: 32, height: 32)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
-                        )
-                }
+        ZStack {
+            
+            Color.black.ignoresSafeArea(.all)
+            // Subtle dark gradient background to match screenshot
+            LinearGradient.grayGradient.ignoresSafeArea()
 
-                Spacer()
-
-                Text(metricTitle)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
-
-                Spacer()
-
-                // Empty space to balance the back button
-                Rectangle()
-                    .fill(Color.clear)
-                    .frame(width: 32, height: 32)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 10)
-            .padding(.bottom, 20)
-            .background(Color.black)
-
-            // Day/Month/Year selector - matching home screen design
-            HStack(spacing: 4) {
-                ForEach(["Day", "Month", "Year"], id: \.self) { periodOption in
+            VStack(spacing: 0) {
+                // Header (match MetricGridView style): profile, name, search
+                HStack(spacing: 12) {
                     Button(action: {
-                        // Simple tab action - no complex state management
+                        DispatchQueue.main.async { navigationPath.removeLast() }
                     }) {
-                        Text(periodOption)
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(periodOption.lowercased() == period ? .white : .white.opacity(0.6))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(width: 32, height: 32)
                             .background(
-                                RoundedRectangle(cornerRadius: 100)
-                                    .fill(periodOption.lowercased() == period ? Color.black : Color.clear)
+                                Circle().fill(Color.white.opacity(0.08))
                             )
                     }
-                    .buttonStyle(PlainButtonStyle())
+
+                    // Header
+                    personalizedHeader
                 }
-            }
-            .padding(.horizontal, 2)
-            .padding(.vertical, 2)
-            .background(
-                RoundedRectangle(cornerRadius: 100)
-                    .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
-            )
-            .padding(.horizontal, 24)
-            .padding(.bottom, 20)
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 14)
 
-            // Content
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Main metric display
-                    VStack(spacing: 8) {
+                // Date navigation bar
+                dateNavigationBar
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Status sentence
                         if let metric = metrics.first(where: { $0.title == metricTitle }) {
-                            // Large value display
-                            HStack(alignment: .bottom, spacing: 12) {
-                                Text(metric.value)
-                                    .font(.system(size: 28, weight: .bold))
-                                    .foregroundColor(.white)
-
-                                if !metric.unit.isEmpty {
-                                    Text(metric.unit)
-                                        .font(.system(size: 18, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.7))
-                                }
-
-                                Text(metric.status)
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(metric.statusColor)
-
-                                Spacer()
+                            // Example: Oops, Today you've lost 5 minutes due to poor sleep.
+                            let lostOrGained = metric.status.contains("↓") ? "lost" : "gained"
+                            let minutesText = metric.status.replacingOccurrences(of: "↑ ", with: "").replacingOccurrences(of: "↓ ", with: "")
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Text("Oops, Today you've")
+                                    .foregroundColor(.white.opacity(0.8))
+                                Text(lostOrGained == "lost" ? minutesText : minutesText)
+                                    .foregroundColor(lostOrGained == "lost" ? .red : .green)
+                                    .fontWeight(.semibold)
+                                Text("due to poor \(metricTitle.lowercased()).")
+                                    .foregroundColor(.white.opacity(0.8))
                             }
+                            .font(.system(size: 16))
+                            .padding(.horizontal, 16)
+                            .padding(.top, 6)
                         }
 
-                        // Date info
-                        Text(Date().formatted(.dateTime.day().month().year()))
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(Color(red:213/255,green:213/255,blue:213/255).opacity(0.8))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .padding(.horizontal, 20)
+                        // Big metric value
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                if let metric = metrics.first(where: { $0.title == metricTitle }) {
+                                    Text(metric.value)
+                                        .font(.system(size: 36, weight: .bold))
+                                        .foregroundColor(.white)
+                                    if !metric.unit.isEmpty {
+                                        Text(metric.unit)
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.7))
+                                    }
+                                } else {
+                                    Text("--")
+                                        .font(.system(size: 36, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                            }
 
-                    // Real Chart section
-                    VStack(spacing: 16) {
-                        // Chart area with real data
-                        VStack(spacing: 12) {
-                            Spacer()
-                                .frame(height:12)
+                            Text(Date.now, style: .date)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white.opacity(0.6))
+                        }
+                        .padding(.horizontal, 16)
 
-                            // Bar chart implementation with cached data
+                        // Chart container
+                        VStack(spacing: 0) {
+                            // Y grid + zero dashed line
                             GeometryReader { geometry in
-                                VStack(spacing: 0) {
-                                    // Chart area with Y-axis labels
-                                    HStack(alignment: .bottom, spacing: 0) {
-                                        // Y-axis labels
-                                        VStack(alignment: .trailing, spacing: 0) {
-                                            ForEach(yAxisLabels, id: \.self) { label in
-                                                Text(label)
-                                                    .font(.system(size: 10, weight: .medium))
-                                                    .foregroundColor(.white.opacity(0.6))
-                                                    .frame(height: (geometry.size.height - 30) / CGFloat(yAxisLabels.count))
-                                            }
-                                        }
-                                        .frame(width: 30)
-                                        .frame(height: geometry.size.height - 30)
-
-                                        // Chart area - full width
-                                        ZStack(alignment: .bottomLeading) {
-                                            // Background grid lines
-                                            HStack(spacing: 0) {
-                                                ForEach(0..<4, id: \.self) { _ in
-                                                    Rectangle()
-                                                        .fill(Color.white.opacity(0.1))
-                                                        .frame(width: 1, height: geometry.size.height - 30)
-                                                    Spacer()
-                                                }
-                                            }
-
-                                            // Bar chart - full width with cached data
-                                            HStack(alignment: .bottom, spacing: 8) {
-                                                let maxValue = chartData.map { $0.value }.max() ?? 1
-                                                let minValue = chartData.map { $0.value }.min() ?? 0
-                                                let valueRange = maxValue - minValue
-                                                let chartHeight = geometry.size.height - 30
-
-                                                ForEach(Array(chartData.enumerated()), id: \.offset) { _, point in
-                                                    let normalizedValue = valueRange > 0 ? (point.value - minValue) / valueRange : 0.5
-                                                    let barHeight = normalizedValue * chartHeight
-
-                                                    RoundedRectangle(cornerRadius: 3)
-                                                        .fill(Self.getColorForMetric(metricTitle))
-                                                        .frame(width: 16, height: max(4, barHeight))
-                                                }
-                                            }
-                                            .padding(.horizontal, 16)
+                                ZStack(alignment: .bottomLeading) {
+                                    // grid lines
+                                    VStack {
+                                        ForEach(0..<5, id: \.self) { idx in
+                                            Rectangle()
+                                                .fill(Color.white.opacity(idx == 3 ? 0 : 0.06))
+                                                .frame(height: 1)
+                                            Spacer()
                                         }
                                     }
+                                    .padding(.vertical, 24)
 
-                                    // X-axis labels with more spacing
-                                    HStack(spacing: 0) {
-                                        Spacer().frame(width: 30) // Align with chart area
-                                        ForEach(Array(xAxisLabels.enumerated()), id: \.offset) { index, label in
-                                            Text(label)
-                                                .font(.system(size: 10, weight: .medium))
-                                                .foregroundColor(.white.opacity(0.6))
-
-                                            if label != xAxisLabels.last {
-                                                Spacer()
-                                            }
-                                        }
+                                    // dashed zero line across middle
+                                    Path { path in
+                                        let y = geometry.size.height * 0.5
+                                        path.move(to: CGPoint(x: 0, y: y))
+                                        path.addLine(to: CGPoint(x: geometry.size.width, y: y))
                                     }
-                                    .padding(.horizontal, 16)
-                                    .padding(.top, 15)
-                                    .padding(.bottom, 5)
+                                    .stroke(style: StrokeStyle(lineWidth: 1, dash: [4,4]))
+                                    .foregroundColor(Color.white.opacity(0.25))
+
+                                    // simple polyline chart from chartData
+                                    let maxValue = chartData.map { $0.value }.max() ?? 1
+                                    let minValue = chartData.map { $0.value }.min() ?? 0
+                                    let range = max(maxValue - minValue, 1)
+                                    let inset: CGFloat = 24
+                                    let width = geometry.size.width - inset*2
+                                    let height = geometry.size.height - 48
+                                    let stepX = width / CGFloat(max(chartData.count - 1, 1))
+
+                                    // Build points
+                                    let points: [CGPoint] = chartData.enumerated().map { (idx, p) in
+                                        let x = inset + CGFloat(idx) * stepX
+                                        let norm = (p.value - minValue) / range
+                                        let y = (height * CGFloat(1 - norm)) + 24
+                                        return CGPoint(x: x, y: y)
+                                    }
+
+                                    // Red before last third, green after crossing last third (visual hint only)
+                                    if points.count > 1 {
+                                        let splitIndex = Int(Double(points.count) * 0.7)
+                                        let redSlice = Array(points.prefix(max(splitIndex, 2)))
+                                        let greenSlice = Array(points.suffix(from: max(splitIndex-1, 0)))
+
+                                        Path { path in
+                                            guard let first = redSlice.first else { return }
+                                            path.move(to: first)
+                                            redSlice.dropFirst().forEach { path.addLine(to: $0) }
+                                        }
+                                        .stroke(Color.red, lineWidth: 2)
+
+                                        Path { path in
+                                            guard let first = greenSlice.first else { return }
+                                            path.move(to: first)
+                                            greenSlice.dropFirst().forEach { path.addLine(to: $0) }
+                                        }
+                                        .stroke(Color.green, lineWidth: 2)
+                                    }
+
+                                    // X labels
+                                    VStack { Spacer() }
                                 }
                             }
-                            .frame(height: 200)
-                            .padding(.horizontal, 0)
+                            .frame(height: 220)
+                            .background(
+                                LinearGradient(colors: [Color.white.opacity(0.03), Color.white.opacity(0.01)], startPoint: .top, endPoint: .bottom)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                            )
+                            .padding(.horizontal, 16)
+                            .padding(.top, 4)
+
+                            // X-axis labels
+                            HStack(spacing: 0) {
+                                ForEach(Array(xAxisLabels.enumerated()), id: \.offset) { index, label in
+                                    Text(label)
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.6))
+                                    if index != xAxisLabels.count - 1 { Spacer() }
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.top, 10)
                         }
-                    }
-                    .padding(.horizontal, 20)
 
-                    // Recommendations section
-                    VStack(spacing: 16) {
-                        Spacer()
-                            .frame(height:12)
-
-                        Text("Recommendations")
+                        // Recommendations header
+                        Text("Sleep Recommendations")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(.white)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 20)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 6)
 
                         // Recommendation card
-                        VStack(spacing: 12) {
-                            HStack(spacing: 12) {
+                        HStack(alignment: .top, spacing: 12) {
+                            ZStack {
+                                Circle().fill(Color.yellow.opacity(0.15))
                                 Image(systemName: Self.getIconForMetric(metricTitle))
-                                    .font(.system(size: 20, weight: .medium))
-                                    .foregroundColor(Self.getColorForMetric(metricTitle))
-                                    .frame(width: 24, height: 24)
-
-                                Text(metricTitle)
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.white)
-
-                                Spacer()
+                                    .foregroundColor(.yellow)
+                                    .font(.system(size: 18, weight: .semibold))
                             }
+                            .frame(width: 36, height: 36)
 
                             Text(Self.getRecommendationForMetric(metricTitle))
                                 .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white.opacity(0.8))
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .foregroundColor(.white.opacity(0.9))
+                            Spacer(minLength: 0)
                         }
-                        .padding(16)
+                        .padding(14)
                         .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.white.opacity(0.06))
                         )
-                        .padding(.horizontal, 20)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                        )
+                        .padding(.horizontal, 16)
+
+                        // Secondary tip row
+                        HStack(spacing: 8) {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.white.opacity(0.5))
+                            Text("Tap to see what XX research studies tell us about \(metricTitle.lowercased())")
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.5))
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+
+                        Spacer(minLength: 40)
                     }
-                    // Action item
-                    HStack(spacing: 8) {
-                        Spacer()
-                        Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(Self.getColorForMetric(metricTitle))
-
-                        Text(Self.getActionForMetric(metricTitle))
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white.opacity(0.8))
-
-                        Spacer()
-                    }
-
-                    Spacer(minLength: 100) // Space for bottom navigation
+                    .padding(.top, 6)
                 }
-                .padding(.top, 20)
             }
         }
-        .background(Color.black)
         .navigationBarHidden(true)
     }
 
@@ -662,5 +650,109 @@ struct MetricDetailContentView: View {
         default:
             return []
         }
+    }
+    
+    private var personalizedHeader: some View {
+        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: true)
+            .padding(.top, 10)
+    }
+    
+    private var dateNavigationBar: some View {
+        HStack(spacing: 4) {
+            ForEach([ImpactDataPoint.PeriodType.day, .month, .year], id: \.self) { period in
+                Button(action: {
+                    changePeriod(to: period)
+                }) {
+                    Text(period.displayName)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(selectedPeriod == period ? .white : .white.opacity(0.6))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 100)
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color(hex: "#318AFC"),
+                                            Color(hex: "#18EF47").opacity(0.58)
+                                        ]),
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .opacity(selectedPeriod == period ? 1 : 0)
+                        )
+                }
+            }
+        }
+        .padding(.horizontal, 2)
+        .padding(.vertical, 2)
+        .background(
+            RoundedRectangle(cornerRadius: 100)
+                .fill(Color(hex: "#828282").opacity(0.45))
+        )
+        .padding(.horizontal, 24)
+        .padding(.vertical,12)
+        .gesture(
+            DragGesture(minimumDistance: 50, coordinateSpace: .local)
+                .onEnded { value in
+                    let horizontalAmount = value.translation.width
+                    let verticalAmount = abs(value.translation.height)
+                    
+                    // Only respond to horizontal swipes (not vertical)
+                    if abs(horizontalAmount) > verticalAmount {
+                        if horizontalAmount > 0 {
+                            // Swipe right - go to previous period
+                            swipeToPreviousPeriod()
+                        } else {
+                            // Swipe left - go to next period
+                            swipeToNextPeriod()
+                        }
+                    }
+                }
+        )
+    }
+    
+    private func changePeriod(to period: ImpactDataPoint.PeriodType) {
+        // Prevent infinite loops by checking if period is already selected
+        guard selectedPeriod != period else { return }
+        
+        // Prevent multiple updates per frame by using async dispatch
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                self.selectedPeriod = period
+                let timePeriod = TimePeriod(from: period)
+                // Only update if it's actually different to prevent subscription loops
+                if self.viewModel.selectedTimePeriod != timePeriod {
+                    self.viewModel.selectedTimePeriod = timePeriod
+                }
+            }
+            
+            // Add haptic feedback for period change
+            let impact = UIImpactFeedbackGenerator(style: .light)
+            impact.impactOccurred()
+        }
+    }
+    
+    /// Swipe to the next period (Day → Month → Year → Day)
+    private func swipeToNextPeriod() {
+        let periods: [ImpactDataPoint.PeriodType] = [.day, .month, .year]
+        guard let currentIndex = periods.firstIndex(of: selectedPeriod) else { return }
+        
+        let nextIndex = (currentIndex + 1) % periods.count
+        let nextPeriod = periods[nextIndex]
+        
+        changePeriod(to: nextPeriod)
+    }
+    
+    /// Swipe to the previous period (Year → Month → Day → Year)
+    private func swipeToPreviousPeriod() {
+        let periods: [ImpactDataPoint.PeriodType] = [.day, .month, .year]
+        guard let currentIndex = periods.firstIndex(of: selectedPeriod) else { return }
+        
+        let previousIndex = currentIndex == 0 ? periods.count - 1 : currentIndex - 1
+        let previousPeriod = periods[previousIndex]
+        
+        changePeriod(to: previousPeriod)
     }
 }
