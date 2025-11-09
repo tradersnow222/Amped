@@ -95,7 +95,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .mascotNaming {
                         MascotNamingView(onContinue: { name in
-                            appState.saveToUserDefault(keyname: "user_name", value: name)
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userName, value: name)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.genderSelection)
@@ -106,7 +106,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .genderSelection {
                         GenderSelectionView( onContinue: { genderEnum in
-                            appState.saveToUserDefault(keyname: "user_gender", value: genderEnum.rawValue)
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userGender, value: genderEnum.rawValue)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.ageSelection)
@@ -119,7 +119,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .ageSelection {
                         AgeSelectionView (onContinue: { date in
-                            appState.saveToUserDefault(keyname: "user_date_of_birth", value: date)
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userDateOfBirth, value: date)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.heightStats)
@@ -132,7 +132,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .heightStats {
                         HeightStatsView(onContinue: { height in
-                            appState.saveToUserDefault(keyname: "user_height", value: height)
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userHeight, value: height)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.weightStats)
@@ -145,6 +145,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .weightStats {
                         WeightStatsView(onContinue: { weight in
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userWeight, value: weight)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.stressStats)
@@ -157,6 +158,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .stressStats {
                         StressStatsView(onContinue: { stressStats in
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userStressLevel, value: stressStats)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.anxietyStats)
@@ -169,6 +171,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .anxietyStats {
                         AnxietyStatsView(onContinue: { anxietyStats in
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userAnxietyLevel, value: anxietyStats)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.dietStats)
@@ -181,6 +184,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .dietStats {
                         DietStatsView(onContinue: { dietStats in
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userDietLevel, value: dietStats)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.smokeStats)
@@ -193,6 +197,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .smokeStats {
                         SmokeStatsView(onContinue: { smokeStats in
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userSmokeStats, value: smokeStats)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.alcoholicStats)
@@ -205,6 +210,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .alcoholicStats {
                         AlcoholicStatsView(onContinue: { alcoholStats in
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userAlcoholStats, value: alcoholStats)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.socialConnectionStats)
@@ -217,6 +223,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .socialConnectionStats {
                         SocialConnectionStatsView(onContinue: { socialConnectionStats in
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userSocialStats, value: socialConnectionStats)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.bloodPressureStats)
@@ -228,7 +235,9 @@ struct OnboardingFlow: View {
                     }
                     
                     if appState.currentOnboardingStep == .bloodPressureStats {
-                        BloodPressureReadingView(onContinue: { bloodPressureStats in
+                        BloodPressureReadingView(onContinue: {
+                            bloodPressureStats in
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userBloodPressureStats, value: bloodPressureStats)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.mainReasonStats)
@@ -241,6 +250,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .mainReasonStats {
                         MainReasonStatsView(onContinue: { mainReasonStats in
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userMainReasonStats, value: mainReasonStats)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.goalsStats)
@@ -253,6 +263,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .goalsStats {
                         GoalsStatsView(onContinue: { mainReasonStats in
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userGoalStats, value: mainReasonStats)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.syncDeviceStats)
@@ -265,6 +276,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .syncDeviceStats {
                         SyncDeviceView(onContinue: { deviceSync in
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userDeviceSync, value: deviceSync)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.dashboard)
@@ -305,8 +317,8 @@ struct OnboardingFlow: View {
                 let currentStep = await MainActor.run { appState.currentOnboardingStep }
                 if currentStep == .welcome {
                     // Clear UserDefaults in background
-                    UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
-                    UserDefaults.standard.removeObject(forKey: "userName")
+                    UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.questionnaireCurrentQuestion)
+                    UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.userNameLegacy)
                     
                     // Move expensive clearAllData to background with even lower priority
                     QuestionnaireManager().clearAllData()
@@ -351,8 +363,8 @@ struct OnboardingFlow: View {
 /// Clears caches and temporary data that are no longer needed
 private func performPostOnboardingCleanup() async {
     // Clear any temporary onboarding-related UserDefaults
-    UserDefaults.standard.removeObject(forKey: "onboarding_temp_data")
-    UserDefaults.standard.removeObject(forKey: "questionnaire_cache")
+    UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.onboardingTempData)
+    UserDefaults.standard.removeObject(forKey: UserDefaultsKeys.questionnaireCache)
     
     // Trigger memory cleanup
     autoreleasepool {
