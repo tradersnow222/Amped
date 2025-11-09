@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 struct MetricDetailContentView: View {
     let metricTitle: String
@@ -12,8 +13,6 @@ struct MetricDetailContentView: View {
     // Cache the data to prevent infinite loops
     private let metrics: [DashboardMetric]
     private let chartData: [ChartDataPoint]
-    private let yAxisLabels: [String]
-    private let xAxisLabels: [String]
 
     init(metricTitle: String, period: String, periodType: ImpactDataPoint.PeriodType, navigationPath: Binding<NavigationPath>) {
         self.metricTitle = metricTitle
@@ -21,24 +20,27 @@ struct MetricDetailContentView: View {
         self.periodType = periodType
         self._navigationPath = navigationPath
 
+        let periodString: String
+        switch periodType {
+        case .day: periodString = "day"
+        case .month: periodString = "month"
+        case .year: periodString = "year"
+        }
+
         // Cache all data during initialization to prevent recalculation loops
         self.metrics = Self.getMetricsForPeriod(periodType)
-        self.chartData = Self.getChartDataForMetric(metricTitle, period: period)
-        self.yAxisLabels = Self.getYAxisLabels(for: metricTitle)
-        self.xAxisLabels = Self.getXAxisLabels(for: period)
+        self.chartData = Self.getChartDataForMetric(metricTitle, period: periodString)
         
         selectedPeriod = periodType
     }
 
     var body: some View {
         ZStack {
-            
             Color.black.ignoresSafeArea(.all)
-            // Subtle dark gradient background to match screenshot
             LinearGradient.grayGradient.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header (match MetricGridView style): profile, name, search
+                // Header
                 HStack(spacing: 12) {
                     Button(action: {
                         DispatchQueue.main.async { navigationPath.removeLast() }
@@ -52,7 +54,6 @@ struct MetricDetailContentView: View {
                             )
                     }
 
-                    // Header
                     personalizedHeader
                 }
                 .padding(.horizontal, 16)
@@ -66,7 +67,6 @@ struct MetricDetailContentView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         // Status sentence
                         if let metric = metrics.first(where: { $0.title == metricTitle }) {
-                            // Example: Oops, Today you've lost 5 minutes due to poor sleep.
                             let lostOrGained = metric.status.contains("↓") ? "lost" : "gained"
                             let minutesText = metric.status.replacingOccurrences(of: "↑ ", with: "").replacingOccurrences(of: "↓ ", with: "")
                             HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -108,101 +108,13 @@ struct MetricDetailContentView: View {
                         }
                         .padding(.horizontal, 16)
 
-                        // Chart container
-                        VStack(spacing: 0) {
-                            // Y grid + zero dashed line
-                            GeometryReader { geometry in
-                                ZStack(alignment: .bottomLeading) {
-                                    // grid lines
-                                    VStack {
-                                        ForEach(0..<5, id: \.self) { idx in
-                                            Rectangle()
-                                                .fill(Color.white.opacity(idx == 3 ? 0 : 0.06))
-                                                .frame(height: 1)
-                                            Spacer()
-                                        }
-                                    }
-                                    .padding(.vertical, 24)
-
-                                    // dashed zero line across middle
-                                    Path { path in
-                                        let y = geometry.size.height * 0.5
-                                        path.move(to: CGPoint(x: 0, y: y))
-                                        path.addLine(to: CGPoint(x: geometry.size.width, y: y))
-                                    }
-                                    .stroke(style: StrokeStyle(lineWidth: 1, dash: [4,4]))
-                                    .foregroundColor(Color.white.opacity(0.25))
-
-                                    // simple polyline chart from chartData
-                                    let maxValue = chartData.map { $0.value }.max() ?? 1
-                                    let minValue = chartData.map { $0.value }.min() ?? 0
-                                    let range = max(maxValue - minValue, 1)
-                                    let inset: CGFloat = 24
-                                    let width = geometry.size.width - inset*2
-                                    let height = geometry.size.height - 48
-                                    let stepX = width / CGFloat(max(chartData.count - 1, 1))
-
-                                    // Build points
-                                    let points: [CGPoint] = chartData.enumerated().map { (idx, p) in
-                                        let x = inset + CGFloat(idx) * stepX
-                                        let norm = (p.value - minValue) / range
-                                        let y = (height * CGFloat(1 - norm)) + 24
-                                        return CGPoint(x: x, y: y)
-                                    }
-
-                                    // Red before last third, green after crossing last third (visual hint only)
-                                    if points.count > 1 {
-                                        let splitIndex = Int(Double(points.count) * 0.7)
-                                        let redSlice = Array(points.prefix(max(splitIndex, 2)))
-                                        let greenSlice = Array(points.suffix(from: max(splitIndex-1, 0)))
-
-                                        Path { path in
-                                            guard let first = redSlice.first else { return }
-                                            path.move(to: first)
-                                            redSlice.dropFirst().forEach { path.addLine(to: $0) }
-                                        }
-                                        .stroke(Color.red, lineWidth: 2)
-
-                                        Path { path in
-                                            guard let first = greenSlice.first else { return }
-                                            path.move(to: first)
-                                            greenSlice.dropFirst().forEach { path.addLine(to: $0) }
-                                        }
-                                        .stroke(Color.green, lineWidth: 2)
-                                    }
-
-                                    // X labels
-                                    VStack { Spacer() }
-                                }
-                            }
-                            .frame(height: 220)
-                            .background(
-                                LinearGradient(colors: [Color.white.opacity(0.03), Color.white.opacity(0.01)], startPoint: .top, endPoint: .bottom)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
-                            )
+                        // Chart container with native Swift Charts
+                        chartView
+                            .frame(height: 280)
                             .padding(.horizontal, 16)
-                            .padding(.top, 4)
-
-                            // X-axis labels
-                            HStack(spacing: 0) {
-                                ForEach(Array(xAxisLabels.enumerated()), id: \.offset) { index, label in
-                                    Text(label)
-                                        .font(.system(size: 10, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.6))
-                                    if index != xAxisLabels.count - 1 { Spacer() }
-                                }
-                            }
-                            .padding(.horizontal, 24)
-                            .padding(.top, 10)
-                        }
 
                         // Recommendations header
-                        Text("Sleep Recommendations")
+                        Text("\(metricTitle) Recommendations")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(.white)
                             .padding(.horizontal, 16)
@@ -253,8 +165,184 @@ struct MetricDetailContentView: View {
         }
         .navigationBarHidden(true)
     }
+    
+    // MARK: - Chart View
+    private var chartView: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                yAxisLabelsView
+                mainChartView
+            }
+            .padding(16)
+            .background(chartBackground)
+            .overlay(chartBorder)
+        }
+    }
+    
+    private var yAxisLabelsView: some View {
+        VStack(alignment: .trailing, spacing: 0) {
+            ForEach(yAxisValues.reversed(), id: \.self) { value in
+                Text(formatYAxisValue(value))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.white.opacity(0.6))
+                    .frame(maxHeight: .infinity)
+            }
+        }
+        .frame(width: 35)
+    }
+    
+    private var mainChartView: some View {
+        Chart(Array(chartData.enumerated()), id: \.offset) { index, point in
+            lineMarkForPoint(point, at: index)
+            if index == 0 {
+                targetRuleMark
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: xAxisMarkValues) { value in
+                if let index = value.as(Int.self), index < chartData.count {
+                    AxisValueLabel {
+                        Text(chartData[index].label)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(Color.white.opacity(0.6))
+                    }
+                }
+            }
+        }
+        .chartYAxis(.hidden)
+        .chartYScale(domain: minYValue...maxYValue)
+        .chartPlotStyle { plotArea in
+            plotArea.background(plotBackgroundGradient)
+        }
+        .frame(height: 200)
+    }
+    
+    private var xAxisMarkValues: [Int] {
+        let rawStep = max(getXAxisStride(), 1)
+        guard chartData.count > 0 else { return [] }
+        let indices = Array(stride(from: 0, to: chartData.count, by: rawStep))
+        return indices
+    }
+    
+    private func lineMarkForPoint(_ point: ChartDataPoint, at index: Int) -> some ChartContent {
+        LineMark(
+            x: .value("Time", index),
+            y: .value("Value", point.value)
+        )
+        .foregroundStyle(getColorForPoint(point))
+        .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+    }
+    
+    private var targetRuleMark: some ChartContent {
+        RuleMark(y: .value("Target", targetValue))
+            .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+            .foregroundStyle(Color.white.opacity(0.25))
+    }
+    
+    private var plotBackgroundGradient: some View {
+        LinearGradient(
+            colors: [Color.white.opacity(0.03), Color.white.opacity(0.01)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+    
+    private var chartBackground: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .fill(Color.white.opacity(0.03))
+    }
+    
+    private var chartBorder: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .stroke(Color.white.opacity(0.06), lineWidth: 1)
+    }
+    
+    private func getXAxisStride() -> Int {
+        let totalPoints = chartData.count
+        if totalPoints > 12 {
+            return totalPoints / 5
+        } else if totalPoints > 7 {
+            return 2
+        } else {
+            return 1
+        }
+    }
+    
+    // MARK: - Chart Helpers
+    private var targetValue: Double {
+        switch metricTitle.lowercased() {
+        case "sleep":
+            return 7.5 // 7.5 hours target
+        case "heart rate":
+            return 65
+        case "steps":
+            return 10000
+        default:
+            let values = chartData.map { $0.value }
+            guard !values.isEmpty else { return 0 }
+            return values.reduce(0, +) / Double(values.count)
+        }
+    }
+    
+    private var yAxisValues: [Double] {
+        let values = chartData.map { $0.value }
+        guard let minVal = values.min(), let maxVal = values.max(), minVal.isFinite, maxVal.isFinite else {
+            return [0, 1, 2, 3, 4]
+        }
+        let padding = max(abs(minVal), abs(maxVal)) * 0.1
+        let min = minVal - padding
+        let max = maxVal + padding
+        let range = max - min
+        let step = range == 0 ? 1 : range / 4
+        return stride(from: min, through: max, by: step).map { $0 }
+    }
+    
+    private var minYValue: Double {
+        let values = chartData.map { $0.value }
+        guard let minVal = values.min() else { return 0 }
+        let padding = abs(minVal) * 0.1
+        return minVal - padding
+    }
+    
+    private var maxYValue: Double {
+        let values = chartData.map { $0.value }
+        guard let maxVal = values.max() else { return 1 }
+        let padding = abs(maxVal) * 0.1
+        return maxVal + padding
+    }
+    
+    private func formatYAxisValue(_ value: Double) -> String {
+        switch metricTitle.lowercased() {
+        case "sleep":
+            return String(format: "%.0fh", value)
+        case "steps":
+            if value >= 1000 {
+                return String(format: "%.0fk", value / 1000)
+            }
+            return String(format: "%.0f", value)
+        case "heart rate":
+            return String(format: "%.0f", value)
+        default:
+            return String(format: "%.0f", value)
+        }
+    }
+    
+    private func getColorForPoint(_ point: ChartDataPoint) -> Color {
+        // Color logic: red if below target, green if above
+        switch metricTitle.lowercased() {
+        case "sleep":
+            return point.value < targetValue ? .red : .green
+        case "heart rate":
+            // Lower is better for heart rate
+            return point.value > targetValue ? .red : .green
+        case "steps":
+            return point.value < targetValue ? .red : .green
+        default:
+            return point.value < targetValue ? .red : .green
+        }
+    }
 
-    // MARK: - Static Helper Functions (moved from DashboardView)
+    // MARK: - Static Helper Functions
 
     static func getMetricsForPeriod(_ period: ImpactDataPoint.PeriodType) -> [DashboardMetric] {
         switch period {
@@ -296,7 +384,7 @@ struct MetricDetailContentView: View {
                     title: "Sleep",
                     value: "5h 12m",
                     unit: "",
-                    status: "↓ 2 mins lost",
+                    status: "↓ 5 mins lost",
                     statusColor: .red,
                     timestamp: "21:35"
                 ),
@@ -358,59 +446,12 @@ struct MetricDetailContentView: View {
             return getStepsChartData(for: period)
         case "heart rate":
             return getHeartRateChartData(for: period)
-        case "exercise":
+        case "exercise", "active energy":
             return getExerciseChartData(for: period)
         case "weight":
             return getWeightChartData(for: period)
         default:
             return getDefaultChartData(for: period)
-        }
-    }
-
-    static func getYAxisLabels(for metricTitle: String) -> [String] {
-        switch metricTitle.lowercased() {
-        case "sleep":
-            return ["9", "7", "5", "3"]
-        case "steps":
-            return ["15k", "10k", "5k", "0"]
-        case "heart rate":
-            return ["70", "65", "60", "55"]
-        case "exercise":
-            return ["60", "40", "20", "0"]
-        case "weight":
-            return ["75", "70", "65", "60"]
-        default:
-            return ["100", "75", "50", "25"]
-        }
-    }
-
-    static func getXAxisLabels(for period: String) -> [String] {
-        switch period {
-        case "day":
-            return ["12 AM", "6 AM", "12 PM", "6 PM", "11 PM"]
-        case "month":
-            return ["Week 1", "Week 2", "Week 3", "Week 4"]
-        case "year":
-            return ["Q1", "Q2", "Q3", "Q4"]
-        default:
-            return ["1", "2", "3", "4", "5"]
-        }
-    }
-
-    static func getColorForMetric(_ metricTitle: String) -> Color {
-        switch metricTitle.lowercased() {
-        case "sleep":
-            return .blue
-        case "steps":
-            return .green
-        case "heart rate":
-            return .red
-        case "exercise":
-            return .orange
-        case "weight":
-            return .purple
-        default:
-            return .gray
         }
     }
 
@@ -422,7 +463,7 @@ struct MetricDetailContentView: View {
             return "figure.walk"
         case "heart rate":
             return "heart.fill"
-        case "exercise":
+        case "exercise", "active energy":
             return "flame.fill"
         case "weight":
             return "scalemass.fill"
@@ -434,12 +475,12 @@ struct MetricDetailContentView: View {
     static func getRecommendationForMetric(_ metricTitle: String) -> String {
         switch metricTitle.lowercased() {
         case "sleep":
-            return "Try to get 7-9 hours of quality sleep each night. Consider a consistent bedtime routine."
+            return "Get 8 hours of sleep tonight to add 10 minutes to your lifespan."
         case "steps":
             return "Aim for 10,000 steps daily. Take short walks throughout the day to increase activity."
         case "heart rate":
             return "Regular cardio exercise can help improve your resting heart rate over time."
-        case "exercise":
+        case "exercise", "active energy":
             return "Include both cardio and strength training in your weekly routine for optimal health."
         case "weight":
             return "Maintain a balanced diet and regular exercise routine for healthy weight management."
@@ -448,35 +489,28 @@ struct MetricDetailContentView: View {
         }
     }
 
-    static func getActionForMetric(_ metricTitle: String) -> String {
-        switch metricTitle.lowercased() {
-        case "sleep":
-            return "Set a bedtime reminder"
-        case "steps":
-            return "Take a 10-minute walk"
-        case "heart rate":
-            return "Do 5 minutes of cardio"
-        case "exercise":
-            return "Schedule workout time"
-        case "weight":
-            return "Log your meals"
-        default:
-            return "Track this metric"
-        }
-    }
-
     // Chart data helper functions
     static func getSleepChartData(for period: String) -> [ChartDataPoint] {
         switch period {
         case "day":
             return [
-                ChartDataPoint(value: 7.2, label: "Mon"),
-                ChartDataPoint(value: 8.1, label: "Tue"),
-                ChartDataPoint(value: 6.8, label: "Wed"),
-                ChartDataPoint(value: 7.5, label: "Thu"),
-                ChartDataPoint(value: 8.3, label: "Fri"),
-                ChartDataPoint(value: 9.1, label: "Sat"),
-                ChartDataPoint(value: 7.8, label: "Sun")
+                ChartDataPoint(value: 0, label: "16:15"),
+                ChartDataPoint(value: 0, label: "16:30"),
+                ChartDataPoint(value: 0, label: "16:45"),
+                ChartDataPoint(value: 0, label: "17:00"),
+                ChartDataPoint(value: 0, label: "17:15"),
+                ChartDataPoint(value: 0, label: "17:30"),
+                ChartDataPoint(value: 0, label: "17:45"),
+                ChartDataPoint(value: 0, label: "18:00"),
+                ChartDataPoint(value: -2.5, label: "18:15"),
+                ChartDataPoint(value: -2, label: "18:30"),
+                ChartDataPoint(value: -1.5, label: "18:45"),
+                ChartDataPoint(value: -1.7, label: "19:00"),
+                ChartDataPoint(value: -2, label: "19:15"),
+                ChartDataPoint(value: -1.3, label: "19:30"),
+                ChartDataPoint(value: 1.5, label: "19:45"),
+                ChartDataPoint(value: 2.5, label: "20:00"),
+                ChartDataPoint(value: 1.8, label: "20:15")
             ]
         case "month":
             return [
@@ -692,20 +726,17 @@ struct MetricDetailContentView: View {
                 .fill(Color(hex: "#828282").opacity(0.45))
         )
         .padding(.horizontal, 24)
-        .padding(.vertical,12)
+        .padding(.vertical, 12)
         .gesture(
             DragGesture(minimumDistance: 50, coordinateSpace: .local)
                 .onEnded { value in
                     let horizontalAmount = value.translation.width
                     let verticalAmount = abs(value.translation.height)
                     
-                    // Only respond to horizontal swipes (not vertical)
                     if abs(horizontalAmount) > verticalAmount {
                         if horizontalAmount > 0 {
-                            // Swipe right - go to previous period
                             swipeToPreviousPeriod()
                         } else {
-                            // Swipe left - go to next period
                             swipeToNextPeriod()
                         }
                     }
@@ -714,27 +745,22 @@ struct MetricDetailContentView: View {
     }
     
     private func changePeriod(to period: ImpactDataPoint.PeriodType) {
-        // Prevent infinite loops by checking if period is already selected
         guard selectedPeriod != period else { return }
         
-        // Prevent multiple updates per frame by using async dispatch
         DispatchQueue.main.async {
             withAnimation(.easeInOut(duration: 0.2)) {
                 self.selectedPeriod = period
                 let timePeriod = TimePeriod(from: period)
-                // Only update if it's actually different to prevent subscription loops
                 if self.viewModel.selectedTimePeriod != timePeriod {
                     self.viewModel.selectedTimePeriod = timePeriod
                 }
             }
             
-            // Add haptic feedback for period change
             let impact = UIImpactFeedbackGenerator(style: .light)
             impact.impactOccurred()
         }
     }
     
-    /// Swipe to the next period (Day → Month → Year → Day)
     private func swipeToNextPeriod() {
         let periods: [ImpactDataPoint.PeriodType] = [.day, .month, .year]
         guard let currentIndex = periods.firstIndex(of: selectedPeriod) else { return }
@@ -745,7 +771,6 @@ struct MetricDetailContentView: View {
         changePeriod(to: nextPeriod)
     }
     
-    /// Swipe to the previous period (Year → Month → Day → Year)
     private func swipeToPreviousPeriod() {
         let periods: [ImpactDataPoint.PeriodType] = [.day, .month, .year]
         guard let currentIndex = periods.firstIndex(of: selectedPeriod) else { return }
