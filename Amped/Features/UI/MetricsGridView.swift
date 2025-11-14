@@ -113,7 +113,7 @@ struct MetricGridView: View {
     }
     
     private var personalizedHeader: some View {
-        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: true)
+        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
             .padding(.top, 10)
     }
     

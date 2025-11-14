@@ -18,31 +18,26 @@ struct ProfileImageView: View {
     }
     
     var body: some View {
-        if showWelcomeMessage {
-            // Full header design with avatar + welcome message
-            HStack {
-                avatarView
-                
-                // Welcome message
-                VStack(alignment: .leading, spacing: 2) {
+        // Full header design with avatar + welcome message
+        HStack(spacing: 10) {
+            avatarView
+            VStack(alignment: .leading, spacing: 2) {
+                if showWelcomeMessage {
+                    // Welcome message
                     Text("Welcome!")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(.white)
-                    
-                    Text(getUserName())
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundColor(.white.opacity(0.8))
                 }
-                
-                Spacer()
+                Text(getUserName())
+                    .font(.system(size: showWelcomeMessage ? 16 : 22, weight: showWelcomeMessage ? .regular : .semibold))
+                    .foregroundColor(.white)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 4)
-            .padding(.bottom, 8)
-        } else {
-            // Just the avatar
-            avatarView
+            
+            Spacer()
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 4)
+        .padding(.bottom, 8)
     }
     
     @ViewBuilder
@@ -70,7 +65,7 @@ struct ProfileImageView: View {
                     .overlay(
                         Text(getInitials())
                             .font(.system(size: size * 0.4, weight: .semibold))
-                            .foregroundColor(.white)
+                            .foregroundColor(.white.opacity(0.8))
                     )
                     .overlay(
                         Circle()

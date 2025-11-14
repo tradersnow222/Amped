@@ -191,6 +191,9 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ZStack(alignment: .bottom) {
+                
+                LinearGradient.customBlueToDarkGray
+                    .ignoresSafeArea()
 
                 // Main content
                 TabView(selection: $selectedTab) {
@@ -205,7 +208,7 @@ struct DashboardView: View {
                 customTabBar
             }
             .ignoresSafeArea(.keyboard)
-            .withDeepBackground()
+//            .withDeepBackground()
             .onAppear {
                 configureNavigationBar()
                 HapticManager.shared.prepareHaptics()
@@ -462,7 +465,7 @@ struct DashboardView: View {
     
     /// Personalized header with greeting and avatar
     private var personalizedHeader: some View {
-        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: true)
+        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
     }
     
     /// Date navigation bar with Day/Month/Year tabs and swipe gesture support
@@ -2253,3 +2256,16 @@ struct DashboardView_Previews: PreviewProvider {
     }
 }
 
+extension LinearGradient {
+    static var customBlueToDarkGray: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(hex: "#3B77A3"),  // top blue
+                Color.black.opacity(0.8),
+                Color.black.opacity(0.9)   // bottom gray/black
+            ],
+            startPoint: .topLeading,     // Blue in top-left
+            endPoint: .bottomTrailing    // Dark toward bottom-right
+        )
+    }
+}

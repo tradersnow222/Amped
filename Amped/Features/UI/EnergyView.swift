@@ -71,7 +71,6 @@ struct EnergyView: View {
             
             Spacer(minLength: 100) // Space for bottom navigation
         }
-        .background(Color.black)
         .navigationBarHidden(true)
     }
     
