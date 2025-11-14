@@ -21,6 +21,7 @@ enum OnboardingStep: String, Equatable, CaseIterable {
     case mainReasonStats
     case goalsStats
     case syncDeviceStats
+    case terms
     case questionnaire
     case notificationPermission // Moved: Right after goal setting for logical flow
     case valueProposition // Position 5: Reinforce value after notifications
@@ -279,12 +280,23 @@ struct OnboardingFlow: View {
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userDeviceSync, value: deviceSync)
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.dashboard)
+                            navigateTo(.terms)
                         }, onBack: {
                             navigateTo(.goalsStats)
                         })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .syncDeviceStats ? 1 : 0)
+                    }
+                    
+                    if appState.currentOnboardingStep == .terms {
+                        TermsView {
+                            isButtonNavigating = true
+                            dragDirection = nil
+                            navigateTo(.dashboard)
+                        } onBack: {
+                            navigateTo(.syncDeviceStats)
+                        }
+
                     }
                     
                     if appState.currentOnboardingStep == .dashboard {
