@@ -190,85 +190,74 @@ struct DashboardView: View {
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
-        ZStack {
-            // Background gradient
-            LinearGradient.grayGradient
-                .ignoresSafeArea()
-                // Main content based on selected tab
-                VStack(spacing: 0) {
-                    // Content area
-                    Group {
-                        switch selectedTab {
-                        case 0: // Home tab - Dashboard home with battery character
-                            dashboardHomeView
-                        case 1: // Dashboard tab - Detailed metrics list
-//                            dashboardView
-                            metricView
-                            
-                        case 2: // Energy tab - Battery page content
-                            energyView
-                        case 3: // Profile tab - Profile/settings
-                            profileView
-                        default:
-                            dashboardHomeView
-                        }
-                    }
-                    
-                    // Bottom navigation bar
-                    bottomNavigationBar
+            ZStack(alignment: .bottom) {
+
+                // Main content
+                TabView(selection: $selectedTab) {
+                    dashboardHomeView.tag(0)
+                    metricView.tag(1)
+                    energyView.tag(2)
+//                    profileView.tag(3)
                 }
-            
-            // Error overlay if needed
-            if let errorMessage = viewModel.errorMessage {
-                errorOverlay(errorMessage: errorMessage)
+                .tabViewStyle(.page(indexDisplayMode: .never)) // hides native tabs
+
+                // Custom tab bar overlay
+                customTabBar
             }
-            
-            // Custom info card overlay
-            if showingProjectionHelp {
-                projectionHelpOverlay
-            }
-        }
-        .withDeepBackground()
-        .toolbar {
-            // ToolbarItem(placement: .navigationBarTrailing) {
-            //     Button {
-            //         showingSettings = true
-            //     } label: {
-            //         Image(systemName: "gearshape.fill")
-            //             .font(.system(size: 20, weight: .medium))
-            //             .foregroundColor(.white)
-            //     }
-            //     .accessibilityLabel("Account & Settings")
-            //     .accessibilityHint("Double tap to open your account and settings")
-            // }
-        }
-        .sheet(item: $selectedMetric) { metric in
-//            MetricDetailView(metric: metric, initialPeriod: selectedPeriod)
-        }
-        .sheet(isPresented: $showingUpdateHealthProfile) {
-            UpdateHealthProfileView()
-        }
-        .sheet(isPresented: $showingSettings) {
-            SettingsView()
-                .environmentObject(settingsManager)
-        }
-        .navigationDestination(for: String.self) { destination in
-            if destination == "detailedAnalysis" {
-                detailedAnalysisView
-            } else if destination.hasPrefix("metricDetail-") {
-                metricDetailView(for: destination)
+            .ignoresSafeArea(.keyboard)
+            .withDeepBackground()
+            .onAppear {
+                configureNavigationBar()
+                HapticManager.shared.prepareHaptics()
+                handleIntroAnimations()
             }
         }
-        .onAppear {
-            configureNavigationBar()
-            HapticManager.shared.prepareHaptics()
-            handleIntroAnimations()
-            
-            // CRITICAL FIX: Only load data once to prevent infinite loops
-            // Don't call loadData here since it's already called in ViewModel init
+    }
+
+    
+    private var customTabBar: some View {
+        HStack(spacing: 20) {
+            tabButton(index: 0, icon: "house.fill", title: "Home")
+            tabButton(index: 1, icon: "square.grid.2x2.fill", title: "Metrics")
+            tabButton(index: 2, icon: "bolt.fill", title: "Lifespan")
+//            tabButton(index: 3, icon: "person.fill", title: "Lifespan")
         }
-        .animation(.easeInOut(duration: 0.2), value: showingProjectionHelp)
-        .animation(.easeInOut(duration: 0.2), value: showSignInPopup)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            Capsule()
+                .fill(.ultraThinMaterial)
+                .opacity(0.8)
+        )
+        .padding(.bottom, 20)
+    }
+
+    @ViewBuilder
+    private func tabButton(index: Int, icon: String, title: String? = nil) -> some View {
+
+        let isSelected = selectedTab == index
+
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+
+            if let title = title, isSelected {
+                Text(title)
+                    .font(.system(size: 15, weight: .medium))
+            }
+        }
+        .padding(.horizontal, isSelected ? 16 : 12)
+        .padding(.vertical, 10)
+        .background(
+            Capsule()
+                .fill(isSelected ? Color.green.opacity(0.9) : Color.clear)
+        )
+        .foregroundColor(isSelected ? .white : .white.opacity(0.8))
+        .onTapGesture {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                selectedTab = index
+            }
+//            HapticManager.shared.tap()
         }
     }
     

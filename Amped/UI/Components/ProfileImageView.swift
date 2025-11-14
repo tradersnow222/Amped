@@ -101,7 +101,7 @@ struct ProfileImageView: View {
     }
     
     private func getInitials() -> String {
-        let userName = UserDefaults.standard.string(forKey: "userName") ?? "Matt Snow"
+        let userName = UserDefaults.standard.string(forKey: UserDefaultsKeys.userName) ?? "Matt Snow"
         let components = userName.components(separatedBy: " ")
         let firstInitial = components.first?.prefix(1).uppercased() ?? "M"
         let lastInitial = components.dropFirst().first?.prefix(1).uppercased() ?? "S"
@@ -109,7 +109,7 @@ struct ProfileImageView: View {
     }
     
     private func getUserName() -> String {
-        return UserDefaults.standard.string(forKey: "userName") ?? "Matt Snow"
+        return UserDefaults.standard.string(forKey: UserDefaultsKeys.userName) ?? "Matt Snow"
     }
 }
 
