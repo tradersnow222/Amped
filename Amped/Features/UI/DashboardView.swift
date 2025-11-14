@@ -335,7 +335,7 @@ struct DashboardView: View {
     private var dashboardHomeView: some View {
         VStack(spacing: 0) {
             // Personalized greeting header
-                    personalizedHeader
+            personalizedHeader
                     
             // Date navigation bar
             dateNavigationBar
@@ -482,7 +482,8 @@ struct DashboardView: View {
                         .padding(.vertical, 12)
                         .background(
                             RoundedRectangle(cornerRadius: 100)
-                                .fill(selectedPeriod == period ? Color.black : Color.clear)
+                                .fill(LinearGradient.dateNavLinearGradient)
+                                .opacity(selectedPeriod == period ? 1 : 0)
                         )
                 }
             }
@@ -491,7 +492,7 @@ struct DashboardView: View {
         .padding(.vertical, 2)
         .background(
             RoundedRectangle(cornerRadius: 100)
-                .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
+                .fill(Color(hex: "#828282").opacity(0.45))
         )
         .padding(.horizontal, 24)
         .padding(.vertical,12)
@@ -2266,6 +2267,17 @@ extension LinearGradient {
             ],
             startPoint: .topLeading,     // Blue in top-left
             endPoint: .bottomTrailing    // Dark toward bottom-right
+        )
+    }
+    
+    static var dateNavLinearGradient: LinearGradient {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color(hex: "#318AFC"),
+                Color(hex: "#18EF47").opacity(0.58)
+            ]),
+            startPoint: .leading,
+            endPoint: .trailing
         )
     }
 }
