@@ -208,9 +208,10 @@ struct HeightStatsView: View {
                 .opacity(isInputValid ? 1.0 : 0.5)
                 .padding(.top, 20)
                 .padding(.bottom, 40)
+                
+                Spacer()
             }
         }
-        .contentShape(Rectangle())
         .onTapGesture {
             dismissKeyboard()
         }

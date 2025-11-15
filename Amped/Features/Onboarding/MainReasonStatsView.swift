@@ -142,19 +142,6 @@ struct MainReasonStatsView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 16)
 
-                // Research info text
-                HStack(spacing: 8) {
-                    Image(systemName: "book.closed")
-                        .font(.system(size: 14))
-                        .foregroundColor(.white.opacity(0.5))
-                    
-                    Text("Tap to see what research based on 195 studies tell us.")
-                        .font(.poppins(13, weight: .regular))
-                        .foregroundColor(.white.opacity(0.5))
-                }
-                .padding(.horizontal, 32)
-                .padding(.top, 8)
-
                 Spacer()
             }
         }

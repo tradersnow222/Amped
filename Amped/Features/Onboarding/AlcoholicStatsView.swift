@@ -13,6 +13,8 @@ struct AlcoholicStatsView: View {
     var onContinue: ((String) -> Void)?
     var onBack: (() -> Void)?
     
+    @State private var showSheet = false
+    
     enum StressLevel: String, CaseIterable {
         case low = "Never"
         case moderate = "Occassionally"
@@ -148,9 +150,13 @@ struct AlcoholicStatsView: View {
                         .font(.system(size: 14))
                         .foregroundColor(.white.opacity(0.5))
                     
-                    Text("Tap to see what research based on 195 studies tell us.")
-                        .font(.poppins(13, weight: .regular))
-                        .foregroundColor(.white.opacity(0.5))
+                    Button {
+                        showSheet.toggle()
+                    } label: {
+                        Text("Tap to see what research based on 195 studies tell us.")
+                            .font(.poppins(13, weight: .regular))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
                 }
                 .padding(.horizontal, 32)
                 .padding(.top, 8)
@@ -158,6 +164,25 @@ struct AlcoholicStatsView: View {
                 Spacer()
             }
         }
+        .overlay(content: {
+            BottomSheet(isPresented: $showSheet) {
+                ImpactContentView(
+                    title: "Impact score: Alcoholic Beverages",
+                    score: 50,
+                    maxScore: 100,
+                    sliderValue: 50,
+                    descriptionText: """
+                    This score estimates how your nutrition quality affects your life expectancy.
+
+                    Nutrition contributes to \(50)% of your total lifespan impact. It's important!
+
+                    High-quality dietary patterns like the Mediterranean diet reduce all-cause mortality
+                    by 9–20% compared to poor diets.
+                    """,
+                    sourceText: "Source: Sotos-Prieto M (2017)"
+                )
+            }
+        })
         .navigationBarBackButtonHidden(false)
     }
 }

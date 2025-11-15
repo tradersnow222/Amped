@@ -171,7 +171,7 @@ struct StressStatsView: View {
                     descriptionText: """
                     This score estimates how your nutrition quality affects your life expectancy.
 
-                    **Nutrition contributes to \(50)% of your total lifespan impact. It's important!**
+                    Nutrition contributes to \(50)% of your total lifespan impact. It's important!
 
                     High-quality dietary patterns like the Mediterranean diet reduce all-cause mortality
                     by 9–20% compared to poor diets.

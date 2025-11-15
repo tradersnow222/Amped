@@ -60,7 +60,7 @@ struct BottomSheet<Content: View>: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: maxHeight)
-                .background(Color.black.opacity(0.95))
+                .background(Color(hex: "#272727"))
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .offset(y: dragOffset)
                 .gesture(

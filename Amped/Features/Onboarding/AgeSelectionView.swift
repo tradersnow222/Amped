@@ -33,10 +33,10 @@ struct AgeSelectionView: View {
                             .frame(width: 20, height: 20)
                     }
                     .padding(.leading, 30)
-                    .padding(.top, 10)
                     
                     Spacer() // pushes button to leading
                 }
+                
                 Image("battery")
                     .resizable()
                     .scaledToFit()
@@ -124,6 +124,8 @@ struct AgeSelectionView: View {
                         .shadow(color: Color.black.opacity(0.25), radius: 5, x: 0, y: 3)
                 }
                 .padding(.top, 10)
+
+                Spacer()
 
             }
         }
