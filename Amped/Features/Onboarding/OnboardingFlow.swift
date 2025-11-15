@@ -22,6 +22,7 @@ enum OnboardingStep: String, Equatable, CaseIterable {
     case goalsStats
     case syncDeviceStats
     case terms
+    case paywall
     case questionnaire
     case notificationPermission // Moved: Right after goal setting for logical flow
     case valueProposition // Position 5: Reinforce value after notifications
@@ -294,11 +295,21 @@ struct OnboardingFlow: View {
                         TermsView {
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.dashboard)
+                            if appState.isPremiumUser {
+                                navigateTo(.dashboard)
+                            } else {
+                                navigateTo(.paywall)
+                            }
                         } onBack: {
                             navigateTo(.syncDeviceStats)
                         }
 
+                    }
+                    
+                    if appState.currentOnboardingStep == .paywall {
+                        PaywallScreen {
+                            navigateTo(.dashboard)
+                        }
                     }
                     
                     if appState.currentOnboardingStep == .dashboard {
