@@ -131,14 +131,7 @@ struct MetricGridView: View {
                         .background(
                             RoundedRectangle(cornerRadius: 100)
                                 .fill(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color(hex: "#318AFC"),
-                                            Color(hex: "#18EF47").opacity(0.58)
-                                        ]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
+                                    LinearGradient.dateNavLinearGradient
                                 )
                                 .opacity(selectedPeriod == period ? 1 : 0)
                         )
