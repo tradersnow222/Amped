@@ -17,7 +17,7 @@ struct WeightStatsView: View {
     @State private var selectedUnit: WeightUnit = .kg
     @State private var selectedWeight: Int? = nil // Changed to optional
     let progress: Double = 5
-    var onContinue: ((String) -> Void)?
+    var onContinue: ((String, String) -> Void)?
     var onBack: (() -> Void)?
     
     enum WeightUnit: Int {
@@ -165,8 +165,8 @@ struct WeightStatsView: View {
 
                 Button(action: {
                     if let weight = selectedWeight {
-                        let weightString = "\(weight) \(selectedUnit == .kg ? "KG" : "LB")"
-                        onContinue?(weightString)
+                        let weightUnit = "\(selectedUnit == .kg ? "KG" : "LB")"
+                        onContinue?("\(weight)", weightUnit)
                     }
                 }) {
                     Text("Continue")

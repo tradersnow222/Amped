@@ -211,6 +211,10 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(value, forKey: keyname)
     }
     
+    func getFromUserDefault(key: String) -> String {
+        return UserDefaults.standard.string(forKey: key) ?? ""
+    }
+    
     /// Update subscription status and save to UserDefaults
     func updateSubscriptionStatus(_ isPremium: Bool) {
         isPremiumUser = isPremium

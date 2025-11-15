@@ -120,7 +120,7 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .ageSelection {
                         AgeSelectionView (onContinue: { date in
-                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userDateOfBirth, value: date)
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userDateOfBirth, value: "\(date)")
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.heightStats)
@@ -145,8 +145,9 @@ struct OnboardingFlow: View {
                     }
                     
                     if appState.currentOnboardingStep == .weightStats {
-                        WeightStatsView(onContinue: { weight in
+                        WeightStatsView(onContinue: { weight, weightUnit in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userWeight, value: weight)
+                            appState.saveToUserDefault(keyname: UserDefaultsKeys.userWeightUnit, value: weightUnit)
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.stressStats)
@@ -284,6 +285,7 @@ struct OnboardingFlow: View {
                         }, onBack: {
                             navigateTo(.goalsStats)
                         })
+                        .environmentObject(appState)
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .syncDeviceStats ? 1 : 0)
                     }
@@ -355,8 +357,7 @@ struct OnboardingFlow: View {
         return getMaterializeTransition()
     }
     
-        private func navigateTo(_ step: OnboardingStep) {
-
+    private func navigateTo(_ step: OnboardingStep) {
         withAnimation(.spring(response: 0.8, dampingFraction: 0.985, blendDuration: 0.18)) {
             appState.updateOnboardingStep(step)
         }

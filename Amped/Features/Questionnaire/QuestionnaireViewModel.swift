@@ -55,14 +55,18 @@ final class QuestionnaireViewModel: ObservableObject {
         case normal
         case unknown
         case elevatedToStage1
-        case high
+        case low = "Below 120/80"
+        case moderate = "130/80+"
+        case high = "I don’t know"
 
         var displayName: String {
             switch self {
             case .normal: return "Below 120/80 (Normal)"
             case .unknown: return "I don't know"
             case .elevatedToStage1: return "120-129 (Elevated)"
-            case .high: return "130/80+ (High)"
+            case .low: return ""
+            case .moderate: return ""
+            case .high: return ""
             }
         }
         
@@ -71,7 +75,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .normal: return "Below 120/80"
             case .unknown: return "I don't know"
             case .elevatedToStage1: return "120-129"
-            case .high: return "130/80+"
+            case .low: return ""
+            case .moderate: return ""
+            case .high: return ""
             }
         }
         
@@ -80,22 +86,28 @@ final class QuestionnaireViewModel: ObservableObject {
             case .normal: return "Normal"
             case .unknown: return ""
             case .elevatedToStage1: return "Elevated"
-            case .high: return "High"
+            case .low: return ""
+            case .moderate: return ""
+            case .high: return ""
             }
         }
     }
     
-    enum StressLevel: CaseIterable {
-        case veryLow            // 2.0 - Most positive (very low stress)
-        case low                // 3.0 
-        case moderateToHigh     // 6.0 - Combined moderate and high
-        case veryHigh           // 9.0 - Most negative (very high stress)
+    enum StressLevel: String, CaseIterable {
+        case veryLow = "Very Low"
+        case low = "Low" 
+        case moderate = "Moderate"
+        case moderateToHigh = "Moderate To High"
+        case high = "High"
+        case veryHigh = "Very High"
         
         var displayName: String {
             switch self {
             case .veryLow: return "Very Low\n(rarely feel stressed)"
-            case .low: return "Low\n(occasionally stressed)"
+            case .low: return "(rarely feel stressed)"
+            case .moderate: return "(Occassionally stressed)"
             case .moderateToHigh: return "Moderate to High\n(regular stress)"
+            case .high: return "(Constantly stressed)"
             case .veryHigh: return "Very High\n(constantly stressed)"
             }
         }
@@ -104,7 +116,9 @@ final class QuestionnaireViewModel: ObservableObject {
             switch self {
             case .veryLow: return "Very Low"
             case .low: return "Low"
+            case .moderate: return "Moderate"
             case .moderateToHigh: return "Moderate to High"
+            case .high: return "High"
             case .veryHigh: return "Very High"
             }
         }
@@ -113,26 +127,33 @@ final class QuestionnaireViewModel: ObservableObject {
             switch self {
             case .veryLow: return "rarely feel stressed"
             case .low: return "Occasionally stressed"
+            case .moderate: return "Occasionally stressed"
             case .moderateToHigh: return "Regular Stress"
+            case .high: return "Regular Stress"
             case .veryHigh: return "Constantly stressed"
             }
         }
         
         var stressValue: Double {
             switch self {
-            case .veryLow: return 2.0
-            case .low: return 3.0
-            case .moderateToHigh: return 6.0
-            case .veryHigh: return 9.0
+            case .veryLow: return 1.0
+            case .low: return 2.0
+            case .moderate: return 6.0
+            case .moderateToHigh: return 7.0
+            case .high: return 9.0
+            case .veryHigh: return 10.0
             }
         }
     }
     
-    enum AnxietyLevel: CaseIterable {
+    enum AnxietyLevel: String, CaseIterable {
         case minimal            // 10.0 - Most positive
         case mildToModerate     // 6.5 - Combined mild and moderate
         case severe             // 2.0
         case verySevere         // 1.0 - Most negative
+        case low = "Mild"
+        case moderate = "Moderate"
+        case high = "Severe"
         
         var displayName: String {
             switch self {
@@ -140,6 +161,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .mildToModerate: return "Mild to Moderate\n(Occasional to regular worry)"
             case .severe: return "Severe\n(Frequent anxiety episodes)"
             case .verySevere: return "Very Severe\n(Constant anxiety/panic)"
+            case .low: return "(rarely feel anxious)"
+            case .moderate: return "(Frequent anxiety episodes)"
+            case .high: return "(Frequent anxiety episodes)"
             }
         }
         
@@ -149,6 +173,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .mildToModerate: return "Mild to Moderate"
             case .severe: return "Severe"
             case .verySevere: return "Very Severe"
+            case .low: return "Mild"
+            case .moderate: return "Moderate"
+            case .high: return "Severe"
             }
         }
         
@@ -158,6 +185,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .mildToModerate: return "Occasionally to regular worry"
             case .severe: return "Frequent anxiety episodes"
             case .verySevere: return "Constantly anxiety/panic"
+            case .low: return "rarely feel anxious"
+            case .moderate: return "Frequent anxiety episodes"
+            case .high: return "Constantly anxiety/panic"
             }
         }
         
@@ -167,6 +197,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .mildToModerate: return 6.5
             case .severe: return 2.0
             case .verySevere: return 1.0
+            case .low: return 10.0
+            case .moderate: return 6.0
+            case .high: return 2.0
             }
         }
     }
@@ -201,11 +234,14 @@ final class QuestionnaireViewModel: ObservableObject {
         }
     }
     
-    enum NutritionQuality: CaseIterable {
+    enum NutritionQuality: String, CaseIterable {
         case veryHealthy        // 10.0 - Most positive
         case mostlyHealthy      // 8.0
         case mixedToUnhealthy   // 3.5 - Combined mixed and mostly unhealthy
         case veryUnhealthy      // 1.0 - Most negative
+        case low = "Very Healthy"
+        case moderate = "Mixed"
+        case high = "Very unhealthy"
         
         var displayName: String {
             switch self {
@@ -213,6 +249,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .mostlyHealthy: return "Mostly Healthy\n(balanced diet)"
             case .mixedToUnhealthy: return "Mixed to Unhealthy\n(some processed foods)"
             case .veryUnhealthy: return "Very Unhealthy\n(fast food, highly processed)"
+            case .low: return "(whole foods, plant-based)"
+            case .moderate: return "(balanced diet)"
+            case .high: return "(fast food, highly processed)"
             }
         }
         
@@ -222,6 +261,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .mostlyHealthy: return "Mostly Healthy"
             case .mixedToUnhealthy: return "Mixed to unhealthy"
             case .veryUnhealthy: return "Very unhealthy"
+            case .low: return "(whole foods, plant-based)"
+            case .moderate: return "(balanced diet)"
+            case .high: return "(fast food, highly processed)"
             }
         }
         
@@ -231,6 +273,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .mostlyHealthy: return "balanced diet"
             case .mixedToUnhealthy: return "same processed foods"
             case .veryUnhealthy: return "fast food, highly processed"
+            case .low: return "(whole foods, plant-based)"
+            case .moderate: return "(balanced diet)"
+            case .high: return "(fast food, highly processed)"
             }
         }
         
@@ -240,15 +285,21 @@ final class QuestionnaireViewModel: ObservableObject {
             case .mostlyHealthy: return 8.0
             case .mixedToUnhealthy: return 3.5
             case .veryUnhealthy: return 1.0
+            case .low: return 10.0
+            case .moderate: return 7.0
+            case .high: return 1.0
             }
         }
     }
     
-    enum SmokingStatus: CaseIterable {
+    enum SmokingStatus: String, CaseIterable {
         case never              // 10.0 - Most positive
         case former             // 7.0
         case occasionally       // 3.0
         case daily              // 1.0 - Most negative
+        case low = "Never"
+        case moderate = "Former smoker"
+        case high = "Daily"
         
         var displayName: String {
             switch self {
@@ -256,6 +307,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .former: return "Former smoker\n(quit in the past)"
             case .occasionally: return "Occasionally"
             case .daily: return "Daily"
+            case .low: return ""
+            case .moderate: return "(quit in the past)"
+            case .high: return ""
             }
         }
         
@@ -265,6 +319,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .former: return "Former smoker"
             case .occasionally: return "Occasionally"
             case .daily: return "Daily"
+            case .low: return ""
+            case .moderate: return "(quit in the past)"
+            case .high: return ""
             }
         }
         
@@ -274,6 +331,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .former: return "quit in the past"
             case .occasionally: return ""
             case .daily: return ""
+            case .low: return ""
+            case .moderate: return "(quit in the past)"
+            case .high: return ""
             }
         }
         
@@ -283,15 +343,21 @@ final class QuestionnaireViewModel: ObservableObject {
             case .former: return 7.0
             case .occasionally: return 3.0
             case .daily: return 1.0
+            case .low: return 10.0
+            case .moderate: return 6.0
+            case .high: return 1.0
             }
         }
     }
     
-    enum AlcoholFrequency: CaseIterable {
+    enum AlcoholFrequency: String, CaseIterable {
         case never              // 10.0 - Most positive
         case occasionally       // 8.0
         case severalTimesWeek   // 4.0
         case dailyOrHeavy       // 1.5 - Combined daily and heavy daily
+        case low = "Never"
+        case moderate = "Occassionally"
+        case high = "Daily or Heavy"
         
         var displayName: String {
             switch self {
@@ -299,6 +365,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .occasionally: return "Occasionally\n(weekly or less)"
             case .severalTimesWeek: return "Several Times\n(per week)"
             case .dailyOrHeavy: return "Daily or Heavy\n(one or more daily)"
+            case .low: return ""
+            case .moderate: return "(weekly or less)"
+            case .high: return ""
             }
         }
         
@@ -308,6 +377,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .occasionally: return "Occasionally"
             case .severalTimesWeek: return "Several Times"
             case .dailyOrHeavy: return "Daily or Heavy"
+            case .low: return ""
+            case .moderate: return "(weekly or less)"
+            case .high: return ""
             }
         }
         
@@ -317,6 +389,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .occasionally: return "weekly or less"
             case .severalTimesWeek: return "per week"
             case .dailyOrHeavy: return "one or more daily"
+            case .low: return ""
+            case .moderate: return "(weekly or less)"
+            case .high: return ""
             }
         }
         
@@ -326,15 +401,21 @@ final class QuestionnaireViewModel: ObservableObject {
             case .occasionally: return 8.0
             case .severalTimesWeek: return 4.0
             case .dailyOrHeavy: return 1.5
+            case .low: return 10.0
+            case .moderate: return 7.0
+            case .high: return 1.5
             }
         }
     }
     
-    enum SocialConnectionsQuality: CaseIterable {
+    enum SocialConnectionsQuality: String, CaseIterable {
         case veryStrong         // 10.0 - Most positive
         case moderateToGood     // 6.5 - Combined moderate and good
         case limited            // 2.0
         case isolated           // 1.0 - Most negative
+        case low = "Very Strong"
+        case moderate = "Moderate"
+        case high = "Isolated"
         
         var displayName: String {
             switch self {
@@ -342,6 +423,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .moderateToGood: return "Moderate to Good\n(regular connections)"
             case .limited: return "Limited\n(rare interactions)"
             case .isolated: return "Isolated\n(minimal social contact)"
+            case .low: return ""
+            case .moderate: return "(rare interactions)"
+            case .high: return ""
             }
         }
         
@@ -351,6 +435,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .moderateToGood: return "Moderate to Good"
             case .limited: return "Limited"
             case .isolated: return "Isolated"
+            case .low: return ""
+            case .moderate: return "(rare interactions)"
+            case .high: return ""
             }
         }
         
@@ -360,6 +447,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .moderateToGood: return "regular connections"
             case .limited: return "rare interactions"
             case .isolated: return "minimal social contact"
+            case .low: return ""
+            case .moderate: return "(rare interactions)"
+            case .high: return ""
             }
         }
         
@@ -369,6 +459,9 @@ final class QuestionnaireViewModel: ObservableObject {
             case .moderateToGood: return 6.5
             case .limited: return 2.0
             case .isolated: return 1.0
+            case .low: return 10.0
+            case .moderate: return 6
+            case .high: return 1.0
             }
         }
     }

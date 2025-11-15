@@ -16,6 +16,7 @@ public enum UserDefaultsKeys {
     public static let userDateOfBirth = "user_date_of_birth"
     public static let userHeight = "user_height"
     public static let userWeight = "user_weight"
+    public static let userWeightUnit = "user_weight_unit"
     public static let userStressLevel = "user_stress_level"
     public static let userAnxietyLevel = "user_anxiety_level"
     public static let userDietLevel = "user_diet_level"
