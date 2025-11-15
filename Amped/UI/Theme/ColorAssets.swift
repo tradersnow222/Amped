@@ -37,6 +37,8 @@ extension Color {
     
     /// Tertiary background for very subtle elements
     static var tertiaryBackground: Color { Color.black.opacity(0.2) }
+    
+    static var cardBgBackground: Color { Color(hex: "#3D3D3D").opacity(0.45) }
 }
 
 /// Custom namespace for theme colors to avoid conflicts with auto-generated asset symbols
