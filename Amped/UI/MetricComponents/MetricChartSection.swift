@@ -6,6 +6,273 @@ import Charts
 struct MetricChartSection: View {
     // MARK: - Properties
     
+    let metricType: HealthMetricType
+    let dataPoints: [MetricDataPoint]
+    let period: ImpactDataPoint.PeriodType
+    var chartHeight: CGFloat = 180
+
+    // NEW chart data model
+    private var chartData: [ChartDataPoint] {
+        dataPoints.map {
+            ChartDataPoint(
+                date: $0.date,
+                value: $0.value,
+                label: formattedXAxisLabel(for: $0.date)
+            )
+        }
+    }
+    
+    // MARK: - Body
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            
+            // Header
+//            HStack {
+//                Text("Historical Data")
+//                    .font(.headline)
+//                
+//                Spacer()
+//                
+//                Text(periodText)
+//                    .font(.subheadline)
+//                    .foregroundColor(.secondary)
+//            }
+            
+            // NEW chart
+            chartView
+            
+            // Insight section
+//            if !dataPoints.isEmpty {
+//                HStack(spacing: 6) {
+//                    Image(systemName: insightIcon)
+//                        .foregroundColor(insightColor)
+//                    
+//                    Text(insightText)
+//                        .font(.subheadline)
+//                        .foregroundColor(.secondary)
+//                }
+//                .padding(.vertical, 8)
+//                .padding(.horizontal, 12)
+//                .background(
+//                    RoundedRectangle(cornerRadius: 8)
+//                        .fill(insightColor.opacity(0.1))
+//                )
+//            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.cardBackground)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 1)
+        )
+    }
+    
+    
+    // MARK: - NEW CHART IMPLEMENTATION
+    private var chartView: some View {
+        Group {
+            if chartData.isEmpty {
+                VStack {
+                    Image(systemName: "chart.line.downtrend.xyaxis")
+                        .font(.largeTitle)
+                        .foregroundColor(.secondary.opacity(0.5))
+                    
+                    Text("No historical data available")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 8)
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                VStack(spacing: 0) {
+                    HStack(spacing: 8) {
+                        yAxisLabelsView
+                        mainChartView
+                    }
+                    .padding(16)
+                    .background(chartBackground)
+                    .overlay(chartBorder)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .frame(height: chartHeight) // Apply uniform height to both branches
+    }
+    
+    
+    // MARK: - NEW Chart Components
+    
+    private var yAxisLabelsView: some View {
+        VStack(alignment: .trailing, spacing: 0) {
+            ForEach(yAxisValues.reversed(), id: \.self) { value in
+                Text(formatYAxisValue(value))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.white.opacity(0.6))
+                    .frame(maxHeight: .infinity)
+            }
+        }
+        .frame(width: 35)
+    }
+    
+    private var mainChartView: some View {
+        Chart(Array(chartData.enumerated()), id: \.offset) { index, point in
+            
+            // Main line
+            LineMark(
+                x: .value("Time", index),
+                y: .value("Value", point.value)
+            )
+            .foregroundStyle(getColorForPoint(point))
+            .lineStyle(StrokeStyle(lineWidth: 2.3, lineCap: .round))
+            
+            // Target line only once
+            if index == 0 {
+                targetRuleMark
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: xAxisMarkValues) { value in
+                if let index = value.as(Int.self), index < chartData.count {
+                    AxisValueLabel {
+                        Text(chartData[index].label)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(Color.white.opacity(0.6))
+                    }
+                }
+            }
+        }
+        .chartYAxis(.hidden)
+        .chartYScale(domain: minYValue...maxYValue)
+        .chartPlotStyle { plotArea in
+            plotArea.background(plotBackgroundGradient)
+        }
+    }
+    
+    
+    // MARK: - X Axis
+    private var xAxisMarkValues: [Int] {
+        let total = chartData.count
+        guard total > 0 else { return [] }
+        
+        let step = max(getXAxisStride(), 1)
+        return Array(Swift.stride(from: 0, to: total, by: step))
+    }
+    
+    private func getXAxisStride() -> Int {
+        let total = chartData.count
+        if total > 12 { return total / 5 }
+        if total > 7 { return 2 }
+        return 1
+    }
+    
+    
+    // MARK: - Target Line
+    private var targetRuleMark: some ChartContent {
+        RuleMark(y: .value("Target", targetValue))
+            .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+            .foregroundStyle(Color.white.opacity(0.25))
+    }
+    
+    
+    // MARK: - Background & Border
+    private var plotBackgroundGradient: some View {
+        LinearGradient(
+            colors: [Color.white.opacity(0.03), Color.white.opacity(0.01)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+    
+    private var chartBackground: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .fill(Color.white.opacity(0.03))
+    }
+    
+    private var chartBorder: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .stroke(Color.white.opacity(0.06), lineWidth: 1)
+    }
+    
+    // MARK: - Y Axis Values
+    private var yAxisValues: [Double] {
+        let values = chartData.map { $0.value }
+        guard let minVal = values.min(), let maxVal = values.max() else { return [0,1,2,3,4] }
+        
+        let padding = max(abs(minVal), abs(maxVal)) * 0.1
+        let min = minVal - padding
+        let max = maxVal + padding
+        let step = max == min ? 1 : (max - min) / 4
+        
+        return stride(from: min, through: max, by: step).map { $0 }
+    }
+    
+    private var minYValue: Double {
+        let minVal = chartData.map { $0.value }.min() ?? 0
+        return minVal - abs(minVal) * 0.1
+    }
+    
+    private var maxYValue: Double {
+        let maxVal = chartData.map { $0.value }.max() ?? 1
+        return maxVal + abs(maxVal) * 0.1
+    }
+    
+    
+    // MARK: - Helpers
+    private func formattedXAxisLabel(for date: Date) -> String {
+        let formatter = DateFormatter()
+        
+        switch period {
+        case .day:
+            formatter.dateFormat = "ha"
+        case .month:
+            formatter.dateFormat = "d"
+        case .year:
+            formatter.dateFormat = "MMM"
+        }
+        
+        return formatter.string(from: date)
+    }
+    
+    private func formatYAxisValue(_ value: Double) -> String {
+        switch metricType {
+        case .sleepHours: return String(format: "%.1fh", value)
+        case .steps:
+            return value >= 1000 ? String(format: "%.0fk", value / 1000) : String(format: "%.0f", value)
+        default:
+            return String(format: "%.0f", value)
+        }
+    }
+    
+    private var targetValue: Double {
+        switch metricType {
+        case .sleepHours: return 7.5
+        case .steps: return 10000
+        case .restingHeartRate: return 65
+        default:
+            let vals = chartData.map { $0.value }
+            return vals.reduce(0, +) / Double(max(vals.count, 1))
+        }
+    }
+    
+    private func getColorForPoint(_ point: ChartDataPoint) -> Color {
+        switch metricType {
+        case .sleepHours: return point.value < targetValue ? .red : .green
+        case .restingHeartRate: return point.value > targetValue ? .red : .green
+        case .steps: return point.value < targetValue ? .red : .green
+        default: return point.value < targetValue ? .red : .green
+        }
+    }
+}
+
+
+/// Visualizes historical data for a health metric
+struct MetricChartSection2: View {
+    // MARK: - Properties
+    
     /// The health metric type
     let metricType: HealthMetricType
     
