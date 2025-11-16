@@ -13,17 +13,54 @@ struct MetricChartSection: View {
 
     // Transform source points into chart-ready points relative to a baseline so 0 is the dashed line
     private var baseline: Double {
-        switch metricType {
-        case .sleepHours: return 7.5
-        case .steps: return 10_00
-        case .restingHeartRate: return 65
-        default:
-            let vals = dataPoints.map { $0.value }
-            if let avg = (vals.isEmpty ? nil : vals.reduce(0, +) / Double(vals.count)) {
-                return avg
+        baseline(for: metricType, period: period, dataPoints: dataPoints)
+    }
+    
+    private func baseline(for type: HealthMetricType,
+                          period: ImpactDataPoint.PeriodType,
+                          dataPoints: [MetricDataPoint]) -> Double {
+        switch type {
+            // Cumulative metrics use period-scaled neutral baselines
+        case .steps:
+            switch period {
+            case .day:   return 100
+            case .month: return 5_000      // ~1,000/day * 30
+            case .year:  return 7_000     // ~1,000/day * 365
             }
+            
+        case .exerciseMinutes:
+            switch period {
+            case .day:   return 5
+            case .month: return 50         // 20/day * 30
+            case .year:  return 100       // 20/day * 365
+            }
+            
+        case .activeEnergyBurned:
+            switch period {
+            case .day:   return 400
+            case .month: return 12_000      // 400/day * 30
+            case .year:  return 146_000     // 400/day * 365
+            }
+            
+        // Average/point-in-time metrics use the same neutral baseline across periods
+        case .sleepHours:
+            return 7.5
+        case .restingHeartRate:
+            return 65
+        case .heartRateVariability:
+            return 40
+        case .vo2Max:
+            return 40
+        case .bodyMass:
+            return 70
+        case .bloodPressure:
+            return 115
+        case .stressLevel:
+            return 3
+        default:
             return 0
         }
+        
     }
     
     private var chartData: [ChartDataPoint] {
