@@ -130,7 +130,7 @@ struct MetricDetailsView: View {
                                 // Chart container with native Swift Charts
                                 // Chart section - Professional-style with REAL DATA ONLY
                                 if !viewModel.isLoadingHistory {
-                                    MetricChartSection(
+                                    MetricChartSection2(
                                         metricType: metric.type,
                                         dataPoints: viewModel.professionalStyleDataPoints, // REAL DATA ONLY
                                         period: selectedPeriod
