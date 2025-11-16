@@ -37,11 +37,11 @@ struct ContentView: View {
                         // Show main dashboard for completed users
                         if #available(iOS 16.0, *) {
                             NavigationStack {
-                                DashboardView()
+                                DashboardView(goToSubscription: false)
                             }
                         } else {
                             NavigationView {
-                                DashboardView()
+                                DashboardView(goToSubscription: false)
                             }
                             .navigationViewStyle(StackNavigationViewStyle())
                         }
@@ -51,11 +51,11 @@ struct ContentView: View {
                         case .dashboard:
                             if #available(iOS 16.0, *) {
                                 NavigationStack {
-                                    DashboardView()
+                                    DashboardView(goToSubscription: false)
                                 }
                             } else {
                                 NavigationView {
-                                    DashboardView()
+                                    DashboardView(goToSubscription: false)
                                 }
                                 .navigationViewStyle(StackNavigationViewStyle())
                             }

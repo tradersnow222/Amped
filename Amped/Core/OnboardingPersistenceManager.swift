@@ -89,11 +89,11 @@ final class OnboardingPersistenceManager: ObservableObject {
         
         let timestamp = Date().timeIntervalSince1970
         
-        UserDefaults.standard.set(step.rawValue, forKey: currentStepKey)
+        UserDefaults.standard.set(step.name, forKey: currentStepKey)
         UserDefaults.standard.set(timestamp, forKey: lastSaveTimestampKey)
         UserDefaults.standard.set(false, forKey: cleanTerminationKey) // Will be set to true on clean termination
         
-        logger.info("Saved onboarding progress: \(step.rawValue) at \(timestamp)")
+        logger.info("Saved onboarding progress: \(step.name) at \(timestamp)")
     }
     
     /// Load onboarding progress based on closure type
@@ -105,7 +105,7 @@ final class OnboardingPersistenceManager: ObservableObject {
             // Restore exact position for soft close
             if let savedStepRaw = UserDefaults.standard.object(forKey: currentStepKey) as? String,
                let savedStep = OnboardingStep(rawValue: savedStepRaw) {
-                logger.info("Restored onboarding progress: \(savedStep.rawValue) (soft close)")
+                logger.info("Restored onboarding progress: \(savedStep.name) (soft close)")
                 return savedStep
             }
             logger.warning("No saved onboarding step found for soft close")

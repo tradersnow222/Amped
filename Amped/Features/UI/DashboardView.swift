@@ -42,6 +42,8 @@ struct DashboardView: View {
     private let refreshThreshold: CGFloat = 60
     private let maxPullDistance: CGFloat = 120
     
+    var goToSubscription: Bool
+    
     // Logger for debugging
     private let logger = Logger(subsystem: "com.amped.app", category: "DashboardView")
     
@@ -232,13 +234,28 @@ struct DashboardView: View {
                             
                         })
                     }
+                case .subscription:
+                    SubscriptionView(navigationPath: $navigationPath)
+                case .settingView:
+                    SettingView()
+                        .navigationBarHidden(true)
                 default: EmptyView()
+                    
                 }
             }
             .onAppear {
                 configureNavigationBar()
                 HapticManager.shared.prepareHaptics()
                 handleIntroAnimations()
+            }
+            .task {
+                if goToSubscription {
+                    print("check: Value for go to subscribe \(goToSubscription)")
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        navigationPath.append(NavigationRoute.subscription)
+                    }
+                }
             }
         }
     }
@@ -524,7 +541,14 @@ struct DashboardView: View {
     
     /// Personalized header with greeting and avatar
     private var personalizedHeader: some View {
-        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
+        Button(action: {
+            DispatchQueue.main.async {
+                navigationPath.append(NavigationRoute.settingView)
+            }
+        }) {
+            ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
+        }
+        .buttonStyle(PlainButtonStyle())  // Keeps the view clean without extra button styling
     }
     
     /// Date navigation bar with Day/Month/Year tabs and swipe gesture support
@@ -2411,7 +2435,7 @@ struct DivergentBarChart: View {
 struct DashboardView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
-            DashboardView()
+//            DashboardView()
         }
     }
 }
@@ -2445,4 +2469,6 @@ enum NavigationRoute: Hashable {
     case detailedAnalysis
     case metricDetail(type: HealthMetricType, period: ImpactDataPoint.PeriodType)
     case profile
+    case subscription
+    case settingView
 }
