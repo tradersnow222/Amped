@@ -199,7 +199,9 @@ struct DashboardView: View {
                 TabView(selection: $selectedTab) {
                     dashboardHomeView.tag(0)
                     metricView.tag(1)
-                    energyView.tag(2)
+                    energyView
+                        .id(selectedTab == 2 ? UUID() : UUID())
+                        .tag(2)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never)) // hides native tabs
                 

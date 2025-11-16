@@ -213,11 +213,11 @@ struct SubscriptionView: View {
                                     Task {
                                         let result = await store.purchase(monthly)
                                         switch result {
-                                        case .success(let _):
+                                        case .success( _):
                                             onContinue?(true)
                                         case .cancelled:
                                             onContinue?(false)
-                                        case .failed(let _):
+                                        case .failed( _):
                                             onContinue?(false)
                                         case .pending:
                                             onContinue?(false)
@@ -228,7 +228,16 @@ struct SubscriptionView: View {
                                 if let yearly = store.products.first(where: { $0.isAnnual }) {
                                     Task {
                                         let result = await store.purchase(yearly)
-                                            print(result)
+                                        switch result {
+                                        case .success( _):
+                                            onContinue?(true)
+                                        case .cancelled:
+                                            onContinue?(false)
+                                        case .failed( _):
+                                            onContinue?(false)
+                                        case .pending:
+                                            onContinue?(false)
+                                        }
                                     }
                                 }
                             }
