@@ -651,44 +651,54 @@ struct DashboardView: View {
             // Card
             HStack(alignment: .top, spacing: 10) {
                 
-                Image(systemName: getTopMetricIcon())
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(width: 34, height: 34)
-                    .background(
-                        Circle()
-                            .fill(getTopMetricIconColor().opacity(0.9))
-                    )
-                
-                VStack(alignment: .leading) {
-                    // Icon + Title Row
-                    HStack(spacing: 1) {
-                        Text(getTopMetricDisplayName()+" - ")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.white)
+                let isPremium = UserDefaults.standard.bool(forKey: "is_premium_user")
+                if !isPremium {
+                    UnlockSubscriptionView {
+                        // Got to subscription
+                        navigationPath.append(NavigationRoute.subscription)
+                    }
+                    .frame(height: 130)
+                } else {
+                    
+                    Image(systemName: getTopMetricIcon())
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 34, height: 34)
+                        .background(
+                            Circle()
+                                .fill(getTopMetricIconColor().opacity(0.9))
+                        )
+                    
+                    VStack(alignment: .leading) {
+                        // Icon + Title Row
+                        HStack(spacing: 1) {
+                            Text(getTopMetricDisplayName()+" - ")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.white)
+                            
+                            // Red impact line
+                            Text(getTopMetricImpactText())
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(getTopMetricImpactColor())
+                        }
                         
-                        // Red impact line
-                        Text(getTopMetricImpactText())
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(getTopMetricImpactColor())
+                        // Recommendation line (styled like screenshot)
+                        (
+                            Text(getTopMetricImpactReccomendationText())
+                                .foregroundColor(.white)
+                            //                        +
+                            //                        Text("20 minutes ")
+                            //                            .foregroundColor(.white)
+                            //                            .fontWeight(.bold)
+                            //                        +
+                            //                        Text("more tonight to earn it back.")
+                                .foregroundColor(.white)
+                        )
+                        .font(.system(size: 14))
                     }
                     
-                    // Recommendation line (styled like screenshot)
-                    (
-                        Text(getTopMetricImpactReccomendationText())
-                            .foregroundColor(.white)
-//                        +
-//                        Text("20 minutes ")
-//                            .foregroundColor(.white)
-//                            .fontWeight(.bold)
-//                        +
-//                        Text("more tonight to earn it back.")
-                            .foregroundColor(.white)
-                    )
-                    .font(.system(size: 14))
+                    Spacer()
                 }
-                
-                Spacer()
             }
             .padding(16)
             .background(
@@ -713,6 +723,7 @@ struct DashboardView: View {
                     // Got to subscription
                     navigationPath.append(NavigationRoute.subscription)
                 }
+                .frame(height: 130)
             } else {
                 Spacer()
                 
