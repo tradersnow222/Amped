@@ -232,8 +232,14 @@ struct DashboardView: View {
                             
                         })
                     }
-//                case .subscription:
-//                    SubscriptionView(navigationPath: $navigationPath)
+                case .subscription:
+                    SubscriptionView(isFromOnboarding: true) { isSubscribed in
+                        if isSubscribed {
+                            appState.updateSubscriptionStatus(true)
+                        }
+                        
+                        navigationPath.removeLast()
+                    }
                 case .settingView:
                     SettingView()
                         .navigationBarHidden(true)
@@ -447,8 +453,9 @@ struct DashboardView: View {
                         )
                     )
                 }
+            }) {
+                navigationPath.append(NavigationRoute.subscription)
             }
-        )
     }
     
     /// Dashboard View (3rd image) - Detailed metrics list
@@ -518,7 +525,10 @@ struct DashboardView: View {
     
     /// Energy View - Battery page content using EnergyView component
     private var energyView: some View {
-        EnergyView()
+        EnergyView {
+            // Go to subscription
+            navigationPath.append(NavigationRoute.subscription)
+        }
     }
     
     /// Profile View - Profile/settings using ProfileView component
@@ -697,52 +707,60 @@ struct DashboardView: View {
     private var streakCard: some View {
         HStack(spacing: 1) {
             
-            Spacer()
-            
-            // Flame icon
-            Image("fireStreak")  // your asset name
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 120, height: 120)
-            
-            Spacer()
-            
-            VStack {
-                // Count + label
-                HStack(spacing: 4) {
-                    Text("\(viewModel.currentStreak.currentStreak)")
-                        .font(.system(size: 34, weight: .bold))
-                        .foregroundColor(.white)
+            let isPremium = UserDefaults.standard.bool(forKey: "is_premium_user")
+            if !isPremium {
+                UnlockSubscriptionView {
+                    // Got to subscription
+                    navigationPath.append(NavigationRoute.subscription)
+                }
+            } else {
+                Spacer()
+                
+                // Flame icon
+                Image("fireStreak")  // your asset name
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 120, height: 120)
+                
+                Spacer()
+                
+                VStack {
+                    // Count + label
+                    HStack(spacing: 4) {
+                        Text("\(viewModel.currentStreak.currentStreak)")
+                            .font(.system(size: 34, weight: .bold))
+                            .foregroundColor(.white)
+                        
+                        Text("day streak!")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
                     
-                    Text("day streak!")
-                        .font(.system(size: 14))
-                        .foregroundColor(.white.opacity(0.9))
+                    // Start button
+                    Button {
+                        //                startStreakPressed()
+                    } label: {
+                        Text(viewModel.currentStreak.streakLevel.displayName)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 32)
+                            .background(
+                                LinearGradient(
+                                    colors: [
+                                        Color.blue.opacity(0.9),
+                                        Color.green.opacity(0.9)
+                                    ],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .clipShape(Capsule())
+                    }
                 }
                 
-                // Start button
-                Button {
-                    //                startStreakPressed()
-                } label: {
-                    Text(viewModel.currentStreak.streakLevel.displayName)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 32)
-                        .background(
-                            LinearGradient(
-                                colors: [
-                                    Color.blue.opacity(0.9),
-                                    Color.green.opacity(0.9)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .clipShape(Capsule())
-                }
+                Spacer()
             }
-            
-            Spacer()
         }
         .padding(10)
         .background(

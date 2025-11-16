@@ -5,6 +5,9 @@ struct MetricGridView: View {
     @State private var selectedPeriod: ImpactDataPoint.PeriodType = .day
     @StateObject private var viewModel = DashboardViewModel()
     var onCardTap: ((String, ImpactDataPoint.PeriodType, HealthMetric?) -> Void)? = nil
+    var onTapUnlock: (() -> Void)?
+    
+    @StateObject private var appState = AppState()
     
     private struct CardData: Identifiable {
         let id = UUID()
@@ -96,41 +99,49 @@ struct MetricGridView: View {
     
     var body: some View {
         ZStack {
-            VStack(spacing: 0) {
-                
-                // Header
-                personalizedHeader
-                
-                // Date navigation bar
-                dateNavigationBar
-                
-                ScrollView {
+            let isPremium = UserDefaults.standard.bool(forKey: "is_premium_user")
+            if !isPremium {
+                UnlockSubscriptionView {
+                    // Got to subscription
+                    onTapUnlock?()
+                }
+            } else {
+                VStack(spacing: 0) {
                     
-                    // Metrics Grid
-                    LazyVGrid(columns: [
-                        GridItem(.flexible(), spacing: 16),
-                        GridItem(.flexible(), spacing: 16)
-                    ], spacing: 16) {
-                        ForEach(cards) { card in
-                            Button {
-                                onCardTap?(card.title, selectedPeriod, card.healthMetric)
-                            } label: {
-                                MetricCard(
-                                    icon: card.icon,
-                                    title: card.title,
-                                    value: card.value,
-                                    change: card.changeText,
-                                    unit: card.unit,
-                                    isPositive: card.isPositive,
-                                    foregroundColor: card.foregroundColor
-                                )
+                    // Header
+                    personalizedHeader
+                    
+                    // Date navigation bar
+                    dateNavigationBar
+                    
+                    ScrollView {
+                        
+                        // Metrics Grid
+                        LazyVGrid(columns: [
+                            GridItem(.flexible(), spacing: 16),
+                            GridItem(.flexible(), spacing: 16)
+                        ], spacing: 16) {
+                            ForEach(cards) { card in
+                                Button {
+                                    onCardTap?(card.title, selectedPeriod, card.healthMetric)
+                                } label: {
+                                    MetricCard(
+                                        icon: card.icon,
+                                        title: card.title,
+                                        value: card.value,
+                                        change: card.changeText,
+                                        unit: card.unit,
+                                        isPositive: card.isPositive,
+                                        foregroundColor: card.foregroundColor
+                                    )
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
+                        .padding(.top, 20)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 90)
                     }
-                    .padding(.top, 20)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 90)
                 }
             }
         }

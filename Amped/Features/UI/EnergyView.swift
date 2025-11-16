@@ -6,6 +6,7 @@ struct EnergyView: View {
     // MARK: - State Variables
     @State private var selectedLifespanType: LifespanType = .current
     @State private var showingSettings = false
+    var onTapUnlock: (() -> Void)?
     
     // MARK: - Computed Properties
     private var currentLifespanData: LifespanData {
@@ -40,38 +41,47 @@ struct EnergyView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            personalizedHeader
-            Spacer()
-            // Lifespan Toggle
-            lifespanToggle
-            
-            // Main Content
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Call to Action Section
-                    callToActionSection
-                        .padding(.horizontal, 20)
-                    Spacer()
-                    // Lifespan Display
-                    lifespanDisplaySection
-                        .padding(.horizontal, 20)
-                    Spacer()
-                    // Progress Bar Section
-                    progressBarSection
-                        .padding(.horizontal, 20)
-                    
-                    // Disclaimer
-                    disclaimerSection
-                        .padding(.horizontal, 20)
-                }
-                .padding(.top, 20)
+        
+        let isPremium = UserDefaults.standard.bool(forKey: "is_premium_user")
+        if !isPremium && selectedLifespanType == .potential {
+            UnlockSubscriptionView {
+                // Got to subscription
+                onTapUnlock?()
             }
-            
-            Spacer(minLength: 100) // Space for bottom navigation
+        } else {
+            VStack(spacing: 0) {
+                // Header
+                personalizedHeader
+                Spacer()
+                // Lifespan Toggle
+                lifespanToggle
+                
+                // Main Content
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Call to Action Section
+                        callToActionSection
+                            .padding(.horizontal, 20)
+                        Spacer()
+                        // Lifespan Display
+                        lifespanDisplaySection
+                            .padding(.horizontal, 20)
+                        Spacer()
+                        // Progress Bar Section
+                        progressBarSection
+                            .padding(.horizontal, 20)
+                        
+                        // Disclaimer
+                        disclaimerSection
+                            .padding(.horizontal, 20)
+                    }
+                    .padding(.top, 20)
+                }
+                
+                Spacer(minLength: 100) // Space for bottom navigation
+            }
+            .navigationBarHidden(true)
         }
-        .navigationBarHidden(true)
     }
     
     // MARK: - Header Components
