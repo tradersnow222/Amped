@@ -653,7 +653,7 @@ struct DashboardView: View {
                 
                 let isPremium = UserDefaults.standard.bool(forKey: "is_premium_user")
                 if !isPremium {
-                    UnlockSubscriptionView {
+                    UnlockSubscriptionView(buttonText: "Unlock it by subcribing") {
                         // Got to subscription
                         navigationPath.append(NavigationRoute.subscription)
                     }
@@ -719,7 +719,7 @@ struct DashboardView: View {
             
             let isPremium = UserDefaults.standard.bool(forKey: "is_premium_user")
             if !isPremium {
-                UnlockSubscriptionView {
+                UnlockSubscriptionView(buttonText: "Unlock streak by subcribing") {
                     // Got to subscription
                     navigationPath.append(NavigationRoute.subscription)
                 }

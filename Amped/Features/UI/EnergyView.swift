@@ -44,7 +44,7 @@ struct EnergyView: View {
         
         let isPremium = UserDefaults.standard.bool(forKey: "is_premium_user")
         if !isPremium && selectedLifespanType == .potential {
-            UnlockSubscriptionView {
+            UnlockSubscriptionView(buttonText: "Unlock Your Best Life by subcribing") {
                 // Got to subscription
                 onTapUnlock?()
             }
