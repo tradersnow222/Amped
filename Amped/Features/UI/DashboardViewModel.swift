@@ -129,7 +129,7 @@ final class DashboardViewModel: ObservableObject {
     @Published private(set) var isAppInForeground: Bool = true
     
     /// Interval for foreground refresh (10 seconds - matches Apple Fitness app)
-    private let foregroundRefreshInterval: TimeInterval = 10.0
+    private let foregroundRefreshInterval: TimeInterval = 100.0
     
     init(
         healthKitManager: HealthKitManaging? = nil,

@@ -10,7 +10,12 @@ struct ProfileImageView: View {
     let showEditIndicator: Bool
     let showWelcomeMessage: Bool
     
-    init(size: CGFloat, showBorder: Bool = false, showEditIndicator: Bool = false, showWelcomeMessage: Bool = false) {
+    init(
+        size: CGFloat,
+        showBorder: Bool = false,
+        showEditIndicator: Bool = false,
+        showWelcomeMessage: Bool = false
+    ) {
         self.size = size
         self.showBorder = showBorder
         self.showEditIndicator = showEditIndicator

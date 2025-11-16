@@ -4,16 +4,19 @@ import Combine
 struct MetricGridView: View {
     @State private var selectedPeriod: ImpactDataPoint.PeriodType = .day
     @StateObject private var viewModel = DashboardViewModel()
-    var onCardTap: ((String, ImpactDataPoint.PeriodType) -> Void)? = nil
+    var onCardTap: ((String, ImpactDataPoint.PeriodType, HealthMetric?) -> Void)? = nil
     
     private struct CardData: Identifiable {
         let id = UUID()
         let type: HealthMetricType
+        let healthMetric: HealthMetric?
         let title: String
         let icon: String
         let value: String
         let changeText: String
+        let foregroundColor: Color
         let isPositive: Bool
+        let unit: String
     }
 
     private var cards: [CardData] {
@@ -44,6 +47,19 @@ struct MetricGridView: View {
             default: return "heartRateIcon"
             }
         }
+        
+        func metricUnit(for type: HealthMetricType) -> String {
+            // These map to your existing asset names used by MetricCard (e.g., "heartRateIcon", "stepsIcon", etc.)
+            switch type {
+            case .restingHeartRate: return "BPM"
+            case .steps: return ""
+            case .activeEnergyBurned: return "Kcal"
+            case .sleepHours: return ""
+            case .vo2Max: return ""
+            case .bodyMass: return "KG"
+            default: return ""
+            }
+        }
 
         return targetMetrics.map { metricType in
             if let metric = viewModel.healthMetrics.first(where: { $0.type == metricType }) {
@@ -52,21 +68,27 @@ struct MetricGridView: View {
                 let changeText = String(format: "%@%.0f mins %@", isPositive ? "↑" : "↓", abs(minutes), isPositive ? "gained" : "lost")
                 return CardData(
                     type: metricType,
+                    healthMetric: metric,
                     title: title(for: metricType),
                     icon: iconName(for: metricType),
                     value: metric.formattedValue,
                     changeText: changeText,
-                    isPositive: isPositive
+                    foregroundColor: isPositive ? Color(hex: "#18EF47") : Color(hex: "#F52828"),
+                    isPositive: isPositive,
+                    unit: metricUnit(for: metricType)
                 )
             } else {
                 // Placeholder when no data exists
                 return CardData(
                     type: metricType,
+                    healthMetric: nil,
                     title: title(for: metricType),
                     icon: iconName(for: metricType),
                     value: "--",
-                    changeText: "0 mins",
-                    isPositive: true
+                    changeText: "No data",
+                    foregroundColor: .gray,
+                    isPositive: true,
+                    unit: ""
                 )
             }
         }
@@ -91,14 +113,16 @@ struct MetricGridView: View {
                     ], spacing: 16) {
                         ForEach(cards) { card in
                             Button {
-                                onCardTap?(card.title, selectedPeriod)
+                                onCardTap?(card.title, selectedPeriod, card.healthMetric)
                             } label: {
                                 MetricCard(
                                     icon: card.icon,
                                     title: card.title,
                                     value: card.value,
                                     change: card.changeText,
-                                    isPositive: card.isPositive
+                                    unit: card.unit,
+                                    isPositive: card.isPositive,
+                                    foregroundColor: card.foregroundColor
                                 )
                             }
                             .buttonStyle(.plain)
@@ -106,7 +130,7 @@ struct MetricGridView: View {
                     }
                     .padding(.top, 20)
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 90)
                 }
             }
         }
@@ -245,8 +269,10 @@ struct MetricCard: View {
     let title: String
     let value: String
     let change: String
+    let unit: String
     let isPositive: Bool
     var badge: String? = nil
+    let foregroundColor: Color
     
     var body: some View {
         ZStack {
@@ -301,7 +327,7 @@ struct MetricCard: View {
                 .padding(.bottom, 4)
                 
                 // Value
-                Text(value)
+                Text(value+" "+unit)
                     .font(.system(size: 24, weight: .semibold))
                     .foregroundColor(.white)
                     .padding(.bottom, 12)
@@ -309,7 +335,7 @@ struct MetricCard: View {
                 // Change
                 Text(change)
                     .font(.poppins(16))
-                    .foregroundColor(isPositive ? Color(hex: "#18EF47") : Color(hex: "#F52828"))
+                    .foregroundColor(foregroundColor)
                     .padding(.bottom, 2)
                 
                 // Chart
@@ -319,7 +345,7 @@ struct MetricCard: View {
                         .frame(height: 48)
                     
                     Circle()
-                        .fill(isPositive ? Color(hex: "4ADE80") : Color(hex: "F87171"))
+                        .fill(foregroundColor)
                         .frame(width: 8, height: 8)
                         .offset(x: -46, y: -12)
                 }
