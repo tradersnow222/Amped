@@ -41,53 +41,56 @@ struct EnergyView: View {
     }
     
     var body: some View {
-        
-        let isPremium = UserDefaults.standard.bool(forKey: "is_premium_user")
-        if !isPremium && selectedLifespanType == .potential {
-            UnlockSubscriptionView(buttonText: "Unlock Your Best Life by subcribing") {
-                // Got to subscription
-                onTapUnlock?()
-            }
-        } else {
-            VStack(spacing: 0) {
-                // Header
-                personalizedHeader
-                Spacer()
-                // Lifespan Toggle
-                lifespanToggle
-                
-                // Main Content
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Call to Action Section
-                        callToActionSection
-                            .padding(.horizontal, 20)
-                        Spacer()
-                        // Lifespan Display
-                        lifespanDisplaySection
-                            .padding(.horizontal, 20)
-                        Spacer()
-                        // Progress Bar Section
-                        progressBarSection
-                            .padding(.horizontal, 20)
-                        
-                        // Disclaimer
-                        disclaimerSection
-                            .padding(.horizontal, 20)
-                    }
-                    .padding(.top, 20)
+        ZStack {
+            Color.black.ignoresSafeArea(.all)
+            LinearGradient.grayGradient.ignoresSafeArea()
+            let isPremium = UserDefaults.standard.bool(forKey: "is_premium_user")
+            if isPremium && selectedLifespanType == .potential {
+                UnlockSubscriptionView(buttonText: "Unlock Your Best Life by subcribing") {
+                    // Got to subscription
+                    onTapUnlock?()
                 }
-                
-                Spacer(minLength: 100) // Space for bottom navigation
+            } else {
+                VStack(spacing: 0) {
+                    // Header
+                    personalizedHeader
+                    Spacer()
+                    // Lifespan Toggle
+                    lifespanToggle
+                    
+                    // Main Content
+                    ScrollView {
+                        VStack(spacing: 24) {
+                            // Call to Action Section
+                            callToActionSection
+                                .padding(.horizontal, 20)
+                            Spacer()
+                            // Lifespan Display
+                            lifespanDisplaySection
+                                .padding(.horizontal, 20)
+                            Spacer()
+                            // Progress Bar Section
+                            progressBarSection
+                                .padding(.horizontal, 20)
+                            
+                            // Disclaimer
+                            disclaimerSection
+                                .padding(.horizontal, 20)
+                        }
+                        .padding(.top, 20)
+                    }
+                    
+                    Spacer(minLength: 100) // Space for bottom navigation
+                }
+                .navigationBarHidden(true)
             }
-            .navigationBarHidden(true)
         }
     }
     
     // MARK: - Header Components
     
     private var personalizedHeader: some View {
-        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: true)
+        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
     }
     
     private var lifespanToggle: some View {
@@ -97,14 +100,31 @@ struct EnergyView: View {
                     selectedLifespanType = .current
                 }
             }) {
-                Text("Current Lifespan")
+                Text("Your Life Now")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(selectedLifespanType == .current ? .white : .white.opacity(0.6))
+                    .foregroundColor(selectedLifespanType == .current ? .black : .white.opacity(0.6))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(
                         RoundedRectangle(cornerRadius: 100)
-                            .fill(selectedLifespanType == .current ? Color.black : Color.clear)
+                            .fill(selectedLifespanType == .current ?
+                                  LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color(hex: "#318AFC"),
+                                        Color(hex: "#18EF47").opacity(0.58)
+                                    ]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                  )
+                                  : LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.white,
+                                        Color.clear
+                                    ]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                  )
+                                 )
                     )
             }
             
@@ -113,20 +133,31 @@ struct EnergyView: View {
                     selectedLifespanType = .potential
                 }
             }) {
-                Text("Potential Lifespan")
+                Text("Your Best Life")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(selectedLifespanType == .potential ? .white : .white.opacity(0.6))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(
                         RoundedRectangle(cornerRadius: 100)
-                            .fill(selectedLifespanType == .potential ? 
-                                AnyShapeStyle(LinearGradient(
-                                    colors: [.green,.green, .yellow],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )) : AnyShapeStyle(Color.clear)
-                            )
+                            .fill(selectedLifespanType == .potential ?
+                                  LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color(hex: "#318AFC"),
+                                        Color(hex: "#18EF47").opacity(0.58)
+                                    ]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                  )
+                                  : LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.clear,
+                                        Color.clear
+                                    ]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                  )
+                                 )
                     )
             }
         }
@@ -134,7 +165,7 @@ struct EnergyView: View {
         .padding(.vertical, 2)
         .background(
             RoundedRectangle(cornerRadius: 100)
-                .fill(Color(red: 39/255, green: 39/255, blue: 39/255))
+                .fill(Color.gray.opacity(0.3))
         )
         .padding(.horizontal, 24)
         .padding(.bottom, 20)
