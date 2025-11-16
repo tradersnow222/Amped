@@ -41,9 +41,7 @@ struct DashboardView: View {
     @State private var refreshIndicatorRotation: Double = 0
     private let refreshThreshold: CGFloat = 60
     private let maxPullDistance: CGFloat = 120
-    
-    var goToSubscription: Bool
-    
+        
     // Logger for debugging
     private let logger = Logger(subsystem: "com.amped.app", category: "DashboardView")
     
@@ -233,7 +231,7 @@ struct DashboardView: View {
                 } else if destination.hasPrefix("metricDetail-") {
                     metricDetailView(for: destination)
                 } else if destination == "subscription" {
-                    SubscriptionView(navigationPath: $navigationPath)
+//                    SubscriptionView(navigationPath: $navigationPath)
                 } else if destination == "settingView" {
                     SettingView()
                         .navigationBarHidden(true)
@@ -243,15 +241,6 @@ struct DashboardView: View {
                 configureNavigationBar()
                 HapticManager.shared.prepareHaptics()
                 handleIntroAnimations()
-            }
-            .task {
-                if goToSubscription {
-                    print("check: Value for go to subscribe \(goToSubscription)")
-                    
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        navigationPath.append("subscription")
-                    }
-                }
             }
         }
     }
