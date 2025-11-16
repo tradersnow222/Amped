@@ -234,6 +234,9 @@ struct DashboardView: View {
                     metricDetailView(for: destination)
                 } else if destination == "subscription" {
                     SubscriptionView(navigationPath: $navigationPath)
+                } else if destination == "settingView" {
+                    SettingView()
+                        .navigationBarHidden(true)
                 }
             }
             .onAppear {
@@ -516,7 +519,14 @@ struct DashboardView: View {
     
     /// Personalized header with greeting and avatar
     private var personalizedHeader: some View {
-        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
+        Button(action: {
+            DispatchQueue.main.async {
+                navigationPath.append("settingView")
+            }
+        }) {
+            ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
+        }
+        .buttonStyle(PlainButtonStyle())  // Keeps the view clean without extra button styling
     }
     
     /// Date navigation bar with Day/Month/Year tabs and swipe gesture support

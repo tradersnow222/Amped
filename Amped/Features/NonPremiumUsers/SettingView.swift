@@ -14,7 +14,7 @@ struct SettingView: View {
     // Placeholder for user name and initial letters
     @State private var userName: String = "Adam John"
     @State private var userInitials: String = "AJ"
-    
+    @State private var navigationPath = NavigationPath()
     // State for navigation/actions
     @State private var showingNotificationSettings: Bool = false
     @State private var showingFeedbackSurvey: Bool = false
@@ -63,11 +63,11 @@ struct SettingView: View {
             Text("Notification Settings View Placeholder")
                 .preferredColorScheme(.dark)
         }
-        .sheet(isPresented: $showingFeedbackSurvey) {
-            // FeedbackSurveyView() // Create this view if needed
-            Text("Feedback Survey View Placeholder")
-                .preferredColorScheme(.dark)
-        }
+//        .sheet(isPresented: $showingFeedbackSurvey) {
+//            // FeedbackSurveyView() // Create this view if needed
+//            Text("Feedback Survey View Placeholder")
+//                .preferredColorScheme(.dark)
+//        }
         .alert("Delete Account", isPresented: $showingDeleteAccountConfirmation) {
             Button("Delete", role: .destructive) { /* Perform delete action */ }
             Button("Cancel", role: .cancel) { }
@@ -79,6 +79,11 @@ struct SettingView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Are you sure you want to log out?")
+        }
+        .navigationDestination(for: String.self) { destination in
+            if destination == "feedbackView" {
+                RateAppView()
+            }
         }
     }
     
@@ -189,7 +194,9 @@ struct SettingView: View {
                 Divider().background(Color.gray.opacity(0.3)).padding(.horizontal, 16)
                 SettingRow(icon: "star.fill", title: "Rate the app", action: { /* Open App Store */ })
                 Divider().background(Color.gray.opacity(0.3)).padding(.horizontal, 16)
-                SettingRow(icon: "doc.text.fill", title: "Feedback survey", action: { showingFeedbackSurvey = true })
+                SettingRow(icon: "doc.text.fill", title: "Feedback survey", action: {
+                    navigationPath.append("feedbackView")
+                    showingFeedbackSurvey = true })
                 Divider().background(Color.gray.opacity(0.3)).padding(.horizontal, 16)
                 SettingRow(icon: "trash.fill", title: "Delete account", isDestructive: true, action: { showingDeleteAccountConfirmation = true })
                 Divider().background(Color.gray.opacity(0.3)).padding(.horizontal, 16)
