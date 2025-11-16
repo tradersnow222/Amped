@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Main enum to track the onboarding state - Rules: Streamlined flow removing redundant screens
-enum OnboardingStep: String, Equatable, CaseIterable {
+enum OnboardingStep:Equatable {
     case welcome
     case personalizationIntro // Position 2: Build trust before data collection
     case beforeAfterTransformation // Position 3: Show transformation journey
@@ -24,12 +24,68 @@ enum OnboardingStep: String, Equatable, CaseIterable {
     case terms
     case paywall
     case questionnaire
-    case notificationPermission // Moved: Right after goal setting for logical flow
+//    case notificationPermission // Moved: Right after goal setting for logical flow
     case valueProposition // Position 5: Reinforce value after notifications
-    case prePaywallTease // Position 6: Personalized score right before paywall
-    case payment
-    case attribution // New: How did you hear about us?
-    case dashboard
+//    case prePaywallTease // Position 6: Personalized score right before paywall
+//    case payment
+//    case attribution // New: How did you hear about us?
+    case dashboard(subscription: Bool)
+    
+}
+
+extension OnboardingStep {
+    var name: String {
+        switch self {
+        case .welcome:
+            return "welcome"
+        case .personalizationIntro:
+            return "personalizationIntro"
+        case .beforeAfterTransformation:
+            return "beforeAfterTransformation"
+        case .mascotIntroduction:
+            return "mascotIntroduction"
+        case .mascotNaming:
+            return "mascotNaming"
+        case .genderSelection:
+            return "genderSelection"
+        case .ageSelection:
+            return "ageSelection"
+        case .heightStats:
+            return "heightStats"
+        case .weightStats:
+            return "weightStats"
+        case .stressStats:
+            return "stressStats"
+        case .anxietyStats:
+            return "anxietyStats"
+        case .dietStats:
+            return "dietStats"
+        case .smokeStats:
+            return "smokeStats"
+        case .alcoholicStats:
+            return "alcoholicStats"
+        case .socialConnectionStats:
+            return "socialConnectionStats"
+        case .bloodPressureStats:
+            return "bloodPressureStats"
+        case .mainReasonStats:
+            return "mainReasonStats"
+        case .goalsStats:
+            return "goalsStats"
+        case .syncDeviceStats:
+            return "syncDeviceStats"
+        case .terms:
+            return "terms"
+        case .paywall:
+            return "paywall"
+        case .questionnaire:
+            return "questionnaire"
+        case .valueProposition:
+            return "valueProposition"
+        case .dashboard:
+            return "dashboard"
+        }
+    }
 }
 
 /// Main container view for the entire onboarding flow
@@ -296,7 +352,7 @@ struct OnboardingFlow: View {
                             isButtonNavigating = true
                             dragDirection = nil
                             if appState.isPremiumUser {
-                                navigateTo(.dashboard)
+                                navigateTo(.dashboard(subscription: false))
                             } else {
                                 navigateTo(.paywall)
                             }
@@ -307,17 +363,17 @@ struct OnboardingFlow: View {
                     }
                     
                     if appState.currentOnboardingStep == .paywall {
-                        PaywallScreen {
-                            navigateTo(.dashboard)
+                        PaywallScreen { goToSubscription in
+                            navigateTo(.dashboard(subscription: goToSubscription))
                         }
                     }
                     
-                    if appState.currentOnboardingStep == .dashboard {
+                    if case let .dashboard(subscription) = appState.currentOnboardingStep {
                         NavigationView {
-                            DashboardView()
+                            DashboardView(goToSubscription: subscription)
                         }
                         .transition(getMaterializeTransition())
-                        .zIndex(appState.currentOnboardingStep == .dashboard ? 1 : 0)
+                        .zIndex({ if case .dashboard = appState.currentOnboardingStep { return 1 } else { return 0 } }())
                         .onAppear {
                             // Mark onboarding as complete once dashboard is shown
                             appState.completeOnboarding()

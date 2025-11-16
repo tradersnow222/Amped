@@ -135,6 +135,8 @@ struct SubscriptionView: View {
     let gradientColors = [Color(hex: "#0E8929"), Color(hex: "#18EF47")]
     let darkGrayBackground = Color(hex: "#1A1A1A")
     let lightGrayText = Color(hex: "#E0E0E0")
+    
+    @Binding var navigationPath: NavigationPath
 
     var body: some View {
         ZStack {
@@ -231,6 +233,6 @@ struct SubscriptionView: View {
 // MARK: - Preview
 struct SubscriptionView_Previews: PreviewProvider {
     static var previews: some View {
-        SubscriptionView()
+//        SubscriptionView()
     }
 }

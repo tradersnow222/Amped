@@ -42,6 +42,8 @@ struct DashboardView: View {
     private let refreshThreshold: CGFloat = 60
     private let maxPullDistance: CGFloat = 120
     
+    var goToSubscription: Bool
+    
     // Logger for debugging
     private let logger = Logger(subsystem: "com.amped.app", category: "DashboardView")
     
@@ -230,12 +232,23 @@ struct DashboardView: View {
                     detailedAnalysisView
                 } else if destination.hasPrefix("metricDetail-") {
                     metricDetailView(for: destination)
+                } else if destination == "subscription" {
+                    SubscriptionView(navigationPath: $navigationPath)
                 }
             }
             .onAppear {
                 configureNavigationBar()
                 HapticManager.shared.prepareHaptics()
                 handleIntroAnimations()
+            }
+            .task {
+                if goToSubscription {
+                    print("check: Value for go to subscribe \(goToSubscription)")
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        navigationPath.append("subscription")
+                    }
+                }
             }
         }
     }
@@ -2388,7 +2401,7 @@ struct DivergentBarChart: View {
 struct DashboardView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationView {
-            DashboardView()
+//            DashboardView()
         }
     }
 }

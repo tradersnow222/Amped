@@ -16,7 +16,7 @@ struct PremiumFeature: Identifiable {
 
 struct PaywallScreen: View {
     
-    var onContinue: (() -> Void)?
+    var onContinue: ((Bool) -> Void)?
     
     private let features: [PremiumFeature] = [
         PremiumFeature(icon: "habbitIcon", title: "Habit Impact", subtitle: "See how specific metrics affects your lifespan, minute by minute."),
@@ -45,7 +45,7 @@ struct PaywallScreen: View {
                     HStack {
                         Spacer()
                         Button("Skip") {
-                            onContinue?()
+                            onContinue?(false)
                         }
                             .foregroundColor(.white.opacity(0.7))
                             .padding(.top, 10)
@@ -86,7 +86,7 @@ struct PaywallScreen: View {
                     
                     // CTA Button
                     Button(action: {
-                        onContinue?()
+                        onContinue?(false)
                     }) {
                         Text("Try for free")
                             .font(.system(size: 20, weight: .semibold))
@@ -105,11 +105,15 @@ struct PaywallScreen: View {
                     }
                     .padding(.top, 10)
                     
-                    // Price Info
-                    Text("3 days free, then $29.99/year.")
-                        .foregroundColor(.white.opacity(0.7))
-                        .font(.system(size: 14))
-                        .padding(.bottom, 30)
+                    Button {
+                        onContinue?(true)
+                    } label: {
+                        // Price Info
+                        Text("3 days free, then $29.99/year.")
+                            .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 14))
+                            .padding(.bottom, 30)
+                    }
                 }
             }
         }
