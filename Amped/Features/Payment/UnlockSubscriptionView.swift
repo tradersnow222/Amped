@@ -14,8 +14,7 @@ struct UnlockSubscriptionView: View {
     var body: some View {
         ZStack {
             // Dim background (transparent)
-            Color.black.opacity(0.15)
-                .ignoresSafeArea()
+            Color.clear.ignoresSafeArea()
 
             // Center Button
             Button(action: action) {
