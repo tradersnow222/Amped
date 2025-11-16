@@ -9,12 +9,18 @@ struct MetricDetailContentView: View {
     
     @State private var selectedPeriod: ImpactDataPoint.PeriodType = .day
     @StateObject private var viewModel = DashboardViewModel()
+    var selectedHealthMetric: HealthMetric?
 
     // Cache the data to prevent infinite loops
     private let metrics: [DashboardMetric]
     private let chartData: [ChartDataPoint]
 
-    init(metricTitle: String, period: String, periodType: ImpactDataPoint.PeriodType, navigationPath: Binding<NavigationPath>) {
+    init(metricTitle: String,
+         period: String,
+         periodType: ImpactDataPoint.PeriodType,
+         navigationPath: Binding<NavigationPath>,
+         selectedHealthMetric: HealthMetric?
+    ) {
         self.metricTitle = metricTitle
         self.period = period
         self.periodType = periodType
@@ -29,9 +35,10 @@ struct MetricDetailContentView: View {
 
         // Cache all data during initialization to prevent recalculation loops
         self.metrics = Self.getMetricsForPeriod(periodType)
-        self.chartData = Self.getChartDataForMetric(metricTitle, period: periodString)
+        self.chartData = []
         
         selectedPeriod = periodType
+        self.selectedHealthMetric = selectedHealthMetric
     }
 
     var body: some View {
@@ -66,35 +73,55 @@ struct MetricDetailContentView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 20) {
                         // Status sentence
-                        if let metric = metrics.first(where: { $0.title == metricTitle }) {
-                            let lostOrGained = metric.status.contains("↓") ? "lost" : "gained"
-                            let minutesText = metric.status.replacingOccurrences(of: "↑ ", with: "").replacingOccurrences(of: "↓ ", with: "")
-                            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                Text("Oops, Today you've")
+                        // Status text
+                        let impactMinutes = selectedHealthMetric?.impactDetails?.lifespanImpactMinutes ?? 0
+                        let isPositive = impactMinutes >= 0
+                        let minutes = Int(abs(impactMinutes))
+                        let lostOrGained = isPositive ? "gained" : "lost"
+                        let mainColor: Color = isPositive ? .ampedGreen : .ampedRed
+                        let metric = metricTitle.lowercased()
+                        let periodLabel: String = {
+                            switch selectedPeriod {
+                            case .day: return "Today"
+                            case .month: return "This month"
+                            case .year: return "This year"
+                            }
+                        }()
+
+                        // Descriptive sentence (period-aware)
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            
+                            // Example: "This month you've"
+                            Text("\(periodLabel) you've")
+                                .foregroundColor(.white.opacity(0.8))
+                            
+                            Text("\(lostOrGained) \(minutes) mins")
+                                .foregroundColor(mainColor)
+                                .fontWeight(.semibold)
+                            
+                            // Correct grammar for lost/gained
+                            if isPositive {
+                                Text("thanks to your \(metric).")
                                     .foregroundColor(.white.opacity(0.8))
-                                Text(lostOrGained == "lost" ? minutesText : minutesText)
-                                    .foregroundColor(lostOrGained == "lost" ? .red : .green)
-                                    .fontWeight(.semibold)
-                                Text("due to poor \(metricTitle.lowercased()).")
+                            } else {
+                                Text("due to poor \(metric).")
                                     .foregroundColor(.white.opacity(0.8))
                             }
-                            .font(.system(size: 16))
-                            .padding(.horizontal, 16)
-                            .padding(.top, 6)
                         }
-
+                        .font(.system(size: 16))
+                        .padding(.horizontal, 16)
+                        .padding(.top, 6)
                         // Big metric value
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                if let metric = metrics.first(where: { $0.title == metricTitle }) {
-                                    Text(metric.value)
+                                if let metric = selectedHealthMetric {
+                                    Text(metric.formattedValue)
                                         .font(.system(size: 36, weight: .bold))
                                         .foregroundColor(.white)
-                                    if !metric.unit.isEmpty {
-                                        Text(metric.unit)
-                                            .font(.system(size: 16, weight: .medium))
-                                            .foregroundColor(.white.opacity(0.7))
-                                    }
+                                    
+                                    Text(metricUnit(for: metric.type))
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.7))
                                 } else {
                                     Text("--")
                                         .font(.system(size: 36, weight: .bold))
@@ -114,48 +141,50 @@ struct MetricDetailContentView: View {
                             .padding(.horizontal, 16)
 
                         // Recommendations header
-                        Text("\(metricTitle) Recommendations")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.top, 6)
-
-                        // Recommendation card
-                        HStack(alignment: .top, spacing: 12) {
-                            ZStack {
-                                Circle().fill(Color.yellow.opacity(0.15))
-                                Image(systemName: Self.getIconForMetric(metricTitle))
-                                    .foregroundColor(.yellow)
-                                    .font(.system(size: 18, weight: .semibold))
+                        if let healthMetric = selectedHealthMetric {
+                            Text("\(title(for: healthMetric.type)) Recommendations")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.top, 6)
+                            
+                            // Recommendation card
+                            HStack(alignment: .top, spacing: 12) {
+                                ZStack {
+                                    Circle().fill(Color.yellow.opacity(0.15))
+                                    Image(systemName: Self.getIconForMetric(metricTitle))
+                                        .foregroundColor(.yellow)
+                                        .font(.system(size: 18, weight: .semibold))
+                                }
+                                .frame(width: 36, height: 36)
+                                
+                                Text(healthMetric.impactDetails?.recommendation ?? "")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.9))
+                                Spacer(minLength: 0)
                             }
-                            .frame(width: 36, height: 36)
-
-                            Text(Self.getRecommendationForMetric(metricTitle))
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white.opacity(0.9))
-                            Spacer(minLength: 0)
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color.white.opacity(0.06))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                            )
+                            .padding(.horizontal, 16)
+                            
+                            // Secondary tip row
+                            HStack(spacing: 8) {
+                                Image(systemName: "info.circle")
+                                    .foregroundColor(.white.opacity(0.5))
+                                Text("Tap to see what XX research studies tell us about \(metricTitle.lowercased())")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.white.opacity(0.5))
+                                Spacer()
+                            }
+                            .padding(.horizontal, 16)
                         }
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.white.opacity(0.06))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.white.opacity(0.05), lineWidth: 1)
-                        )
-                        .padding(.horizontal, 16)
-
-                        // Secondary tip row
-                        HStack(spacing: 8) {
-                            Image(systemName: "info.circle")
-                                .foregroundColor(.white.opacity(0.5))
-                            Text("Tap to see what XX research studies tell us about \(metricTitle.lowercased())")
-                                .font(.system(size: 12))
-                                .foregroundColor(.white.opacity(0.5))
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
 
                         Spacer(minLength: 40)
                     }
@@ -438,22 +467,22 @@ struct MetricDetailContentView: View {
         }
     }
 
-    static func getChartDataForMetric(_ metricTitle: String, period: String) -> [ChartDataPoint] {
-        switch metricTitle.lowercased() {
-        case "sleep":
-            return getSleepChartData(for: period)
-        case "steps":
-            return getStepsChartData(for: period)
-        case "heart rate":
-            return getHeartRateChartData(for: period)
-        case "exercise", "active energy":
-            return getExerciseChartData(for: period)
-        case "weight":
-            return getWeightChartData(for: period)
-        default:
-            return getDefaultChartData(for: period)
-        }
-    }
+//    static func getChartDataForMetric(_ metricTitle: String, period: String) -> [ChartDataPoint] {
+//        switch metricTitle.lowercased() {
+//        case "sleep":
+//            return getSleepChartData(for: period)
+//        case "steps":
+//            return getStepsChartData(for: period)
+//        case "heart rate":
+//            return getHeartRateChartData(for: period)
+//        case "exercise", "active energy":
+//            return getExerciseChartData(for: period)
+//        case "weight":
+//            return getWeightChartData(for: period)
+//        default:
+//            return getDefaultChartData(for: period)
+//        }
+//    }
 
     static func getIconForMetric(_ metricTitle: String) -> String {
         switch metricTitle.lowercased() {
@@ -489,205 +518,205 @@ struct MetricDetailContentView: View {
         }
     }
 
-    // Chart data helper functions
-    static func getSleepChartData(for period: String) -> [ChartDataPoint] {
-        switch period {
-        case "day":
-            return [
-                ChartDataPoint(value: 0, label: "16:15"),
-                ChartDataPoint(value: 0, label: "16:30"),
-                ChartDataPoint(value: 0, label: "16:45"),
-                ChartDataPoint(value: 0, label: "17:00"),
-                ChartDataPoint(value: 0, label: "17:15"),
-                ChartDataPoint(value: 0, label: "17:30"),
-                ChartDataPoint(value: 0, label: "17:45"),
-                ChartDataPoint(value: 0, label: "18:00"),
-                ChartDataPoint(value: -2.5, label: "18:15"),
-                ChartDataPoint(value: -2, label: "18:30"),
-                ChartDataPoint(value: -1.5, label: "18:45"),
-                ChartDataPoint(value: -1.7, label: "19:00"),
-                ChartDataPoint(value: -2, label: "19:15"),
-                ChartDataPoint(value: -1.3, label: "19:30"),
-                ChartDataPoint(value: 1.5, label: "19:45"),
-                ChartDataPoint(value: 2.5, label: "20:00"),
-                ChartDataPoint(value: 1.8, label: "20:15")
-            ]
-        case "month":
-            return [
-                ChartDataPoint(value: 7.5, label: "Week 1"),
-                ChartDataPoint(value: 8.0, label: "Week 2"),
-                ChartDataPoint(value: 7.2, label: "Week 3"),
-                ChartDataPoint(value: 7.8, label: "Week 4")
-            ]
-        case "year":
-            return [
-                ChartDataPoint(value: 7.3, label: "Q1"),
-                ChartDataPoint(value: 7.8, label: "Q2"),
-                ChartDataPoint(value: 8.1, label: "Q3"),
-                ChartDataPoint(value: 7.6, label: "Q4")
-            ]
-        default:
-            return []
-        }
-    }
-
-    static func getStepsChartData(for period: String) -> [ChartDataPoint] {
-        switch period {
-        case "day":
-            return [
-                ChartDataPoint(value: 8500, label: "Mon"),
-                ChartDataPoint(value: 12000, label: "Tue"),
-                ChartDataPoint(value: 9800, label: "Wed"),
-                ChartDataPoint(value: 11500, label: "Thu"),
-                ChartDataPoint(value: 13200, label: "Fri"),
-                ChartDataPoint(value: 15800, label: "Sat"),
-                ChartDataPoint(value: 9200, label: "Sun")
-            ]
-        case "month":
-            return [
-                ChartDataPoint(value: 10500, label: "Week 1"),
-                ChartDataPoint(value: 12000, label: "Week 2"),
-                ChartDataPoint(value: 9800, label: "Week 3"),
-                ChartDataPoint(value: 11200, label: "Week 4")
-            ]
-        case "year":
-            return [
-                ChartDataPoint(value: 9500, label: "Q1"),
-                ChartDataPoint(value: 11200, label: "Q2"),
-                ChartDataPoint(value: 12800, label: "Q3"),
-                ChartDataPoint(value: 10500, label: "Q4")
-            ]
-        default:
-            return []
-        }
-    }
-
-    static func getHeartRateChartData(for period: String) -> [ChartDataPoint] {
-        switch period {
-        case "day":
-            return [
-                ChartDataPoint(value: 65, label: "Mon"),
-                ChartDataPoint(value: 62, label: "Tue"),
-                ChartDataPoint(value: 68, label: "Wed"),
-                ChartDataPoint(value: 64, label: "Thu"),
-                ChartDataPoint(value: 61, label: "Fri"),
-                ChartDataPoint(value: 59, label: "Sat"),
-                ChartDataPoint(value: 66, label: "Sun")
-            ]
-        case "month":
-            return [
-                ChartDataPoint(value: 66, label: "Week 1"),
-                ChartDataPoint(value: 64, label: "Week 2"),
-                ChartDataPoint(value: 63, label: "Week 3"),
-                ChartDataPoint(value: 62, label: "Week 4")
-            ]
-        case "year":
-            return [
-                ChartDataPoint(value: 68, label: "Q1"),
-                ChartDataPoint(value: 65, label: "Q2"),
-                ChartDataPoint(value: 63, label: "Q3"),
-                ChartDataPoint(value: 61, label: "Q4")
-            ]
-        default:
-            return []
-        }
-    }
-
-    static func getExerciseChartData(for period: String) -> [ChartDataPoint] {
-        switch period {
-        case "day":
-            return [
-                ChartDataPoint(value: 25, label: "Mon"),
-                ChartDataPoint(value: 45, label: "Tue"),
-                ChartDataPoint(value: 30, label: "Wed"),
-                ChartDataPoint(value: 50, label: "Thu"),
-                ChartDataPoint(value: 35, label: "Fri"),
-                ChartDataPoint(value: 60, label: "Sat"),
-                ChartDataPoint(value: 20, label: "Sun")
-            ]
-        case "month":
-            return [
-                ChartDataPoint(value: 35, label: "Week 1"),
-                ChartDataPoint(value: 42, label: "Week 2"),
-                ChartDataPoint(value: 38, label: "Week 3"),
-                ChartDataPoint(value: 45, label: "Week 4")
-            ]
-        case "year":
-            return [
-                ChartDataPoint(value: 30, label: "Q1"),
-                ChartDataPoint(value: 38, label: "Q2"),
-                ChartDataPoint(value: 45, label: "Q3"),
-                ChartDataPoint(value: 42, label: "Q4")
-            ]
-        default:
-            return []
-        }
-    }
-
-    static func getWeightChartData(for period: String) -> [ChartDataPoint] {
-        switch period {
-        case "day":
-            return [
-                ChartDataPoint(value: 70.2, label: "Mon"),
-                ChartDataPoint(value: 70.1, label: "Tue"),
-                ChartDataPoint(value: 69.8, label: "Wed"),
-                ChartDataPoint(value: 70.0, label: "Thu"),
-                ChartDataPoint(value: 69.9, label: "Fri"),
-                ChartDataPoint(value: 70.3, label: "Sat"),
-                ChartDataPoint(value: 70.1, label: "Sun")
-            ]
-        case "month":
-            return [
-                ChartDataPoint(value: 71.0, label: "Week 1"),
-                ChartDataPoint(value: 70.5, label: "Week 2"),
-                ChartDataPoint(value: 70.2, label: "Week 3"),
-                ChartDataPoint(value: 70.0, label: "Week 4")
-            ]
-        case "year":
-            return [
-                ChartDataPoint(value: 72.5, label: "Q1"),
-                ChartDataPoint(value: 71.8, label: "Q2"),
-                ChartDataPoint(value: 70.5, label: "Q3"),
-                ChartDataPoint(value: 70.0, label: "Q4")
-            ]
-        default:
-            return []
-        }
-    }
-
-    static func getDefaultChartData(for period: String) -> [ChartDataPoint] {
-        switch period {
-        case "day":
-            return [
-                ChartDataPoint(value: 85, label: "Mon"),
-                ChartDataPoint(value: 92, label: "Tue"),
-                ChartDataPoint(value: 78, label: "Wed"),
-                ChartDataPoint(value: 88, label: "Thu"),
-                ChartDataPoint(value: 95, label: "Fri"),
-                ChartDataPoint(value: 90, label: "Sat"),
-                ChartDataPoint(value: 82, label: "Sun")
-            ]
-        case "month":
-            return [
-                ChartDataPoint(value: 82, label: "Week 1"),
-                ChartDataPoint(value: 88, label: "Week 2"),
-                ChartDataPoint(value: 85, label: "Week 3"),
-                ChartDataPoint(value: 90, label: "Week 4")
-            ]
-        case "year":
-            return [
-                ChartDataPoint(value: 80, label: "Q1"),
-                ChartDataPoint(value: 85, label: "Q2"),
-                ChartDataPoint(value: 88, label: "Q3"),
-                ChartDataPoint(value: 90, label: "Q4")
-            ]
-        default:
-            return []
-        }
-    }
+//    // Chart data helper functions
+//    static func getSleepChartData(for period: String) -> [ChartDataPoint] {
+//        switch period {
+//        case "day":
+//            return [
+//                ChartDataPoint(value: 0, label: "16:15"),
+//                ChartDataPoint(value: 0, label: "16:30"),
+//                ChartDataPoint(value: 0, label: "16:45"),
+//                ChartDataPoint(value: 0, label: "17:00"),
+//                ChartDataPoint(value: 0, label: "17:15"),
+//                ChartDataPoint(value: 0, label: "17:30"),
+//                ChartDataPoint(value: 0, label: "17:45"),
+//                ChartDataPoint(value: 0, label: "18:00"),
+//                ChartDataPoint(value: -2.5, label: "18:15"),
+//                ChartDataPoint(value: -2, label: "18:30"),
+//                ChartDataPoint(value: -1.5, label: "18:45"),
+//                ChartDataPoint(value: -1.7, label: "19:00"),
+//                ChartDataPoint(value: -2, label: "19:15"),
+//                ChartDataPoint(value: -1.3, label: "19:30"),
+//                ChartDataPoint(value: 1.5, label: "19:45"),
+//                ChartDataPoint(value: 2.5, label: "20:00"),
+//                ChartDataPoint(value: 1.8, label: "20:15")
+//            ]
+//        case "month":
+//            return [
+//                ChartDataPoint(value: 7.5, label: "Week 1"),
+//                ChartDataPoint(value: 8.0, label: "Week 2"),
+//                ChartDataPoint(value: 7.2, label: "Week 3"),
+//                ChartDataPoint(value: 7.8, label: "Week 4")
+//            ]
+//        case "year":
+//            return [
+//                ChartDataPoint(value: 7.3, label: "Q1"),
+//                ChartDataPoint(value: 7.8, label: "Q2"),
+//                ChartDataPoint(value: 8.1, label: "Q3"),
+//                ChartDataPoint(value: 7.6, label: "Q4")
+//            ]
+//        default:
+//            return []
+//        }
+//    }
+//
+//    static func getStepsChartData(for period: String) -> [ChartDataPoint] {
+//        switch period {
+//        case "day":
+//            return [
+//                ChartDataPoint(value: 8500, label: "Mon"),
+//                ChartDataPoint(value: 12000, label: "Tue"),
+//                ChartDataPoint(value: 9800, label: "Wed"),
+//                ChartDataPoint(value: 11500, label: "Thu"),
+//                ChartDataPoint(value: 13200, label: "Fri"),
+//                ChartDataPoint(value: 15800, label: "Sat"),
+//                ChartDataPoint(value: 9200, label: "Sun")
+//            ]
+//        case "month":
+//            return [
+//                ChartDataPoint(value: 10500, label: "Week 1"),
+//                ChartDataPoint(value: 12000, label: "Week 2"),
+//                ChartDataPoint(value: 9800, label: "Week 3"),
+//                ChartDataPoint(value: 11200, label: "Week 4")
+//            ]
+//        case "year":
+//            return [
+//                ChartDataPoint(value: 9500, label: "Q1"),
+//                ChartDataPoint(value: 11200, label: "Q2"),
+//                ChartDataPoint(value: 12800, label: "Q3"),
+//                ChartDataPoint(value: 10500, label: "Q4")
+//            ]
+//        default:
+//            return []
+//        }
+//    }
+//
+//    static func getHeartRateChartData(for period: String) -> [ChartDataPoint] {
+//        switch period {
+//        case "day":
+//            return [
+//                ChartDataPoint(value: 65, label: "Mon"),
+//                ChartDataPoint(value: 62, label: "Tue"),
+//                ChartDataPoint(value: 68, label: "Wed"),
+//                ChartDataPoint(value: 64, label: "Thu"),
+//                ChartDataPoint(value: 61, label: "Fri"),
+//                ChartDataPoint(value: 59, label: "Sat"),
+//                ChartDataPoint(value: 66, label: "Sun")
+//            ]
+//        case "month":
+//            return [
+//                ChartDataPoint(value: 66, label: "Week 1"),
+//                ChartDataPoint(value: 64, label: "Week 2"),
+//                ChartDataPoint(value: 63, label: "Week 3"),
+//                ChartDataPoint(value: 62, label: "Week 4")
+//            ]
+//        case "year":
+//            return [
+//                ChartDataPoint(value: 68, label: "Q1"),
+//                ChartDataPoint(value: 65, label: "Q2"),
+//                ChartDataPoint(value: 63, label: "Q3"),
+//                ChartDataPoint(value: 61, label: "Q4")
+//            ]
+//        default:
+//            return []
+//        }
+//    }
+//
+//    static func getExerciseChartData(for period: String) -> [ChartDataPoint] {
+//        switch period {
+//        case "day":
+//            return [
+//                ChartDataPoint(value: 25, label: "Mon"),
+//                ChartDataPoint(value: 45, label: "Tue"),
+//                ChartDataPoint(value: 30, label: "Wed"),
+//                ChartDataPoint(value: 50, label: "Thu"),
+//                ChartDataPoint(value: 35, label: "Fri"),
+//                ChartDataPoint(value: 60, label: "Sat"),
+//                ChartDataPoint(value: 20, label: "Sun")
+//            ]
+//        case "month":
+//            return [
+//                ChartDataPoint(value: 35, label: "Week 1"),
+//                ChartDataPoint(value: 42, label: "Week 2"),
+//                ChartDataPoint(value: 38, label: "Week 3"),
+//                ChartDataPoint(value: 45, label: "Week 4")
+//            ]
+//        case "year":
+//            return [
+//                ChartDataPoint(value: 30, label: "Q1"),
+//                ChartDataPoint(value: 38, label: "Q2"),
+//                ChartDataPoint(value: 45, label: "Q3"),
+//                ChartDataPoint(value: 42, label: "Q4")
+//            ]
+//        default:
+//            return []
+//        }
+//    }
+//
+//    static func getWeightChartData(for period: String) -> [ChartDataPoint] {
+//        switch period {
+//        case "day":
+//            return [
+//                ChartDataPoint(value: 70.2, label: "Mon"),
+//                ChartDataPoint(value: 70.1, label: "Tue"),
+//                ChartDataPoint(value: 69.8, label: "Wed"),
+//                ChartDataPoint(value: 70.0, label: "Thu"),
+//                ChartDataPoint(value: 69.9, label: "Fri"),
+//                ChartDataPoint(value: 70.3, label: "Sat"),
+//                ChartDataPoint(value: 70.1, label: "Sun")
+//            ]
+//        case "month":
+//            return [
+//                ChartDataPoint(value: 71.0, label: "Week 1"),
+//                ChartDataPoint(value: 70.5, label: "Week 2"),
+//                ChartDataPoint(value: 70.2, label: "Week 3"),
+//                ChartDataPoint(value: 70.0, label: "Week 4")
+//            ]
+//        case "year":
+//            return [
+//                ChartDataPoint(value: 72.5, label: "Q1"),
+//                ChartDataPoint(value: 71.8, label: "Q2"),
+//                ChartDataPoint(value: 70.5, label: "Q3"),
+//                ChartDataPoint(value: 70.0, label: "Q4")
+//            ]
+//        default:
+//            return []
+//        }
+//    }
+//
+//    static func getDefaultChartData(for period: String) -> [ChartDataPoint] {
+//        switch period {
+//        case "day":
+//            return [
+//                ChartDataPoint(value: 85, label: "Mon"),
+//                ChartDataPoint(value: 92, label: "Tue"),
+//                ChartDataPoint(value: 78, label: "Wed"),
+//                ChartDataPoint(value: 88, label: "Thu"),
+//                ChartDataPoint(value: 95, label: "Fri"),
+//                ChartDataPoint(value: 90, label: "Sat"),
+//                ChartDataPoint(value: 82, label: "Sun")
+//            ]
+//        case "month":
+//            return [
+//                ChartDataPoint(value: 82, label: "Week 1"),
+//                ChartDataPoint(value: 88, label: "Week 2"),
+//                ChartDataPoint(value: 85, label: "Week 3"),
+//                ChartDataPoint(value: 90, label: "Week 4")
+//            ]
+//        case "year":
+//            return [
+//                ChartDataPoint(value: 80, label: "Q1"),
+//                ChartDataPoint(value: 85, label: "Q2"),
+//                ChartDataPoint(value: 88, label: "Q3"),
+//                ChartDataPoint(value: 90, label: "Q4")
+//            ]
+//        default:
+//            return []
+//        }
+//    }
     
     private var personalizedHeader: some View {
-        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: true)
+        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
             .padding(.top, 10)
     }
     
@@ -756,6 +785,10 @@ struct MetricDetailContentView: View {
                 }
             }
             
+//            if let metric = selectedHealthMetric {
+//                selectedHealthMetric = viewModel.healthMetrics.first(where: { $0.type == metric.type })
+//            }
+            
             let impact = UIImpactFeedbackGenerator(style: .light)
             impact.impactOccurred()
         }
@@ -779,5 +812,54 @@ struct MetricDetailContentView: View {
         let previousPeriod = periods[previousIndex]
         
         changePeriod(to: previousPeriod)
+    }
+    
+    func title(for type: HealthMetricType) -> String {
+        switch type {
+        case .restingHeartRate: return "Heart Rate"
+        case .steps: return "Steps"
+        case .activeEnergyBurned: return "Activity"
+        case .sleepHours: return "Sleep"
+        case .vo2Max: return "Cardio (VO2)"
+        case .bodyMass: return "Weight"
+        default: return type.displayName
+        }
+    }
+
+    func iconName(for type: HealthMetricType) -> String {
+        switch type {
+        case .restingHeartRate: return "heartRateIcon"
+        case .steps: return "stepsIcon"
+        case .activeEnergyBurned: return "activityIcon"
+        case .sleepHours: return "sleepIcon"
+        case .vo2Max: return "cardioIcon"
+        case .bodyMass: return "weightIcon"
+        default: return "heartRateIcon"
+        }
+    }
+    
+    /// Get color for metric type
+    private func metricColor(for type: HealthMetricType) -> Color {
+        switch type {
+        case .restingHeartRate: return .ampedRed
+        case .steps: return .blue
+        case .activeEnergyBurned: return .orange
+        case .sleepHours: return .ampedYellow
+        case .vo2Max: return .blue
+        default: return .ampedRed
+        }
+    }
+    
+    func metricUnit(for type: HealthMetricType) -> String {
+        // These map to your existing asset names used by MetricCard (e.g., "heartRateIcon", "stepsIcon", etc.)
+        switch type {
+        case .restingHeartRate: return "BPM"
+        case .steps: return "Steps"
+        case .activeEnergyBurned: return "Kcal"
+        case .sleepHours: return ""
+        case .vo2Max: return ""
+        case .bodyMass: return "KG"
+        default: return ""
+        }
     }
 }

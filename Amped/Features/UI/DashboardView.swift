@@ -200,7 +200,6 @@ struct DashboardView: View {
                     dashboardHomeView.tag(0)
                     metricView.tag(1)
                     energyView.tag(2)
-                    //                    profileView.tag(3)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never)) // hides native tabs
                 
@@ -225,16 +224,21 @@ struct DashboardView: View {
                 SettingsView()
                     .environmentObject(settingsManager)
             }
-            .navigationDestination(for: String.self) { destination in
-                if destination == "detailedAnalysis" {
-                    detailedAnalysisView
-                } else if destination.hasPrefix("metricDetail-") {
-                    metricDetailView(for: destination)
-                } else if destination == "subscription" {
+            .navigationDestination(for: NavigationRoute.self) { route in
+                switch route {
+                case .metricDetail(let type, let period):
+                    if let metric = viewModel.getLatestMetricValue(for: type) {
+                        MetricDetailsView(navigationPath: $navigationPath, metric: metric, selectedPeriod: period, onClose: {
+                            
+                        })
+                    }
+//                case .subscription:
 //                    SubscriptionView(navigationPath: $navigationPath)
-                } else if destination == "settingView" {
+                case .settingView:
                     SettingView()
                         .navigationBarHidden(true)
+                default: EmptyView()
+                    
                 }
             }
             .onAppear {
@@ -300,15 +304,25 @@ struct DashboardView: View {
         let metricTitle = components[1]
         let period = components[2]
         let periodType = ImpactDataPoint.PeriodType(rawValue: period) ?? .day
-        
-        return AnyView(
-            MetricDetailContentView(
-                metricTitle: metricTitle,
-                period: period,
-                periodType: periodType,
-                navigationPath: $navigationPath
+                
+        if let metric = selectedMetric {
+            return AnyView(
+                MetricDetailsView(navigationPath: $navigationPath, metric: metric, selectedPeriod: periodType, onClose: {
+                    
+                })
             )
-        )
+        } else {
+            
+            return AnyView(
+                MetricDetailContentView(
+                    metricTitle: metricTitle,
+                    period: period,
+                    periodType: periodType,
+                    navigationPath: $navigationPath,
+                    selectedHealthMetric: selectedMetric
+                )
+            )
+        }
     }
     
     // MARK: - Period Change Methods
@@ -423,8 +437,16 @@ struct DashboardView: View {
     
     private var metricView: some View {
         MetricGridView(
-            onCardTap: { title, period in
-                navigationPath.append("metricDetail-\(title)-\(period.rawValue)")
+            onCardTap: { title, period, healthMetric  in
+                selectedMetric = healthMetric
+                if let metric = healthMetric {
+                    navigationPath.append(
+                        NavigationRoute.metricDetail(
+                            type: metric.type,
+                            period: period
+                        )
+                    )
+                }
             }
         )
     }
@@ -510,7 +532,7 @@ struct DashboardView: View {
     private var personalizedHeader: some View {
         Button(action: {
             DispatchQueue.main.async {
-                navigationPath.append("settingView")
+                navigationPath.append(NavigationRoute.settingView)
             }
         }) {
             ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
@@ -2334,6 +2356,8 @@ extension DashboardView {
 
 // MARK: - Chart Data Model
 struct ChartDataPoint {
+    let id = UUID()
+    let date: Date
     let value: Double
     let label: String
 }
@@ -2428,4 +2452,12 @@ extension LinearGradient {
             endPoint: .trailing
         )
     }
+}
+
+enum NavigationRoute: Hashable {
+    case detailedAnalysis
+    case metricDetail(type: HealthMetricType, period: ImpactDataPoint.PeriodType)
+    case profile
+    case subscription
+    case settingView
 }
