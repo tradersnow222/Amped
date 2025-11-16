@@ -29,7 +29,8 @@ enum OnboardingStep:Equatable {
 //    case prePaywallTease // Position 6: Personalized score right before paywall
 //    case payment
 //    case attribution // New: How did you hear about us?
-    case dashboard(subscription: Bool)
+    case dashboard
+    case subscription
     
 }
 
@@ -84,6 +85,8 @@ extension OnboardingStep {
             return "valueProposition"
         case .dashboard:
             return "dashboard"
+        case .subscription:
+            return "subscription"
         }
     }
 }
@@ -352,7 +355,7 @@ struct OnboardingFlow: View {
                             isButtonNavigating = true
                             dragDirection = nil
                             if appState.isPremiumUser {
-                                navigateTo(.dashboard(subscription: false))
+                                navigateTo(.dashboard)
                             } else {
                                 navigateTo(.paywall)
                             }
@@ -364,13 +367,27 @@ struct OnboardingFlow: View {
                     
                     if appState.currentOnboardingStep == .paywall {
                         PaywallScreen { goToSubscription in
-                            navigateTo(.dashboard(subscription: goToSubscription))
+                            if goToSubscription {
+                                navigateTo(.subscription)
+                            } else {
+                                navigateTo(.dashboard)
+                            }
                         }
                     }
                     
-                    if case let .dashboard(subscription) = appState.currentOnboardingStep {
+                    if appState.currentOnboardingStep == .subscription {
+                        SubscriptionView { isSubscribed in
+                            if isSubscribed {
+                                appState.updateSubscriptionStatus(true)
+                            }
+                            
+                            navigateTo(.dashboard)
+                        }
+                    }
+                    
+                    if appState.currentOnboardingStep == .dashboard {
                         NavigationView {
-                            DashboardView(goToSubscription: subscription)
+                            DashboardView()
                         }
                         .transition(getMaterializeTransition())
                         .zIndex({ if case .dashboard = appState.currentOnboardingStep { return 1 } else { return 0 } }())

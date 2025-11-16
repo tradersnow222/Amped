@@ -33,7 +33,7 @@ extension OnboardingStep {
         case "paywall": self = .paywall
         case "questionnaire": self = .questionnaire
         case "valueProposition": self = .valueProposition
-        case "dashboard": self = .dashboard(subscription: false)
+        case "dashboard": self = .dashboard
         default: return nil
         }
     }

@@ -30,6 +30,7 @@ extension OnboardingStep {
         case .questionnaire: return "questionnaire"
         case .valueProposition: return "valueProposition"
         case .dashboard: return "dashboard"
+        case .subscription: return "subscription"
         }
     }
 }

@@ -136,7 +136,8 @@ struct SubscriptionView: View {
     let darkGrayBackground = Color(hex: "#1A1A1A")
     let lightGrayText = Color(hex: "#E0E0E0")
     
-    @Binding var navigationPath: NavigationPath
+    @StateObject var store = StoreKitManager()
+    var onContinue: ((Bool) -> Void)?
 
     var body: some View {
         ZStack {
@@ -202,6 +203,31 @@ struct SubscriptionView: View {
                         Button(action: {
                             // Handle subscribe action
                             print("Subscribing to \(selectedPlan.rawValue) plan.")
+                            switch selectedPlan {
+                            case .monthly:
+                                if let monthly = store.products.first(where: { $0.isMonthly }) {
+                                    Task {
+                                        let result = await store.purchase(monthly)
+                                        switch result {
+                                        case .success(let product):
+                                            onContinue?(true)
+                                        case .cancelled:
+                                            onContinue?(false)
+                                        case .failed(let error):
+                                            onContinue?(false)
+                                        case .pending:
+                                            onContinue?(false)
+                                        }
+                                    }
+                                }
+                            case .yearly:
+                                if let yearly = store.products.first(where: { $0.isAnnual }) {
+                                    Task {
+                                        let result = await store.purchase(yearly)
+                                            print(result)
+                                    }
+                                }
+                            }
                         }) {
                             NavigationLink(destination: PaymentMethodView()) {
                             Text("Subscribe")
