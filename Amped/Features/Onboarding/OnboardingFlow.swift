@@ -376,7 +376,7 @@ struct OnboardingFlow: View {
                     }
                     
                     if appState.currentOnboardingStep == .subscription {
-                        SubscriptionView { isSubscribed in
+                        SubscriptionView(isFromOnboarding: true) { isSubscribed in
                             if isSubscribed {
                                 appState.updateSubscriptionStatus(true)
                             }

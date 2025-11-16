@@ -59,7 +59,7 @@ struct FeatureRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
+            Image(icon)
                 .font(.title2)
                 .foregroundColor(Color(hex: "#18EF47")) // Green color for icons
                 .frame(width: 30, height: 30)
@@ -137,6 +137,7 @@ struct SubscriptionView: View {
     let lightGrayText = Color(hex: "#E0E0E0")
     
     @StateObject var store = StoreKitManager()
+    var isFromOnboarding: Bool
     var onContinue: ((Bool) -> Void)?
 
     var body: some View {
@@ -146,8 +147,10 @@ struct SubscriptionView: View {
             VStack(spacing: 0) {
                 
                 // MARK: - Fixed Custom Navigation Bar (Header)
-                CustomNavigationBar()
-                    .padding(.bottom, 8)
+                if !isFromOnboarding {
+                    CustomNavigationBar()
+                        .padding(.bottom, 8)
+                }
                 
                 // MARK: - Scrollable Content
                 ScrollView {
@@ -159,6 +162,7 @@ struct SubscriptionView: View {
                             .fontWeight(.bold)
                             .foregroundColor(lightGrayText)
                             .padding(.horizontal) // Add padding to align with cards
+                            .padding(.top, 16)
                         
                         // Subscription Plan Cards
                         HStack(spacing: 16) {
@@ -185,11 +189,11 @@ struct SubscriptionView: View {
                                 .foregroundColor(lightGrayText)
                                 .padding(.bottom, 4)
 
-                            FeatureRow(icon: "square.grid.2x2", title: "Individual Metric View", description: "See how every action — from sleep to nutrition — powers or drains your battery of life.")
-                            FeatureRow(icon: "chart.bar.xaxis", title: "Detailed Metric View", description: "Unlock detailed insights into your breakdown that show how your daily choices affect your time gained.")
-                            FeatureRow(icon: "lightbulb", title: "Current vs Better Habits", description: "Discover what small changes could add more time to your life. Upgrade to reveal your 'Better Habits' pathway.")
-                            FeatureRow(icon: "arrow.triangle.pull.custom", title: "Streaks", description: "Earn streaks for every healthy day and watch your battery — and motivation — stay fully charged.")
-                            FeatureRow(icon: "person.crop.rectangle.stack", title: "Personalized Recommendations", description: "Receive habit suggestions tailored to your data, helping you gain time faster and live smarter.")
+                            FeatureRow(icon: "habbitIcon", title: "Habit Impact", description: "SSee how specific metrics affects your lifespan, minute by minute.")
+                            FeatureRow(icon: "insightIcon", title: "Deep Insights", description: "Track each habit’s historical impact across days, months, and years.")
+                            FeatureRow(icon: "lifeGainIcon", title: "Life Gain Plan", description: "Compare your current path vs optimal habits to see time gained.")
+                            FeatureRow(icon: "streakIcon", title: "Streaks", description: "Stay consistent and keep your life battery charged.")
+                            FeatureRow(icon: "smartIcon", title: "Smart Recommendations", description: "Get personalized ways to earn time back faster.")
                         }
                         .padding(.horizontal)
                         .padding(.bottom, 120) // Add padding to ensure the last feature is visible above the fixed button
@@ -209,11 +213,11 @@ struct SubscriptionView: View {
                                     Task {
                                         let result = await store.purchase(monthly)
                                         switch result {
-                                        case .success(let product):
+                                        case .success(let _):
                                             onContinue?(true)
                                         case .cancelled:
                                             onContinue?(false)
-                                        case .failed(let error):
+                                        case .failed(let _):
                                             onContinue?(false)
                                         case .pending:
                                             onContinue?(false)
@@ -229,7 +233,7 @@ struct SubscriptionView: View {
                                 }
                             }
                         }) {
-                            NavigationLink(destination: PaymentMethodView()) {
+//                            NavigationLink(destination: PaymentMethodView()) {
                             Text("Subscribe")
                                 .font(.title3)
                                 .fontWeight(.medium)
@@ -245,9 +249,21 @@ struct SubscriptionView: View {
                                 )
                                 .cornerRadius(100)
                                 .padding(.horizontal)
-                        }
+//                        }
                             
                     }
+                    
+                    Button {
+                        onContinue?(false)
+                    } label: {
+                        Text("Try for free")
+                            .font(.poppins(20, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .padding(.horizontal)
+                    }
+
                 }
                 .background(darkGrayBackground)
                 .padding(.bottom, 20)
