@@ -129,7 +129,7 @@ final class DashboardViewModel: ObservableObject {
     @Published private(set) var isAppInForeground: Bool = true
     
     /// Interval for foreground refresh (10 seconds - matches Apple Fitness app)
-    private let foregroundRefreshInterval: TimeInterval = 100.0
+    private let foregroundRefreshInterval: TimeInterval = 500.0
     
     init(
         healthKitManager: HealthKitManaging? = nil,
@@ -364,6 +364,10 @@ final class DashboardViewModel: ObservableObject {
         logger.info("🔄 Loading data for time period: \(timePeriod.displayName)")
         
         Task {
+            await MainActor.run {
+                self.isLoading = true
+            }
+            
             do {
                 logger.info("📊 Fetching period-specific health metrics for \(timePeriod.displayName)")
                 let periodMetrics = try await healthDataService.fetchHealthMetricsForPeriod(timePeriod: timePeriod)
@@ -408,11 +412,18 @@ final class DashboardViewModel: ObservableObject {
                     } else {
                         logger.warning("⚠️ No life impact data calculated for \(timePeriod.displayName)")
                     }
+                    
+                    // Also calculate life projection after metrics are in place
+                    self.calculateLifeProjection()
+                    
+                    // Done loading for this cycle
+                    self.isLoading = false
                 }
             } catch {
                 await MainActor.run {
                     logger.error("❌ Failed to fetch period metrics for \(timePeriod.displayName): \(error.localizedDescription)")
                     self.errorMessage = "Failed to load data for \(timePeriod.displayName): \(error.localizedDescription)"
+                    self.isLoading = false
                 }
             }
         }
@@ -448,16 +459,11 @@ final class DashboardViewModel: ObservableObject {
                 logger.info("✅ HealthKit permissions already granted")
             }
             
-            await MainActor.run {
-                self.isLoading = false
-            }
-            
             // CRITICAL FIX: Load data for the currently selected time period
             // This ensures we show period-appropriate data from the start
             loadDataForPeriod(selectedTimePeriod)
             
-            // Also calculate life projection (this doesn't depend on time period)
-            calculateLifeProjection()
+            // No longer setting isLoading = false here; it will be set at the end of loadDataForPeriod
         }
     }
     
@@ -1428,3 +1434,4 @@ final class DashboardViewModel: ObservableObject {
         logger.info("🗑️ DashboardViewModel deallocated - stopped foreground refresh timer")
     }
 }
+

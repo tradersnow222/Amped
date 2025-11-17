@@ -19,19 +19,9 @@ struct EnergyView: View {
     var onTapUnlock: (() -> Void)?
     
     // MARK: - Computed Properties
-    private var currentLifespanData: LifespanData {
+    private var currentLifespanData: LifespanData? {
         guard let projection = viewModel.lifeProjection else {
-            // Fallback placeholder
-            return LifespanData(
-                years: 37,
-                days: 207,
-                hours: 8,
-                minutes: 45,
-                seconds: 32,
-                progress: 0.53,
-                birthYear: defaultBirthYear(),
-                endYear: defaultBirthYear() + 84
-            )
+            return nil
         }
         
         let age = viewModel.currentUserAge
@@ -56,24 +46,13 @@ struct EnergyView: View {
         )
     }
     
-    private var potentialLifespanData: LifespanData {
+    private var potentialLifespanData: LifespanData? {
         // Prefer optimal projection; otherwise use current projection as best available
         let base = viewModel.lifeProjection
         let optimal = viewModel.optimalHabitsProjection ?? viewModel.lifeProjection
         
         guard let best = optimal else {
-            // Fallback placeholder
-            return LifespanData(
-                years: 39,
-                days: 314,
-                hours: 3,
-                minutes: 35,
-                seconds: 58,
-                progress: 0.40,
-                birthYear: defaultBirthYear(),
-                endYear: defaultBirthYear() + 86,
-                extraYears: 2.1
-            )
+            return nil
         }
         
         let age = viewModel.currentUserAge
@@ -106,13 +85,12 @@ struct EnergyView: View {
         )
     }
     
-    private var currentData: LifespanData {
+    private var currentData: LifespanData? {
         selectedLifespanType == .current ? currentLifespanData : potentialLifespanData
     }
     
     var body: some View {
         ZStack {
-//            LinearGradient.grayGradient.ignoresSafeArea()
             let isPremium = UserDefaults.standard.bool(forKey: "is_premium_user")
             if !isPremium && selectedLifespanType == .potential {
                 UnlockSubscriptionView(buttonText: "Unlock Your Best Life by subcribing") {
@@ -130,30 +108,63 @@ struct EnergyView: View {
                     
                     // Main Content
                     ScrollView {
-                        VStack(spacing: 25) {
-                            // Call to Action Section
-                            callToActionSection
+                        // Show loader until projections are available (and while loading)
+                        if viewModel.isLoading ||
+                            (selectedLifespanType == .current && viewModel.lifeProjection == nil) ||
+                            (selectedLifespanType == .potential && viewModel.optimalHabitsProjection == nil && viewModel.lifeProjection == nil) {
                             
-                            // Lifespan Display
-                            lifespanDisplaySection
-                            
-                            // If showing potential, show “years gained” using actual projection delta
-                            if selectedLifespanType == .potential, let extra = currentData.extraYears, extra > 0 {
-                                Text("+ \(String(format: "%.1f", extra)) years gained")
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(Color(hex: "#51E1FA"))
-                                    .frame(maxWidth: .infinity, alignment: .center)
+                            VStack(spacing: 16) {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: Color(hex: "#4DA3FF")))
+                                Text("Loading your life clock…")
+                                    .font(.system(size: 14, weight: .regular))
+                                    .foregroundColor(.white.opacity(0.8))
                             }
-                            
-                            // Progress Bar Section
-                            progressBarSection
-                            
-                            // Disclaimer
-                            disclaimerSection
+                            .frame(maxWidth: .infinity, minHeight: 240)
+                            .padding(.horizontal, 24)
+                            .padding(.top, 5)
+                            .padding(.bottom, 82)
+                        } else if let data = currentData {
+                            VStack(spacing: 25) {
+                                // Call to Action Section
+                                callToActionSection
+                                
+                                // Lifespan Display
+                                lifespanDisplaySection(data: data)
+                                
+                                // If showing potential, show “years gained” using actual projection delta
+                                if selectedLifespanType == .potential, let extra = data.extraYears, extra > 0 {
+                                    Text("+ \(String(format: "%.1f", extra)) years gained")
+                                        .font(.system(size: 20, weight: .bold))
+                                        .foregroundColor(Color(hex: "#51E1FA"))
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                }
+                                
+                                // Progress Bar Section
+                                progressBarSection(data: data)
+                                
+                                // Disclaimer
+                                disclaimerSection
+                            }
+                            .padding(.horizontal, 24)   // Consistent page padding
+                            .padding(.top, 5)         // Small top inset for content
+                            .padding(.bottom, 82)      // Comfortable bottom space
+                        } else {
+                            // No data state
+                            VStack(spacing: 10) {
+                                Text("No data available yet")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                Text("Connect Health data or complete your questionnaire to see your life clock.")
+                                    .font(.system(size: 13, weight: .regular))
+                                    .foregroundColor(.white.opacity(0.75))
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 240)
+                            .padding(.horizontal, 24)
+                            .padding(.top, 5)
+                            .padding(.bottom, 82)
                         }
-                        .padding(.horizontal, 24)   // Consistent page padding
-                        .padding(.top, 5)         // Small top inset for content
-                        .padding(.bottom, 82)      // Comfortable bottom space
                     }
                 }
                 .navigationBarHidden(true)
@@ -286,7 +297,7 @@ struct EnergyView: View {
     }
     
     // Glass card with inner countdown row – matches Figma composition
-    private var lifespanDisplaySection: some View {
+    private func lifespanDisplaySection(data: LifespanData) -> some View {
         VStack(spacing: 16) {
             ZStack {
                 // Outer glass card
@@ -324,7 +335,7 @@ struct EnergyView: View {
                     
                     // Main years display
                     HStack(alignment: .lastTextBaseline, spacing: 8) {
-                        Text("\(currentData.years)")
+                        Text("\(data.years)")
                             .font(.system(size: 72, weight: .bold))
                             .foregroundColor(selectedLifespanType == .current ? Color(hex: "#F6C21A") : Color(hex: "#00C853"))
                             .shadow(color: .black.opacity(0.25), radius: 4, x: 0, y: 2)
@@ -338,10 +349,10 @@ struct EnergyView: View {
                     // Inner rounded countdown container
                     VStack {
                         HStack(spacing: 20) {
-                            countdownColumn(value: "\(currentData.days)", label: "days")
-                            countdownColumn(value: String(format: "%02d", currentData.hours), label: "hours")
-                            countdownColumn(value: String(format: "%02d", currentData.minutes), label: "minutes")
-                            countdownColumn(value: String(format: "%02d", currentData.seconds), label: "seconds")
+                            countdownColumn(value: "\(data.days)", label: "days")
+                            countdownColumn(value: String(format: "%02d", data.hours), label: "hours")
+                            countdownColumn(value: String(format: "%02d", data.minutes), label: "minutes")
+                            countdownColumn(value: String(format: "%02d", data.seconds), label: "seconds")
                         }
                         .padding(.horizontal, 20)
                         .padding(.vertical, 16)
@@ -364,10 +375,10 @@ struct EnergyView: View {
     }
     
     // Progress title + pill bar with year labels – matches Figma
-    private var progressBarSection: some View {
+    private func progressBarSection(data: LifespanData) -> some View {
         VStack(spacing: 16) {
             // Centered title
-            Text("Time Used: \(Int(currentData.progress * 100)) %")
+            Text("Time Used: \(Int(data.progress * 100)) %")
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundColor(Color(hex: "#00C853"))
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -376,7 +387,7 @@ struct EnergyView: View {
             GeometryReader { geometry in
                 let totalWidth = geometry.size.width
                 let trackHeight: CGFloat = 32
-                let fillWidth = max(0, min(totalWidth, totalWidth * currentData.progress))
+                let fillWidth = max(0, min(totalWidth, totalWidth * data.progress))
                 
                 ZStack(alignment: .leading) {
                     // Track
@@ -401,7 +412,7 @@ struct EnergyView: View {
                         .overlay(
                             // Left year inside the fill
                             HStack {
-                                Text("\(currentData.birthYear)")
+                                Text("\(data.birthYear)")
                                     .font(.system(size: 12, weight: .semibold))
                                     .foregroundColor(.white)
                                     .padding(.leading, 18)
@@ -412,7 +423,7 @@ struct EnergyView: View {
                     // Right year bubble at end
                     HStack {
                         Spacer()
-                        Text("\(currentData.endYear)")
+                        Text("\(data.endYear)")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.white.opacity(0.9))
                             .padding(.horizontal, 14)
@@ -577,3 +588,4 @@ struct EnergyView_Previews: PreviewProvider {
         .preferredColorScheme(.dark)
     }
 }
+
