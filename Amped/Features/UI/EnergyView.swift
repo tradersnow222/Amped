@@ -109,8 +109,7 @@ struct EnergyView: View {
                     // Main Content
                     ScrollView {
                         // Show loader until projections are available (and while loading)
-                        if viewModel.isLoading ||
-                            (selectedLifespanType == .current && viewModel.lifeProjection == nil) ||
+                        if (selectedLifespanType == .current && viewModel.lifeProjection == nil) ||
                             (selectedLifespanType == .potential && viewModel.optimalHabitsProjection == nil && viewModel.lifeProjection == nil) {
                             
                             VStack(spacing: 16) {
