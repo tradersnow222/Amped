@@ -73,10 +73,9 @@ struct ProfileImageView: View {
         .padding(.horizontal, 20)
         .padding(.top, 4)
         .padding(.bottom, 8)
-        // Navigate to notification settings
+        // Navigate to notification center
         .navigationDestination(isPresented: $navigateToNotifications) {
-            // Replace this with notifaction screen.
-            NotificationSettingsView()
+            NotificationsView()
                 .navigationBarBackButtonHidden(true)
         }
         // Navigate to app settings when tapping avatar or name
