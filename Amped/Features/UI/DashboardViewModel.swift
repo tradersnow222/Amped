@@ -32,6 +32,7 @@ final class DashboardViewModel: ObservableObject {
     @Published var lifeImpactData: LifeImpactData?
     @Published var lifeProjection: LifeProjection?
     @Published var optimalHabitsProjection: LifeProjection?
+    @Published var canShowLoading: Bool = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var selectedTimePeriod: TimePeriod = .day
@@ -55,6 +56,8 @@ final class DashboardViewModel: ObservableObject {
     
     /// Track if goal was achieved today to prevent duplicate notifications
     @Published private(set) var goalAchievedToday: Bool = false
+    
+    var canCalculateLifeProjection = false
     
     /// User's daily goal from questionnaire
     private var dailyGoalMinutes: Int? {
@@ -356,11 +359,18 @@ final class DashboardViewModel: ObservableObject {
 
         // Recalculate for currently selected period and projections
         loadDataForPeriod(selectedTimePeriod)
-        calculateLifeProjection()
+        if canCalculateLifeProjection {
+            calculateLifeProjection()
+        }
     }
     
     /// Load data for a specific time period (both metrics and impact calculations)
     private func loadDataForPeriod(_ timePeriod: TimePeriod) {
+        // Skip if already loading to prevent overlapping
+        guard !isLoading else {
+            logger.debug("⏸️ Skipping foreground refresh - already loading")
+            return
+        }
         logger.info("🔄 Loading data for time period: \(timePeriod.displayName)")
         
         Task {
@@ -408,13 +418,15 @@ final class DashboardViewModel: ObservableObject {
                         logger.info("🔋 Battery level: \(String(format: "%.1f", impactData.batteryLevel))%")
                         
                         // Load historical chart data when impact data is available
-                        loadHistoricalChartData()
+//                        loadHistoricalChartData()
                     } else {
                         logger.warning("⚠️ No life impact data calculated for \(timePeriod.displayName)")
                     }
                     
                     // Also calculate life projection after metrics are in place
-                    self.calculateLifeProjection()
+                    if canCalculateLifeProjection {
+                        self.calculateLifeProjection()
+                    }
                     
                     // Done loading for this cycle
                     self.isLoading = false
@@ -430,6 +442,12 @@ final class DashboardViewModel: ObservableObject {
     }
     
     func loadData() {
+        // Skip if already loading to prevent overlapping refreshes
+        guard !isLoading else {
+            logger.debug("⏸️ Skipping: Already loading")
+            return
+        }
+        
         logger.info("🔄 Starting data load process")
         isLoading = true
         errorMessage = nil
@@ -456,6 +474,7 @@ final class DashboardViewModel: ObservableObject {
                     return
                 }
             } else {
+                isLoading = false
                 logger.info("✅ HealthKit permissions already granted")
             }
             
@@ -824,7 +843,7 @@ final class DashboardViewModel: ObservableObject {
                 let hasMetricsChanged = self.healthMetrics.count != periodMetrics.count || 
                                       !periodMetrics.isEmpty
                 
-                if hasMetricsChanged {
+                if hasMetricsChanged && canCalculateLifeProjection {
                     // Calculate life projection
                     lifeProjection = lifeProjectionService.calculateLifeProjection(
                         from: periodMetrics,
@@ -842,7 +861,7 @@ final class DashboardViewModel: ObservableObject {
                 }
                 
                 // Load historical chart data after refresh
-                loadHistoricalChartData()
+//                loadHistoricalChartData()
                 
                 // Record engagement for streak tracking
                 // Only record if we have meaningful health data
@@ -914,7 +933,7 @@ final class DashboardViewModel: ObservableObject {
     private func performLightweightRefresh() async {
         // Skip if already loading to prevent overlapping refreshes
         guard !isLoading else {
-            logger.debug("⏸️ Skipping foreground refresh - already loading")
+            logger.debug("⏸️ Skipping: Already loading")
             return
         }
         

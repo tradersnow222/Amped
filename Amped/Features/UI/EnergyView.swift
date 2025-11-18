@@ -166,6 +166,9 @@ struct EnergyView: View {
                         }
                     }
                 }
+                .onAppear {
+                    viewModel.canCalculateLifeProjection = true
+                }
                 .navigationBarHidden(true)
             }
         }

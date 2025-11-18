@@ -2,9 +2,9 @@ import SwiftUI
 
 /// Profile image view that matches Apple's standard design with optional edit indicator
 struct ProfileImageView: View {
-    // DEBUGGER MODE: Observe shared manager so UI refreshes immediately after first upload.
-    // Applies rules: Simplicity is KING, MVVM + SwiftUI state management (@ObservedObject)
     @ObservedObject private var profileManager = ProfileImageManager.shared
+    @State private var navigateToNotifications = false
+    
     let size: CGFloat
     let showBorder: Bool
     let showEditIndicator: Bool
@@ -26,6 +26,7 @@ struct ProfileImageView: View {
         // Full header design with avatar + welcome message
         HStack(spacing: 10) {
             avatarView
+            
             VStack(alignment: .leading, spacing: 2) {
                 if showWelcomeMessage {
                     // Welcome message
@@ -39,10 +40,38 @@ struct ProfileImageView: View {
             }
             
             Spacer()
+            
+            // Trailing bell button styled like the screenshot (always visible)
+            Button {
+                navigateToNotifications = true
+            } label: {
+                ZStack {
+                    // Subtle translucent circle
+                    Circle()
+                        .fill(Color.white.opacity(0.08))
+                    
+                    // Soft outer ring
+                    Circle()
+                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                    
+                    // Outline bell icon
+                    Image(systemName: "bell")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+                .frame(width: 34, height: 34)
+            }
+            .buttonStyle(.plain)
+            .contentShape(Circle())
         }
         .padding(.horizontal, 20)
         .padding(.top, 4)
         .padding(.bottom, 8)
+        .navigationDestination(isPresented: $navigateToNotifications) {
+            // Replace this with notifaction screen.
+            NotificationSettingsView()
+                .navigationBarBackButtonHidden(true)
+        }
     }
     
     @ViewBuilder

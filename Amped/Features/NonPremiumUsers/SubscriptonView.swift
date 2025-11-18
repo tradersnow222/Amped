@@ -25,15 +25,8 @@ enum Plan: String, CaseIterable, Identifiable {
 struct CustomNavigationBar: View {
     var body: some View {
         HStack {
-            // Profile Icon and Name (Using SF Symbol as placeholder)
-            Image(systemName: "person.circle.fill")
-                .resizable()
-                .frame(width: 32, height: 32)
-                .clipShape(Circle())
-                .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 1))
-            Text("Adam John")
-                .font(.headline)
-                .foregroundColor(.white)
+            ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
+                .padding(.top, 10)
             
             Spacer()
             

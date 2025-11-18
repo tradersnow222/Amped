@@ -8,232 +8,248 @@
 import SwiftUI
 
 struct SettingView: View {
-    // Assuming you have a way to dismiss this view, e.g., if it's a sheet
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss) private var dismiss
     
-    // Placeholder for user name and initial letters
-    @State private var userName: String = "Adam John"
-    @State private var userInitials: String = "AJ"
-    @State private var navigationPath = NavigationPath()
-    // State for navigation/actions
-    @State private var showingNotificationSettings: Bool = false
-    @State private var showingFeedbackSurvey: Bool = false
+    // Alerts
     @State private var showingDeleteAccountConfirmation: Bool = false
     @State private var showingLogoutConfirmation: Bool = false
     
-    // Gradient for the selected tab in the bottom bar (reused from previous examples)
-    let selectedTabGradient = LinearGradient(
-        gradient: Gradient(colors: [Color(hex: "318AFC"), Color(hex: "18EF47")]),
-        startPoint: .leading,
-        endPoint: .trailing
-    )
+    // Row background/stroke to match the screenshot
+    private var rowBackground: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.white.opacity(0.08),
+                Color.white.opacity(0.05)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+    private var rowStroke: Color { Color.white.opacity(0.18) }
     
     var body: some View {
         ZStack {
-            // Dark background for the entire screen
-            Color.black.edgesIgnoringSafeArea(.all)
+            // Full-screen background gradient like the screenshot
+            LinearGradient.customBlueToDarkGray
+                .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Custom Navigation Bar
-                customNavigationBar
-                    .padding(.bottom, 20) // Spacing below nav bar
+                header
                 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 30) {
-                        // User Profile Section
-                        userProfileSection
-                        
-                        // Additional Settings Section
-                        additionalSettingsSection
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 22) {
+                        profileCard
+                        additionalSection
                     }
-                    .padding(.horizontal)
-                    .padding(.bottom, 80) // Space for the bottom tab bar
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
                 }
-                
-                Spacer() // Pushes content up, but ScrollView handles full content
-                
-                // Custom Bottom Tab Bar
-                // You would pass the actual selectedTab state from a parent view
-//                CustomBottomTabBar(selectedTab: 4, selectedTabGradient: selectedTabGradient)
             }
         }
-        // Sheets or fullScreenCovers for sub-settings
-        .sheet(isPresented: $showingNotificationSettings) {
-            // NotificationSettingsView() // Create this view if needed
-            Text("Notification Settings View Placeholder")
-                .preferredColorScheme(.dark)
-        }
-//        .sheet(isPresented: $showingFeedbackSurvey) {
-//            // FeedbackSurveyView() // Create this view if needed
-//            Text("Feedback Survey View Placeholder")
-//                .preferredColorScheme(.dark)
-//        }
+        .navigationBarHidden(true)
         .alert("Delete Account", isPresented: $showingDeleteAccountConfirmation) {
-            Button("Delete", role: .destructive) { /* Perform delete action */ }
+            Button("Delete", role: .destructive) {
+                // TODO: Perform delete action
+            }
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Are you sure you want to delete your account? This action cannot be undone.")
         }
         .alert("Log Out", isPresented: $showingLogoutConfirmation) {
-            Button("Log Out", role: .destructive) { /* Perform logout action */ }
+            Button("Log Out", role: .destructive) {
+                // TODO: Perform logout action
+            }
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("Are you sure you want to log out?")
         }
-        .navigationDestination(for: String.self) { destination in
-            if destination == "feedbackView" {
-                RateAppView()
-            }
-        }
     }
     
-    // MARK: - Subviews
+    // MARK: - Header
     
-    private var customNavigationBar: some View {
-        HStack {
-            Button(action: {
-                dismiss() // Dismisses the current sheet/view
-            }) {
-                Image(systemName: "arrow.left")
-                    .font(.title2)
-                    .foregroundColor(.white)
+    private var header: some View {
+        ZStack {
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .foregroundStyle(.white)
+                        .font(.system(size: 20, weight: .semibold))
+                        .padding(12)
+                }
+                Spacer()
             }
-            
-            Spacer()
             
             Text("Settings")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
+                .font(.system(size: 18, weight: .semibold))
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+    }
+    
+    // MARK: - Profile card
+    
+    private var profileCard: some View {
+        NavigationLink {
+            EditUserProfileView()
+                .navigationBarHidden(true)
+        } label: {
+            HStack(spacing: 12) {
+                // Left rounded “chip” with initials
+                Text(ProfileImageManager.shared.getInitials())
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                    .frame(width: 40, height: 40)
+                    .background(Color.white.opacity(0.15), in: Circle())
+                    .overlay(Circle().stroke(rowStroke, lineWidth: 1))
+                
+                Text(ProfileImageManager.shared.getUserName())
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                // Gear in a subtle rounded background
+                Image(systemName: "gearshape")
+                    .foregroundColor(.white)
+                    .font(.system(size: 18, weight: .semibold))
+                    .padding(8)
+                    .background(Color.white.opacity(0.10), in: Circle())
+                    .overlay(Circle().stroke(rowStroke, lineWidth: 1))
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(rowBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(rowStroke, lineWidth: 1)
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+    }
+    
+    // MARK: - Additional Section
+    
+    private var additionalSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Additional")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.white.opacity(0.9))
+                .padding(.leading, 4)
+            
+            VStack(spacing: 14) {
+                // Subscription Paywall
+                NavigationLink {
+                    SubscriptionView(isFromOnboarding: false) { _ in }
+                        .navigationBarBackButtonHidden(true)
+                } label: {
+                    SettingRowCard(icon: "creditcard", title: "Subscription Paywall", rowBackground: rowBackground, rowStroke: rowStroke)
+                }
+                .buttonStyle(.plain)
+                
+                // Notification settings (push, no sheet)
+                NavigationLink {
+                    NotificationSettingsView()
+                        .navigationBarBackButtonHidden(true)
+                } label: {
+                    SettingRowCard(icon: "bell.badge.fill", title: "Notification settings", rowBackground: rowBackground, rowStroke: rowStroke)
+                }
+                .buttonStyle(.plain)
+                
+                // Rate the app
+                NavigationLink {
+                    RateAppView()
+                        .navigationBarBackButtonHidden(true)
+                } label: {
+                    SettingRowCard(icon: "star.fill", title: "Rate the app", rowBackground: rowBackground, rowStroke: rowStroke)
+                }
+                .buttonStyle(.plain)
+                
+                // Feedback survey (replace with your own view when ready)
+                NavigationLink {
+                    RateAppView()
+                        .navigationBarBackButtonHidden(true)
+                } label: {
+                    SettingRowCard(icon: "doc.text.fill", title: "Feedback survey", rowBackground: rowBackground, rowStroke: rowStroke)
+                }
+                .buttonStyle(.plain)
+                
+                // Delete account (destructive)
+                Button {
+                    showingDeleteAccountConfirmation = true
+                } label: {
+                    SettingRowCard(icon: "trash.fill", title: "Delete account", rowBackground: rowBackground, rowStroke: rowStroke, isDestructive: true)
+                }
+                .buttonStyle(.plain)
+                
+                // Logout (destructive)
+                Button {
+                    showingLogoutConfirmation = true
+                } label: {
+                    SettingRowCard(icon: "arrow.right.square.fill", title: "Logout", rowBackground: rowBackground, rowStroke: rowStroke, isDestructive: true)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+// MARK: - Row Card
+
+private struct SettingRowCard: View {
+    let icon: String
+    let title: String
+    let rowBackground: LinearGradient
+    let rowStroke: Color
+    var isDestructive: Bool = false
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(isDestructive ? .red : .white.opacity(0.9))
+                .frame(width: 20, height: 20)
+                .background(Color.white.opacity(0.10), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(rowStroke, lineWidth: 1)
+                )
+            
+            Text(title)
+                .font(.system(size: 13, weight: .regular))
+                .foregroundColor(isDestructive ? .red : .white)
             
             Spacer()
             
-            // Placeholder to balance the layout if no right button
-            Rectangle()
-                .fill(Color.clear)
-                .frame(width: 25, height: 25)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.white.opacity(0.6))
         }
-        .padding(.horizontal)
-        .padding(.vertical, 10)
+        .padding(.vertical, 16)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(rowBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(rowStroke, lineWidth: 1)
+                )
+        )
     }
-    
-    private var userProfileSection: some View {
-            VStack(alignment: .leading) {
-                // ⭐️ Wrap the entire row in a NavigationLink
-                NavigationLink(destination: EditUserProfileView()) {
-                    HStack {
-                        // Circular initials avatar
-                        Text(userInitials)
-                            .font(.headline).fontWeight(.bold).foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(Color.gray.opacity(0.4)).clipShape(Circle())
-                        
-                        Text(userName)
-                            .font(.title3).fontWeight(.medium).foregroundColor(.white)
-                        
-                        Spacer()
-                        
-                        // The gear icon is now just a visual element inside the link
-                        Image(systemName: "gearshape")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                    }
-                }
-                // Use PlainButtonStyle to prevent the link from getting a default blue background
-                .buttonStyle(PlainButtonStyle())
-                .padding(12)
-                .background(Color.gray.opacity(0.2))
-                .cornerRadius(12)
-            }
-        }
-    
-//    private var userProfileSection: some View {
-//        VStack(alignment: .leading) {
-//            HStack {
-//                // Circular initials avatar
-//                Text(userInitials)
-//                    .font(.headline)
-//                    .fontWeight(.bold)
-//                    .foregroundColor(.white)
-//                    .frame(width: 44, height: 44)
-//                    .background(Color.gray.opacity(0.4))
-//                    .clipShape(Circle())
-//                
-//                Text(userName)
-//                    .font(.title3)
-//                    .fontWeight(.medium)
-//                    .foregroundColor(.white)
-//                
-//                Spacer()
-//                
-//                // Gear icon button
-//                Button(action: {
-//                    // Action for profile settings
-//                }) {
-//                    Image(systemName: "gearshape")
-//                        .font(.title2)
-//                        .foregroundColor(.white)
-//                }
-//            }
-//            .padding(12)
-//            .background(Color.gray.opacity(0.2))
-//            .cornerRadius(12)
-//        }
-//    }
-    
-    private var additionalSettingsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Additional")
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(.gray)
-                .padding(.leading, 8)
-            
-            VStack(spacing: 0) { // No spacing between rows, handled by padding
-                SettingRow(icon: "bell.badge.fill", title: "Notification settings", action: { showingNotificationSettings = true })
-                Divider().background(Color.gray.opacity(0.3)).padding(.horizontal, 16)
-                SettingRow(icon: "star.fill", title: "Rate the app", action: { /* Open App Store */ })
-                Divider().background(Color.gray.opacity(0.3)).padding(.horizontal, 16)
-                SettingRow(icon: "doc.text.fill", title: "Feedback survey", action: {
-                    navigationPath.append("feedbackView")
-                    showingFeedbackSurvey = true })
-                Divider().background(Color.gray.opacity(0.3)).padding(.horizontal, 16)
-                SettingRow(icon: "trash.fill", title: "Delete account", isDestructive: true, action: { showingDeleteAccountConfirmation = true })
-                Divider().background(Color.gray.opacity(0.3)).padding(.horizontal, 16)
-                SettingRow(icon: "arrow.right.square.fill", title: "Logout", isDestructive: true, action: { showingLogoutConfirmation = true })
-            }
-            .background(Color.gray.opacity(0.2))
-            .cornerRadius(12)
-        }
-    }
-    
-    struct SettingRow: View {
-        let icon: String
-        let title: String
-        var isDestructive: Bool = false
-        let action: () -> Void
-        
-        var body: some View {
-            Button(action: action) {
-                HStack {
-                    Image(systemName: icon)
-                        .font(.subheadline)
-                        .foregroundColor(isDestructive ? .red : .white.opacity(0.8))
-                        .frame(width: 25) // Fixed width for alignment
-                    
-                    Text(title)
-                        .font(.body)
-                        .foregroundColor(isDestructive ? .red : .white)
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-                .padding(.vertical, 14)
-                .padding(.horizontal, 16)
-            }
+}
+
+struct SettingView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationView {
+            SettingView()
         }
     }
 }

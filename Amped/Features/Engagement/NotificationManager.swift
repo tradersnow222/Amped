@@ -15,6 +15,10 @@ final class NotificationManager: NSObject, ObservableObject {
     private let center = UNUserNotificationCenter.current()
     private var smartNotificationService: SmartNotificationService?
     
+    // Retained observers so we can remove them when user disables categories
+    private var streakObserver: NSObjectProtocol?
+    private var milestoneObserver: NSObjectProtocol?
+    
     // Notification identifiers
     private enum NotificationID: String {
         case morningMotivation = "morning_motivation"
@@ -23,6 +27,7 @@ final class NotificationManager: NSObject, ObservableObject {
         case streakProtection = "streak_protection"
         case milestoneReminderr = "milestone_reminder"
         case weeklyProgress = "weekly_progress"
+        case monthlyProgress = "monthly_progress"
     }
     
     // MARK: - Singleton
@@ -246,6 +251,38 @@ final class NotificationManager: NSObject, ObservableObject {
         center.add(request)
     }
     
+    /// Weekly progress (every Monday 9 AM)
+    func scheduleWeeklyProgress() {
+        guard isEnabled else { return }
+        var comps = DateComponents()
+        comps.weekday = 2 // Monday
+        comps.hour = 9
+        comps.minute = 0
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+        let content = UNMutableNotificationContent()
+        content.title = "Your Weekly Progress"
+        content.body = "See how your choices added up last week."
+        content.sound = .default
+        let request = UNNotificationRequest(identifier: NotificationID.weeklyProgress.rawValue, content: content, trigger: trigger)
+        center.add(request)
+    }
+    
+    /// Monthly progress (1st day 9 AM)
+    func scheduleMonthlyProgress() {
+        guard isEnabled else { return }
+        var comps = DateComponents()
+        comps.day = 1
+        comps.hour = 9
+        comps.minute = 0
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+        let content = UNMutableNotificationContent()
+        content.title = "Your Monthly Report"
+        content.body = "A look back at your health impact this month."
+        content.sound = .default
+        let request = UNNotificationRequest(identifier: NotificationID.monthlyProgress.rawValue, content: content, trigger: trigger)
+        center.add(request)
+    }
+    
     /// Cancel all notifications
     func cancelAllNotifications() {
         center.removeAllPendingNotificationRequests()
@@ -286,13 +323,14 @@ final class NotificationManager: NSObject, ObservableObject {
     
     /// Schedule smart goal-based notifications (called when user sets/updates their goal)
     func scheduleGoalBasedNotifications(targetMinutes: Int) {
-        guard isEnabled else { 
+        guard isEnabled else {
             logger.info("📱 Notifications not enabled, storing goal for later scheduling")
-            return 
+            return
         }
         
         // Cancel existing notifications and reschedule with new goal
-        cancelAllNotifications()
+        cancelNotification(.morningMotivation)
+        cancelNotification(.eveningReflection)
         
         scheduleSmartMorningMotivation(targetMinutes: targetMinutes)
         scheduleSmartEveningReflection(targetMinutes: targetMinutes)
@@ -300,32 +338,95 @@ final class NotificationManager: NSObject, ObservableObject {
         logger.info("✅ Smart goal-based notifications scheduled for \(targetMinutes) minutes daily")
     }
     
-    // MARK: - Observers Setup
+    // MARK: - Observers Setup (enable/disable)
     
-    func setupStreakObservers() {
-        // Listen for streak protection needs
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("StreakNeedsProtection"),
-            object: nil,
-            queue: .main
-        ) { [weak self] notification in
-            if let userInfo = notification.userInfo,
-               let streakLength = userInfo["streakLength"] as? Int {
-                self?.scheduleStreakProtection(streakLength: streakLength)
+    func setStreakProtectionEnabled(_ enabled: Bool) {
+        if enabled {
+            guard streakObserver == nil else { return }
+            streakObserver = NotificationCenter.default.addObserver(
+                forName: NSNotification.Name("StreakNeedsProtection"),
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                if let userInfo = notification.userInfo,
+                   let streakLength = userInfo["streakLength"] as? Int {
+                    self?.scheduleStreakProtection(streakLength: streakLength)
+                }
+            }
+            logger.info("🛡️ Streak protection observer attached")
+        } else {
+            if let obs = streakObserver {
+                NotificationCenter.default.removeObserver(obs)
+                streakObserver = nil
+                logger.info("🛡️ Streak protection observer removed")
+            }
+            cancelNotification(.streakProtection)
+        }
+    }
+    
+    func setMilestonesEnabled(_ enabled: Bool) {
+        if enabled {
+            guard milestoneObserver == nil else { return }
+            milestoneObserver = NotificationCenter.default.addObserver(
+                forName: NSNotification.Name("StreakMilestoneReached"),
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                if let userInfo = notification.userInfo,
+                   let milestone = userInfo["milestone"] as? StreakMilestone {
+                    self?.scheduleMilestoneCelebration(milestone: milestone)
+                }
+            }
+            logger.info("🎯 Milestone observer attached")
+        } else {
+            if let obs = milestoneObserver {
+                NotificationCenter.default.removeObserver(obs)
+                milestoneObserver = nil
+                logger.info("🎯 Milestone observer removed")
             }
         }
-        
-        // Listen for milestone achievements
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("StreakMilestoneReached"),
-            object: nil,
-            queue: .main
-        ) { [weak self] notification in
-            if let userInfo = notification.userInfo,
-               let milestone = userInfo["milestone"] as? StreakMilestone {
-                self?.scheduleMilestoneCelebration(milestone: milestone)
-            }
+    }
+    
+    func setMorningEnabled(_ enabled: Bool, targetMinutes: Int) {
+        if enabled {
+            scheduleSmartMorningMotivation(targetMinutes: targetMinutes)
+        } else {
+            cancelNotification(.morningMotivation)
         }
+    }
+    
+    func setEveningEnabled(_ enabled: Bool, targetMinutes: Int) {
+        if enabled {
+            scheduleSmartEveningReflection(targetMinutes: targetMinutes)
+        } else {
+            cancelNotification(.eveningReflection)
+        }
+    }
+    
+    func setWeeklyMonthlyReportsEnabled(_ enabled: Bool) {
+        if enabled {
+            scheduleWeeklyProgress()
+            scheduleMonthlyProgress()
+        } else {
+            cancelNotification(.weeklyProgress)
+            cancelNotification(.monthlyProgress)
+        }
+    }
+    
+    // MARK: - Apply preferences
+    
+    /// Apply preferences from settings screen
+    func applyPreferences(_ prefs: NotificationPreferences, targetMinutes: Int) {
+        setMorningEnabled(prefs.personalizedHabitReminders, targetMinutes: targetMinutes)
+        setEveningEnabled(prefs.dailyCheckInSummary, targetMinutes: targetMinutes)
+        setStreakProtectionEnabled(prefs.streakProtectionAlerts)
+        setMilestonesEnabled(prefs.challengesAndMilestones)
+        setWeeklyMonthlyReportsEnabled(prefs.weeklyMonthlyReports)
+        // Other toggles are stored as preferences only:
+        // prefs.motivationalBoosts
+        // prefs.healthSyncNotifications
+        // prefs.systemAppUpdates
+        logger.info("✅ Applied notification preferences")
     }
 }
 
@@ -362,7 +463,7 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
         switch typeString {
         case "morning": notificationType = .morning
         case "evening": notificationType = .evening
-        default: 
+        default:
             logger.warning("⚠️ Unknown notification type: \(typeString)")
             return
         }

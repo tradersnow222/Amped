@@ -62,7 +62,7 @@ struct MetricDetailsView: View {
                 
                 ScrollView(showsIndicators: false) {
                     // Global loader: block content until DashboardViewModel has loaded real data
-                    if dashboardViewModel.healthMetrics.isEmpty {
+                    if dashboardViewModel.isLoading || dashboardViewModel.healthMetrics.isEmpty {
                         
                         VStack(spacing: 16) {
                             ProgressView()
