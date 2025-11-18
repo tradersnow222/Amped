@@ -21,29 +21,6 @@ enum Plan: String, CaseIterable, Identifiable {
     }
 }
 
-// MARK: - Custom Navigation Bar
-struct CustomNavigationBar: View {
-    var body: some View {
-        HStack {
-            ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
-                .padding(.top, 10)
-            
-            Spacer()
-            
-            // Bell Icon
-            Button(action: {}) {
-                Image(systemName: "bell.fill")
-                    .font(.title2)
-                    .foregroundColor(.white.opacity(0.8))
-            }
-        }
-        .padding(.horizontal, 10) // Small horizontal padding
-        .padding(.top, 10)
-        .padding(.bottom, 8) // Small spacing below the bar
-        .background(Color(hex: "#1A1A1A").opacity(0.95))
-    }
-}
-
 // MARK: - Feature Row View (Resolves FeatureRow Error)
 struct FeatureRow: View {
     let icon: String
@@ -123,6 +100,7 @@ struct PlanCard: View {
 
 // MARK: - Main Subscription View
 struct SubscriptionView: View {
+    @Environment(\.dismiss) private var dismiss
     @State private var selectedPlan: Plan = .monthly
     
     let gradientColors = [Color(hex: "#0E8929"), Color(hex: "#18EF47")]
@@ -135,14 +113,28 @@ struct SubscriptionView: View {
 
     var body: some View {
         ZStack {
-            darkGrayBackground.ignoresSafeArea()
+            // Full-screen background gradient
+            LinearGradient.customBlueToDarkGray
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 
                 // MARK: - Fixed Custom Navigation Bar (Header)
                 if !isFromOnboarding {
-                    CustomNavigationBar()
-                        .padding(.bottom, 8)
+                    HStack(spacing: 10) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .foregroundStyle(.white)
+                                .font(.system(size: 20, weight: .semibold))
+                                .padding(12)
+                                .background(.white.opacity(0.1), in: Circle())
+                        }
+                        .padding(.leading)
+                        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
+                            .padding(.top,5)
+                    }
                 }
                 
                 // MARK: - Scrollable Content
@@ -239,12 +231,12 @@ struct SubscriptionView: View {
                             Text("Subscribe")
                                 .font(.title3)
                                 .fontWeight(.medium)
-                                .foregroundColor(.white)
+                                .foregroundColor(.black)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
+                                .padding(.vertical, 12)
                                 .background(
                                     LinearGradient(
-                                        colors: gradientColors.reversed(),
+                                        colors: gradientColors,
                                         startPoint: .leading,
                                         endPoint: .trailing
                                     )
@@ -270,6 +262,7 @@ struct SubscriptionView: View {
                 .background(darkGrayBackground)
                 .padding(.bottom, 20)
             }
+            .padding(.top, 5)
         }
     }
 }
@@ -277,6 +270,6 @@ struct SubscriptionView: View {
 // MARK: - Preview
 struct SubscriptionView_Previews: PreviewProvider {
     static var previews: some View {
-//        SubscriptionView()
+        SubscriptionView(isFromOnboarding: false)
     }
 }

@@ -23,112 +23,136 @@ struct RateAppView: View {
     // Used to dismiss the screen
     @Environment(\.presentationMode) var presentationMode
     
+    @Environment(\.dismiss) private var dismiss
+    
     // MARK: - Body
     
     var body: some View {
-        NavigationStack {
             ZStack {
-                // Background Color
-                Color(red: 0.1, green: 0.12, blue: 0.15)
+                // Full-screen background gradient
+                LinearGradient.customBlueToDarkGray
                     .ignoresSafeArea()
                 
-                VStack(spacing: 25) {
+                VStack(spacing: 0) {
                     
-                    // 1. Mascot Image
-                    // Replace "batteryMascot" with the name of your image asset
-                    Image(systemName: "battery.100.bolt.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.green)
-                        .padding(.top, 20)
+                    header
                     
-                    // 2. Headings
-                    Text("Rate Your Experience")
-                        .font(.largeTitle.bold())
-                        .foregroundColor(.white)
-                    
-                    Text("We are working hard for better user experience. We'd greatly appreciate if you could rate us.")
-                        .font(.callout)
-                        .foregroundColor(.gray)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                    
-                    // 3. Star Rating
-                    HStack(spacing: 15) {
-                        ForEach(1...5, id: \.self) { index in
-                            Image(systemName: index <= rating ? "star.fill" : "star")
-                                .font(.system(size: 35))
-                                .foregroundColor(.yellow)
-                                .onTapGesture {
-                                    rating = index
-                                }
-                        }
-                    }
-                    
-                    // 4. Feedback Section
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Feedback")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                        
-                        // TextEditor with placeholder
-                        ZStack(alignment: .topLeading) {
-                            TextEditor(text: $feedbackText)
-                                .scrollContentBackground(.hidden) // Makes it transparent
-                                .padding(8)
-                                .frame(height: 150)
-                                .background(Color.black.opacity(0.2))
-                                .cornerRadius(10)
-                                .foregroundColor(.white)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .stroke(Color.green.opacity(0.8), lineWidth: 1)
-                                )
+                    ScrollView {
+                        VStack(spacing: 25) {
+                            // 1. Mascot Image
+                            // Replace "batteryMascot" with the name of your image asset
+                            Image("battery")
+                                .font(.system(size: 80))
+                                .foregroundColor(.green)
+                                .padding(.top, 20)
                             
-                            // Placeholder logic
-                            if feedbackText.isEmpty {
-                                Text("Write your feedback")
-                                    .foregroundColor(.gray.opacity(0.7))
-                                    .padding(.horizontal, 13)
-                                    .padding(.vertical, 16)
-                                    .allowsHitTesting(false)
+                            // 2. Headings
+                            Text("Rate Your Experience")
+                                .font(.system(size: 35).weight(.bold))
+                                .foregroundColor(.white)
+                            
+                            Text("We are working hard for better user experience. We'd greatly appreciate if you could rate us.")
+                                .font(.callout)
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                            
+                            // 3. Star Rating
+                            HStack(spacing: 15) {
+                                ForEach(1...5, id: \.self) { index in
+                                    Image(systemName: index <= rating ? "star.fill" : "star")
+                                        .font(.system(size: 35))
+                                        .foregroundColor(.yellow)
+                                        .onTapGesture {
+                                            rating = index
+                                        }
+                                }
                             }
+                            
+                            // 4. Feedback Section
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    Spacer()
+                                    Text("Feedback")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                    Spacer()
+                                }
+                                
+                                // TextEditor with placeholder
+                                ZStack(alignment: .topLeading) {
+                                    TextEditor(text: $feedbackText)
+                                        .scrollContentBackground(.hidden) // Makes it transparent
+                                        .padding(8)
+                                        .frame(height: 150)
+                                        .background(Color.black.opacity(0.2))
+                                        .cornerRadius(10)
+                                        .foregroundColor(.white)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .stroke(Color.green.opacity(0.8), lineWidth: 1)
+                                        )
+                                    
+                                    // Placeholder logic
+                                    if feedbackText.isEmpty {
+                                        HStack {
+                                            Spacer()
+                                            Text("Write your feedback")
+                                                .foregroundColor(.gray.opacity(0.7))
+                                                .padding(.horizontal, 13)
+                                                .padding(.vertical, 16)
+                                                .allowsHitTesting(false)
+                                            Spacer()
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.top)
+                            .padding(.horizontal)
+                            
+                            Spacer() // Pushes the button to the bottom
+                            
+                            // 5. Save Button
+                            Button(action: handleSave) {
+                                Text("Save")
+                                    .font(.headline.bold())
+                                    .foregroundColor(.black)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.green)
+                                    .cornerRadius(25)
+                            }
+                            .padding(.horizontal)
+                            .padding(.bottom)
                         }
-                    }
-                    .padding(.horizontal)
-                    
-                    Spacer() // Pushes the button to the bottom
-                    
-                    // 5. Save Button
-                    Button(action: handleSave) {
-                        Text("Save")
-                            .font(.headline.bold())
-                            .foregroundColor(.black)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.green)
-                            .cornerRadius(25)
-                    }
-                    .padding(.horizontal)
-                    .padding(.bottom)
-                }
-            }
-            // Navigation Bar Setup
-            .navigationTitle("Rate the App")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(Color(red: 0.1, green: 0.12, blue: 0.15), for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        presentationMode.wrappedValue.dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .foregroundColor(.white)
+                        .padding(.top)
                     }
                 }
             }
+            .navigationBarHidden(true)
+    }
+    
+    private var header: some View {
+        ZStack {
+            HStack {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .foregroundStyle(.white)
+                        .font(.system(size: 20, weight: .semibold))
+                        .padding(12)
+                }
+                Spacer()
+            }
+            
+            Text("Rate the App")
+                .foregroundStyle(.white)
+                .font(.system(size: 18, weight: .semibold))
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
     }
     
     // MARK: - Action Handler

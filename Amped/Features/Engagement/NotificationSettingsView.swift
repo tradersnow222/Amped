@@ -22,7 +22,7 @@ struct NotificationSettingsView: View {
     
     var body: some View {
         ZStack {
-            // Full-screen background gradient like the screenshot
+            // Full-screen background gradient 
             LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
             // Header
