@@ -1,10 +1,18 @@
 import SwiftUI
 
 struct MascotNamingView: View {
+    // MARK: - Environment
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
+    
     // MARK: - Properties
     @State private var userName: String = ""
     @State private var progress: CGFloat = 1
     
+    // When true, this screen is being used from Settings rather than onboarding.
+    var isFromSettings: Bool = false
+    
+    // Onboarding flow continuation closure (unused when from Settings)
     var onContinue: ((String) -> Void)?
     
     // MARK: - Body
@@ -15,7 +23,6 @@ struct MascotNamingView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 30) {
-                               
                 // MARK: - Cute Character
                 Image("battery") // Replace with your image asset name
                     .resizable()
@@ -73,6 +80,10 @@ struct MascotNamingView: View {
                 // MARK: - Continue Button
                 Button(action: {
                     withAnimation {
+                        if isFromSettings {
+                            NotificationCenter.default.post(name: NSNotification.Name("ProfileDataUpdated"), object: nil)
+                        }
+                        // Use onboarding continuation
                         onContinue?(userName)
                     }
                 }) {
@@ -108,12 +119,21 @@ struct MascotNamingView: View {
                 }
                 .disabled(userName.isEmpty)
                 .padding(.top, 10)
-
                 
                 Spacer()
             }
         }
-        .navigationBarHidden(true)
+        // Show nav bar when coming from Settings; onboarding keeps it hidden
+        .navigationBarHidden(!isFromSettings)
+        .onAppear {
+            // If launched from Settings, prefill from defaults
+            if isFromSettings {
+                let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userName)
+                if !saved.isEmpty {
+                    userName = saved
+                }
+            }
+        }
     }
 }
 
@@ -139,3 +159,9 @@ struct ThickProgressViewStyle: ProgressViewStyle {
     }
 }
 
+struct MascotNamingView_Previews: PreviewProvider {
+    static var previews: some View {
+        MascotNamingView(isFromSettings: true)
+            .environmentObject(AppState())
+    }
+}

@@ -114,8 +114,10 @@ struct SettingView: View {
     
     private var profileCard: some View {
         NavigationLink {
-            EditUserProfileView()
-                .navigationBarHidden(true)
+            // Navigate to MascotNamingView from Settings
+            // It will pre-populate from UserDefaults and save back on Continue.
+            MascotNamingView(isFromSettings: true)
+                .navigationBarBackButtonHidden(false)
         } label: {
             HStack(spacing: 12) {
                 // Left rounded “chip” with initials
@@ -269,5 +271,6 @@ struct SettingView_Previews: PreviewProvider {
         NavigationView {
             SettingView()
         }
+        .environmentObject(AppState())
     }
 }
