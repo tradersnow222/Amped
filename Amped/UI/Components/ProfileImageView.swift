@@ -4,6 +4,7 @@ import SwiftUI
 struct ProfileImageView: View {
     @ObservedObject private var profileManager = ProfileImageManager.shared
     @State private var navigateToNotifications = false
+    @State private var navigateToSettings = false
     
     let size: CGFloat
     let showBorder: Bool
@@ -25,18 +26,23 @@ struct ProfileImageView: View {
     var body: some View {
         // Full header design with avatar + welcome message
         HStack(spacing: 10) {
-            avatarView
-            
-            VStack(alignment: .leading, spacing: 2) {
-                if showWelcomeMessage {
-                    // Welcome message
-                    Text("Welcome!")
-                        .font(.system(size: 20, weight: .semibold))
+            HStack {
+                avatarView
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    if showWelcomeMessage {
+                        // Welcome message
+                        Text("Welcome!")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    Text(getUserName())
+                        .font(.system(size: showWelcomeMessage ? 16 : 22, weight: showWelcomeMessage ? .regular : .semibold))
                         .foregroundColor(.white)
                 }
-                Text(getUserName())
-                    .font(.system(size: showWelcomeMessage ? 16 : 22, weight: showWelcomeMessage ? .regular : .semibold))
-                    .foregroundColor(.white)
+            }
+            .onTapGesture {
+                navigateToSettings = true
             }
             
             Spacer()
@@ -67,10 +73,16 @@ struct ProfileImageView: View {
         .padding(.horizontal, 20)
         .padding(.top, 4)
         .padding(.bottom, 8)
+        // Navigate to notification settings
         .navigationDestination(isPresented: $navigateToNotifications) {
             // Replace this with notifaction screen.
             NotificationSettingsView()
                 .navigationBarBackButtonHidden(true)
+        }
+        // Navigate to app settings when tapping avatar or name
+        .navigationDestination(isPresented: $navigateToSettings) {
+            SettingView()
+                .navigationBarHidden(true)
         }
     }
     
