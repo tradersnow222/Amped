@@ -1,5 +1,5 @@
 //
-//  FeedBackView.swift
+//  RateAppView.swift
 //  Amped
 //
 //  Created by Yawar Abbas   on 16/11/2025.
@@ -127,6 +127,7 @@ struct RateAppView: View {
                         }
                         .padding(.top)
                     }
+                    .scrollDismissesKeyboard(.interactively)
                 }
             }
             .navigationBarHidden(true)

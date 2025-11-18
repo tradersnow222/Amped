@@ -14,6 +14,10 @@ struct SettingView: View {
     @State private var showingDeleteAccountConfirmation: Bool = false
     @State private var showingLogoutConfirmation: Bool = false
     
+    // Feedback dialog state
+    @State private var showFeedbackDialog: Bool = false
+    @State private var feedbackText: String = ""
+    
     // Row background/stroke to match the screenshot
     private var rowBackground: LinearGradient {
         LinearGradient(
@@ -64,6 +68,21 @@ struct SettingView: View {
         } message: {
             Text("Are you sure you want to log out?")
         }
+        // Attach the reusable feedback dialog overlay
+        .feedbackDialog(
+            isPresented: $showFeedbackDialog,
+            text: $feedbackText,
+            title: "Please share your feedback with us.",
+            onSubmit: { message in
+                // Send to your backend/analytics here
+                print("Settings feedback submitted: \(message)")
+                // Clear after submit
+                feedbackText = ""
+            },
+            onCancel: {
+                // Optional: track dismiss
+            }
+        )
     }
     
     // MARK: - Header
@@ -173,10 +192,9 @@ struct SettingView: View {
                 }
                 .buttonStyle(.plain)
                 
-                // Feedback survey (replace with your own view when ready)
-                NavigationLink {
-                    RateAppView()
-                        .navigationBarBackButtonHidden(true)
+                // Feedback survey (opens dialog)
+                Button {
+                    showFeedbackDialog = true
                 } label: {
                     SettingRowCard(icon: "doc.text.fill", title: "Feedback survey", rowBackground: rowBackground, rowStroke: rowStroke)
                 }
