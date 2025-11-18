@@ -242,14 +242,13 @@ struct DashboardView: View {
                         
                         navigationPath.removeLast()
                     }
-                case .settingView:
-                    SettingView()
-                        .navigationBarHidden(true)
                 default: EmptyView()
                     
                 }
             }
             .onAppear {
+                // For testing, remove it before release
+//                appState.updateSubscriptionStatus(true)
                 configureNavigationBar()
                 HapticManager.shared.prepareHaptics()
                 handleIntroAnimations()
@@ -542,14 +541,7 @@ struct DashboardView: View {
     
     /// Personalized header with greeting and avatar
     private var personalizedHeader: some View {
-        Button(action: {
-            DispatchQueue.main.async {
-                navigationPath.append(NavigationRoute.settingView)
-            }
-        }) {
-            ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
-        }
-        .buttonStyle(PlainButtonStyle())  // Keeps the view clean without extra button styling
+        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
     }
     
     /// Date navigation bar with Day/Month/Year tabs and swipe gesture support
@@ -2490,5 +2482,4 @@ enum NavigationRoute: Hashable {
     case metricDetail(type: HealthMetricType, period: ImpactDataPoint.PeriodType)
     case profile
     case subscription
-    case settingView
 }
