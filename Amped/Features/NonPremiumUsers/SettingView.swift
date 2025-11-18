@@ -6,9 +6,11 @@
 //
 
 import SwiftUI
+import OSLog
 
 struct SettingView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
     
     // Alerts
     @State private var showingDeleteAccountConfirmation: Bool = false
@@ -17,6 +19,9 @@ struct SettingView: View {
     // Feedback dialog state
     @State private var showFeedbackDialog: Bool = false
     @State private var feedbackText: String = ""
+    
+    // Local logger
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.amped.Amped", category: "SettingView")
     
     // Row background/stroke to match the screenshot
     private var rowBackground: LinearGradient {
@@ -54,7 +59,7 @@ struct SettingView: View {
         .navigationBarHidden(true)
         .alert("Delete Account", isPresented: $showingDeleteAccountConfirmation) {
             Button("Delete", role: .destructive) {
-                // TODO: Perform delete action
+                performFullDataWipe()
             }
             Button("Cancel", role: .cancel) { }
         } message: {
@@ -62,7 +67,7 @@ struct SettingView: View {
         }
         .alert("Log Out", isPresented: $showingLogoutConfirmation) {
             Button("Log Out", role: .destructive) {
-                // TODO: Perform logout action
+                performLogout()
             }
             Button("Cancel", role: .cancel) { }
         } message: {
@@ -219,6 +224,68 @@ struct SettingView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+    
+    // MARK: - Data Reset / Logout Actions
+    
+    /// Fully wipes all app data stored in UserDefaults and notifies the app to reload.
+    private func performFullDataWipe() {
+        logger.info("🗑️ Performing FULL data wipe (delete account)")
+        doDataCleanup(fullWipe: true)
+    }
+    
+    /// Logs the user out by cleaning user-specific data and notifying the app to reset state.
+    /// Since the app stores user data in UserDefaults, this clears the same data as a full wipe.
+    private func performLogout() {
+        logger.info("🚪 Performing logout - clearing user data from UserDefaults")
+        doDataCleanup(fullWipe: false)
+    }
+    
+    /// Centralized cleanup used by logout and delete account
+    private func doDataCleanup(fullWipe: Bool) {
+        // Invalidate caches first
+        QuestionnaireManager.invalidateCache()
+        
+        // Clear questionnaire-related persisted data
+        QuestionnaireManager().clearAllData()
+        
+        // Reset streaks
+        StreakManager.shared.resetStreak()
+        
+        // Remove profile image
+        ProfileImageManager.shared.removeProfileImage()
+        
+        // Cancel notifications
+        NotificationManager.shared.cancelAllNotifications()
+        
+        // Remove the entire UserDefaults persistent domain
+        if let bundleID = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleID)
+            UserDefaults.standard.synchronize()
+            logger.info("✅ Removed UserDefaults persistent domain for \(bundleID)")
+        }
+        
+        // Reset in-memory AppState and drive navigation to Start screen
+        withAnimation(.easeInOut) {
+            appState.setAuthenticated(false)
+            appState.hasCompletedOnboarding = false
+            appState.currentOnboardingStep = .valueProposition
+            appState.hasShownSignInPopupThisSession = false
+            appState.hasUserPermanentlyDismissedSignIn = false
+            appState.appLaunchCount = 0
+            appState.shouldShowIntroAnimations = true
+            appState.shouldTriggerIntroAnimations = true
+            appState.isFirstDashboardViewAfterOnboarding = false
+        }
+        
+        // Notify the app to reset in-memory state and recalculate
+        NotificationCenter.default.post(name: NSNotification.Name("AppDataReset"), object: nil)
+        
+        // Optional: broadcast an explicit navigation intent if your ContentView listens for it
+        NotificationCenter.default.post(name: NSNotification.Name("NavigateToStart"), object: nil)
+        
+        // Dismiss settings after operation so parent view can react to the state change
+        dismiss()
     }
 }
 
