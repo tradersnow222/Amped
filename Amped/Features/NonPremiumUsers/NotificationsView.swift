@@ -1,3 +1,10 @@
+//
+//  NotificationSettingsView.swift
+//  Amped
+//
+//  Created by Sheraz Hussain on 18/11/2025.
+//
+
 import SwiftUI
 import UserNotifications
 import UIKit
