@@ -11,6 +11,9 @@ struct WelcomeView: View {
     @State private var progress: CGFloat = 0.0
     @State private var autoAdvanceTask: Task<Void, Never>?
     
+    // Use the shared DashboardViewModel injected at the app root
+    @EnvironmentObject private var dashboardViewModel: DashboardViewModel
+    
     var onContinue: (() -> Void)?
     private let pulseAnimationDuration: Double = 0.8
     
@@ -93,6 +96,8 @@ struct WelcomeView: View {
         }
         .navigationBarHidden(true)
         .onAppear {
+            // Start the shared DashboardViewModel once during the welcome screen
+            dashboardViewModel.startIfNeeded()
             startWelcomeSequence()
         }
         .onDisappear {
@@ -169,3 +174,4 @@ struct WelcomeView: View {
 #Preview {
 //    WelcomeLoaderView()
 }
+

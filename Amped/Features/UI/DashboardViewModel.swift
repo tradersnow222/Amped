@@ -57,7 +57,7 @@ final class DashboardViewModel: ObservableObject {
     /// Track if goal was achieved today to prevent duplicate notifications
     @Published private(set) var goalAchievedToday: Bool = false
     
-    var canCalculateLifeProjection = false
+    var canCalculateLifeProjection = true
     
     /// User's daily goal from questionnaire
     private var dailyGoalMinutes: Int? {
@@ -134,6 +134,9 @@ final class DashboardViewModel: ObservableObject {
     /// Interval for foreground refresh (10 seconds - matches Apple Fitness app)
     private let foregroundRefreshInterval: TimeInterval = 500.0
     
+    /// Ensure we only start loading/timers once per app session
+    private var hasStarted = false
+    
     init(
         healthKitManager: HealthKitManaging? = nil,
         healthDataService: HealthDataService? = nil,
@@ -203,7 +206,7 @@ final class DashboardViewModel: ObservableObject {
             userProfile: chosenProfile
         )
         
-        // Ensure questionnaire data is loaded
+        // Ensure questionnaire data is loaded (deferred)
         Task {
             await self.questionnaireManager.loadDataIfNeeded()
         }
@@ -211,10 +214,30 @@ final class DashboardViewModel: ObservableObject {
         setupSubscriptions()
         setupStreakObservers()
         resetDailyGoalTracking()
+        // IMPORTANT: Do NOT load data or start timers here. Call startIfNeeded() once from the WelcomeView.
+        
+        // Also do NOT start the foreground timer here. We will start it in startIfNeeded()
+    }
+    
+    /// Explicit one-time start. Call this from WelcomeView.onAppear.
+    func startIfNeeded() {
+        guard !hasStarted else {
+            logger.debug("⏭️ DashboardViewModel already started; skipping")
+            return
+        }
+        hasStarted = true
+        
+        logger.info("🚀 Starting DashboardViewModel loading and timers")
+        
+        // Make sure questionnaire data is fresh before first load
+        Task {
+            await self.questionnaireManager.loadDataIfNeeded()
+        }
+        
+        // Load initial data for the current period
         loadData()
         
-        // Start foreground timer if app is currently active
-        // Check app state and start timer if needed
+        // Start foreground timer if app is active
         Task { @MainActor in
             if UIApplication.shared.applicationState == .active {
                 self.startForegroundRefreshTimer()

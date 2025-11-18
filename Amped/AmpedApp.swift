@@ -43,6 +43,9 @@ struct AmpedApp: App {
     /// Subscription manager for RevenueCat integration
     @StateObject private var subscriptionManager = SubscriptionManager.shared
     
+    /// Shared DashboardViewModel for the entire app
+    @StateObject private var dashboardViewModel = DashboardViewModel()
+    
     // MARK: - Scene Phase Tracking for Intro Animations
     @Environment(\.scenePhase) private var scenePhase
     
@@ -59,6 +62,7 @@ struct AmpedApp: App {
                     .environmentObject(batteryTheme)
                     .environmentObject(backgroundHealthManager)
                     .environmentObject(subscriptionManager)
+                    .environmentObject(dashboardViewModel) // Inject once for the whole app
             }
             .background(Color.clear)
             .onChange(of: scenePhase) { newPhase in
@@ -319,3 +323,4 @@ final class AppState: ObservableObject {
         persistenceManager.saveOnboardingProgress(step, hasCompletedOnboarding: hasCompletedOnboarding)
     }
 }
+
