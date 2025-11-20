@@ -11,6 +11,7 @@ struct BloodPressureReadingView: View {
     @State private var selectedStressLevel: StressLevel? = nil
     let progress: Double = 12
     var onContinue: ((String) -> Void)?
+    var onSelection: ((String) -> Void)?
     var onBack: (() -> Void)?
     
     @State private var showSheet = false
@@ -92,6 +93,7 @@ struct BloodPressureReadingView: View {
                 VStack(spacing: 16) {
                     ForEach(StressLevel.allCases, id: \.self) { level in
                         Button(action: {
+                            onSelection?(level.rawValue)
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedStressLevel = level
                             }
