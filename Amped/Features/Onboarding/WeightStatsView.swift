@@ -7,6 +7,13 @@
 
 import SwiftUI
 
+private struct ItemCenterPreferenceKey: PreferenceKey {
+    static var defaultValue: [Int: CGFloat] = [:]
+    static func reduce(value: inout [Int : CGFloat], nextValue: () -> [Int : CGFloat]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
+    }
+}
+
 struct WeightStatsView: View {
     @State private var selectedUnit: WeightUnit = .kg
     // Default to 55 as requested
@@ -27,7 +34,7 @@ struct WeightStatsView: View {
     
     var body: some View {
         ZStack {
-            LinearGradient.grayGradient
+            LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
 
             VStack(spacing: 24) {
@@ -207,6 +214,11 @@ struct WeightPickerView: View {
     private let itemSpacing: CGFloat = 14
     private let itemSize: CGFloat = 100
     
+    @State private var itemCenters: [Int: CGFloat] = [:]
+    @State private var isDragging = false
+    @State private var decelerationSnapWorkItem1: DispatchWorkItem?
+    @State private var decelerationSnapWorkItem2: DispatchWorkItem?
+    
     var body: some View {
         GeometryReader { geometry in
             ScrollViewReader { proxy in
@@ -239,6 +251,15 @@ struct WeightPickerView: View {
                             }
                             .buttonStyle(PlainButtonStyle())
                             .id(weight)
+                            .background(
+                                GeometryReader { geo in
+                                    Color.clear
+                                        .preference(
+                                            key: ItemCenterPreferenceKey.self,
+                                            value: [weight: geo.frame(in: .named("picker")).midX]
+                                        )
+                                }
+                            )
                         }
                         
                         // Trailing spacer to center the last item
@@ -246,6 +267,24 @@ struct WeightPickerView: View {
                             .frame(width: (geometry.size.width - itemSize) / 2)
                     }
                 }
+                .coordinateSpace(name: "picker")
+                .onPreferenceChange(ItemCenterPreferenceKey.self) { centers in
+                    itemCenters = centers
+                }
+                .simultaneousGesture(
+                    DragGesture()
+                        .onChanged { _ in
+                            isDragging = true
+                            cancelScheduledSnaps()
+                        }
+                        .onEnded { _ in
+                            isDragging = false
+                            // Immediate snap
+                            snapToNearestCenter(visibleWidth: geometry.size.width, proxy: proxy)
+                            // Post-deceleration safety snaps (covers inertial scrolling drift)
+                            schedulePostDecelerationSnaps(visibleWidth: geometry.size.width, proxy: proxy)
+                        }
+                )
                 .onAppear {
                     // Ensure default selection (55) is visible/centered on first appear
                     if selectedWeight == nil {
@@ -264,8 +303,59 @@ struct WeightPickerView: View {
                         }
                     }
                 }
+                // If the range changes (e.g., unit switch), ensure we still have a valid selection and center it
+                .onChange(of: weightRange) { _ in
+                    if let current = selectedWeight, !weightRange.contains(current) {
+                        selectedWeight = weightRange.first
+                    }
+                    if let w = selectedWeight {
+                        DispatchQueue.main.async {
+                            proxy.scrollTo(w, anchor: .center)
+                        }
+                    }
+                }
             }
         }
+    }
+    
+    private func snapToNearestCenter(visibleWidth: CGFloat, proxy: ScrollViewProxy) {
+        let visibleCenterX = visibleWidth / 2.0
+        guard !itemCenters.isEmpty else { return }
+        
+        // Find the value whose center is closest to the visible center
+        let nearest = itemCenters.min { a, b in
+            abs(a.value - visibleCenterX) < abs(b.value - visibleCenterX)
+        }
+        
+        if let target = nearest?.key {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                selectedWeight = target
+                proxy.scrollTo(target, anchor: .center)
+            }
+        }
+    }
+    
+    private func schedulePostDecelerationSnaps(visibleWidth: CGFloat, proxy: ScrollViewProxy) {
+        cancelScheduledSnaps()
+        
+        let work1 = DispatchWorkItem {
+            snapToNearestCenter(visibleWidth: visibleWidth, proxy: proxy)
+        }
+        let work2 = DispatchWorkItem {
+            snapToNearestCenter(visibleWidth: visibleWidth, proxy: proxy)
+        }
+        decelerationSnapWorkItem1 = work1
+        decelerationSnapWorkItem2 = work2
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work1)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: work2)
+    }
+    
+    private func cancelScheduledSnaps() {
+        decelerationSnapWorkItem1?.cancel()
+        decelerationSnapWorkItem1 = nil
+        decelerationSnapWorkItem2?.cancel()
+        decelerationSnapWorkItem2 = nil
     }
 }
 

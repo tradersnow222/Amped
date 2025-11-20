@@ -6,6 +6,13 @@
 //
 import SwiftUI
 
+private struct ItemCenterPreferenceKey: PreferenceKey {
+    static var defaultValue: [Int: CGFloat] = [:]
+    static func reduce(value: inout [Int : CGFloat], nextValue: () -> [Int : CGFloat]) {
+        value.merge(nextValue(), uniquingKeysWith: { $1 })
+    }
+}
+
 struct HeightStatsView: View {
     @State private var selectedUnit: HeightUnit = .cm
     // Default to 173 cm as requested
@@ -212,6 +219,9 @@ struct HeightPickerView: View {
     private let itemSpacing: CGFloat = 14
     private let itemSize: CGFloat = 100
     
+    @State private var itemCenters: [Int: CGFloat] = [:]
+    @State private var isDragging = false
+    
     var body: some View {
         GeometryReader { geometry in
             ScrollViewReader { proxy in
@@ -243,6 +253,15 @@ struct HeightPickerView: View {
                             }
                             .buttonStyle(.plain)
                             .id(h)
+                            .background(
+                                GeometryReader { geo in
+                                    Color.clear
+                                        .preference(
+                                            key: ItemCenterPreferenceKey.self,
+                                            value: [h: geo.frame(in: .named("picker")).midX]
+                                        )
+                                }
+                            )
                         }
                         
                         // Trailing spacer to center the last item
@@ -250,6 +269,18 @@ struct HeightPickerView: View {
                             .frame(width: (geometry.size.width - itemSize) / 2)
                     }
                 }
+                .coordinateSpace(name: "picker")
+                .onPreferenceChange(ItemCenterPreferenceKey.self) { centers in
+                    itemCenters = centers
+                }
+                .simultaneousGesture(
+                    DragGesture()
+                        .onChanged { _ in isDragging = true }
+                        .onEnded { _ in
+                            isDragging = false
+                            snapToNearestCenter(visibleWidth: geometry.size.width, proxy: proxy)
+                        }
+                )
                 .onAppear {
                     // Ensure default selection is visible/centered
                     if selectedHeight == nil {
@@ -268,6 +299,23 @@ struct HeightPickerView: View {
                         }
                     }
                 }
+            }
+        }
+    }
+    
+    private func snapToNearestCenter(visibleWidth: CGFloat, proxy: ScrollViewProxy) {
+        let visibleCenterX = visibleWidth / 2.0
+        guard !itemCenters.isEmpty else { return }
+        
+        // Find the value whose center is closest to the visible center
+        let nearest = itemCenters.min { a, b in
+            abs(a.value - visibleCenterX) < abs(b.value - visibleCenterX)
+        }
+        
+        if let target = nearest?.key {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                selectedHeight = target
+                proxy.scrollTo(target, anchor: .center)
             }
         }
     }
