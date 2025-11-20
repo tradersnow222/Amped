@@ -20,7 +20,7 @@ struct SyncDeviceView: View {
     
     var body: some View {
         ZStack {
-            LinearGradient.grayGradient
+            LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
             
             VStack(spacing: 30) {

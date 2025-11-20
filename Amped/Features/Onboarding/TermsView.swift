@@ -41,7 +41,7 @@ struct TermsView: View {
     
     var body: some View {
         ZStack (alignment: .topLeading) {
-            LinearGradient.grayGradient
+            LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
             
             ScrollView {

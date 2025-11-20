@@ -17,7 +17,7 @@ struct GoalsStatsView: View {
     
     var body: some View {
         ZStack (alignment: .topLeading) {
-            LinearGradient.grayGradient
+            LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
             
             VStack(spacing: 40) {

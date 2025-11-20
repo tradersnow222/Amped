@@ -44,7 +44,7 @@ struct MetricDetailContentView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea(.all)
-            LinearGradient.grayGradient.ignoresSafeArea()
+            LinearGradient.customBlueToDarkGray.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Header

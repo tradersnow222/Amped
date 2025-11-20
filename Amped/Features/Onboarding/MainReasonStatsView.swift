@@ -34,7 +34,7 @@ struct MainReasonStatsView: View {
     
     var body: some View {
         ZStack {
-            LinearGradient.grayGradient
+            LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
 
             VStack(spacing: 24) {
@@ -95,10 +95,6 @@ struct MainReasonStatsView: View {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedStressLevel = level
                             }
-                            // Auto continue after selection
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                onContinue?(level.rawValue)
-                            }
                         }) {
                             VStack(spacing: 1) {
                                 Text(level.rawValue)
@@ -107,11 +103,11 @@ struct MainReasonStatsView: View {
                                     .multilineTextAlignment(.center)
                                 
                                 // Subtitle (only show if not empty)
-                                    if !level.subtitle.isEmpty {
-                                        Text(level.subtitle)
-                                            .font(.poppins(13, weight: .regular))
-                                            .foregroundColor(selectedStressLevel == level ? .white.opacity(0.9) : .white.opacity(0.6))
-                                    }
+                                if !level.subtitle.isEmpty {
+                                    Text(level.subtitle)
+                                        .font(.poppins(13, weight: .regular))
+                                        .foregroundColor(selectedStressLevel == level ? .white.opacity(0.9) : .white.opacity(0.6))
+                                }
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 54)
@@ -140,7 +136,15 @@ struct MainReasonStatsView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 16)
 
-                Spacer()
+                OnboardingContinueButton(
+                    title: "Continue",
+                    isEnabled: selectedStressLevel != nil,
+                    animateIn: true,
+                    bottomPadding: 20
+                ) {
+                    guard let selectedStressLevel else { return }
+                    onContinue?(selectedStressLevel.rawValue)
+                }
                 
                 // Research info text (use as an info trigger)
                 HStack(spacing: 8) {

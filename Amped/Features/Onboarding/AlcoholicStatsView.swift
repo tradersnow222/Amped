@@ -34,7 +34,7 @@ struct AlcoholicStatsView: View {
     
     var body: some View {
         ZStack {
-            LinearGradient.grayGradient
+            LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
 
             VStack(spacing: 24) {
@@ -95,10 +95,6 @@ struct AlcoholicStatsView: View {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedStressLevel = level
                             }
-                            // Auto continue after selection
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                onContinue?(level.rawValue)
-                            }
                         }) {
                             VStack(spacing: 1) {
                                 Text(level.rawValue)
@@ -107,11 +103,11 @@ struct AlcoholicStatsView: View {
                                     .multilineTextAlignment(.center)
                                 
                                 // Subtitle (only show if not empty)
-                                    if !level.subtitle.isEmpty {
-                                        Text(level.subtitle)
-                                            .font(.poppins(13, weight: .regular))
-                                            .foregroundColor(selectedStressLevel == level ? .white.opacity(0.9) : .white.opacity(0.6))
-                                    }
+                                if !level.subtitle.isEmpty {
+                                    Text(level.subtitle)
+                                        .font(.poppins(13, weight: .regular))
+                                        .foregroundColor(selectedStressLevel == level ? .white.opacity(0.9) : .white.opacity(0.6))
+                                }
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 54)
@@ -140,6 +136,16 @@ struct AlcoholicStatsView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 16)
 
+                OnboardingContinueButton(
+                    title: "Continue",
+                    isEnabled: selectedStressLevel != nil,
+                    animateIn: true,
+                    bottomPadding: 40
+                ) {
+                    guard let selectedStressLevel else { return }
+                    onContinue?(selectedStressLevel.rawValue)
+                }
+                
                 // Research info text
                 HStack(spacing: 8) {
                     Image(systemName: "book.closed")
@@ -166,107 +172,6 @@ struct AlcoholicStatsView: View {
             }
         })
         .navigationBarBackButtonHidden(false)
-    }
-}
-
-// MARK: - Real data BottomSheet content
-
-private struct MetricImpactSheetContent: View {
-    let metricType: HealthMetricType
-    var customTitle: String? = nil
-    
-    @State private var score: Int = 50
-    @State private var sliderValue: Double = 50
-    @State private var descriptionText: String = "Loading..."
-    @State private var sourceText: String = "Loading source..."
-    @State private var title: String = ""
-    
-    var body: some View {
-        ImpactContentView(
-            title: title.isEmpty ? (customTitle ?? "Impact score: \(metricType.displayName)") : title,
-            score: score,
-            maxScore: 100,
-            sliderValue: sliderValue,
-            descriptionText: descriptionText,
-            sourceText: sourceText
-        )
-        .onAppear {
-            Task { await load() }
-        }
-    }
-    
-    private func loadUserProfile() -> UserProfile {
-        if let data = UserDefaults.standard.data(forKey: "user_profile"),
-           let profile = try? JSONDecoder().decode(UserProfile.self, from: data) {
-            return profile
-        }
-        let currentYear = Calendar.current.component(.year, from: Date())
-        return UserProfile(id: UUID().uuidString, birthYear: currentYear - 30, gender: .male, isSubscribed: false, hasCompletedOnboarding: false, hasCompletedQuestionnaire: false, hasGrantedHealthKitPermissions: false, createdAt: Date(), lastActive: Date())
-    }
-    
-    private func currentManualValue(for type: HealthMetricType) -> Double? {
-        let qm = QuestionnaireManager()
-        let inputs = qm.getCurrentManualMetrics()
-        return inputs.first(where: { $0.type == type })?.value
-    }
-    
-    private func normalizeImpactToScore(_ minutesPerDay: Double) -> Int {
-        let clamped = max(-120.0, min(120.0, minutesPerDay))
-        let normalized = (clamped + 120.0) / 240.0
-        return Int((normalized * 100.0).rounded())
-    }
-    
-    private func composeDescription(metric: HealthMetric, impact: MetricImpactDetail) -> String {
-        let formattedImpact = impact.formattedImpactWithConfidence
-        let recommendation = impact.recommendation
-        return "Current: \(metric.formattedValue)\(metric.unitString.isEmpty ? "" : " \(metric.unitString)")\n\(formattedImpact).\n\(recommendation)"
-    }
-    
-    private func sourceString(from impact: MetricImpactDetail) -> String {
-        impact.scientificBasis
-    }
-    
-    private func computeTitle() -> String {
-        customTitle ?? "Impact score: \(metricType.displayName)"
-    }
-    
-    private func metricForCurrentValue(_ value: Double) -> HealthMetric {
-        HealthMetric(
-            id: UUID().uuidString,
-            type: metricType,
-            value: value,
-            date: Date(),
-            source: .userInput
-        )
-    }
-    
-    private func fallbackValue() -> Double {
-        return metricType.baselineValue
-    }
-    
-    private func formatScore(_ s: Int) -> Int { max(0, min(100, s)) }
-    
-    private func updateUI(metric: HealthMetric, impact: MetricImpactDetail) {
-        let s = normalizeImpactToScore(impact.lifespanImpactMinutes)
-        self.title = computeTitle()
-        self.score = formatScore(s)
-        self.sliderValue = Double(self.score)
-        self.descriptionText = composeDescription(metric: metric, impact: impact)
-        self.sourceText = sourceString(from: impact)
-    }
-    
-    private func load() async {
-        let profile = loadUserProfile()
-        let lifeService = LifeImpactService(userProfile: profile)
-        
-        let value = currentManualValue(for: metricType) ?? fallbackValue()
-        var metric = metricForCurrentValue(value)
-        let impact = lifeService.calculateImpact(for: metric)
-        metric.impactDetails = impact
-        
-        await MainActor.run {
-            updateUI(metric: metric, impact: impact)
-        }
     }
 }
 
