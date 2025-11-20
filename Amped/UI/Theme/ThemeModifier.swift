@@ -52,6 +52,17 @@ extension LinearGradient {
             endPoint: .bottomLeading
         )
     }
+    
+    static var mpButtonGrayGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(hex: "#18EF47").opacity(0.3),
+                Color(hex: "#0E8929").opacity(0.3)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
 }
 
 extension Color {

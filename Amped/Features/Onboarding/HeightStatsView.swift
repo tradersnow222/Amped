@@ -166,7 +166,12 @@ struct HeightStatsView: View {
                 .frame(height: 120)
                 .padding(.top, 6)
 
-                Button(action: {
+                OnboardingContinueButton(
+                    title: "Continue",
+                    isEnabled: selectedHeight != nil,
+                    animateIn: true,
+                    bottomPadding: 40
+                ) {
                     guard let h = selectedHeight else { return }
                     
                     // Normalize to CM for saving/calculation
@@ -182,27 +187,7 @@ struct HeightStatsView: View {
                     
                     // Always pass cm (as String) to the continuation
                     onContinue?("\(heightInCm)")
-                }) {
-                    Text("Continue")
-                        .font(.system(size: 17, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(hex: "#18EF47"), Color(hex: "#0E8929")],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .cornerRadius(30)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 40)
-                        .shadow(color: Color.black.opacity(0.25), radius: 5, x: 0, y: 3)
                 }
-                .disabled(selectedHeight == nil)
-                .opacity(selectedHeight == nil ? 0.5 : 1.0)
-                .padding(.top, 20)
-                .padding(.bottom, 40)
                 
                 Spacer()
             }

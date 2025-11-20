@@ -52,36 +52,16 @@ struct PersonalizationIntroView: View {
                         .animation(.easeOut(duration: 0.8).delay(0.3), value: animateElements)
                         .padding(.leading, 30)
                 }
-//                .padding(.horizontal, 30)
                 .padding(.bottom, 30)
                 
-                // MARK: Continue Button
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        onContinue?()
-                    }
-                }) {
-                    HStack {
-                        Text("Continue")
-                            .font(.poppins(20, weight: .medium))
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 17, weight: .semibold))
-                            
-                    }
-                    .foregroundColor(.black)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(LinearGradient.ampButtonGradient)
-                    .cornerRadius(30)
-                    .padding(.horizontal, 30)
-                    .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 3)
-                    .opacity(animateElements ? 1 : 0)
-                    .offset(y: animateElements ? 0 : 50)
-                    .scaleEffect(animateElements ? 1 : 0.9)
-                    .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.6), value: animateElements)
+                OnboardingContinueButton(
+                    title: "Continue",
+                    isEnabled: true,
+                    animateIn: animateElements,
+                    bottomPadding: 50
+                ) {
+                    onContinue?()
                 }
-                .padding(.bottom, 50)
             }
         }
         .onAppear {
@@ -143,5 +123,48 @@ struct PersonalizationIntroView_Previews: PreviewProvider {
     static var previews: some View {
         PersonalizationIntroView(onContinue: {})
             .environmentObject(BatteryThemeManager())
+    }
+}
+
+
+struct OnboardingContinueButton: View {
+    var title: String = "Continue"
+    var isEnabled: Bool = true
+    var animateIn: Bool = true
+    var bottomPadding: CGFloat = 50
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: {
+            guard isEnabled else { return }
+            withAnimation(.easeInOut(duration: 0.3)) {
+                action()
+            }
+        }) {
+            HStack {
+                Text(title)
+                    .font(.poppins(20, weight: .medium))
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 17, weight: .semibold))
+            }
+            .foregroundColor(.black)
+            .padding()
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background(
+                isEnabled
+                ? LinearGradient.ampButtonGradient
+                : LinearGradient.mpButtonGrayGradient
+            )
+            .cornerRadius(30)
+            .padding(.horizontal, 30)
+            .shadow(color: Color.black.opacity(isEnabled ? 0.3 : 0.0), radius: 5, x: 0, y: 3)
+            .opacity(animateIn ? 1 : 0)
+            .offset(y: animateIn ? 0 : 50)
+            .scaleEffect(animateIn ? 1 : 0.9)
+            .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.6), value: animateIn)
+        }
+        .disabled(!isEnabled)
+        .padding(.bottom, bottomPadding)
     }
 }

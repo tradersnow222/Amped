@@ -13,7 +13,7 @@ struct TermsView: View {
     var onBack: (() -> Void)?
     
     let termString = """
-        Effective Date: 28 October, 2025 Company: Amped
+        Effective Date: 28 October, 2025Company: Amped
 
         Welcome to Amped! These Terms of Use (“Terms”) govern your access to and use of the Amped mobile application (“App”), operated by Amped (“Company”, “we”, “our”, or “us”). By downloading, accessing, or using the App, you agree to be bound by these Terms. If you do not agree, please do not use the App.
 
@@ -78,29 +78,14 @@ struct TermsView: View {
                         .foregroundColor(.white.opacity(0.8))
                         .padding(.horizontal, 42)
                     
-                    // MARK: Continue Button
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            onContinue?()
-                        }
-                    }) {
-                        HStack {
-                            Text("Continue")
-                                .font(.poppins(20, weight: .medium))
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 17, weight: .semibold))
-                            
-                        }
-                        .foregroundColor(.black)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(LinearGradient.ampButtonGradient)
-                        .cornerRadius(30)
-                        .padding(.horizontal, 30)
-                        .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 3)
+                    OnboardingContinueButton(
+                        title: "Continue",
+                        isEnabled: true,
+                        animateIn: true,
+                        bottomPadding: 50
+                    ) {
+                        onContinue?()
                     }
-                    .padding(.bottom, 50)
                 }
             }
         }

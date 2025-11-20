@@ -165,9 +165,12 @@ struct WeightStatsView: View {
                     .frame(height: 120)
                     .padding(.top, 6)
 
-                Spacer()
-
-                Button(action: {
+                OnboardingContinueButton(
+                    title: "Continue",
+                    isEnabled: selectedWeight != nil,
+                    animateIn: true,
+                    bottomPadding: 40
+                ) {
                     guard let weight = selectedWeight else { return }
                     
                     // Normalize to KG for saving/calculation
@@ -181,26 +184,7 @@ struct WeightStatsView: View {
                     
                     // Always pass KG as the unit string since we save in kg
                     onContinue?("\(weightInKg)", "KG")
-                }) {
-                    Text("Continue")
-                        .font(.system(size: 17, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(hex: "#18EF47"), Color(hex: "#0E8929")],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .cornerRadius(30)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 40)
-                        .shadow(color: Color.black.opacity(0.25), radius: 5, x: 0, y: 3)
                 }
-                .disabled(selectedWeight == nil)
-                .opacity(selectedWeight == nil ? 0.5 : 1.0)
-                .padding(.bottom, 40)
             }
         }
         .navigationBarBackButtonHidden(false)

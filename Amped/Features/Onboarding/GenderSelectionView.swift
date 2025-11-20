@@ -12,7 +12,7 @@ struct GenderSelectionView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient.grayGradient
+            LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
 
             VStack(spacing: 30) {
@@ -70,30 +70,17 @@ struct GenderSelectionView: View {
                 }
                 .padding(.top, 10)
 
-                Button(action: {
+                OnboardingContinueButton(
+                    title: "Continue",
+                    isEnabled: selected != nil,
+                    animateIn: true,
+                    bottomPadding: 0
+                ) {
                     if let onContinue, let selected {
                         onContinue(selected)
                     }
-                }) {
-                    Text("Continue")
-                        .font(.system(size: 17, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(hex: "#18EF47"), Color(hex: "#0E8929")],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .cornerRadius(30)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 40)
-                        .shadow(color: Color.black.opacity(0.25), radius: 5, x: 0, y: 3)
                 }
                 .padding(.top, 10)
-                .disabled(selected == nil)
-                .opacity(selected == nil ? 0.5 : 1)
 
                 Spacer()
             }

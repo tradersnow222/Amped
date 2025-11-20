@@ -19,7 +19,7 @@ struct MascotNamingView: View {
     var body: some View {
         ZStack {
             // Gradient Overlay
-            LinearGradient.grayGradient
+            LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
             
             VStack(spacing: 30) {
@@ -77,48 +77,17 @@ struct MascotNamingView: View {
                         .disableAutocorrection(true)
                 }
                 
-                // MARK: - Continue Button
-                Button(action: {
-                    withAnimation {
-                        if isFromSettings {
-                            NotificationCenter.default.post(name: NSNotification.Name("ProfileDataUpdated"), object: nil)
-                        }
-                        // Use onboarding continuation
-                        onContinue?(userName)
+                OnboardingContinueButton(
+                    title: "Continue",
+                    isEnabled: !userName.isEmpty,
+                    animateIn: true,
+                    bottomPadding: 10
+                ) {
+                    if isFromSettings {
+                        NotificationCenter.default.post(name: NSNotification.Name("ProfileDataUpdated"), object: nil)
                     }
-                }) {
-                    Text("Continue")
-                        .font(.system(size: 17, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(
-                            Group {
-                                if userName.isEmpty {
-                                    // Disabled state
-                                    Color.gray.opacity(0.4)
-                                } else {
-                                    // Enabled gradient
-                                    LinearGradient(
-                                        colors: [
-                                            Color(hex: "#18EF47"),
-                                            Color(hex: "#0E8929")
-                                        ],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                }
-                            }
-                        )
-                        .cornerRadius(30)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 40)
-                        .shadow(
-                            color: userName.isEmpty ? .clear : Color.black.opacity(0.25),
-                            radius: 5, x: 0, y: 3
-                        )
+                    onContinue?(userName)
                 }
-                .disabled(userName.isEmpty)
-                .padding(.top, 10)
                 
                 Spacer()
             }

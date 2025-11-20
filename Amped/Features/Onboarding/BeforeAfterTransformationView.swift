@@ -48,36 +48,16 @@ struct BeforeAfterTransformationView: View {
                         .animation(.easeOut(duration: 0.8).delay(0.3), value: animateElements)
                         .padding(.leading, 30)
                 }
-//                .padding(.horizontal, 30)
                 .padding(.bottom, 30)
                 
-                // MARK: Continue Button
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        onContinue?()
-                    }
-                }) {
-                    HStack {
-                        Text("Get Started")
-                            .font(.poppins(20, weight: .medium))
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 17, weight: .semibold))
-                            
-                    }
-                    .foregroundColor(.black)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(LinearGradient.ampButtonGradient)
-                    .cornerRadius(30)
-                    .padding(.horizontal, 30)
-                    .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 3)
-                    .opacity(animateElements ? 1 : 0)
-                    .offset(y: animateElements ? 0 : 50)
-                    .scaleEffect(animateElements ? 1 : 0.9)
-                    .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.6), value: animateElements)
+                OnboardingContinueButton(
+                    title: "Continue",
+                    isEnabled: true,
+                    animateIn: animateElements,
+                    bottomPadding: 50
+                ) {
+                    onContinue?()
                 }
-                .padding(.bottom, 50)
             }
         }
         .onAppear {

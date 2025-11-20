@@ -18,7 +18,7 @@ struct AgeSelectionView: View {
     
     var body: some View {
         ZStack {
-            LinearGradient.grayGradient
+            LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
 
             VStack(spacing: 20) {
@@ -105,24 +105,15 @@ struct AgeSelectionView: View {
                 .padding(.bottom, 10)
 
                 
-                Button(action: {
-                    onContinue?(dateOfBirth)
-                }) {
-                    Text("Continue")
-                        .font(.system(size: 17, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(hex: "#18EF47"), Color(hex: "#0E8929")],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .cornerRadius(30)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 40)
-                        .shadow(color: Color.black.opacity(0.25), radius: 5, x: 0, y: 3)
+                OnboardingContinueButton(
+                    title: "Continue",
+                    isEnabled: true,
+                    animateIn: true,
+                    bottomPadding: 0
+                ) {
+                    if let onContinue {
+                        onContinue(dateOfBirth)
+                    }
                 }
                 .padding(.top, 10)
 
