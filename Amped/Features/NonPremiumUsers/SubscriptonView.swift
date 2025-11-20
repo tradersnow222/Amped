@@ -125,11 +125,10 @@ struct SubscriptionView: View {
                         Button {
                             dismiss()
                         } label: {
-                            Image(systemName: "chevron.left")
-                                .foregroundStyle(.white)
-                                .font(.system(size: 20, weight: .semibold))
-                                .padding(12)
-                                .background(.white.opacity(0.1), in: Circle())
+                            Image("backIcon")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 20, height: 20)
                         }
                         .padding(.leading)
                         ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)

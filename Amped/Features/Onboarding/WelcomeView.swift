@@ -172,6 +172,7 @@ struct WelcomeView: View {
 }
 
 #Preview {
-//    WelcomeLoaderView()
+    WelcomeView()
+        .environmentObject(DashboardViewModel())
 }
 

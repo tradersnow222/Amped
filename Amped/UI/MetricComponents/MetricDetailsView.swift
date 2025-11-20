@@ -46,13 +46,10 @@ struct MetricDetailsView: View {
                             navigationPath.removeLast()
                         }
                     }) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 32, height: 32)
-                            .background(
-                                Circle().fill(Color.white.opacity(0.08))
-                            )
+                        Image("backIcon")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
                     }
 
                     personalizedHeader
