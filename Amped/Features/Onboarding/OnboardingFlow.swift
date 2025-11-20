@@ -157,6 +157,9 @@ struct OnboardingFlow: View {
                     if appState.currentOnboardingStep == .mascotNaming {
                         MascotNamingView(onContinue: { name in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userName, value: name)
+                            // Persist profile/metrics so sheets can read immediately
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.genderSelection)
@@ -168,6 +171,8 @@ struct OnboardingFlow: View {
                     if appState.currentOnboardingStep == .genderSelection {
                         GenderSelectionView( onContinue: { genderEnum in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userGender, value: genderEnum.rawValue)
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.ageSelection)
@@ -181,6 +186,8 @@ struct OnboardingFlow: View {
                     if appState.currentOnboardingStep == .ageSelection {
                         AgeSelectionView (onContinue: { date in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userDateOfBirth, value: "\(date)")
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.heightStats)
@@ -194,6 +201,8 @@ struct OnboardingFlow: View {
                     if appState.currentOnboardingStep == .heightStats {
                         HeightStatsView(onContinue: { height in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userHeight, value: height)
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.weightStats)
@@ -208,6 +217,8 @@ struct OnboardingFlow: View {
                         WeightStatsView(onContinue: { weight, weightUnit in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userWeight, value: weight)
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userWeightUnit, value: weightUnit)
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.stressStats)
@@ -221,6 +232,8 @@ struct OnboardingFlow: View {
                     if appState.currentOnboardingStep == .stressStats {
                         StressStatsView(onContinue: { stressStats in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userStressLevel, value: stressStats)
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.anxietyStats)
@@ -234,6 +247,8 @@ struct OnboardingFlow: View {
                     if appState.currentOnboardingStep == .anxietyStats {
                         AnxietyStatsView(onContinue: { anxietyStats in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userAnxietyLevel, value: anxietyStats)
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.dietStats)
@@ -247,6 +262,8 @@ struct OnboardingFlow: View {
                     if appState.currentOnboardingStep == .dietStats {
                         DietStatsView(onContinue: { dietStats in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userDietLevel, value: dietStats)
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.smokeStats)
@@ -260,6 +277,8 @@ struct OnboardingFlow: View {
                     if appState.currentOnboardingStep == .smokeStats {
                         SmokeStatsView(onContinue: { smokeStats in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userSmokeStats, value: smokeStats)
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.alcoholicStats)
@@ -273,6 +292,8 @@ struct OnboardingFlow: View {
                     if appState.currentOnboardingStep == .alcoholicStats {
                         AlcoholicStatsView(onContinue: { alcoholStats in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userAlcoholStats, value: alcoholStats)
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.socialConnectionStats)
@@ -286,6 +307,8 @@ struct OnboardingFlow: View {
                     if appState.currentOnboardingStep == .socialConnectionStats {
                         SocialConnectionStatsView(onContinue: { socialConnectionStats in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userSocialStats, value: socialConnectionStats)
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.bloodPressureStats)
@@ -300,6 +323,8 @@ struct OnboardingFlow: View {
                         BloodPressureReadingView(onContinue: {
                             bloodPressureStats in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userBloodPressureStats, value: bloodPressureStats)
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.mainReasonStats)
@@ -313,6 +338,8 @@ struct OnboardingFlow: View {
                     if appState.currentOnboardingStep == .mainReasonStats {
                         MainReasonStatsView(onContinue: { mainReasonStats in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userMainReasonStats, value: mainReasonStats)
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.goalsStats)
@@ -326,6 +353,8 @@ struct OnboardingFlow: View {
                     if appState.currentOnboardingStep == .goalsStats {
                         GoalsStatsView(onContinue: { mainReasonStats in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userGoalStats, value: mainReasonStats)
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.syncDeviceStats)
@@ -339,6 +368,10 @@ struct OnboardingFlow: View {
                     if appState.currentOnboardingStep == .syncDeviceStats {
                         SyncDeviceView(onContinue: { deviceSync in
                             appState.saveToUserDefault(keyname: UserDefaultsKeys.userDeviceSync, value: deviceSync)
+                            // SyncDeviceView will save a full profile+metrics via completeQuestionnaire()
+                            // For consistency, also persist here in case deviceSync skips permissions
+                            QuestionnaireManager().saveOnboardingDataFromDefaults()
+                            
                             isButtonNavigating = true
                             dragDirection = nil
                             navigateTo(.terms)

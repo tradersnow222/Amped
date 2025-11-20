@@ -222,7 +222,21 @@ final class QuestionnaireManager: ObservableObject {
         saveQuestionnaireData(questionnaireData)
         
         // Convert questionnaire answers to manual metrics
-        let metrics = convertQuestionnaireToMetrics(from: viewModel)
+        var metrics = convertQuestionnaireToMetrics(from: viewModel)
+        
+        // If questionnaire included blood pressure category, add mapped systolic
+        if let bpCategory = viewModel.selectedBloodPressureCategory {
+            let systolic = mapBloodPressureCategoryToSystolic(bpCategory)
+            let metric = ManualMetricInput(
+                type: .bloodPressure,
+                value: systolic,
+                date: Date(),
+                notes: "From questionnaire: \(bpCategory.displayName)"
+            )
+            metrics.append(metric)
+            logger.info("🩺 Added blood pressure metric: \(Int(systolic)) mmHg")
+        }
+        
         saveManualMetrics(metrics)
         
         logger.info("✅ Questionnaire data saved successfully")
@@ -233,17 +247,187 @@ final class QuestionnaireManager: ObservableObject {
     
     /// Get current manual metrics for health calculations
     func getCurrentManualMetrics() -> [ManualMetricInput] {
+        // Lazy-load from UserDefaults if needed to support fresh instances
+        if manualMetrics.isEmpty {
+            loadManualMetrics()
+        }
         return manualMetrics
     }
     
     /// Get current user profile
     func getCurrentUserProfile() -> UserProfile? {
+        // Lazy-load from UserDefaults if needed
+        if currentUserProfile == nil {
+            loadUserProfile()
+        }
         return currentUserProfile
     }
     
     /// Load questionnaire data
     func loadQuestionnaireData() -> QuestionnaireData? {
+        if questionnaireData == nil {
+            loadQuestionnaireDataFromDefaults()
+        }
         return questionnaireData
+    }
+    
+    // MARK: - New: Persist from onboarding defaults
+    
+    /// Build and persist a profile and manual metrics from values saved during the custom onboarding flow
+    /// This allows MetricImpactSheetContent to read real data immediately after onboarding.
+    func saveOnboardingDataFromDefaults() {
+        logger.info("💾 saveOnboardingDataFromDefaults: building profile and manual metrics from UserDefaults keys")
+        
+        // 1) Build UserProfile
+        let existingProfile = getCurrentUserProfile()
+        
+        let firstName: String? = {
+            let name = UserDefaults.standard.string(forKey: UserDefaultsKeys.userName) ??
+                       UserDefaults.standard.string(forKey: UserDefaultsKeys.userNameLegacy)
+            guard let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else { return nil }
+            return trimmed.components(separatedBy: " ").first
+        }()
+        
+        let gender: UserProfile.Gender? = {
+            if let raw = UserDefaults.standard.string(forKey: UserDefaultsKeys.userGender),
+               let g = UserProfile.Gender(rawValue: raw) {
+                return g
+            }
+            return nil
+        }()
+        
+        // Date of birth was saved as "\(date)"; try robust parsing
+        let birthYear: Int? = {
+            if let dobString = UserDefaults.standard.string(forKey: UserDefaultsKeys.userDateOfBirth) {
+                if let date = ISO8601DateFormatter().date(from: dobString) {
+                    return Calendar.current.component(.year, from: date)
+                }
+                // Try a common fallback format
+                let df = DateFormatter()
+                df.locale = Locale(identifier: "en_US_POSIX")
+                df.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
+                if let date = df.date(from: dobString) {
+                    return Calendar.current.component(.year, from: date)
+                }
+                // As a last resort, try to regex the year
+                if let year = dobString.prefix(4) as Substring?, let y = Int(year) {
+                    return y
+                }
+            }
+            return nil
+        }()
+        
+        let height: Double? = {
+            if let any = UserDefaults.standard.object(forKey: UserDefaultsKeys.userHeight) {
+                if let d = any as? Double { return d }
+                if let s = any as? String, let d = Double(s) { return d }
+            }
+            return nil
+        }()
+        
+        let weight: Double? = {
+            if let any = UserDefaults.standard.object(forKey: UserDefaultsKeys.userWeight) {
+                if let d = any as? Double { return d }
+                if let s = any as? String, let d = Double(s) { return d }
+            }
+            return nil
+        }()
+        
+        let profile = UserProfile(
+            id: existingProfile?.id ?? UUID().uuidString,
+            firstName: firstName,
+            birthYear: birthYear,
+            gender: gender,
+            height: height,
+            weight: weight,
+            isSubscribed: existingProfile?.isSubscribed ?? false,
+            hasCompletedOnboarding: existingProfile?.hasCompletedOnboarding ?? false,
+            hasCompletedQuestionnaire: true,
+            hasGrantedHealthKitPermissions: existingProfile?.hasGrantedHealthKitPermissions ?? false,
+            createdAt: existingProfile?.createdAt ?? Date(),
+            lastActive: Date()
+        )
+        saveUserProfile(profile)
+        
+        // 2) Convert saved onboarding answers → manual metrics
+        var metrics: [ManualMetricInput] = []
+        let now = Date()
+        
+        // Stress level
+        if let stressAny = UserDefaults.standard.object(forKey: UserDefaultsKeys.userStressLevel) {
+            if let value = parseNumericOrCategory(stressAny, category: .stressLevel) {
+                metrics.append(ManualMetricInput(type: .stressLevel, value: value, date: now, notes: "Onboarding"))
+            }
+        }
+        // Anxiety (we don’t have a separate metric; you may choose to combine into stress or ignore)
+        if let anxietyAny = UserDefaults.standard.object(forKey: UserDefaultsKeys.userAnxietyLevel) {
+            if let value = parseNumericOrCategory(anxietyAny, category: .stressLevel) {
+                // Combine conservatively: average stress/anxiety if both exist
+                if let idx = metrics.firstIndex(where: { $0.type == .stressLevel }) {
+                    let current = metrics[idx].value
+                    let combined = (current + value) / 2.0
+                    metrics[idx] = ManualMetricInput(type: .stressLevel, value: combined, date: now, notes: "Onboarding (combined stress/anxiety)")
+                } else {
+                    metrics.append(ManualMetricInput(type: .stressLevel, value: value, date: now, notes: "Onboarding (from anxiety)"))
+                }
+            }
+        }
+        // Nutrition
+        if let any = UserDefaults.standard.object(forKey: UserDefaultsKeys.userDietLevel) {
+            if let value = parseNumericOrCategory(any, category: .nutritionQuality) {
+                metrics.append(ManualMetricInput(type: .nutritionQuality, value: value, date: now, notes: "Onboarding"))
+            }
+        }
+        // Smoking
+        if let any = UserDefaults.standard.object(forKey: UserDefaultsKeys.userSmokeStats) {
+            if let value = parseNumericOrCategory(any, category: .smokingStatus) {
+                metrics.append(ManualMetricInput(type: .smokingStatus, value: value, date: now, notes: "Onboarding"))
+            }
+        }
+        // Alcohol
+        if let any = UserDefaults.standard.object(forKey: UserDefaultsKeys.userAlcoholStats) {
+            if let value = parseNumericOrCategory(any, category: .alcoholConsumption) {
+                metrics.append(ManualMetricInput(type: .alcoholConsumption, value: value, date: now, notes: "Onboarding"))
+            }
+        }
+        // Social connections
+        if let any = UserDefaults.standard.object(forKey: UserDefaultsKeys.userSocialStats) {
+            if let value = parseNumericOrCategory(any, category: .socialConnectionsQuality) {
+                metrics.append(ManualMetricInput(type: .socialConnectionsQuality, value: value, date: now, notes: "Onboarding"))
+            }
+        }
+        // Blood pressure (string category)
+        if let bpAny = UserDefaults.standard.object(forKey: UserDefaultsKeys.userBloodPressureStats) {
+            if let systolic = parseBloodPressureSystolic(bpAny) {
+                metrics.append(ManualMetricInput(type: .bloodPressure, value: systolic, date: now, notes: "Onboarding"))
+            }
+        }
+        
+        saveManualMetrics(metrics)
+        
+        // 3) Save minimal questionnaire data snapshot (optional, derived)
+        let qd = QuestionnaireData(
+            deviceTrackingStatus: nil,
+            lifeMotivation: nil,
+            desiredDailyLifespanGainMinutes: nil,
+            nutritionQuality: metrics.first(where: { $0.type == .nutritionQuality })?.value,
+            smokingStatus: metrics.first(where: { $0.type == .smokingStatus })?.value,
+            alcoholConsumption: metrics.first(where: { $0.type == .alcoholConsumption })?.value,
+            socialConnectionsQuality: metrics.first(where: { $0.type == .socialConnectionsQuality })?.value,
+            stressLevel: metrics.first(where: { $0.type == .stressLevel })?.value,
+            emotionalSensitivity: nil,
+            framingComfortScore: nil,
+            urgencyResponseScore: nil,
+            bloodPressureCategory: nil,
+            savedDate: Date()
+        )
+        saveQuestionnaireData(qd)
+        
+        // 4) Mark completion and invalidate cache
+        markQuestionnaireCompleted()
+        Self.invalidateCache()
+        
+        logger.info("✅ saveOnboardingDataFromDefaults complete: profile + \(metrics.count) metrics saved")
     }
     
     // MARK: - Private Methods
@@ -431,4 +615,90 @@ final class QuestionnaireManager: ObservableObject {
         UserDefaults.standard.set(true, forKey: "hasCompletedQuestionnaire")
         logger.info("✅ Questionnaire marked as completed")
     }
+    
+    // MARK: - Helpers for onboarding parsing/mapping
+    
+    private enum OnboardingCategory {
+        case stressLevel
+        case nutritionQuality
+        case smokingStatus
+        case alcoholConsumption
+        case socialConnectionsQuality
+    }
+    
+    /// Try to parse a saved value (Double or String) into a 1–10 score depending on category
+    private func parseNumericOrCategory(_ any: Any, category: OnboardingCategory) -> Double? {
+        if let d = any as? Double { return d }
+        if let i = any as? Int { return Double(i) }
+        if let s = any as? String {
+            if let direct = Double(s) { return direct }
+            let lower = s.lowercased()
+            switch category {
+            case .stressLevel:
+                // map common labels
+                if lower.contains("very high") { return 10.0 }
+                if lower.contains("high") { return 9.0 }
+                if lower.contains("moderate to high") { return 7.0 }
+                if lower.contains("moderate") { return 6.0 }
+                if lower.contains("low") { return 2.0 }
+                if lower.contains("very low") { return 1.0 }
+            case .nutritionQuality:
+                if lower.contains("very healthy") { return 10.0 }
+                if lower.contains("mostly") { return 8.0 }
+                if lower.contains("mixed") { return 6.0 }
+                if lower.contains("unhealthy") { return 1.0 }
+            case .smokingStatus:
+                if lower.contains("never") { return 10.0 }
+                if lower.contains("former") { return 6.0 }
+                if lower.contains("occasion") || lower.contains("some") { return 3.0 }
+                if lower.contains("daily") { return 1.0 }
+            case .alcoholConsumption:
+                if lower.contains("never") { return 10.0 }
+                if lower.contains("occasion") { return 7.0 }
+                if lower.contains("daily") || lower.contains("heavy") { return 1.5 }
+                if lower.contains("several") { return 4.0 }
+            case .socialConnectionsQuality:
+                if lower.contains("very strong") { return 10.0 }
+                if lower.contains("moderate") || lower.contains("good") { return 6.5 }
+                if lower.contains("limited") { return 2.0 }
+                if lower.contains("isolated") { return 1.0 }
+            }
+        }
+        return nil
+    }
+    
+    private func parseBloodPressureSystolic(_ any: Any) -> Double? {
+        if let d = any as? Double { return d }
+        if let i = any as? Int { return Double(i) }
+        if let s = any as? String {
+            // If user selected labels, map them; if they put a number like "125", parse it
+            if let direct = Double(s) { return direct }
+            let lower = s.lowercased()
+            if lower.contains("below 120") || lower.contains("normal") {
+                return 115.0
+            }
+            if lower.contains("120") || lower.contains("elevated") {
+                return 125.0
+            }
+            if lower.contains("130") || lower.contains("80+") || lower.contains("stage") {
+                return 135.0
+            }
+            if lower.contains("don") || lower.contains("know") || lower.contains("unknown") {
+                return HealthMetricType.bloodPressure.baselineValue // use baseline if unknown
+            }
+        }
+        return nil
+    }
+    
+    private func mapBloodPressureCategoryToSystolic(_ category: QuestionnaireViewModel.BloodPressureCategory) -> Double {
+        switch category {
+        case .normal, .low:
+            return 115.0
+        case .elevatedToStage1, .moderate:
+            return 125.0
+        case .unknown, .high:
+            return HealthMetricType.bloodPressure.baselineValue
+        }
+    }
 }
+

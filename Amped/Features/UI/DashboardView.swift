@@ -670,8 +670,8 @@ struct DashboardView: View {
                     
                     VStack(alignment: .leading) {
                         // Icon + Title Row
-                        HStack(spacing: 1) {
-                            Text(getTopMetricDisplayName()+" - ")
+//                        HStack(spacing: 1) {
+                            Text(getTopMetricDisplayName()+":")
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(.white)
                             
@@ -679,7 +679,7 @@ struct DashboardView: View {
                             Text(getTopMetricImpactText())
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(getTopMetricImpactColor())
-                        }
+//                        }
                         
                         // Recommendation line (styled like screenshot)
                         (

@@ -30,6 +30,8 @@ struct MainReasonStatsView: View {
         }
     }
     
+    @State private var showSheet = false
+    
     var body: some View {
         ZStack {
             LinearGradient.grayGradient
@@ -83,10 +85,6 @@ struct MainReasonStatsView: View {
                     Text("What is the main reason you might want \nto live longer?")
                         .font(.poppins(18, weight: .medium))
                         .foregroundColor(.white)
-                    
-//                    Text("typical stress level?")
-//                        .font(.poppins(18, weight: .medium))
-//                        .foregroundColor(.white)
                 }
                 .padding(.top, 8)
 
@@ -143,8 +141,98 @@ struct MainReasonStatsView: View {
                 .padding(.top, 16)
 
                 Spacer()
+                
+                // Research info text (use as an info trigger)
+                HStack(spacing: 8) {
+                    Image(systemName: "book.closed")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.5))
+                    
+                    Button {
+                        showSheet.toggle()
+                    } label: {
+                        Text("See how your current habits impact your lifespan.")
+                            .font(.poppins(13, weight: .regular))
+                            .foregroundColor(.white.opacity(0.5))
+                    }
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 20)
             }
         }
+        .overlay(content: {
+            BottomSheet(isPresented: $showSheet) {
+                AggregateImpactSheetContent()
+            }
+        })
         .navigationBarBackButtonHidden(false)
     }
 }
+
+// MARK: - Aggregate life impact BottomSheet content (uses all current manual metrics)
+
+private struct AggregateImpactSheetContent: View {
+    @State private var score: Int = 50
+    @State private var sliderValue: Double = 50
+    @State private var descriptionText: String = "Loading..."
+    @State private var sourceText: String = "Based on your current manual metrics"
+    @State private var title: String = "Impact score: Your current habits"
+    
+    var body: some View {
+        ImpactContentView(
+            title: title,
+            score: score,
+            maxScore: 100,
+            sliderValue: sliderValue,
+            descriptionText: descriptionText,
+            sourceText: sourceText
+        )
+        .onAppear {
+            Task { await load() }
+        }
+    }
+    
+    private func loadUserProfile() -> UserProfile {
+        if let data = UserDefaults.standard.data(forKey: "user_profile"),
+           let profile = try? JSONDecoder().decode(UserProfile.self, from: data) {
+            return profile
+        }
+        let currentYear = Calendar.current.component(.year, from: Date())
+        return UserProfile(id: UUID().uuidString, birthYear: currentYear - 30, gender: .male, isSubscribed: false, hasCompletedOnboarding: false, hasCompletedQuestionnaire: false, hasGrantedHealthKitPermissions: false, createdAt: Date(), lastActive: Date())
+    }
+    
+    private func normalizeImpactToScore(_ minutesPerDay: Double) -> Int {
+        let clamped = max(-120.0, min(120.0, minutesPerDay))
+        let normalized = (clamped + 120.0) / 240.0
+        return Int((normalized * 100.0).rounded())
+    }
+    
+    private func load() async {
+        let profile = loadUserProfile()
+        let qm = QuestionnaireManager()
+        let lifeService = LifeImpactService(userProfile: profile)
+        
+        // Build metrics from current manual inputs
+        let manualInputs = qm.getCurrentManualMetrics()
+        let metrics: [HealthMetric] = manualInputs.map {
+            HealthMetric(id: UUID().uuidString, type: $0.type, value: $0.value, date: $0.date, source: .userInput)
+        }
+        
+        // Calculate total daily impact (use .day period)
+        let impactPoint = lifeService.calculateTotalImpact(from: metrics, for: .day)
+        let dailyMinutes = impactPoint.totalImpactMinutes
+        
+        // Prepare a friendly description
+        let formatted = ImpactDataPoint.formatLifespanImpact(minutes: dailyMinutes)
+        let summary = "Estimated total daily impact from your current habits: \(formatted)."
+        
+        await MainActor.run {
+            let s = normalizeImpactToScore(dailyMinutes)
+            self.score = max(0, min(100, s))
+            self.sliderValue = Double(self.score)
+            self.descriptionText = summary
+            self.sourceText = "Aggregated from your current manual inputs"
+        }
+    }
+}
+
