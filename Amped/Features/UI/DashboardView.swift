@@ -439,6 +439,11 @@ struct DashboardView: View {
                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     .scaleEffect(2)
             }
+            
+            // Streak milestone overlay (from StreakManager via ViewModel)
+            if viewModel.showStreakCelebration {
+                streakCongratsOverlay
+            }
         }
     }
     
@@ -1972,407 +1977,7 @@ extension DashboardView {
     
     /*
      func getMetricsForPeriod(_ period: ImpactDataPoint.PeriodType) -> [DashboardMetric] {
-     switch period {
-     case .day:
-     return [
-     DashboardMetric(
-     icon: "heart.fill",
-     iconColor: .red,
-     title: "Heart Rate",
-     value: "75",
-     unit: "BPM",
-     status: "↑ 4 mins added",
-     statusColor: .green,
-     timestamp: "21:43"
-     ),
-     DashboardMetric(
-     icon: "figure.walk",
-     iconColor: .blue,
-     title: "Steps",
-     value: "3,421",
-     unit: "steps",
-     status: "↓ 2 mins lost",
-     statusColor: .red,
-     timestamp: "21:35"
-     ),
-     DashboardMetric(
-     icon: "flame.fill",
-     iconColor: .orange,
-     title: "Active Energy",
-     value: "670",
-     unit: "kcal",
-     status: "↓ 2 mins lost",
-     statusColor: .red,
-     timestamp: "21:35"
-     ),
-     DashboardMetric(
-     icon: "moon.fill",
-     iconColor: .yellow,
-     title: "Sleep",
-     value: "5h 12m",
-     unit: "",
-     status: "↓ 2 mins lost",
-     statusColor: .red,
-     timestamp: "21:35"
-     ),
-     DashboardMetric(
-     icon: "heart.circle.fill",
-     iconColor: .blue,
-     title: "Cardio (VO2)",
-     value: "56ml/65",
-     unit: "per min",
-     status: "↑ 3 mins added",
-     statusColor: .green,
-     timestamp: "21:35"
-     )
-     ]
-     case .month:
-     return [
-     DashboardMetric(
-     icon: "heart.fill",
-     iconColor: .red,
-     title: "Heart Rate",
-     value: "78",
-     unit: "BPM",
-     status: "↑ 12 mins added",
-     statusColor: .green,
-     timestamp: "Dec 15"
-     ),
-     DashboardMetric(
-     icon: "figure.walk",
-     iconColor: .blue,
-     title: "Steps",
-     value: "89,234",
-     unit: "steps",
-     status: "↑ 8 mins added",
-     statusColor: .green,
-     timestamp: "Dec 15"
-     ),
-     DashboardMetric(
-     icon: "flame.fill",
-     iconColor: .orange,
-     title: "Active Energy",
-     value: "18,450",
-     unit: "kcal",
-     status: "↑ 15 mins added",
-     statusColor: .green,
-     timestamp: "Dec 15"
-     ),
-     DashboardMetric(
-     icon: "moon.fill",
-     iconColor: .yellow,
-     title: "Sleep",
-     value: "156h 24m",
-     unit: "",
-     status: "↓ 6 mins lost",
-     statusColor: .red,
-     timestamp: "Dec 15"
-     ),
-     DashboardMetric(
-     icon: "heart.circle.fill",
-     iconColor: .blue,
-     title: "Cardio (VO2)",
-     value: "58ml/65",
-     unit: "per min",
-     status: "↑ 18 mins added",
-     statusColor: .green,
-     timestamp: "Dec 15"
-     )
-     ]
-     case .year:
-     return [
-     DashboardMetric(
-     icon: "heart.fill",
-     iconColor: .red,
-     title: "Heart Rate",
-     value: "76",
-     unit: "BPM",
-     status: "↑ 45 mins added",
-     statusColor: .green,
-     timestamp: "2024"
-     ),
-     DashboardMetric(
-     icon: "figure.walk",
-     iconColor: .blue,
-     title: "Steps",
-     value: "1.2M",
-     unit: "steps",
-     status: "↑ 120 mins added",
-     statusColor: .green,
-     timestamp: "2024"
-     ),
-     DashboardMetric(
-     icon: "flame.fill",
-     iconColor: .orange,
-     title: "Active Energy",
-     value: "245K",
-     unit: "kcal",
-     status: "↑ 180 mins added",
-     statusColor: .green,
-     timestamp: "2024"
-     ),
-     DashboardMetric(
-     icon: "moon.fill",
-     iconColor: .yellow,
-     title: "Sleep",
-     value: "2.8K hours",
-     unit: "",
-     status: "↓ 72 mins lost",
-     statusColor: .red,
-     timestamp: "2024"
-     ),
-     DashboardMetric(
-     icon: "heart.circle.fill",
-     iconColor: .blue,
-     title: "Cardio (VO2)",
-     value: "59ml/65",
-     unit: "per min",
-     status: "↑ 95 mins added",
-     statusColor: .green,
-     timestamp: "2024"
-     )
-     ]
-     }
-     }
-     
-     // MARK: - Chart Helper Functions
-     
-     /// Get chart data for a specific metric and period
-     func getChartDataForMetric(_ metricTitle: String, period: String) -> [ChartDataPoint] {
-     switch metricTitle.lowercased() {
-     case "sleep":
-     return getSleepChartData(for: period)
-     case "steps":
-     return getStepsChartData(for: period)
-     case "heart rate":
-     return getHeartRateChartData(for: period)
-     case "exercise":
-     return getExerciseChartData(for: period)
-     case "weight":
-     return getWeightChartData(for: period)
-     default:
-     return getDefaultChartData(for: period)
-     }
-     }
-     
-     /// Get X-axis labels for different periods
-     func getXAxisLabels(for period: String) -> [String] {
-     switch period {
-     case "day":
-     return ["12 AM", "6 AM", "12 PM", "6 PM", "11 PM"]
-     case "month":
-     return ["Week 1", "Week 2", "Week 3", "Week 4"]
-     case "year":
-     return ["Q1", "Q2", "Q3", "Q4"]
-     default:
-     return ["1", "2", "3", "4", "5"]
-     }
-     }
-     
-     /// Get Y-axis labels based on metric type
-     func getYAxisLabels(for metricTitle: String) -> [String] {
-     switch metricTitle.lowercased() {
-     case "sleep":
-     return ["9", "7", "5", "3"]
-     case "steps":
-     return ["15k", "10k", "5k", "0"]
-     case "heart rate":
-     return ["70", "65", "60", "55"]
-     case "exercise":
-     return ["60", "40", "20", "0"]
-     case "weight":
-     return ["75", "70", "65", "60"]
-     default:
-     return ["100", "75", "50", "25"]
-     }
-     }
-     
-     // MARK: - Specific Chart Data Functions
-     
-     func getSleepChartData(for period: String) -> [ChartDataPoint] {
-     switch period {
-     case "day":
-     return [
-     ChartDataPoint(value: 7.2, label: "Mon"),
-     ChartDataPoint(value: 8.1, label: "Tue"),
-     ChartDataPoint(value: 6.8, label: "Wed"),
-     ChartDataPoint(value: 7.5, label: "Thu"),
-     ChartDataPoint(value: 8.3, label: "Fri"),
-     ChartDataPoint(value: 9.1, label: "Sat"),
-     ChartDataPoint(value: 7.8, label: "Sun")
-     ]
-     case "month":
-     return [
-     ChartDataPoint(value: 7.5, label: "Week 1"),
-     ChartDataPoint(value: 8.0, label: "Week 2"),
-     ChartDataPoint(value: 7.2, label: "Week 3"),
-     ChartDataPoint(value: 7.8, label: "Week 4")
-     ]
-     case "year":
-     return [
-     ChartDataPoint(value: 7.3, label: "Q1"),
-     ChartDataPoint(value: 7.8, label: "Q2"),
-     ChartDataPoint(value: 8.1, label: "Q3"),
-     ChartDataPoint(value: 7.6, label: "Q4")
-     ]
-     default:
-     return []
-     }
-     }
-     
-     func getStepsChartData(for period: String) -> [ChartDataPoint] {
-     switch period {
-     case "day":
-     return [
-     ChartDataPoint(value: 8500, label: "Mon"),
-     ChartDataPoint(value: 12000, label: "Tue"),
-     ChartDataPoint(value: 9800, label: "Wed"),
-     ChartDataPoint(value: 11500, label: "Thu"),
-     ChartDataPoint(value: 13200, label: "Fri"),
-     ChartDataPoint(value: 15800, label: "Sat"),
-     ChartDataPoint(value: 9200, label: "Sun")
-     ]
-     case "month":
-     return [
-     ChartDataPoint(value: 10500, label: "Week 1"),
-     ChartDataPoint(value: 12000, label: "Week 2"),
-     ChartDataPoint(value: 9800, label: "Week 3"),
-     ChartDataPoint(value: 11200, label: "Week 4")
-     ]
-     case "year":
-     return [
-     ChartDataPoint(value: 9500, label: "Q1"),
-     ChartDataPoint(value: 11200, label: "Q2"),
-     ChartDataPoint(value: 12800, label: "Q3"),
-     ChartDataPoint(value: 10500, label: "Q4")
-     ]
-     default:
-     return []
-     }
-     }
-     
-     func getHeartRateChartData(for period: String) -> [ChartDataPoint] {
-     switch period {
-     case "day":
-     return [
-     ChartDataPoint(value: 65, label: "Mon"),
-     ChartDataPoint(value: 62, label: "Tue"),
-     ChartDataPoint(value: 68, label: "Wed"),
-     ChartDataPoint(value: 64, label: "Thu"),
-     ChartDataPoint(value: 61, label: "Fri"),
-     ChartDataPoint(value: 59, label: "Sat"),
-     ChartDataPoint(value: 66, label: "Sun")
-     ]
-     case "month":
-     return [
-     ChartDataPoint(value: 66, label: "Week 1"),
-     ChartDataPoint(value: 64, label: "Week 2"),
-     ChartDataPoint(value: 63, label: "Week 3"),
-     ChartDataPoint(value: 62, label: "Week 4")
-     ]
-     case "year":
-     return [
-     ChartDataPoint(value: 68, label: "Q1"),
-     ChartDataPoint(value: 65, label: "Q2"),
-     ChartDataPoint(value: 63, label: "Q3"),
-     ChartDataPoint(value: 61, label: "Q4")
-     ]
-     default:
-     return []
-     }
-     }
-     
-     func getExerciseChartData(for period: String) -> [ChartDataPoint] {
-     switch period {
-     case "day":
-     return [
-     ChartDataPoint(value: 25, label: "Mon"),
-     ChartDataPoint(value: 45, label: "Tue"),
-     ChartDataPoint(value: 30, label: "Wed"),
-     ChartDataPoint(value: 50, label: "Thu"),
-     ChartDataPoint(value: 35, label: "Fri"),
-     ChartDataPoint(value: 60, label: "Sat"),
-     ChartDataPoint(value: 20, label: "Sun")
-     ]
-     case "month":
-     return [
-     ChartDataPoint(value: 35, label: "Week 1"),
-     ChartDataPoint(value: 42, label: "Week 2"),
-     ChartDataPoint(value: 38, label: "Week 3"),
-     ChartDataPoint(value: 45, label: "Week 4")
-     ]
-     case "year":
-     return [
-     ChartDataPoint(value: 30, label: "Q1"),
-     ChartDataPoint(value: 38, label: "Q2"),
-     ChartDataPoint(value: 45, label: "Q3"),
-     ChartDataPoint(value: 42, label: "Q4")
-     ]
-     default:
-     return []
-     }
-     }
-     
-     func getWeightChartData(for period: String) -> [ChartDataPoint] {
-     switch period {
-     case "day":
-     return [
-     ChartDataPoint(value: 70.2, label: "Mon"),
-     ChartDataPoint(value: 70.1, label: "Tue"),
-     ChartDataPoint(value: 69.8, label: "Wed"),
-     ChartDataPoint(value: 70.0, label: "Thu"),
-     ChartDataPoint(value: 69.9, label: "Fri"),
-     ChartDataPoint(value: 70.3, label: "Sat"),
-     ChartDataPoint(value: 70.1, label: "Sun")
-     ]
-     case "month":
-     return [
-     ChartDataPoint(value: 71.0, label: "Week 1"),
-     ChartDataPoint(value: 70.5, label: "Week 2"),
-     ChartDataPoint(value: 70.2, label: "Week 3"),
-     ChartDataPoint(value: 70.0, label: "Week 4")
-     ]
-     case "year":
-     return [
-     ChartDataPoint(value: 72.5, label: "Q1"),
-     ChartDataPoint(value: 71.8, label: "Q2"),
-     ChartDataPoint(value: 70.5, label: "Q3"),
-     ChartDataPoint(value: 70.0, label: "Q4")
-     ]
-     default:
-     return []
-     }
-     }
-     
-     func getDefaultChartData(for period: String) -> [ChartDataPoint] {
-     switch period {
-     case "day":
-     return [
-     ChartDataPoint(value: 85, label: "Mon"),
-     ChartDataPoint(value: 92, label: "Tue"),
-     ChartDataPoint(value: 78, label: "Wed"),
-     ChartDataPoint(value: 88, label: "Thu"),
-     ChartDataPoint(value: 95, label: "Fri"),
-     ChartDataPoint(value: 90, label: "Sat"),
-     ChartDataPoint(value: 82, label: "Sun")
-     ]
-     case "month":
-     return [
-     ChartDataPoint(value: 82, label: "Week 1"),
-     ChartDataPoint(value: 88, label: "Week 2"),
-     ChartDataPoint(value: 85, label: "Week 3"),
-     ChartDataPoint(value: 90, label: "Week 4")
-     ]
-     case "year":
-     return [
-     ChartDataPoint(value: 80, label: "Q1"),
-     ChartDataPoint(value: 85, label: "Q2"),
-     ChartDataPoint(value: 88, label: "Q3"),
-     ChartDataPoint(value: 90, label: "Q4")
-     ]
-     default:
-     return []
-     }
+     ...
      }
      */
 }
@@ -2482,4 +2087,100 @@ enum NavigationRoute: Hashable {
     case metricDetail(type: HealthMetricType, period: ImpactDataPoint.PeriodType)
     case profile
     case subscription
+}
+
+// MARK: - Streak Congrats Overlay (Blue→Green gradient card)
+private extension DashboardView {
+    var streakCongratsOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.85)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    dismissStreakOverlay()
+                }
+            
+            VStack(spacing: 16) {
+                // Card
+                VStack(spacing: 16) {
+                    Image("fireStreak")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 84, height: 84)
+                        .padding(.top, 8)
+                    
+                    VStack(spacing: 6) {
+                        Text("Congrats! You’ve")
+                            .foregroundColor(.white)
+                            .font(.system(size: 17, weight: .semibold))
+                        
+                        // "stayed in the green for"
+                        (
+                            Text("stayed in the ")
+                                .foregroundColor(.white)
+                            + Text("green")
+                                .foregroundColor(Color(hex: "#18EF47"))
+                                .fontWeight(.semibold)
+                            + Text(" for")
+                                .foregroundColor(.white)
+                        )
+                        .font(.system(size: 16, weight: .regular))
+                        
+                        // "10 days straight." with bold number
+                        let days = viewModel.currentStreak.currentStreak
+                        (
+                            Text("\(days) days")
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                            + Text(" straight.")
+                                .foregroundColor(.white)
+                        )
+                        .font(.system(size: 16))
+                    }
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 12)
+                    
+                    Button {
+                        dismissStreakOverlay()
+                    } label: {
+                        Text("Nice!")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(Color.white)
+                            .clipShape(Capsule())
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 12)
+                    }
+                }
+                .frame(maxWidth: 320)
+                .background(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(hex: "#2F6FA6"), Color(hex: "#1CB64A")],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22)
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.35), radius: 20, x: 0, y: 10)
+                .padding(.horizontal, 24)
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .onAppear {
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+        }
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: viewModel.showStreakCelebration)
+    }
+    
+    func dismissStreakOverlay() {
+        viewModel.dismissMilestoneCelebration()
+    }
 }

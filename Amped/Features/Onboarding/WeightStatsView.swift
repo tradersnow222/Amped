@@ -5,17 +5,12 @@
 //  Created by Yawar Abbas   on 03/11/2025.
 //
 
-//
-//  WeightStatsView.swift
-//  Amped
-//
-//  Created by Yawar Abbas on 03/11/2025.
-//
 import SwiftUI
 
 struct WeightStatsView: View {
     @State private var selectedUnit: WeightUnit = .kg
-    @State private var selectedWeight: Int? = nil // Changed to optional
+    // Default to 55 as requested
+    @State private var selectedWeight: Int? = 55
     let progress: Double = 5
     var onContinue: ((String, String) -> Void)?
     var onBack: (() -> Void)?
@@ -95,7 +90,8 @@ struct WeightStatsView: View {
                     // KG segment
                     Button(action: {
                         selectedUnit = .kg
-                        selectedWeight = nil // Reset selection when unit changes
+                        // Default selection for KG as requested
+                        selectedWeight = 55
                     }) {
                         Text("KG")
                             .font(.poppins(14, weight: .medium))
@@ -121,7 +117,8 @@ struct WeightStatsView: View {
                     // LB segment
                     Button(action: {
                         selectedUnit = .lb
-                        selectedWeight = nil // Reset selection when unit changes
+                        // Choose a sensible default for LB; convert 55 kg ≈ 121 lb
+                        selectedWeight = 121
                     }) {
                         Text("LB")
                             .font(.poppins(14, weight: .medium))
@@ -158,16 +155,25 @@ struct WeightStatsView: View {
 
                 // Horizontal Weight Picker
                 WeightPickerView(selectedWeight: $selectedWeight, weightRange: weightRange)
-                    .frame(height: 100)
-                    .padding(.top, 20)
+                    .frame(height: 120)
+                    .padding(.top, 6)
 
                 Spacer()
 
                 Button(action: {
-                    if let weight = selectedWeight {
-                        let weightUnit = "\(selectedUnit == .kg ? "KG" : "LB")"
-                        onContinue?("\(weight)", weightUnit)
+                    guard let weight = selectedWeight else { return }
+                    
+                    // Normalize to KG for saving/calculation
+                    let weightInKg: Int
+                    if selectedUnit == .lb {
+                        let kg = Double(weight) * 0.45359237
+                        weightInKg = Int((kg).rounded()) // round to nearest whole kg
+                    } else {
+                        weightInKg = weight
                     }
+                    
+                    // Always pass KG as the unit string since we save in kg
+                    onContinue?("\(weightInKg)", "KG")
                 }) {
                     Text("Continue")
                         .font(.system(size: 17, weight: .semibold))
@@ -198,49 +204,62 @@ struct WeightPickerView: View {
     @Binding var selectedWeight: Int?
     let weightRange: [Int]
     
-    private let itemSpacing: CGFloat = 10 // Reduced spacing between items
+    private let itemSpacing: CGFloat = 14
+    private let itemSize: CGFloat = 100
     
     var body: some View {
         GeometryReader { geometry in
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: itemSpacing) {
-                        // Leading spacer
+                        // Leading spacer to center the first item
                         Color.clear
-                            .frame(width: (geometry.size.width / 2) - 100)
+                            .frame(width: (geometry.size.width - itemSize) / 2)
                         
                         ForEach(weightRange, id: \.self) { weight in
                             Button(action: {
-                                withAnimation(.easeInOut(duration: 0.3)) {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                     selectedWeight = weight
                                 }
                             }) {
                                 ZStack {
-                                    // Green circle for selected item
+                                    // Selected ring
                                     if selectedWeight == weight {
                                         Circle()
-                                            .strokeBorder(Color(hex: "#02AE54"), lineWidth: 1)
-                                            .frame(width: 100, height: 100)
+                                            .strokeBorder(Color(hex: "#18EF47").opacity(0.9), lineWidth: 2)
+                                            .frame(width: itemSize, height: itemSize)
+                                            .shadow(color: Color(hex: "#18EF47").opacity(0.35), radius: 8, x: 0, y: 0)
                                     }
                                     
                                     Text("\(weight)")
-                                        .font(.poppins(selectedWeight == weight ? 40 : 24, weight: selectedWeight == weight ? .bold : .regular))
-                                        .foregroundColor(selectedWeight == weight ? Color(hex: "#18EF47") : .white.opacity(0.4))
-                                        .frame(width: 100, height: 100)
+                                        .font(.poppins(selectedWeight == weight ? 44 : 22, weight: selectedWeight == weight ? .bold : .regular))
+                                        .foregroundColor(selectedWeight == weight ? Color(hex: "#18EF47") : .white.opacity(0.45))
+                                        .frame(width: itemSize, height: itemSize)
                                 }
                             }
                             .buttonStyle(PlainButtonStyle())
                             .id(weight)
                         }
                         
-                        // Trailing spacer
+                        // Trailing spacer to center the last item
                         Color.clear
-                            .frame(width: (geometry.size.width / 2) - 15)
+                            .frame(width: (geometry.size.width - itemSize) / 2)
+                    }
+                }
+                .onAppear {
+                    // Ensure default selection (55) is visible/centered on first appear
+                    if selectedWeight == nil {
+                        selectedWeight = 55
+                    }
+                    if let w = selectedWeight {
+                        DispatchQueue.main.async {
+                            proxy.scrollTo(w, anchor: .center)
+                        }
                     }
                 }
                 .onChange(of: selectedWeight) { newValue in
                     if let weight = newValue {
-                        withAnimation(.easeInOut(duration: 0.3)) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                             proxy.scrollTo(weight, anchor: .center)
                         }
                     }
@@ -248,4 +267,8 @@ struct WeightPickerView: View {
             }
         }
     }
+}
+
+#Preview {
+    WeightStatsView()
 }

@@ -61,11 +61,12 @@ struct AgeSelectionView: View {
                 .padding(.bottom, 20)
 
                 Text("How many years have you powered through life?")
-                    .font(.poppins(18, weight: .medium))
+                    .font(.poppins(20, weight: .medium))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 35)
                 
                 HStack {
                     Text("Date")

@@ -7,30 +7,31 @@
 import SwiftUI
 
 struct HeightStatsView: View {
-    @State private var selectedUnit: HeightUnit = .feet
-    @State private var heightValue: String = ""
+    @State private var selectedUnit: HeightUnit = .cm
+    // Default to 173 cm as requested
+    @State private var selectedHeight: Int? = 173
     let progress: Double = 4
     var onContinue: ((String) -> Void)?
     var onBack: (() -> Void)?
     
-    private var isInputValid: Bool {
-        !heightValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-    
-    private func dismissKeyboard() {
-    #if canImport(UIKit)
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-    #endif
-    }
-    
     enum HeightUnit: Int {
-        case feet = 0
+        case feet = 0   // We show inches when this is selected (e.g., 68 = 5'8")
         case cm = 1
+    }
+    
+    // Ranges for height based on selected unit
+    private var heightRange: [Int] {
+        switch selectedUnit {
+        case .cm:
+            return Array(120...220) // cm range
+        case .feet:
+            return Array(48...84)   // inches range (4'0" to 7'0")
+        }
     }
     
     var body: some View {
         ZStack {
-            LinearGradient.grayGradient
+            LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
 
             VStack(spacing: 24) {
@@ -63,7 +64,6 @@ struct HeightStatsView: View {
                     .foregroundColor(.white)
                     .padding(.top, 4)
 
-                // Progress with percentage below
                 // MARK: - Progress Bar
                 VStack(spacing: 4) {
                     ProgressView(value: progress, total: 13)
@@ -87,6 +87,8 @@ struct HeightStatsView: View {
                     // Feet segment
                     Button(action: {
                         selectedUnit = .feet
+                        // Default for inches (5'8" = 68 in)
+                        selectedHeight = 68
                     }) {
                         Text("Feet")
                             .font(.poppins(14, weight: .medium))
@@ -107,12 +109,13 @@ struct HeightStatsView: View {
                                 }
                             )
                     }
-//                    .buttonStyle(.plain)
                     .frame(maxWidth: .infinity)
 
                     // cm segment
                     Button(action: {
                         selectedUnit = .cm
+                        // Default as requested
+                        selectedHeight = 173
                     }) {
                         Text("cm")
                             .font(.poppins(14, weight: .medium))
@@ -133,11 +136,9 @@ struct HeightStatsView: View {
                                 }
                             )
                     }
-//                    .buttonStyle(.plain)
                     .frame(maxWidth: .infinity)
                 }
                 .background(
-                    // Match TextField background style
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(Color.white.opacity(0.08))
                 )
@@ -147,46 +148,33 @@ struct HeightStatsView: View {
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .padding(.horizontal, 32)
-                .onChange(of: selectedUnit) { new in
-                    // reset input when unit changes
-                    heightValue = ""
-                }
                 .padding(.top, 4)
 
-                // Height input styled capsule with green outline
-                ZStack {
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(Color.white.opacity(0.08))
-                        .frame(height: 54)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Color(hex: "#18EF47").opacity(0.8), lineWidth: 1)
-                        )
-                        .padding(.horizontal, 32)
-                    
-                    if heightValue.isEmpty {
-                        Text(selectedUnit == .feet ? "Enter height in inches" : "Enter height in cm")
-                            .foregroundColor(Color.white.opacity(0.2))
-                    }
-
-                    TextField("", text: $heightValue)
-                        .keyboardType(.decimalPad)
-                        .submitLabel(.done)
-                        .onChange(of: heightValue) { new in
-                            // keep only digits
-                            let filtered = new.onlyDecimal()
-                            if filtered != new { heightValue = filtered }
-                        }
-                        .font(.poppins(16, weight: .medium))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .frame(height: 54)
-                        .padding(.horizontal, 48)
-                }
-
+                // Height horizontal picker (matches weight style)
+                HeightPickerView(
+                    selectedHeight: $selectedHeight,
+                    heightRange: heightRange,
+                    unit: selectedUnit
+                )
+                .frame(height: 120)
+                .padding(.top, 6)
 
                 Button(action: {
-                    onContinue?(heightValue)
+                    guard let h = selectedHeight else { return }
+                    
+                    // Normalize to CM for saving/calculation
+                    let heightInCm: Int
+                    switch selectedUnit {
+                    case .cm:
+                        heightInCm = h
+                    case .feet:
+                        // Here "h" is inches; convert inches → cm
+                        let cm = Double(h) * 2.54
+                        heightInCm = Int((cm).rounded())
+                    }
+                    
+                    // Always pass cm (as String) to the continuation
+                    onContinue?("\(heightInCm)")
                 }) {
                     Text("Continue")
                         .font(.system(size: 17, weight: .semibold))
@@ -204,63 +192,99 @@ struct HeightStatsView: View {
                         .padding(.horizontal, 40)
                         .shadow(color: Color.black.opacity(0.25), radius: 5, x: 0, y: 3)
                 }
-                .disabled(!isInputValid)
-                .opacity(isInputValid ? 1.0 : 0.5)
+                .disabled(selectedHeight == nil)
+                .opacity(selectedHeight == nil ? 0.5 : 1.0)
                 .padding(.top, 20)
                 .padding(.bottom, 40)
                 
                 Spacer()
             }
         }
-        .onTapGesture {
-            dismissKeyboard()
-        }
         .navigationBarBackButtonHidden(false)
     }
 }
 
-private extension String {
-    func onlyDigits() -> String {
-        self.filter { $0.isNumber }
-    }
+struct HeightPickerView: View {
+    @Binding var selectedHeight: Int?
+    let heightRange: [Int]
+    let unit: HeightStatsView.HeightUnit
     
-    func onlyDecimal() -> String {
-        // Allow digits and a single decimal point
-        var result = ""
-        var hasDecimalPoint = false
-        
-        for char in self {
-            if char.isNumber {
-                result.append(char)
-            } else if char == "." && !hasDecimalPoint {
-                result.append(char)
-                hasDecimalPoint = true
+    private let itemSpacing: CGFloat = 14
+    private let itemSize: CGFloat = 100
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: itemSpacing) {
+                        // Leading spacer to center the first item
+                        Color.clear
+                            .frame(width: (geometry.size.width - itemSize) / 2)
+                        
+                        ForEach(heightRange, id: \.self) { h in
+                            Button {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                    selectedHeight = h
+                                }
+                            } label: {
+                                ZStack {
+                                    if selectedHeight == h {
+                                        Circle()
+                                            .strokeBorder(Color(hex: "#18EF47").opacity(0.9), lineWidth: 2)
+                                            .frame(width: itemSize, height: itemSize)
+                                            .shadow(color: Color(hex: "#18EF47").opacity(0.35), radius: 8, x: 0, y: 0)
+                                    }
+                                    
+                                    Text(formattedHeight(h))
+                                        .font(.poppins(selectedHeight == h ? 44 : 22, weight: selectedHeight == h ? .bold : .regular))
+                                        .foregroundColor(selectedHeight == h ? Color(hex: "#18EF47") : .white.opacity(0.45))
+                                        .frame(width: itemSize, height: itemSize)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .id(h)
+                        }
+                        
+                        // Trailing spacer to center the last item
+                        Color.clear
+                            .frame(width: (geometry.size.width - itemSize) / 2)
+                    }
+                }
+                .onAppear {
+                    // Ensure default selection is visible/centered
+                    if selectedHeight == nil {
+                        selectedHeight = (unit == .cm) ? 173 : 68
+                    }
+                    if let h = selectedHeight {
+                        DispatchQueue.main.async {
+                            proxy.scrollTo(h, anchor: .center)
+                        }
+                    }
+                }
+                .onChange(of: selectedHeight) { newValue in
+                    if let h = newValue {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            proxy.scrollTo(h, anchor: .center)
+                        }
+                    }
+                }
             }
         }
-        return result
+    }
+    
+    private func formattedHeight(_ value: Int) -> String {
+        switch unit {
+        case .cm:
+            return "\(value)"
+        case .feet:
+            // value is inches; convert to ft'in"
+            let feet = value / 12
+            let inches = value % 12
+            return "\(feet)′\(inches)″"
+        }
     }
 }
 
-private extension View {
-    @ViewBuilder
-    func tinctureFix() -> some View {
-        self
-            .tint(.clear)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [Color(hex: "#18EF47"), Color(hex: "#0E8929")],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                    )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
+#Preview {
+    HeightStatsView()
 }
-
