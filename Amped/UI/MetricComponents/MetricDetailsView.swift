@@ -17,6 +17,8 @@ struct MetricDetailsView: View {
     @StateObject private var dashboardViewModel = DashboardViewModel()
     
     @Binding var navigationPath: NavigationPath
+    
+    @State private var showSheet = false
         
     // MARK: - Initialization
     
@@ -177,16 +179,22 @@ struct MetricDetailsView: View {
                             )
                             .padding(.horizontal, 16)
                             
-                            // Secondary tip row
+                            // Research info text
                             HStack(spacing: 8) {
-                                Image(systemName: "info.circle")
+                                Image(systemName: "book.closed")
+                                    .font(.system(size: 14))
                                     .foregroundColor(.white.opacity(0.5))
-                                Text("Tap to see what XX research studies tell us about \(title(for: latestMetric.type))")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.white.opacity(0.5))
-                                Spacer()
+                                
+                                Button {
+                                    showSheet.toggle()
+                                } label: {
+                                    Text("Tap to see what research based on 195 studies tell us.")
+                                        .font(.poppins(13, weight: .regular))
+                                        .foregroundColor(.white.opacity(0.5))
+                                }
                             }
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, 32)
+                            .padding(.top, 8)
                             
                             Spacer(minLength: 40)
                         }
@@ -241,6 +249,14 @@ struct MetricDetailsView: View {
                 }
             }
         }
+        .overlay(content: {
+            BottomSheet(isPresented: $showSheet) {
+                MetricImpactSheetContent(
+                    metricType: metric.type,
+                    customTitle: "Impact score: \(title(for: metric.type))"
+                )
+            }
+        })
         .navigationBarHidden(true)
     }
     
