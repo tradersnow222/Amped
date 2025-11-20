@@ -12,7 +12,7 @@ struct SettingView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
     
-    // Alerts
+    // Alerts (now used to drive custom dialogs instead of system .alert)
     @State private var showingDeleteAccountConfirmation: Bool = false
     @State private var showingLogoutConfirmation: Bool = false
     
@@ -55,24 +55,68 @@ struct SettingView: View {
                     .padding(.bottom, 24)
                 }
             }
+            
+            // MARK: - Custom Confirm Dialogs Overlay
+            if showingDeleteAccountConfirmation || showingLogoutConfirmation {
+                // Dimmed backdrop
+                Color.black.opacity(0.75)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .onTapGesture {
+                        // Tap outside to cancel
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.95)) {
+                            showingDeleteAccountConfirmation = false
+                            showingLogoutConfirmation = false
+                        }
+                    }
+                
+                // Dialog content
+                Group {
+                    if showingDeleteAccountConfirmation {
+                        ConfirmDialogView(
+                            emoji: "crying_face",
+                            message: "Are you sure you want to delete your account and live a shorter life?",
+                            primaryTitle: "Delete",
+                            primaryIsDestructive: true,
+                            onPrimary: {
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.95)) {
+                                    showingDeleteAccountConfirmation = false
+                                }
+                                performFullDataWipe()
+                            },
+                            onCancel: {
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.95)) {
+                                    showingDeleteAccountConfirmation = false
+                                }
+                            }
+                        )
+                    }
+                    if showingLogoutConfirmation {
+                        ConfirmDialogView(
+                            emoji: "disappointed_face",
+                            message: "Are you sure you want to logout?",
+                            primaryTitle: "Logout",
+                            primaryIsDestructive: false,
+                            onPrimary: {
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.95)) {
+                                    showingLogoutConfirmation = false
+                                }
+                                performLogout()
+                            },
+                            onCancel: {
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.95)) {
+                                    showingLogoutConfirmation = false
+                                }
+                            }
+                        )
+                    }
+                }
+                .transition(.scale.combined(with: .opacity))
+                .zIndex(10)
+            }
         }
         .navigationBarHidden(true)
-        .alert("Delete Account", isPresented: $showingDeleteAccountConfirmation) {
-            Button("Delete", role: .destructive) {
-                performFullDataWipe()
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("Are you sure you want to delete your account? This action cannot be undone.")
-        }
-        .alert("Log Out", isPresented: $showingLogoutConfirmation) {
-            Button("Log Out", role: .destructive) {
-                performLogout()
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("Are you sure you want to log out?")
-        }
+        // Removed system .alert modifiers and replaced with custom overlay above
         // Attach the reusable feedback dialog overlay
         .feedbackDialog(
             isPresented: $showFeedbackDialog,
@@ -88,6 +132,8 @@ struct SettingView: View {
                 // Optional: track dismiss
             }
         )
+        .animation(.easeInOut(duration: 0.2), value: showingDeleteAccountConfirmation)
+        .animation(.easeInOut(duration: 0.2), value: showingLogoutConfirmation)
     }
     
     // MARK: - Header
@@ -207,17 +253,21 @@ struct SettingView: View {
                 }
                 .buttonStyle(.plain)
                 
-                // Delete account (destructive)
+                // Delete account (destructive) -> custom dialog
                 Button {
-                    showingDeleteAccountConfirmation = true
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.95)) {
+                        showingDeleteAccountConfirmation = true
+                    }
                 } label: {
                     SettingRowCard(icon: "trash.fill", title: "Delete account", rowBackground: rowBackground, rowStroke: rowStroke, isDestructive: true)
                 }
                 .buttonStyle(.plain)
                 
-                // Logout (destructive)
+                // Logout (destructive) -> custom dialog
                 Button {
-                    showingLogoutConfirmation = true
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.95)) {
+                        showingLogoutConfirmation = true
+                    }
                 } label: {
                     SettingRowCard(icon: "arrow.right.square.fill", title: "Logout", rowBackground: rowBackground, rowStroke: rowStroke, isDestructive: true)
                 }
@@ -286,6 +336,74 @@ struct SettingView: View {
         
         // Dismiss settings after operation so parent view can react to the state change
         dismiss()
+    }
+}
+
+// MARK: - Custom Confirm Dialog
+
+private struct ConfirmDialogView: View {
+    let emoji: String
+    let message: String
+    let primaryTitle: String
+    let primaryIsDestructive: Bool
+    let onPrimary: () -> Void
+    let onCancel: () -> Void
+    
+    private let cornerRadius: CGFloat = 22
+    
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(emoji)
+                .frame(width: 60, height: 60)
+                .padding()
+            
+            Text(message)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 12)
+                .fixedSize(horizontal: false, vertical: true)
+            
+            // Primary action button
+            Button(action: onPrimary) {
+                Text(primaryTitle)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(hex: "#18EF47"), Color(hex: "#0E8929")],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .clipShape(Capsule())
+                    .shadow(color: Color.black.opacity(0.35), radius: 8, x: 0, y: 6)
+            }
+            .padding(.top, 4)
+            
+            // Cancel
+            Button(action: onCancel) {
+                Text("Cancel")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.white.opacity(0.9))
+                    .frame(maxWidth: .infinity)
+            }
+            .padding(.bottom, 6)
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 22)
+        .background(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                )
+        )
+        .padding(.horizontal, 28)
+        .transition(.scale.combined(with: .opacity))
     }
 }
 
