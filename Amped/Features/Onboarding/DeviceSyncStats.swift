@@ -209,6 +209,9 @@ struct SyncDeviceView: View {
         let mainReasonStats = appState.getFromUserDefault(key: UserDefaultsKeys.userMainReasonStats)
         viewModel.selectedLifeMotivation = mainReasonStats == "Watch my family grow" ? QuestionnaireViewModel.LifeMotivation.family : mainReasonStats == "Achieve my dreams" ? QuestionnaireViewModel.LifeMotivation.dreams : QuestionnaireViewModel.LifeMotivation.experience
         
+        // Sync DailyLifespanGainMinutes
+        viewModel.desiredDailyLifespanGainMinutes = Int(appState.getFromUserDefault(key: UserDefaultsKeys.userGoalStats)) ?? 10
+        
         questionnaireManager.saveQuestionnaireData(from: viewModel)
         
         // Clear persisted questionnaire state since we're done
