@@ -2062,8 +2062,8 @@ extension LinearGradient {
         LinearGradient(
             colors: [
                 Color(hex: "#3B77A3"),  // top blue
-                Color.black.opacity(0.8),
-                Color.black.opacity(0.9)   // bottom gray/black
+                Color.black.opacity(0.6),
+                Color.black.opacity(0.7)   // bottom gray/black
             ],
             startPoint: .topLeading,     // Blue in top-left
             endPoint: .bottomTrailing    // Dark toward bottom-right

@@ -191,8 +191,6 @@ struct SettingView: View {
                     .foregroundColor(.white)
                     .font(.system(size: 18, weight: .semibold))
                     .padding(8)
-                    .background(Color.white.opacity(0.10), in: Circle())
-                    .overlay(Circle().stroke(rowStroke, lineWidth: 1))
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 16)
