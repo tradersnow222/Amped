@@ -255,8 +255,10 @@ struct SettingView: View {
                 .buttonStyle(.plain)
                 
                 // Feedback survey (opens dialog)
-                Button {
-                    showFeedbackDialog = true
+                NavigationLink {
+                    FeedbackSurveyView()
+                        .navigationBarBackButtonHidden(true)
+//                    showFeedbackDialog = true
                 } label: {
                     SettingRowCard(icon: "doc.text.fill", title: "Feedback survey", rowBackground: rowBackground, rowStroke: rowStroke)
                 }
