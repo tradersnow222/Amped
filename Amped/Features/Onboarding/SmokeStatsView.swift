@@ -86,9 +86,15 @@ struct SmokeStatsView: View {
                 .padding(.bottom, 30)
 
                 VStack(spacing: 8) {
-                    Text("Do you smoke tobaccos \nproducts?")
+                    Text("Do you smoke tobaccos products?")
                         .font(.poppins(18, weight: .medium))
                         .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 40)
                 }
                 .padding(.top, 8)
 

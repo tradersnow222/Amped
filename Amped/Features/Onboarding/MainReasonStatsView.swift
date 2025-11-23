@@ -86,9 +86,15 @@ struct MainReasonStatsView: View {
                 .padding(.bottom, 30)
 
                 VStack(spacing: 8) {
-                    Text("What is the main reason you might want \nto live longer?")
+                    Text("What is the main reason you might want to live longer?")
                         .font(.poppins(18, weight: .medium))
                         .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 40)
                 }
                 .padding(.top, 8)
 

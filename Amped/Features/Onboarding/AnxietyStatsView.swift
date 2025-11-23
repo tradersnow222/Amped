@@ -86,13 +86,15 @@ struct AnxietyStatsView: View {
                 .padding(.bottom, 30)
 
                 VStack(spacing: 8) {
-                    Text("How would you describe your")
+                    Text("How would you describe your anxiety level?")
                         .font(.poppins(18, weight: .medium))
                         .foregroundColor(.white)
-                    
-                    Text(" anxiety level?")
-                        .font(.poppins(18, weight: .medium))
-                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 40)
                 }
                 .padding(.top, 8)
 

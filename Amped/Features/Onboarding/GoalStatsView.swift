@@ -52,10 +52,15 @@ struct GoalsStatsView: View {
                     .padding(.top, 8)
                 
                 // Subtitle
-                Text("Choose how much time you want to add to\nyour projected lifespan each day.")
-                    .font(.poppins(15))
+                Text("Choose how much time you want to add to your projected lifespan each day.")
+                    .font(.poppins(18, weight: .medium))
+                    .foregroundColor(.white)
                     .multilineTextAlignment(.center)
-                    .foregroundColor(.white.opacity(0.85))
+                    .lineLimit(3)
+                    .truncationMode(.tail)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 40)
 
                 // Dial
                 HStack {

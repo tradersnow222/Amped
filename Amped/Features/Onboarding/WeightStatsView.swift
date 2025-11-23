@@ -85,13 +85,15 @@ struct WeightStatsView: View {
                 .padding(.bottom, 30)
 
                 VStack(spacing: 8) {
-                    Text("Enter your weight to complete")
+                    Text("Enter your weight to complete your charge profile.")
                         .font(.poppins(16, weight: .medium))
                         .foregroundColor(.white)
-                    
-                    Text("your charge profile.")
-                        .font(.poppins(16, weight: .medium))
-                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 40)
                 }
                 .padding(.top, 8)
 
@@ -188,6 +190,7 @@ struct WeightStatsView: View {
                     // Always pass KG as the unit string since we save in kg
                     onContinue?("\(weightInKg)", "KG")
                 }
+                Spacer()
             }
         }
         .navigationBarBackButtonHidden(false)

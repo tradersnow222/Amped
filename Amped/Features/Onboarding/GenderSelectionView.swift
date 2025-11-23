@@ -100,6 +100,10 @@ struct GenderSelectionView: View {
     }
 }
 
+#Preview {
+    GenderSelectionView()
+}
+
 private struct SelectableAvatar: View {
     let title: String
     let isSelected: Bool

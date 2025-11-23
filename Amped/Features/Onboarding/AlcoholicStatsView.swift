@@ -86,9 +86,15 @@ struct AlcoholicStatsView: View {
                 .padding(.bottom, 30)
 
                 VStack(spacing: 8) {
-                    Text("How often do you consume \nalcoholic beverages?")
+                    Text("How often do you consume alcoholic beverages?")
                         .font(.poppins(18, weight: .medium))
                         .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 40)
                 }
                 .padding(.top, 8)
 

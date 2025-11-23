@@ -127,8 +127,13 @@ struct SettingView: View {
             text: $feedbackText,
             title: "Please share your feedback with us.",
             onSubmit: { message in
-                // Send to your backend/analytics here
+
+                // Send feedback via email
+                FeedbackEmailHelper.shared.sendFeedbackEmail(body: message)
+
+                // Optional: also send to backend if you want
                 print("Settings feedback submitted: \(message)")
+
                 // Clear after submit
                 feedbackText = ""
             },
