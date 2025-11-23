@@ -14,6 +14,9 @@ private struct ItemCenterPreferenceKey: PreferenceKey {
 }
 
 struct HeightStatsView: View {
+    @EnvironmentObject private var appState: AppState
+
+    var isFromSettings: Bool = false
     @State private var selectedUnit: HeightUnit = .cm
     // Default to 173 cm as requested
     @State private var selectedHeight: Int? = 173
@@ -193,6 +196,15 @@ struct HeightStatsView: View {
             }
         }
         .navigationBarBackButtonHidden(false)
+        .onAppear {
+            // If launched from Settings, prefill from defaults
+            if isFromSettings {
+                let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userHeight)
+                if !saved.isEmpty {
+                    selectedHeight = Int(saved)
+                }
+            }
+        }
     }
 }
 

@@ -23,13 +23,24 @@ struct MascotNamingView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 30) {
+                if isFromSettings {
+                    HStack {
+                        Spacer()
+                        Button(action: { dismiss() }) {
+                            Image(systemName: "xmark")
+                                .foregroundColor(.white)
+                        }
+                        .padding()
+                    }
+                }
+                
                 // MARK: - Cute Character
                 Image("battery") // Replace with your image asset name
                     .resizable()
                     .scaledToFit()
                     .frame(width: 120, height: 120)
                     .shadow(color: Color.green.opacity(0.5), radius: 15, x: 0, y: 5)
-                    .padding(.top, 100)
+                    .padding(.top, 70)
                 
                 // MARK: - Title
                 Text("Let’s get familiar!")
@@ -134,3 +145,4 @@ struct MascotNamingView_Previews: PreviewProvider {
             .environmentObject(AppState())
     }
 }
+

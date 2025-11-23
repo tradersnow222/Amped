@@ -8,6 +8,9 @@
 import SwiftUI
 
 struct BloodPressureReadingView: View {
+    @EnvironmentObject private var appState: AppState
+
+    var isFromSettings: Bool = false
     @State private var selectedStressLevel: StressLevel? = nil
     let progress: Double = 12
     var onContinue: ((String) -> Void)?
@@ -174,6 +177,15 @@ struct BloodPressureReadingView: View {
             }
         })
         .navigationBarBackButtonHidden(false)
+        .onAppear {
+            // If launched from Settings, prefill from defaults
+            if isFromSettings {
+                let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userBloodPressureStats)
+                if !saved.isEmpty {
+                    selectedStressLevel = StressLevel(rawValue: saved)
+                }
+            }
+        }
     }
 }
 

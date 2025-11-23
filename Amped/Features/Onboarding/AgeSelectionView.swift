@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct AgeSelectionView: View {
+    @EnvironmentObject private var appState: AppState
+
+    var isFromSettings: Bool = false
     @State var progress: CGFloat = 3
     var onContinue: ((Date) -> Void)?
     var onBack:(() -> Void)?
@@ -122,7 +125,26 @@ struct AgeSelectionView: View {
             }
         }
         .navigationBarBackButtonHidden(false)
+        .onAppear {
+            // If launched from Settings, prefill from defaults
+            if isFromSettings {
+                let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userDateOfBirth)
+                if !saved.isEmpty {
+                    dateOfBirth = stringToDate(saved) ?? Calendar.current.date(byAdding: .year, value: -18, to: Date()) ?? Date()
+                }
+            }
+        }
     }
+    
+    func stringToDate(_ string: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss zzz"
+
+        return formatter.date(from: string)
+    }
+
 }
 
 #Preview {

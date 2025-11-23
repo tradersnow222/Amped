@@ -8,6 +8,9 @@
 import SwiftUI
 
 struct SocialConnectionStatsView: View {
+    @EnvironmentObject private var appState: AppState
+
+    var isFromSettings: Bool = false
     @State private var selectedStressLevel: StressLevel? = nil
     let progress: Double = 11
     var onContinue: ((String) -> Void)?
@@ -174,6 +177,15 @@ struct SocialConnectionStatsView: View {
             }
         })
         .navigationBarBackButtonHidden(false)
+        .onAppear {
+            // If launched from Settings, prefill from defaults
+            if isFromSettings {
+                let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userSocialStats)
+                if !saved.isEmpty {
+                    selectedStressLevel = StressLevel(rawValue: saved)
+                }
+            }
+        }
     }
 }
 

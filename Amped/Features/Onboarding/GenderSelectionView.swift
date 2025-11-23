@@ -1,8 +1,10 @@
 import SwiftUI
 
 struct GenderSelectionView: View {
-//    let userName: String
+    @EnvironmentObject private var appState: AppState
+
     @State var progress: CGFloat = 2
+    var isFromSettings: Bool = false
     var onContinue: ((Gender) -> Void)?
     var onBack: (() -> Void)?
 
@@ -86,6 +88,15 @@ struct GenderSelectionView: View {
             }
         }
         .navigationBarBackButtonHidden(false)
+        .onAppear {
+            // If launched from Settings, prefill from defaults
+            if isFromSettings {
+                let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userGender)
+                if !saved.isEmpty {
+                    selected = Gender(rawValue: saved)
+                }
+            }
+        }
     }
 }
 

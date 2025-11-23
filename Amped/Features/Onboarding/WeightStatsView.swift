@@ -15,6 +15,9 @@ private struct ItemCenterPreferenceKey: PreferenceKey {
 }
 
 struct WeightStatsView: View {
+    @EnvironmentObject private var appState: AppState
+
+    var isFromSettings: Bool = false
     @State private var selectedUnit: WeightUnit = .kg
     // Default to 55 as requested
     @State private var selectedWeight: Int? = 55
@@ -188,6 +191,15 @@ struct WeightStatsView: View {
             }
         }
         .navigationBarBackButtonHidden(false)
+        .onAppear {
+            // If launched from Settings, prefill from defaults
+            if isFromSettings {
+                let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userWeight)
+                if !saved.isEmpty {
+                    selectedWeight = Int(saved)
+                }
+            }
+        }
     }
 }
 

@@ -8,6 +8,9 @@
 import SwiftUI
 
 struct StressStatsView: View {
+    @EnvironmentObject private var appState: AppState
+
+    var isFromSettings: Bool = false
     @State private var selectedStressLevel: StressLevel? = nil
     let progress: Double = 6
     var onContinue: ((String) -> Void)?
@@ -175,5 +178,14 @@ struct StressStatsView: View {
             }
         })
         .navigationBarBackButtonHidden(false)
+        .onAppear {
+            // If launched from Settings, prefill from defaults
+            if isFromSettings {
+                let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userStressLevel)
+                if !saved.isEmpty {
+                    selectedStressLevel = StressLevel(rawValue: saved)
+                }
+            }
+        }
     }
 }

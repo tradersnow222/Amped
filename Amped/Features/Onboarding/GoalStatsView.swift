@@ -7,6 +7,9 @@
 import SwiftUI
 
 struct GoalsStatsView: View {
+    @EnvironmentObject private var appState: AppState
+
+    var isFromSettings: Bool = false
     // Angle represents progress around the circle (0 - 360)
     @State private var angle: Double = 60 // default ~10 mins (10/60 * 360 = 60)
     @State private var minutes: Int = 10  // quantized to 5-minute steps
@@ -93,7 +96,17 @@ struct GoalsStatsView: View {
         }
         .onAppear {
             // ensure angle and minutes are in sync on first load
-            setMinutesFromAngle(angle)
+            
+            // If launched from Settings, prefill from defaults
+            if isFromSettings {
+                let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userGoalStats)
+                if !saved.isEmpty {
+                    minutes = Int(saved) ?? 10
+                    setMinutesFromAngle(angle)
+                }
+            } else {
+                setMinutesFromAngle(angle)
+            }
         }
     }
     

@@ -15,6 +15,7 @@ struct SettingView: View {
     // Alerts (now used to drive custom dialogs instead of system .alert)
     @State private var showingDeleteAccountConfirmation: Bool = false
     @State private var showingLogoutConfirmation: Bool = false
+    @State private var showOnboardingFlow: Bool = false
     
     // Feedback dialog state
     @State private var showFeedbackDialog: Bool = false
@@ -116,6 +117,9 @@ struct SettingView: View {
             }
         }
         .navigationBarHidden(true)
+        .fullScreenCover(isPresented: $showOnboardingFlow) {
+            OnboardingFlow(isFromSettings: showOnboardingFlow).environmentObject(appState)
+        }
         // Removed system .alert modifiers and replaced with custom overlay above
         // Attach the reusable feedback dialog overlay
         .feedbackDialog(
@@ -164,11 +168,13 @@ struct SettingView: View {
     // MARK: - Profile card
     
     private var profileCard: some View {
-        NavigationLink {
+        Button {
             // Navigate to MascotNamingView from Settings
             // It will pre-populate from UserDefaults and save back on Continue.
-            MascotNamingView(isFromSettings: true)
-                .navigationBarBackButtonHidden(false)
+//            MascotNamingView(isFromSettings: true)
+//                .navigationBarBackButtonHidden(false)
+            appState.updateOnboardingStep(.mascotNaming)
+            showOnboardingFlow = true
         } label: {
             HStack(spacing: 12) {
                 // Left rounded “chip” with initials
