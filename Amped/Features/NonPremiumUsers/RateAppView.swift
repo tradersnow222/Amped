@@ -175,9 +175,15 @@ struct RateAppView: View {
         // **Step 2: If the rating is good, ask for an App Store review**
         // This opens the standard Apple review prompt.
         // It does NOT use the feedback text or star rating you just collected.
-        if rating >= 4 {
-            // This just ASKS iOS to show the prompt.
-            // Apple decides if and when to actually show it.
+        if rating <= 3 {
+            // Send feedback via email
+            let body = """
+            Rating: \(rating)
+            Message:
+            \(feedbackText)
+            """
+            FeedbackEmailHelper.shared.sendFeedbackEmail(body: body)
+        } else {
             requestReview()
         }
         
