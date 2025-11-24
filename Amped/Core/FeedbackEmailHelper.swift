@@ -13,7 +13,7 @@ final class FeedbackEmailHelper: NSObject {
     static let shared = FeedbackEmailHelper()
     private override init() {}
 
-    private let recipient = "sherazhussain360@gmail.com"
+    private let recipient = "amped.lifespan@gmail.com"
     private let subject = "App Feedback - Amped"
 
     // MARK: - Public API

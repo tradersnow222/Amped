@@ -19,7 +19,7 @@ struct RevenueCatConfig {
     
     /// Configure RevenueCat on app launch
     static func configure() {
-        Purchases.logLevel = .debug // Remove in production
+//        Purchases.logLevel = .debug // Remove in production
         Purchases.configure(withAPIKey: apiKey)
     }
 }
