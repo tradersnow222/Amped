@@ -471,6 +471,13 @@ final class DashboardViewModel: ObservableObject {
             return
         }
         
+        // Avoid requesting healthkit permission on welcome screen.
+        let userName = UserDefaults.standard.string(forKey: UserDefaultsKeys.userName) ?? ""
+        if userName.isEmpty {
+            isLoading = false
+            return
+        }
+        
         logger.info("🔄 Starting data load process")
         isLoading = true
         errorMessage = nil
@@ -815,6 +822,13 @@ final class DashboardViewModel: ObservableObject {
     
     func refreshData() async {
         logger.info("🔄 Manual data refresh requested")
+        
+        // Avoid requesting healthkit permission on welcome screen.
+        let userName = UserDefaults.standard.string(forKey: UserDefaultsKeys.userName) ?? ""
+        if userName.isEmpty {
+            isLoading = false
+            return
+        }
         
         await MainActor.run {
             isLoading = true
