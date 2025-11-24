@@ -41,7 +41,8 @@ struct DashboardView: View {
     @State private var refreshIndicatorRotation: Double = 0
     private let refreshThreshold: CGFloat = 60
     private let maxPullDistance: CGFloat = 120
-        
+    var onContinue: ((Bool) -> Void)?
+    
     // Logger for debugging
     private let logger = Logger(subsystem: "com.amped.app", category: "DashboardView")
     
@@ -235,7 +236,7 @@ struct DashboardView: View {
                         })
                     }
                 case .subscription:
-                    SubscriptionView(isFromOnboarding: true) { isSubscribed in
+                    SubscriptionView(isFromOnboarding: false) { isSubscribed in
                         if isSubscribed {
                             appState.updateSubscriptionStatus(true)
                         }

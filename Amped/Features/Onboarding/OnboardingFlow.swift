@@ -442,7 +442,7 @@ struct OnboardingFlow: View {
                             if appState.isPremiumUser {
                                 navigateTo(.dashboard)
                             } else {
-                                navigateTo(.paywall)
+                                navigateTo(.subscription)
                             }
                         } onBack: {
                             navigateTo(.syncDeviceStats)
