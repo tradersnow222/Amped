@@ -41,18 +41,24 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil
     ) -> Bool {
         setupQuickActions()
-        
-        // Handle cold-launch via quick action by deferring until the app is active.
-        if let shortcut = launchOptions?[.shortcutItem] as? UIApplicationShortcutItem,
-           let action = QuickAction(rawValue: shortcut.type) {
-            logger.info("🧊 Cold launch with quick action: \(shortcut.type, privacy: .public). Deferring until active.")
+        return true
+    }
+    
+    // iOS 13+ scene-based cold launch path: capture the shortcut from scene connection options.
+    func application(
+        _ application: UIApplication,
+        configurationForConnecting connectingSceneSession: UISceneSession,
+        options: UIScene.ConnectionOptions
+    ) -> UISceneConfiguration {
+        if let shortcut = options.shortcutItem, let action = QuickAction(rawValue: shortcut.type) {
+            logger.info("Cold launch (scene options) with quick action: \(shortcut.type, privacy: .public). Deferring until active.")
             pendingQuickAction = action
-            // Persist so SwiftUI can pick it up even if our notification races
             UserDefaults.standard.set(action.rawValue, forKey: pendingKey)
-            return false
         }
         
-        return true
+        // Return the default configuration. SwiftUI manages the scene delegate internally.
+        let config = UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+        return config
     }
     
     func applicationDidBecomeActive(_ application: UIApplication) {
@@ -72,20 +78,20 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     // Create dynamic quick actions for the Home Screen icon
     private func setupQuickActions() {
         let items: [UIApplicationShortcutItem] = [
-            UIApplicationShortcutItem(
-                type: QuickAction.openDashboard.rawValue,
-                localizedTitle: QuickAction.openDashboard.title,
-                localizedSubtitle: "Today's Impact",
-                icon: QuickAction.openDashboard.icon,
-                userInfo: nil
-            ),
-            UIApplicationShortcutItem(
-                type: QuickAction.refreshHealthData.rawValue,
-                localizedTitle: QuickAction.refreshHealthData.title,
-                localizedSubtitle: "Pull latest from Health",
-                icon: QuickAction.refreshHealthData.icon,
-                userInfo: nil
-            ),
+//            UIApplicationShortcutItem(
+//                type: QuickAction.openDashboard.rawValue,
+//                localizedTitle: QuickAction.openDashboard.title,
+//                localizedSubtitle: "Today's Impact",
+//                icon: QuickAction.openDashboard.icon,
+//                userInfo: nil
+//            ),
+//            UIApplicationShortcutItem(
+//                type: QuickAction.refreshHealthData.rawValue,
+//                localizedTitle: QuickAction.refreshHealthData.title,
+//                localizedSubtitle: "Pull latest from Health",
+//                icon: QuickAction.refreshHealthData.icon,
+//                userInfo: nil
+//            ),
             UIApplicationShortcutItem(
                 type: QuickAction.sendFeedback.rawValue,
                 localizedTitle: QuickAction.sendFeedback.title,

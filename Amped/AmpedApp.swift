@@ -63,6 +63,7 @@ struct AmpedApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
+                LinearGradient.customBlueToDarkGray.ignoresSafeArea()
                 // Use ContentView so it can observe .showFeedback and present the sheet
                 ContentView()
                     .background(Color.black)
@@ -79,49 +80,25 @@ struct AmpedApp: App {
             .onAppear {
                 consumePendingQuickActionIfAny(context: "onAppear")
             }
-            .onChange(of: scenePhase) { newPhase in
-//                handleScenePhaseChange(to: newPhase)
-                if newPhase == .active {
-                    // Also check when the scene becomes active (cold or warm)
-                    consumePendingQuickActionIfAny(context: "scenePhase.active")
+            .feedbackDialog(
+                isPresented: $showFeedbackSheet,
+                text: $feedbackText,
+                title: "Please share your feedback with us.",
+                onSubmit: { message in
+
+                    // Send feedback via email
+                    FeedbackEmailHelper.shared.sendFeedbackEmail(body: message)
+
+                    // Optional: also send to backend if you want
+                    logger.info("Feedback submitted: \(message)")
+
+                    // Clear after submit
+                    feedbackText = ""
+                },
+                onCancel: {
+                    // Optional: track dismiss
                 }
-            }
-            // Listen for quick action selections and show Feedback dialog when requested.
-            // Ensure delivery on the main thread so we can mutate @State safely.
-            .onReceive(
-                NotificationCenter.default
-                    .publisher(for: NSNotification.Name("QuickActionSelected"))
-                    .receive(on: RunLoop.main)
-            ) { notification in
-                let type = notification.userInfo?["type"] as? String ?? "nil"
-                logger.info("📥 Received QuickActionSelected in SwiftUI: \(type, privacy: .public)")
-                if type == "ai.ampedlife.amped.sendFeedback" {
-                    // Small delay ensures the view hierarchy is fully ready to present.
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        logger.info("🗳️ Setting showFeedbackSheet = true (notification)")
-                        showFeedbackSheet = true
-                    }
-                }
-            }
-            // Present the feedback dialog sheet
-            .sheet(isPresented: $showFeedbackSheet) {
-                FeedbackDialog(
-                    title: "Please share your feedback with us.",
-                    text: $feedbackText,
-                    onSubmit: { text in
-                        // Handle submitted feedback (send to analytics/service, etc.)
-//                        AnalyticsService.shared.trackEvent(.feedbackSubmitted(text: text))
-                        logger.info("✅ Feedback submitted, dismissing sheet")
-                        feedbackText = ""
-                        showFeedbackSheet = false
-                    },
-                    onCancel: {
-                        logger.info("🚫 Feedback canceled, dismissing sheet")
-                        feedbackText = ""
-                        showFeedbackSheet = false
-                    }
-                )
-            }
+            )
         }
         // SwiftUI background task for health data refresh
         .backgroundTask(.appRefresh("ai.ampedlife.amped.health-refresh")) {
@@ -400,3 +377,4 @@ final class AppState: ObservableObject {
         persistenceManager.saveOnboardingProgress(step, hasCompletedOnboarding: hasCompletedOnboarding)
     }
 }
+
