@@ -229,11 +229,8 @@ struct DashboardView: View {
             }
             .navigationDestination(for: NavigationRoute.self) { route in
                 switch route {
-                case .metricDetail(let type, let period):
-                    if let metric = viewModel.getLatestMetricValue(for: type) {
-                        MetricDetailsView(navigationPath: $navigationPath, metric: metric, selectedPeriod: period, onClose: {
-                            
-                        })
+                case .metricDetail(let type, _):
+                    if let _ = viewModel.getLatestMetricValue(for: type) {
                     }
                 case .subscription:
                     SubscriptionView(isFromOnboarding: false) { isSubscribed in
@@ -313,24 +310,15 @@ struct DashboardView: View {
         let period = components[2]
         let periodType = ImpactDataPoint.PeriodType(rawValue: period) ?? .day
                 
-        if let metric = selectedMetric {
-            return AnyView(
-                MetricDetailsView(navigationPath: $navigationPath, metric: metric, selectedPeriod: periodType, onClose: {
-                    
-                })
+        return AnyView(
+            MetricDetailContentView(
+                metricTitle: metricTitle,
+                period: period,
+                periodType: periodType,
+                navigationPath: $navigationPath,
+                selectedHealthMetric: selectedMetric
             )
-        } else {
-            
-            return AnyView(
-                MetricDetailContentView(
-                    metricTitle: metricTitle,
-                    period: period,
-                    periodType: periodType,
-                    navigationPath: $navigationPath,
-                    selectedHealthMetric: selectedMetric
-                )
-            )
-        }
+        )
     }
     
     // MARK: - Period Change Methods

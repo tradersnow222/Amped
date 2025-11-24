@@ -121,8 +121,10 @@ struct MetricGridView: View {
                             GridItem(.flexible(), spacing: 16)
                         ], spacing: 16) {
                             ForEach(cards) { card in
-                                Button {
-                                    onCardTap?(card.title, selectedPeriod, card.healthMetric)
+                                NavigationLink {
+                                    if let healthMetric = card.healthMetric {
+                                        MetricDetailsView(metric: healthMetric, selectedPeriod: selectedPeriod)
+                                    }
                                 } label: {
                                     MetricCard(
                                         icon: card.icon,
@@ -134,6 +136,7 @@ struct MetricGridView: View {
                                         foregroundColor: card.foregroundColor
                                     )
                                 }
+                                .disabled(card.healthMetric == nil)
                                 .buttonStyle(.plain)
                             }
                         }

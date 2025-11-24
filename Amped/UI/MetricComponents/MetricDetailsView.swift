@@ -3,6 +3,8 @@ import Charts
 
 /// Detailed view for a specific health metric
 struct MetricDetailsView: View {
+    @Environment(\.dismiss) private var dismiss
+
     // MARK: - Properties
     
     /// Period for data display
@@ -15,16 +17,13 @@ struct MetricDetailsView: View {
     /// View model for fetching real historical data (professional approach)
     @StateObject private var viewModel: MetricDetailViewModel
     @StateObject private var dashboardViewModel = DashboardViewModel()
-    
-    @Binding var navigationPath: NavigationPath
-    
+        
     @State private var showSheet = false
         
     // MARK: - Initialization
     
-    init(navigationPath: Binding<NavigationPath>, metric: HealthMetric, selectedPeriod: ImpactDataPoint.PeriodType, onClose: (() -> Void)? = nil) {
+    init(metric: HealthMetric, selectedPeriod: ImpactDataPoint.PeriodType, onClose: (() -> Void)? = nil) {
         self.onClose = onClose
-        self._navigationPath = navigationPath
         self._viewModel = StateObject(wrappedValue: MetricDetailViewModel(metric: metric, initialPeriod: selectedPeriod))
         self._metric = State(wrappedValue: metric)
         self._selectedPeriod = State(wrappedValue: selectedPeriod)
@@ -42,9 +41,7 @@ struct MetricDetailsView: View {
                 HStack(spacing: 12) {
                     Button(action: {
                         onClose?()
-                        DispatchQueue.main.async {
-                            navigationPath.removeLast()
-                        }
+                        dismiss()
                     }) {
                         Image("backIcon")
                             .resizable()
@@ -75,126 +72,7 @@ struct MetricDetailsView: View {
                         .padding(.top, 8)
                         
                     } else if let latestMetric = dashboardViewModel.healthMetrics.first(where: { $0.type == metric.type }) {
-                        VStack(alignment: .leading, spacing: 20) {
-                            // Status sentence
-                            let impactMinutes = latestMetric.impactDetails?.lifespanImpactMinutes ?? 0
-                            let isPositive = impactMinutes >= 0
-                            let minutes = Int(abs(impactMinutes))
-                            let lostOrGained = isPositive ? "gained" : "lost"
-                            let mainColor: Color = isPositive ? .ampedGreen : .ampedRed
-                            
-                            let periodLabel: String = {
-                                switch selectedPeriod {
-                                case .day: return "Today"
-                                case .month: return "This month"
-                                case .year: return "This year"
-                                }
-                            }()
-                            
-                            // Descriptive sentence (period-aware)
-                            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                Text("\(periodLabel) you've")
-                                    .foregroundColor(.white.opacity(0.8))
-                                
-                                Text("\(lostOrGained) \(minutes) mins")
-                                    .foregroundColor(mainColor)
-                                    .fontWeight(.semibold)
-                                
-                                if isPositive {
-                                    Text("thanks to your \(title(for: latestMetric.type)).")
-                                        .foregroundColor(.white.opacity(0.8))
-                                } else {
-                                    Text("due to poor \(title(for: latestMetric.type)).")
-                                        .foregroundColor(.white.opacity(0.8))
-                                }
-                            }
-                            .font(.system(size: 16))
-                            .padding(.horizontal, 16)
-                            .padding(.top, 6)
-                            
-                            // Big metric value
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                    Text(latestMetric.formattedValue)
-                                        .font(.system(size: 36, weight: .bold))
-                                        .foregroundColor(.white)
-                                    
-                                    Text(metricUnit(for: latestMetric.type))
-                                        .font(.system(size: 16, weight: .medium))
-                                        .foregroundColor(.white.opacity(0.7))
-                                }
-                                
-                                Text(Date.now, style: .date)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.6))
-                            }
-                            .padding(.horizontal, 16)
-                            
-                            // Chart section - Professional-style with REAL DATA ONLY
-                            if !viewModel.isLoadingHistory {
-                                MetricChartSection2(
-                                    metricType: metric.type,
-                                    dataPoints: viewModel.professionalStyleDataPoints, // REAL DATA ONLY
-                                    period: selectedPeriod
-                                )
-                                .padding(.horizontal)
-                            } else {
-                                ProgressView("Loading real historical data...")
-                                    .padding()
-                            }
-                            
-                            // Recommendations header
-                            Text("\(title(for: latestMetric.type)) Recommendations")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.top, 6)
-                            
-                            // Recommendation card
-                            HStack(alignment: .top, spacing: 12) {
-                                ZStack {
-                                    Circle().fill(Color.yellow.opacity(0.15))
-                                    Image(systemName: iconName(for: latestMetric.type))
-                                        .foregroundColor(.yellow)
-                                        .font(.system(size: 18, weight: .semibold))
-                                }
-                                .frame(width: 36, height: 36)
-                                
-                                Text(latestMetric.impactDetails?.recommendation ?? "")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.9))
-                                Spacer(minLength: 0)
-                            }
-                            .padding(14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color.white.opacity(0.06))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
-                            )
-                            .padding(.horizontal, 16)
-                            
-                            // Research info text
-                            HStack(spacing: 8) {
-                                Image(systemName: "book.closed")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.white.opacity(0.5))
-                                
-                                Button {
-                                    showSheet.toggle()
-                                } label: {
-                                    Text("Tap to see what research based on 195 studies tell us.")
-                                        .font(.poppins(13, weight: .regular))
-                                        .foregroundColor(.white.opacity(0.5))
-                                }
-                            }
-                            .padding(.horizontal, 32)
-                            .padding(.top, 8)
-                            
-                            Spacer(minLength: 40)
-                        }
+                        metricDetailSection(for: latestMetric)
                     } else {
                         // No data state (not loading but no metric available)
                         VStack(spacing: 10) {
@@ -255,6 +133,132 @@ struct MetricDetailsView: View {
             }
         })
         .navigationBarHidden(true)
+    }
+    
+    // MARK: - Extracted metric section
+    
+    @ViewBuilder
+    private func metricDetailSection(for latestMetric: HealthMetric) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Status sentence
+            let impactMinutes = latestMetric.impactDetails?.lifespanImpactMinutes ?? 0
+            let isPositive = impactMinutes >= 0
+            let minutes = Int(abs(impactMinutes))
+            let lostOrGained = isPositive ? "gained" : "lost"
+            let mainColor: Color = isPositive ? .ampedGreen : .ampedRed
+            
+            let periodLabel: String = {
+                switch selectedPeriod {
+                case .day: return "Today"
+                case .month: return "This month"
+                case .year: return "This year"
+                }
+            }()
+            
+            // Descriptive sentence (period-aware)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(periodLabel) you've")
+                    .foregroundColor(.white.opacity(0.8))
+                
+                Text("\(lostOrGained) \(minutes) mins")
+                    .foregroundColor(mainColor)
+                    .fontWeight(.semibold)
+                
+                if isPositive {
+                    Text("thanks to your \(title(for: latestMetric.type)).")
+                        .foregroundColor(.white.opacity(0.8))
+                } else {
+                    Text("due to poor \(title(for: latestMetric.type)).")
+                        .foregroundColor(.white.opacity(0.8))
+                }
+            }
+            .font(.system(size: 16))
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
+            
+            // Big metric value
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(latestMetric.formattedValue)
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Text(metricUnit(for: latestMetric.type))
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                
+                Text(Date.now, style: .date)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.6))
+            }
+            .padding(.horizontal, 16)
+            
+            // Chart section - Professional-style with REAL DATA ONLY
+            if !viewModel.isLoadingHistory {
+                MetricChartSection2(
+                    metricType: metric.type,
+                    dataPoints: viewModel.professionalStyleDataPoints, // REAL DATA ONLY
+                    period: selectedPeriod
+                )
+                .padding(.horizontal)
+            } else {
+                ProgressView("Loading real historical data...")
+                    .padding()
+            }
+            
+            // Recommendations header
+            Text("\(title(for: latestMetric.type)) Recommendations")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+            
+            // Recommendation card
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle().fill(Color.yellow.opacity(0.15))
+                    Image(systemName: iconName(for: latestMetric.type))
+                        .foregroundColor(.yellow)
+                        .font(.system(size: 18, weight: .semibold))
+                }
+                .frame(width: 36, height: 36)
+                
+                Text(latestMetric.impactDetails?.recommendation ?? "")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.9))
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.white.opacity(0.06))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+            )
+            .padding(.horizontal, 16)
+            
+            // Research info text
+            HStack(spacing: 8) {
+                Image(systemName: "book.closed")
+                    .font(.system(size: 14))
+                    .foregroundColor(.white.opacity(0.5))
+                
+                Button {
+                    showSheet.toggle()
+                } label: {
+                    Text("Tap to see what research based on 195 studies tell us.")
+                        .font(.poppins(13, weight: .regular))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+            }
+            .padding(.horizontal, 32)
+            .padding(.top, 8)
+            
+            Spacer(minLength: 40)
+        }
     }
     
     // MARK: - Period Selector
@@ -348,7 +352,6 @@ struct MetricDetailsView: View {
 
 #Preview {
     MetricDetailsView(
-        navigationPath: .constant(NavigationPath("")),
         metric: HealthMetric(
             id: "sample-id",
             type: .steps,
