@@ -11,11 +11,15 @@ import SwiftUI
 import OSLog
 import HealthKit
 import RevenueCat
+import Combine
 
 @main
 struct AmpedApp: App {
     // MARK: - App State and Services
     
+    /// Bridge UIKit AppDelegate so quick actions and other delegate callbacks work
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     /// Global app state
     @StateObject private var appState = AppState()
     
@@ -41,7 +45,7 @@ struct AmpedApp: App {
     @StateObject private var notificationManager = NotificationManager.shared
     
     /// Subscription manager for RevenueCat integration
-    @StateObject private var subscriptionManager = SubscriptionManager.shared
+//    @StateObject private var subscriptionManager = RevenueCatStoreKitManager.shared
     
     /// Shared DashboardViewModel for the entire app
     @StateObject private var dashboardViewModel = DashboardViewModel()
@@ -49,11 +53,17 @@ struct AmpedApp: App {
     // MARK: - Scene Phase Tracking for Intro Animations
     @Environment(\.scenePhase) private var scenePhase
     
+    // MARK: - Quick Action Feedback Sheet State
+    @State private var showFeedbackSheet = false
+    @State private var feedbackText: String = ""
+    
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "ai.ampedlife.amped", category: "AmpedApp")
+    
     /// Main app scene
     var body: some Scene {
         WindowGroup {
             ZStack {
-                
+                // Use ContentView so it can observe .showFeedback and present the sheet
                 ContentView()
                     .background(Color.black)
                     .environmentObject(appState)
@@ -61,17 +71,87 @@ struct AmpedApp: App {
                     .environmentObject(glassTheme)
                     .environmentObject(batteryTheme)
                     .environmentObject(backgroundHealthManager)
-                    .environmentObject(subscriptionManager)
+//                    .environmentObject(subscriptionManager)
                     .environmentObject(dashboardViewModel) // Inject once for the whole app
             }
             .background(Color.clear)
+            // Ensure we pick up any pending quick action on first render
+            .onAppear {
+                consumePendingQuickActionIfAny(context: "onAppear")
+            }
             .onChange(of: scenePhase) { newPhase in
 //                handleScenePhaseChange(to: newPhase)
+                if newPhase == .active {
+                    // Also check when the scene becomes active (cold or warm)
+                    consumePendingQuickActionIfAny(context: "scenePhase.active")
+                }
+            }
+            // Listen for quick action selections and show Feedback dialog when requested.
+            // Ensure delivery on the main thread so we can mutate @State safely.
+            .onReceive(
+                NotificationCenter.default
+                    .publisher(for: NSNotification.Name("QuickActionSelected"))
+                    .receive(on: RunLoop.main)
+            ) { notification in
+                let type = notification.userInfo?["type"] as? String ?? "nil"
+                logger.info("📥 Received QuickActionSelected in SwiftUI: \(type, privacy: .public)")
+                if type == "ai.ampedlife.amped.sendFeedback" {
+                    // Small delay ensures the view hierarchy is fully ready to present.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        logger.info("🗳️ Setting showFeedbackSheet = true (notification)")
+                        showFeedbackSheet = true
+                    }
+                }
+            }
+            // Present the feedback dialog sheet
+            .sheet(isPresented: $showFeedbackSheet) {
+                FeedbackDialog(
+                    title: "Please share your feedback with us.",
+                    text: $feedbackText,
+                    onSubmit: { text in
+                        // Handle submitted feedback (send to analytics/service, etc.)
+//                        AnalyticsService.shared.trackEvent(.feedbackSubmitted(text: text))
+                        logger.info("✅ Feedback submitted, dismissing sheet")
+                        feedbackText = ""
+                        showFeedbackSheet = false
+                    },
+                    onCancel: {
+                        logger.info("🚫 Feedback canceled, dismissing sheet")
+                        feedbackText = ""
+                        showFeedbackSheet = false
+                    }
+                )
             }
         }
         // SwiftUI background task for health data refresh
         .backgroundTask(.appRefresh("ai.ampedlife.amped.health-refresh")) {
 //            await BackgroundHealthManager.shared.handleHealthDataRefreshTask()
+        }
+    }
+    
+    // MARK: - Quick Action Consumption
+    
+    private func consumePendingQuickActionIfAny(context: String) {
+        let pendingKey = "PendingQuickActionType"
+        guard let type = UserDefaults.standard.string(forKey: pendingKey) else {
+            return
+        }
+        logger.info("📦 Found pending quick action in UserDefaults (\(context, privacy: .public)): \(type, privacy: .public)")
+        
+        // Clear it immediately to avoid double handling
+        UserDefaults.standard.removeObject(forKey: pendingKey)
+        
+        if type == "ai.ampedlife.amped.sendFeedback" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                logger.info("🗳️ Setting showFeedbackSheet = true (consumePendingQuickActionIfAny)")
+                showFeedbackSheet = true
+            }
+        } else if type == "ai.ampedlife.amped.openDashboard" {
+            // If you need to navigate to dashboard at app level, handle here
+            logger.info("🧭 Pending action requested dashboard (not implemented at app level)")
+        } else if type == "ai.ampedlife.amped.refreshHealthData" {
+            // If you need to trigger a refresh globally, handle here
+            logger.info("🔄 Pending action requested health data refresh (not implemented at app level)")
         }
     }
     
@@ -245,10 +325,6 @@ final class AppState: ObservableObject {
     func handleAppReturnFromBackground() {
         // Rules: Only show intro animations if user haven't disabled them
         shouldShowIntroAnimations = true
-        
-        // CRITICAL FIX: Don't detect closure type again on app return
-        // Detection already happened in init() - this would cause double detection
-        // and incorrect soft close detection due to fresh timestamp
     }
     
     /// Mark onboarding as completed and persist to UserDefaults
@@ -323,4 +399,3 @@ final class AppState: ObservableObject {
         persistenceManager.saveOnboardingProgress(step, hasCompletedOnboarding: hasCompletedOnboarding)
     }
 }
-

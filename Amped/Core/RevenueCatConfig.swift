@@ -9,6 +9,7 @@ struct RevenueCatConfig {
     /// Product IDs
     enum ProductID {
         static let weekly = "ai.ampedlife.amped.weekly"
+        static let monthly = "ai.ampedlife.amped.monthly"
     }
     
     /// Entitlement IDs

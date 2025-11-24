@@ -74,10 +74,11 @@ struct SettingView: View {
                 // Dialog content
                 Group {
                     if showingDeleteAccountConfirmation {
-                        ConfirmDialogView(
+                        CustomDialogView(
                             emoji: "crying_face",
                             message: "Are you sure you want to delete your account and live a shorter life?",
                             primaryTitle: "Delete",
+                            secondaryTitle: "Cancel",
                             primaryIsDestructive: true,
                             onPrimary: {
                                 withAnimation(.spring(response: 0.25, dampingFraction: 0.95)) {
@@ -93,10 +94,11 @@ struct SettingView: View {
                         )
                     }
                     if showingLogoutConfirmation {
-                        ConfirmDialogView(
+                        CustomDialogView(
                             emoji: "disappointed_face",
                             message: "Are you sure you want to logout?",
                             primaryTitle: "Logout",
+                            secondaryTitle: "Cancel",
                             primaryIsDestructive: false,
                             onPrimary: {
                                 withAnimation(.spring(response: 0.25, dampingFraction: 0.95)) {
@@ -176,8 +178,6 @@ struct SettingView: View {
         Button {
             // Navigate to MascotNamingView from Settings
             // It will pre-populate from UserDefaults and save back on Continue.
-//            MascotNamingView(isFromSettings: true)
-//                .navigationBarBackButtonHidden(false)
             appState.updateOnboardingStep(.mascotNaming)
             showOnboardingFlow = true
         } label: {
@@ -352,10 +352,11 @@ struct SettingView: View {
 
 // MARK: - Custom Confirm Dialog
 
-private struct ConfirmDialogView: View {
+struct CustomDialogView: View {
     let emoji: String
     let message: String
     let primaryTitle: String
+    let secondaryTitle: String
     let primaryIsDestructive: Bool
     let onPrimary: () -> Void
     let onCancel: () -> Void
@@ -363,58 +364,65 @@ private struct ConfirmDialogView: View {
     private let cornerRadius: CGFloat = 22
     
     var body: some View {
-        VStack(spacing: 18) {
-            Image(emoji)
-                .frame(width: 60, height: 60)
-                .padding()
-            
-            Text(message)
-                .font(.system(size: 18, weight: .bold))
-                .foregroundColor(.white)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 12)
-                .fixedSize(horizontal: false, vertical: true)
-            
-            // Primary action button
-            Button(action: onPrimary) {
-                Text(primaryTitle)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(
-                        LinearGradient(
-                            colors: [Color(hex: "#18EF47"), Color(hex: "#0E8929")],
-                            startPoint: .leading,
-                            endPoint: .trailing
+        ZStack {
+            Color.black
+                .opacity(0.7)
+                .ignoresSafeArea()
+            VStack(spacing: 18) {
+                Image(emoji)
+                    .frame(width: 60, height: 60)
+                    .padding()
+                
+                Text(message)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 12)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                // Primary action button
+                Button(action: onPrimary) {
+                    Text(primaryTitle)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            LinearGradient(
+                                colors: [Color(hex: "#18EF47"), Color(hex: "#0E8929")],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
                         )
+                        .clipShape(Capsule())
+                        .shadow(color: Color.black.opacity(0.35), radius: 8, x: 0, y: 6)
+                }
+                .padding(.top, 4)
+                
+                // Cancel
+                if !secondaryTitle.isEmpty {
+                    Button(action: onCancel) {
+                        Text(secondaryTitle)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.white.opacity(0.9))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .padding(.bottom, 6)
+                }
+            }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 22)
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .stroke(Color.white.opacity(0.25), lineWidth: 1)
                     )
-                    .clipShape(Capsule())
-                    .shadow(color: Color.black.opacity(0.35), radius: 8, x: 0, y: 6)
-            }
-            .padding(.top, 4)
-            
-            // Cancel
-            Button(action: onCancel) {
-                Text("Cancel")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.white.opacity(0.9))
-                    .frame(maxWidth: .infinity)
-            }
-            .padding(.bottom, 6)
+            )
+            .padding(.horizontal, 28)
+            .transition(.scale.combined(with: .opacity))
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 22)
-        .background(
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
-                )
-        )
-        .padding(.horizontal, 28)
-        .transition(.scale.combined(with: .opacity))
     }
 }
 

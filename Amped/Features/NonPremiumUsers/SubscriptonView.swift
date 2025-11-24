@@ -6,13 +6,16 @@
 //
 
 import SwiftUI
-import StoreKit
 
 struct SubscriptionView: View {
+    @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) private var dismiss
-    @StateObject var store = StoreKitManager()
+    @StateObject var store = RevenueCatStoreKitManager()
 
-    @State private var selectedProduct: Product?
+    @State private var selectedProduct: RevenueCatProduct?
+    @State private var showSuccessDialog = false
+    @State private var showFailureDialog = false
+    @State private var dialogMessageText = ""
 
     let gradientColors = [Color(hex: "#0E8929"), Color(hex: "#18EF47")]
     let darkGrayBackground = Color(hex: "#1A1A1A")
@@ -92,28 +95,73 @@ struct SubscriptionView: View {
                 }
             }
             // MARK: Loader
-            if store.isPurchasing {
-                VStack {
-                    Spacer()
+            if store.isPurchasing || store.isRestoring {
+                ZStack {
+                    Color.black
+                        .opacity(0.7)
+                        .ignoresSafeArea()   // covers full screen
                     
-                    ProgressView("Processing purchase...")
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .foregroundColor(.white)
-                    
-                    Spacer()
+                    VStack {
+                        Spacer()
+                        
+                        ProgressView(store.isPurchasing ? "Processing purchase..." : "Restoring your purchase...")
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .foregroundColor(.white)
+                        
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity) // forces full size
                 }
             }
-            if store.isRestoring {
-                VStack {
-                    Spacer()
-                    
-                    ProgressView("Restoring your purchase...")
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .foregroundColor(.white)
-                    
-                    Spacer()
+
+            // Dialog content
+            Group {
+                if showSuccessDialog {
+                    CustomDialogView(
+                        emoji: "credit_cards",
+                        message: dialogMessageText,
+                        primaryTitle: "Okay",
+                        secondaryTitle: "",
+                        primaryIsDestructive: true,
+                        onPrimary: {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.95)) {
+                                showSuccessDialog = false
+                            }
+                            if !isFromOnboarding {
+                                dismiss()
+                            }
+                            onContinue?(true)
+                        },
+                        onCancel: {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.95)) {
+                                showSuccessDialog = false
+                            }
+                        }
+                    )
+                }
+                if showFailureDialog {
+                    CustomDialogView(
+                        emoji: "crying_face",
+                        message: dialogMessageText,
+                        primaryTitle: "Okay",
+                        secondaryTitle: "",
+                        primaryIsDestructive: true,
+                        onPrimary: {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.95)) {
+                                showFailureDialog = false
+                            }
+                            onContinue?(false)
+                        },
+                        onCancel: {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.95)) {
+                                showFailureDialog = false
+                            }
+                        }
+                    )
                 }
             }
+            .transition(.scale.combined(with: .opacity))
+            .zIndex(10)
         }
         .navigationBarBackButtonHidden(true)
         .task {
@@ -139,7 +187,7 @@ struct SubscriptionView: View {
                     Text("Subscribe")
                         .foregroundColor(.black)
                         .font(.poppins(20, weight: .medium))
-                    Text(selectedProduct?.description ?? "Test")
+                    Text(selectedProduct?.description ?? "")
                         .font(.poppins(12, weight: .medium))
                         .foregroundColor(.white.opacity(0.7))
                 }
@@ -175,24 +223,48 @@ struct SubscriptionView: View {
         .padding(.bottom, 5)
     }
 
-    // MARK: Purchase Result Handler
-    private func handleResult(_ result: StoreKitManager.PurchaseResult) {
+    // MARK: - Purchase Result Handler
+    private func handleResult(_ result: RevenueCatStoreKitManager.PurchaseResult) {
         switch result {
         case .success:
-            onContinue?(true)
-        case .cancelled, .failed, .pending:
-            onContinue?(false)
+            dialogMessageText = "Your subscription was activated successfully!"
+            showSuccessDialog = true
+            appState.updateSubscriptionStatus(true)
+
+        case .cancelled:
+            dialogMessageText = "Purchase was cancelled. No charges were made."
+            showFailureDialog = true
+            appState.updateSubscriptionStatus(false)
+
+        case .failed:
+            dialogMessageText = "Your purchase failed. Please try again."
+            showFailureDialog = true
+            appState.updateSubscriptionStatus(false)
+
+        case .pending:
+            dialogMessageText = "Your purchase is pending approval. You’ll be notified once it’s completed."
+            showFailureDialog = true
+            appState.updateSubscriptionStatus(false)
         }
     }
-    
-    private func handleRestoreResult(_ result: StoreKitManager.RestoreResult) {
+
+    // MARK: - Restore Result Handler
+    private func handleRestoreResult(_ result: RevenueCatStoreKitManager.RestoreResult) {
         switch result {
         case .success:
-            onContinue?(true)
+            dialogMessageText = "Your previous subscription has been successfully restored."
+            showSuccessDialog = true
+            appState.updateSubscriptionStatus(true)
+
         case .failed:
-            onContinue?(false)
+            dialogMessageText = "We couldn’t restore your purchases. Please try again later."
+            showFailureDialog = true
+            appState.updateSubscriptionStatus(false)
+
         case .noValidTransactions:
-            onContinue?(false)
+            dialogMessageText = "No previous purchases were found for your account."
+            showFailureDialog = true
+            appState.updateSubscriptionStatus(false)
         }
     }
 
@@ -219,7 +291,7 @@ struct SubscriptionView: View {
 
 struct DynamicPlanCard: View {
     
-    let product: Product
+    let product: RevenueCatProduct
     let isSelected: Bool
     let gradientColors: [Color]
     let onSelect: () -> Void
