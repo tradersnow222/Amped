@@ -45,7 +45,7 @@ struct AmpedApp: App {
     @StateObject private var notificationManager = NotificationManager.shared
     
     /// Subscription manager for RevenueCat integration
-//    @StateObject private var subscriptionManager = RevenueCatStoreKitManager.shared
+    @StateObject private var revenueCatManager = RevenueCatStoreKitManager.shared
     
     /// Shared DashboardViewModel for the entire app
     @StateObject private var dashboardViewModel = DashboardViewModel()
@@ -71,7 +71,7 @@ struct AmpedApp: App {
                     .environmentObject(glassTheme)
                     .environmentObject(batteryTheme)
                     .environmentObject(backgroundHealthManager)
-//                    .environmentObject(subscriptionManager)
+                    .environmentObject(revenueCatManager)
                     .environmentObject(dashboardViewModel) // Inject once for the whole app
             }
             .background(Color.clear)
@@ -300,9 +300,10 @@ final class AppState: ObservableObject {
     }
     
     /// Update subscription status and save to UserDefaults
-    func updateSubscriptionStatus(_ isPremium: Bool) {
-        isPremiumUser = isPremium
-        UserDefaults.standard.set(isPremium, forKey: "is_premium_user")
+    func updateSubscriptionStatus(_ isPremium: Bool, inTrial: Bool = false) {
+        let isPremiumUser = isPremium || inTrial
+        UserDefaults.standard.set(isPremiumUser, forKey: "is_premium_user")
+        self.isPremiumUser = isPremiumUser
     }
     
     /// Save onboarding completion state to UserDefaults

@@ -7,7 +7,7 @@ struct MetricGridView: View {
     var onCardTap: ((String, ImpactDataPoint.PeriodType, HealthMetric?) -> Void)? = nil
     var onTapUnlock: (() -> Void)?
     
-    @StateObject private var appState = AppState()
+    @EnvironmentObject var appState: AppState
     
     private struct CardData: Identifiable {
         let id = UUID()
@@ -99,8 +99,7 @@ struct MetricGridView: View {
     
     var body: some View {
         ZStack {
-            let isPremium = UserDefaults.standard.bool(forKey: "is_premium_user")
-            if !isPremium {
+            if !appState.isPremiumUser {
                 UnlockSubscriptionView {
                     // Got to subscription
                     onTapUnlock?()

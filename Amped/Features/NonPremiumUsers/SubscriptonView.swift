@@ -10,7 +10,7 @@ import SwiftUI
 struct SubscriptionView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) private var dismiss
-    @StateObject var store = RevenueCatStoreKitManager()
+    @EnvironmentObject var store: RevenueCatStoreKitManager
 
     @State private var selectedProduct: RevenueCatProduct?
     @State private var showSuccessDialog = false
@@ -165,6 +165,7 @@ struct SubscriptionView: View {
         }
         .navigationBarBackButtonHidden(true)
         .task {
+            store.appState = appState
             if selectedProduct == nil {
                 selectedProduct = store.products.first
             }

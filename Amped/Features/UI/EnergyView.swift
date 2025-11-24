@@ -10,6 +10,8 @@ import Combine
 
 /// Energy View - Shows battery-themed energy and activity tracking
 struct EnergyView: View {
+    @EnvironmentObject var appState: AppState
+
     // MARK: - State Variables
     @State private var selectedLifespanType: LifespanType = .current
     @State private var showingSettings = false
@@ -91,8 +93,7 @@ struct EnergyView: View {
     
     var body: some View {
         ZStack {
-            let isPremium = UserDefaults.standard.bool(forKey: "is_premium_user")
-            if !isPremium && selectedLifespanType == .potential {
+            if !appState.isPremiumUser && selectedLifespanType == .potential {
                 UnlockSubscriptionView(buttonText: "Unlock Your Best Life by subcribing") {
                     // Got to subscription
                     onTapUnlock?()

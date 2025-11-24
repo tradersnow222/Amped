@@ -651,8 +651,7 @@ struct DashboardView: View {
             // Card
             HStack(alignment: .top, spacing: 10) {
                 
-                let isPremium = UserDefaults.standard.bool(forKey: "is_premium_user")
-                if !isPremium {
+                if !appState.isPremiumUser {
                     UnlockSubscriptionView(buttonText: "Unlock it by subcribing") {
                         // Got to subscription
                         navigationPath.append(NavigationRoute.subscription)
@@ -717,8 +716,7 @@ struct DashboardView: View {
     private var streakCard: some View {
         HStack(spacing: 1) {
             
-            let isPremium = UserDefaults.standard.bool(forKey: "is_premium_user")
-            if !isPremium {
+            if !appState.isPremiumUser {
                 UnlockSubscriptionView(buttonText: "Unlock streak by subcribing") {
                     // Got to subscription
                     navigationPath.append(NavigationRoute.subscription)

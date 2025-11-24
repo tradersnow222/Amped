@@ -47,6 +47,7 @@ protocol RevenueCatManaging: ObservableObject {
 
 @MainActor
 final class RevenueCatStoreKitManager: NSObject, RevenueCatManaging {
+    static let shared = RevenueCatStoreKitManager()
     
     // MARK: - Shared Instance
 //    static let shared = RevenueCatStoreKitManager()
@@ -84,6 +85,7 @@ final class RevenueCatStoreKitManager: NSObject, RevenueCatManaging {
 
     private let logger = Logger(subsystem: "ai.ampedlife.amped", category: "RevenueCatManager")
 
+    var appState: AppState?
     // MARK: - Init
 
     override init() {
@@ -238,6 +240,8 @@ final class RevenueCatStoreKitManager: NSObject, RevenueCatManaging {
                 subscriptionStatus = .notSubscribed
                 return
             }
+            
+            let isTrialUser = entitlement.periodType == .intro || entitlement.productIdentifier != ""
 
             logger.info("""
             Entitlement State:
@@ -245,7 +249,14 @@ final class RevenueCatStoreKitManager: NSObject, RevenueCatManaging {
             willRenew: \(entitlement.willRenew)
             expires: \(String(describing: entitlement.expirationDate))
             sandbox: \(entitlement.isSandbox)
+            isTrialUser: \(isTrialUser)
             """)
+            
+            let isSubscribed = entitlement.isActive == true || (entitlement.willRenew == true && entitlement.expirationDate != nil)
+            
+            await MainActor.run {
+                self.appState?.updateSubscriptionStatus(isSubscribed, inTrial: isTrialUser)
+            }
 
             let now = Date()
 
@@ -257,10 +268,7 @@ final class RevenueCatStoreKitManager: NSObject, RevenueCatManaging {
             }
 
             // Case 2: Sandbox or Apple delay (still valid for a few moments)
-            if let expiry = entitlement.expirationDate,
-               entitlement.willRenew,
-               expiry > now {
-                
+            if let expiry = entitlement.expirationDate, entitlement.willRenew, expiry > now {
                 logger.info("Treating subscription as active (sandbox / delayed activation)")
                 subscriptionStatus = .subscribed(expirationDate: expiry)
                 return
