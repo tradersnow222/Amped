@@ -53,7 +53,7 @@ struct PaywallScreen: View {
                     }
                     
                     // Mascot Image
-                    Image("battery") 
+                    Image("Amped_8") 
                         .resizable()
                         .scaledToFit()
                         .frame(width: 120)

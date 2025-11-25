@@ -60,7 +60,7 @@ struct MainReasonStatsView: View {
                 }
                 
                 // Top mascot image
-                Image("battery")
+                Image("Amped_8")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 120, height: 120)

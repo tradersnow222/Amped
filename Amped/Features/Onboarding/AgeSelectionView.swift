@@ -40,7 +40,7 @@ struct AgeSelectionView: View {
                     Spacer() // pushes button to leading
                 }
                 
-                Image("battery")
+                Image("Amped_8")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 120, height: 120)

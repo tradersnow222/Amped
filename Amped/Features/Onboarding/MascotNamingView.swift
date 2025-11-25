@@ -35,7 +35,7 @@ struct MascotNamingView: View {
                 }
                 
                 // MARK: - Cute Character
-                Image("battery") // Replace with your image asset name
+                Image("Amped_8")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 120, height: 120)
@@ -145,4 +145,3 @@ struct MascotNamingView_Previews: PreviewProvider {
             .environmentObject(AppState())
     }
 }
-

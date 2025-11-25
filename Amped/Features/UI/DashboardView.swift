@@ -592,7 +592,7 @@ struct DashboardView: View {
             
             // Character + Arrow
             ZStack(alignment: .topTrailing) {
-                Image("emma")
+                Image("Amped_8")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 180, height: 180)
@@ -609,6 +609,7 @@ struct DashboardView: View {
                 .font(.system(size: 16, weight: .regular))
                 .foregroundColor(.white.opacity(0.9))
                 .multilineTextAlignment(.center)
+                .padding(.top, 10)
             
             // Main impact (large bold)
             Text("\(formattedTotalImpact) \(totalTimeImpact >= 0 ? "to your lifespan" : "from your lifespan")")
@@ -623,7 +624,7 @@ struct DashboardView: View {
                 .padding(.top, 4)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 8)
+        .padding(.top, 2)
     }
     
     /// Specific habit detail section

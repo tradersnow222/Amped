@@ -39,11 +39,10 @@ struct RateAppView: View {
                     
                     ScrollView {
                         VStack(spacing: 25) {
-                            // 1. Mascot Image
-                            // Replace "batteryMascot" with the name of your image asset
-                            Image("battery")
-                                .font(.system(size: 80))
-                                .foregroundColor(.green)
+                            Image("Amped_8")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 120, height: 120)
                                 .padding(.top, 20)
                             
                             // 2. Headings
