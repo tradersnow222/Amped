@@ -13,9 +13,14 @@ struct PersonalizationIntroView: View {
     // Callback to proceed to next step
     var onContinue: (() -> Void)?
     
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+    
     // MARK: - Body
     
     var body: some View {
+        let isRegular = hSizeClass == .regular
+        let bottomButtonPadding: CGFloat = isRegular ? 400 : 30
+        
         ZStack {
             
             Image("femaleBg")
@@ -52,7 +57,6 @@ struct PersonalizationIntroView: View {
                         .animation(.easeOut(duration: 0.8).delay(0.3), value: animateElements)
                         .padding(.leading, 30)
                 }
-                .padding(.bottom, 30)
                 
                 OnboardingContinueButton(
                     title: "Continue",
@@ -63,6 +67,7 @@ struct PersonalizationIntroView: View {
                     onContinue?()
                 }
             }
+            .padding(.bottom, bottomButtonPadding)
         }
         .onAppear {
             // Trigger animation when the view appears

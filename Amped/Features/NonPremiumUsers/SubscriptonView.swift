@@ -11,6 +11,7 @@ struct SubscriptionView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var store: RevenueCatStoreKitManager
+    @Environment(\.horizontalSizeClass) private var hSizeClass
 
     @State private var selectedProduct: RevenueCatProduct?
     @State private var showSuccessDialog = false
@@ -45,6 +46,7 @@ struct SubscriptionView: View {
                         .padding(.leading)
                         ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
                             .padding(.top,5)
+                        Spacer()
                     }
                 }
 
@@ -83,6 +85,7 @@ struct SubscriptionView: View {
                             .padding(.horizontal)
                             
                             featuresSection
+                                .padding(.horizontal)
                         }
                     }
                     .onAppear {
@@ -285,7 +288,6 @@ struct SubscriptionView: View {
             FeatureRow(icon: "streakIcon", title: "Streaks", description: "Stay consistent and keep your life battery charged.")
             FeatureRow(icon: "smartIcon", title: "Smart Recommendations", description: "Get personalized ways to earn time back faster.")
         }
-        .padding(.horizontal)
         .padding(.bottom, 120)
     }
 }
@@ -336,7 +338,6 @@ struct DynamicPlanCard: View {
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-            // Fix: Use AnyShapeStyle or a single-color LinearGradient for type matching
                 .stroke(
                     isSelected
                     ? AnyShapeStyle(LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -371,6 +372,7 @@ struct FeatureRow: View {
                     .font(.caption)
                     .foregroundColor(.white.opacity(0.7))
             }
+            Spacer()
         }
     }
 }
@@ -378,6 +380,18 @@ struct FeatureRow: View {
 // MARK: - Preview
 struct SubscriptionView_Previews: PreviewProvider {
     static var previews: some View {
-        SubscriptionView(isFromOnboarding: false)
+        Group {
+            SubscriptionView(isFromOnboarding: false)
+                .environmentObject(AppState())
+                .environmentObject(RevenueCatStoreKitManager())
+                .previewDisplayName("iPhone")
+                .previewDevice("iPhone 15 Pro")
+            
+            SubscriptionView(isFromOnboarding: false)
+                .environmentObject(AppState())
+                .environmentObject(RevenueCatStoreKitManager())
+                .previewDisplayName("iPad")
+                .previewDevice("iPad Pro (11-inch) (4th generation)")
+        }
     }
 }

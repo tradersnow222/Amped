@@ -47,9 +47,14 @@ struct ValuePropositionView: View {
     // Callback to proceed to next step
     var onContinue: (() -> Void)?
     
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+    
     // MARK: - Body
     
     var body: some View {
+        let isRegular = hSizeClass == .regular
+        let bottomButtonPadding: CGFloat = isRegular ? 450 : 50
+        
         ZStack {
             
             Image("femaleBg")
@@ -115,7 +120,7 @@ struct ValuePropositionView: View {
                     .scaleEffect(animateElements ? 1 : 0.9)
                     .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.6), value: animateElements)
                 }
-                .padding(.bottom, 50)
+                .padding(.bottom, bottomButtonPadding)
             }
         }
         .onAppear {
@@ -130,7 +135,16 @@ struct ValuePropositionView: View {
 
 struct ValuePropositionView_Previews: PreviewProvider {
     static var previews: some View {
-        ValuePropositionView(onContinue: {})
-            .preferredColorScheme(.dark)
+        Group {
+            ValuePropositionView(onContinue: {})
+                .preferredColorScheme(.dark)
+                .previewDisplayName("iPhone")
+                .previewDevice("iPhone 15 Pro")
+            
+            ValuePropositionView(onContinue: {})
+                .preferredColorScheme(.dark)
+                .previewDisplayName("iPad")
+                .previewDevice("iPad Pro (11-inch) (4th generation)")
+        }
     }
-} 
+}
