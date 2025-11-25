@@ -306,18 +306,18 @@ struct MetricCard: View {
                     
                     Spacer()
                     
-                    // Share button
-                    Button(action: {}) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.white.opacity(0.1))
-                                .frame(width: 28, height: 28)
-                            
-                            Image(systemName: "arrow.up.right")
-                                .font(.system(size: 12))
-                                .foregroundColor(Color.gray)
-                        }
-                    }
+//                    // Share button
+//                    Button(action: {}) {
+//                        ZStack {
+//                            RoundedRectangle(cornerRadius: 8)
+//                                .fill(Color.white.opacity(0.1))
+//                                .frame(width: 28, height: 28)
+//                            
+//                            Image(systemName: "arrow.up.right")
+//                                .font(.system(size: 12))
+//                                .foregroundColor(Color.gray)
+//                        }
+//                    }
                 }
                 .padding(.bottom, 16)
                 
