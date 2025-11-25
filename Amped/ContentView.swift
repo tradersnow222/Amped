@@ -15,6 +15,7 @@ struct ContentView: View {
     // Existing debug state
     @State private var selectedView: AppView = .onboardingFlow
     @State private var showDebugControls: Bool = false
+    @State private var showSplash: Bool = true
 
     enum AppView: String, CaseIterable, Identifiable {
         case dashboard
@@ -46,9 +47,10 @@ struct ContentView: View {
                     WelcomeView(onContinue: {
                         withAnimation(.easeInOut(duration: 0.35)) {
                             stage = .main
+                            // Continue the existing onboarding path
+                            appState.currentOnboardingStep = .valueProposition
                         }
-                        // Continue the existing onboarding path
-                        appState.currentOnboardingStep = .valueProposition
+                        
                     })
                     .environmentObject(appState)
 
