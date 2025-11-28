@@ -135,9 +135,10 @@ struct WelcomeView: View {
             
             await MainActor.run {
                 withAnimation(.easeInOut) {
-                    showLoader = true
+                    onContinue?()
+//                    showLoader = true
                 }
-                animateCircularLoader()
+//                animateCircularLoader()
             }
         }
     }

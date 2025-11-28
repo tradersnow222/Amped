@@ -39,6 +39,7 @@ struct StressStatsView: View {
     
     var body: some View {
         ZStack {
+            Color.black.ignoresSafeArea(.all)
             LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
 
@@ -190,4 +191,8 @@ struct StressStatsView: View {
             }
         }
     }
+}
+
+#Preview {
+    StressStatsView()
 }

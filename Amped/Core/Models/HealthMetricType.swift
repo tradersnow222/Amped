@@ -306,24 +306,55 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         }
     }
     
-    /// Period-agnostic baseline (used as fallback if a period-specific target is unavailable)
+    /// Research-based period-agnostic baseline (reference/neutral value)
+    /// Matches the research used in calculators and services.
     var baselineValue: Double {
         switch self {
-        case .steps: return 7500
-        case .exerciseMinutes: return 20
-        case .restingHeartRate: return 70
-        case .heartRateVariability: return 35
-        case .sleepHours: return 7
-        case .bodyMass: return 70 // kg for average adult
-        case .nutritionQuality: return 5 // 1-10 scale, 5 = average
-        case .smokingStatus: return 10 // 1-10 scale, 10 = never smoked
-        case .alcoholConsumption: return 8 // 1-10 scale, 8 = occasional drinking
-        case .socialConnectionsQuality: return 5 // 1-10 scale, 5 = moderate connections
-        case .activeEnergyBurned: return 400 // calories
-        case .vo2Max: return 40 // ml/kg/min
-        case .oxygenSaturation: return 98 // percent
-        case .stressLevel: return 5 // 1-10 scale, 5 = moderate stress
-        case .bloodPressure: return 120 // systolic pressure baseline
+        case .steps:
+            // Lower-mortality threshold ~8,000 steps/day (Paluch 2022; Saint‑Maurice 2020)
+            return 8_000
+        case .exerciseMinutes:
+            // WHO guideline baseline ≈ 150 min/week → ~21.4 min/day
+            return 150.0 / 7.0
+        case .restingHeartRate:
+            // Healthy adult reference
+            return 60
+        case .heartRateVariability:
+            // Adult reference used in calculators
+            return 40
+        case .sleepHours:
+            // Optimal midpoint of 7–8 hours
+            return 7.5
+        case .bodyMass:
+            // Placeholder reference (true target should be BMI-based using height/gender)
+            return 70 // kg
+        case .nutritionQuality:
+            // Average diet quality midpoint
+            return 5
+        case .smokingStatus:
+            // 10/10 = never smoked (optimal baseline as reference)
+            return 10
+        case .alcoholConsumption:
+            // Minimal alcohol (very light) as baseline; optimal is none
+            return 9
+        case .socialConnectionsQuality:
+            // Moderate-good connections as neutral baseline
+            return 6.5
+        case .activeEnergyBurned:
+            // Reference used in calculator
+            return 400
+        case .vo2Max:
+            // Adult reference used in calculator
+            return 40
+        case .oxygenSaturation:
+            // Healthy norm
+            return 98
+        case .stressLevel:
+            // Moderate stress as neutral baseline on 1–10 scale
+            return 5
+        case .bloodPressure:
+            // Optimal systolic ~110–115; use 115 as research baseline
+            return 115
         }
     }
     
@@ -341,19 +372,19 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
     var targetValue: Double? {
         // Prefer using targetValue(for:) below
         switch self {
-        case .steps: return 10000
+        case .steps: return 10_000
         case .exerciseMinutes: return 30
         case .restingHeartRate: return 60
         case .heartRateVariability: return 50
         case .sleepHours: return 8
-        case .bodyMass: return nil // Depends on height, gender, etc.
+        case .bodyMass: return nil // Should be BMI-based using height/gender
         case .nutritionQuality: return 8
         case .smokingStatus: return 10
         case .alcoholConsumption: return 10
         case .socialConnectionsQuality: return 8
         case .activeEnergyBurned: return 500
         case .vo2Max: return 45
-        case .oxygenSaturation: return 100
+        case .oxygenSaturation: return 99
         case .stressLevel: return 2
         case .bloodPressure: return 110
         }
@@ -361,50 +392,41 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
     
     /// Period-aware recommended target values
     /// Notes (evidence):
-    /// - Steps: 8,000–10,000 steps/day associated with lower mortality (Paluch et al., JAMA Netw Open 2022; Saint-Maurice et al., JAMA 2020).
+    /// - Steps: 8,000–10,000 steps/day associated with lower mortality (Paluch et al., JAMA Netw Open 2022; Saint‑Maurice et al., JAMA 2020).
     /// - Exercise: 150–300 min/week moderate (~30–45 min/day) (WHO/AHA).
     /// - Sleep: 7–9 hours/night optimal (Jike et al., Sleep Med Rev 2018).
-    /// - Resting HR: ≤60 bpm is a healthy target for adults (population references).
-    /// - HRV: 50 ms is a reasonable adult target; ideally age-adjusted.
-    /// - Active energy: ~500 kcal/day is a widely used daily goal (fitness guidance).
-    /// - VO2 Max: 45 ml/kg/min is a strong fitness target for adults.
+    /// - Resting HR: ≤60 bpm healthy target.
+    /// - HRV: 50 ms reasonable adult target; ideally age-adjusted.
+    /// - Active energy: ~500 kcal/day widely used goal.
+    /// - VO2 Max: 45 ml/kg/min strong adult target.
     /// - Oxygen saturation: 98–100% typical; 99–100% target.
     func targetValue(for period: ImpactDataPoint.PeriodType) -> Double? {
         switch self {
-        // Cumulative metrics: our charts use daily totals (day/month) or monthly average daily value (year)
-        // so we keep a per-day target consistent across periods.
+        // Cumulative metrics: keep per-day targets across periods
         case .steps:
-            // Day: 10,000/day; Month: 10,000 avg/day; Year: 10,000 avg/day
             return 10_000
         case .exerciseMinutes:
-            // Day: 30 min/day; Month: 30 avg/day; Year: 30 avg/day (≈ 210 min/week)
             return 30
         case .activeEnergyBurned:
-            // Day: 500 kcal/day; Month/Year: 500 avg/day
             return 500
             
-        // Recovery / status metrics: targets are per-day averages across periods
+        // Recovery / status metrics: per-day averages across periods
         case .sleepHours:
-            // Day: 8 h; Month/Year: 8 h average
             return 8
         case .restingHeartRate:
-            // Lower is better; 60 bpm target across periods
             return 60
         case .heartRateVariability:
-            // Higher is better; 50 ms target across periods (consider age-adjustment elsewhere)
             return 50
         case .vo2Max:
-            // Higher is better; 45 ml/kg/min target
             return 45
         case .oxygenSaturation:
-            // Higher is better; 99–100% target, use 99 as practical target
             return 99
         
-        // Body mass depends on height/gender; leave nil here (compute elsewhere using UserProfile if available)
+        // Body mass depends on height/gender; compute elsewhere
         case .bodyMass:
             return nil
             
-        // Questionnaire/lifestyle metrics (1–10 scale): targets are period-invariant
+        // Questionnaire/lifestyle metrics (1–10 scale): period-invariant
         case .nutritionQuality:
             return 8
         case .smokingStatus:
@@ -416,7 +438,6 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .stressLevel:
             return 2
         case .bloodPressure:
-            // Systolic target; diastolic not represented here
             return 110
         }
     }
