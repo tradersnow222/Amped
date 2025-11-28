@@ -165,13 +165,13 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
     var detailedDescription: String {
         switch self {
         case .steps: 
-            return "Daily steps directly correlate with cardiovascular health and longevity. Research shows that 10,000 steps per day can add years to your life."
+            return "Daily steps directly correlate with cardiovascular health and longevity. Research shows that 8,000–10,000 steps per day is associated with lower mortality."
         case .exerciseMinutes:
             return "Regular exercise strengthens your heart, improves mood, and significantly reduces mortality risk. Aim for at least \(Double(150).formattedAsTime()) weekly."
         case .sleepHours:
-            return "Quality sleep is essential for cellular repair, brain health, and immune function. Most adults need 7-9 hours nightly."
+            return "Quality sleep is essential for cellular repair, brain health, and immune function. Most adults need 7–9 hours nightly."
         case .restingHeartRate:
-            return "A lower resting heart rate indicates better cardiovascular fitness. Elite athletes often have rates below 60 bpm."
+            return "A lower resting heart rate indicates better cardiovascular fitness. Many healthy adults target ≤60 bpm."
         case .heartRateVariability:
             return "HRV reflects your body's ability to adapt to stress. Higher variability generally indicates better health and recovery."
         case .bodyMass:
@@ -181,9 +181,9 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .smokingStatus:
             return "Smoking significantly reduces life expectancy. Quitting at any age provides immediate and long-term health benefits."
         case .alcoholConsumption:
-            return "Moderate alcohol consumption may have some benefits, but excessive drinking significantly harms health and longevity."
+            return "Minimal alcohol intake is associated with better long-term health outcomes."
         case .socialConnectionsQuality:
-            return "Strong social connections are as important as physical health factors, reducing stress and improving mental wellbeing."
+            return "Strong social connections reduce stress and improve mental wellbeing."
         case .activeEnergyBurned:
             return "Active calories burned through movement and exercise contribute to maintaining a healthy metabolism and weight."
         case .vo2Max:
@@ -233,7 +233,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .heartRateVariability:
             return HKUnit.secondUnit(with: .milli)
         case .bodyMass:
-            return HKUnit.gramUnit(with: .kilo) // CRITICAL FIX: Use kg internally, convert to user preference in UI
+            return HKUnit.gramUnit(with: .kilo) // Use kg internally, convert to user preference in UI
         case .activeEnergyBurned:
             return HKUnit.kilocalorie()
         case .vo2Max:
@@ -306,7 +306,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         }
     }
     
-    /// Returns the baseline value for comparisons
+    /// Period-agnostic baseline (used as fallback if a period-specific target is unavailable)
     var baselineValue: Double {
         switch self {
         case .steps: return 7500
@@ -337,8 +337,9 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         }
     }
     
-    /// Returns the recommended target value for this metric type
+    /// Period-agnostic recommended target (kept for compatibility)
     var targetValue: Double? {
+        // Prefer using targetValue(for:) below
         switch self {
         case .steps: return 10000
         case .exerciseMinutes: return 30
@@ -346,16 +347,85 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .heartRateVariability: return 50
         case .sleepHours: return 8
         case .bodyMass: return nil // Depends on height, gender, etc.
-        case .nutritionQuality: return 8 // 1-10 scale, 8 = above average nutrition
-        case .smokingStatus: return 10 // 1-10 scale, 10 = never smoked (ideal)
-        case .alcoholConsumption: return 10 // 1-10 scale, 10 = never drinks (ideal)
-        case .socialConnectionsQuality: return 8 // 1-10 scale, 8 = good connections
+        case .nutritionQuality: return 8
+        case .smokingStatus: return 10
+        case .alcoholConsumption: return 10
+        case .socialConnectionsQuality: return 8
         case .activeEnergyBurned: return 500
         case .vo2Max: return 45
         case .oxygenSaturation: return 100
-        case .stressLevel: return 2 // 1-10 scale, 2 = low stress (ideal)
-        case .bloodPressure: return 110 // systolic pressure target
+        case .stressLevel: return 2
+        case .bloodPressure: return 110
         }
+    }
+    
+    /// Period-aware recommended target values
+    /// Notes (evidence):
+    /// - Steps: 8,000–10,000 steps/day associated with lower mortality (Paluch et al., JAMA Netw Open 2022; Saint-Maurice et al., JAMA 2020).
+    /// - Exercise: 150–300 min/week moderate (~30–45 min/day) (WHO/AHA).
+    /// - Sleep: 7–9 hours/night optimal (Jike et al., Sleep Med Rev 2018).
+    /// - Resting HR: ≤60 bpm is a healthy target for adults (population references).
+    /// - HRV: 50 ms is a reasonable adult target; ideally age-adjusted.
+    /// - Active energy: ~500 kcal/day is a widely used daily goal (fitness guidance).
+    /// - VO2 Max: 45 ml/kg/min is a strong fitness target for adults.
+    /// - Oxygen saturation: 98–100% typical; 99–100% target.
+    func targetValue(for period: ImpactDataPoint.PeriodType) -> Double? {
+        switch self {
+        // Cumulative metrics: our charts use daily totals (day/month) or monthly average daily value (year)
+        // so we keep a per-day target consistent across periods.
+        case .steps:
+            // Day: 10,000/day; Month: 10,000 avg/day; Year: 10,000 avg/day
+            return 10_000
+        case .exerciseMinutes:
+            // Day: 30 min/day; Month: 30 avg/day; Year: 30 avg/day (≈ 210 min/week)
+            return 30
+        case .activeEnergyBurned:
+            // Day: 500 kcal/day; Month/Year: 500 avg/day
+            return 500
+            
+        // Recovery / status metrics: targets are per-day averages across periods
+        case .sleepHours:
+            // Day: 8 h; Month/Year: 8 h average
+            return 8
+        case .restingHeartRate:
+            // Lower is better; 60 bpm target across periods
+            return 60
+        case .heartRateVariability:
+            // Higher is better; 50 ms target across periods (consider age-adjustment elsewhere)
+            return 50
+        case .vo2Max:
+            // Higher is better; 45 ml/kg/min target
+            return 45
+        case .oxygenSaturation:
+            // Higher is better; 99–100% target, use 99 as practical target
+            return 99
+        
+        // Body mass depends on height/gender; leave nil here (compute elsewhere using UserProfile if available)
+        case .bodyMass:
+            return nil
+            
+        // Questionnaire/lifestyle metrics (1–10 scale): targets are period-invariant
+        case .nutritionQuality:
+            return 8
+        case .smokingStatus:
+            return 10
+        case .alcoholConsumption:
+            return 10
+        case .socialConnectionsQuality:
+            return 8
+        case .stressLevel:
+            return 2
+        case .bloodPressure:
+            // Systolic target; diastolic not represented here
+            return 110
+        }
+    }
+    
+    /// Period-aware baseline fallback (used when a target is not defined, e.g., bodyMass)
+    func baselineValue(for period: ImpactDataPoint.PeriodType) -> Double {
+        // For our charts, values are daily totals or daily averages even in longer periods,
+        // so baseline per-day values are appropriate across periods.
+        return baselineValue
     }
     
     /// CRITICAL FIX: Determines if this metric type represents cumulative data
@@ -462,4 +532,4 @@ enum MetricFunctionalGroup: String, CaseIterable {
         case .healthRisks: return "draining your power"
         }
     }
-} 
+}

@@ -214,7 +214,7 @@ struct MetricDetailsView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 6)
             
-            // Recommendation card
+            // Recommendation card (research-based)
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     Circle().fill(Color.yellow.opacity(0.15))
@@ -224,9 +224,20 @@ struct MetricDetailsView: View {
                 }
                 .frame(width: 36, height: 36)
                 
-                Text(latestMetric.impactDetails?.recommendation ?? "")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.white.opacity(0.9))
+                VStack(alignment: .leading, spacing: 6) {
+                    // Primary recommendation from research calculators
+                    Text(latestMetric.impactDetails?.recommendation ?? "")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.9))
+                    
+                    // Scientific basis summary (uses attached study references)
+                    if let basis = latestMetric.impactDetails?.scientificBasis {
+                        Text(basis)
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(.white.opacity(0.6))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
                 Spacer(minLength: 0)
             }
             .padding(14)
@@ -240,7 +251,7 @@ struct MetricDetailsView: View {
             )
             .padding(.horizontal, 16)
             
-            // Research info text
+            // Research info text (dynamic based on actual studies)
             HStack(spacing: 8) {
                 Image(systemName: "book.closed")
                     .font(.system(size: 14))
@@ -249,7 +260,11 @@ struct MetricDetailsView: View {
                 Button {
                     showSheet.toggle()
                 } label: {
-                    Text("Tap to see what research based on 195 studies tell us.")
+                    let studyCount = latestMetric.impactDetails?.studyReferences.count ?? 0
+                    let label = studyCount > 0
+                        ? "Tap to view \(studyCount) peer‑reviewed studies behind this"
+                        : "Tap to view the research behind this"
+                    Text(label + " recommendation.")
                         .font(.poppins(13, weight: .regular))
                         .foregroundColor(.white.opacity(0.5))
                 }
@@ -420,3 +435,4 @@ extension MetricDetailsView {
         }
     }
 }
+
