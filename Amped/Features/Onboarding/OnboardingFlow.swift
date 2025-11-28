@@ -120,7 +120,8 @@ struct OnboardingFlow: View {
                         WelcomeView(onContinue: {
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.valueProposition)
+                            // Immediately show Terms of Use after splash
+                            navigateTo(.terms)
                         })
                         .transition(getTransition(forNavigatingTo: appState.currentOnboardingStep))
                         .zIndex(appState.currentOnboardingStep == .welcome ? 1 : 0)
@@ -426,7 +427,8 @@ struct OnboardingFlow: View {
                             
                             isButtonNavigating = true
                             dragDirection = nil
-                            navigateTo(.terms)
+                            // After syncing, go straight to paywall/subscription (Terms already accepted)
+                            navigateTo(.paywall)
                         }, onBack: {
                             navigateTo(.goalsStats)
                         })
@@ -439,13 +441,10 @@ struct OnboardingFlow: View {
                         TermsView {
                             isButtonNavigating = true
                             dragDirection = nil
-                            if appState.isPremiumUser {
-                                navigateTo(.dashboard)
-                            } else {
-                                navigateTo(.subscription)
-                            }
+                            // Proceed into the rest of onboarding after Terms
+                            navigateTo(.valueProposition)
                         } onBack: {
-                            navigateTo(.syncDeviceStats)
+                            navigateTo(.welcome)
                         }
 
                     }

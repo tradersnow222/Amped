@@ -189,7 +189,7 @@ final class AppState: ObservableObject {
     @Published var appLaunchCount: Int = 0
     
     // ONBOARDING PROGRESS TRACKING: Advanced persistence with soft/hard close detection
-    @Published var currentOnboardingStep: OnboardingStep = .valueProposition
+    @Published var currentOnboardingStep: OnboardingStep = .welcome
     
     // MASCOT PERSONALIZATION: Store user's chosen mascot name globally
     @Published var mascotName: String = "Emma" // Default name
@@ -344,7 +344,7 @@ final class AppState: ObservableObject {
     /// Reset onboarding state (for testing/debugging)
     func resetOnboarding() {
         hasCompletedOnboarding = false
-        currentOnboardingStep = .valueProposition
+        currentOnboardingStep = .welcome
         
         // Use advanced persistence manager for comprehensive reset
         persistenceManager.resetAllData()
@@ -377,4 +377,3 @@ final class AppState: ObservableObject {
         persistenceManager.saveOnboardingProgress(step, hasCompletedOnboarding: hasCompletedOnboarding)
     }
 }
-

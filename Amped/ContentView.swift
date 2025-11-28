@@ -47,8 +47,8 @@ struct ContentView: View {
                     WelcomeView(onContinue: {
                         withAnimation(.easeInOut(duration: 0.35)) {
                             stage = .main
-                            // Continue the existing onboarding path
-                            appState.currentOnboardingStep = .valueProposition
+                            // Immediately show Terms before any other onboarding screens
+                            appState.currentOnboardingStep = .terms
                         }
                         
                     })

@@ -196,7 +196,7 @@ struct MetricDetailsView: View {
             
             // Chart section - Professional-style with REAL DATA ONLY
             if !viewModel.isLoadingHistory {
-                MetricChartSection2(
+                MetricChartSection(
                     metricType: metric.type,
                     dataPoints: viewModel.professionalStyleDataPoints, // REAL DATA ONLY
                     period: selectedPeriod

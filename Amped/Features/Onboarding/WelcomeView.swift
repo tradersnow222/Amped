@@ -53,7 +53,7 @@ struct WelcomeView: View {
                             .opacity(glowOpacity)
                             .shadow(color: Color.white.opacity(0.6), radius: 10)
                         
-                        Text("ampedlife")
+                        Text("Amped")
                             .font(.poppins(42, weight: .thin))
                             .fontWeight(.medium)
                             .foregroundColor(.white)
@@ -175,4 +175,3 @@ struct WelcomeView: View {
     WelcomeView()
         .environmentObject(DashboardViewModel())
 }
-
