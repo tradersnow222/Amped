@@ -177,11 +177,11 @@ struct AlcoholicStatsView: View {
                 Spacer()
             }
         }
-        .overlay(content: {
-            BottomSheet(isPresented: $showSheet) {
-                MetricImpactSheetContent(metricType: .alcoholConsumption, customTitle: "Impact score: Alcoholic Beverages")
-            }
-        })
+        .sheet(isPresented: $showSheet) {
+            MetricImpactSheetContent(metricType: .alcoholConsumption, customTitle: "Impact score: Alcoholic Beverages")
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .navigationBarBackButtonHidden(false)
         .onAppear {
             // If launched from Settings, prefill from defaults
@@ -194,4 +194,3 @@ struct AlcoholicStatsView: View {
         }
     }
 }
-

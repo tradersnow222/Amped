@@ -177,11 +177,11 @@ struct SmokeStatsView: View {
                 Spacer()
             }
         }
-        .overlay(content: {
-            BottomSheet(isPresented: $showSheet) {
-                MetricImpactSheetContent(metricType: .smokingStatus, customTitle: "Impact score: Smoke Tobacco")
-            }
-        })
+        .sheet(isPresented: $showSheet) {
+            MetricImpactSheetContent(metricType: .smokingStatus, customTitle: "Impact score: Smoke Tobacco")
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .navigationBarBackButtonHidden(false)
         .onAppear {
             // If launched from Settings, prefill from defaults

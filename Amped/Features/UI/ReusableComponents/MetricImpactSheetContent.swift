@@ -41,10 +41,10 @@ struct MetricImpactSheetContent: View {
                     .accessibilityLabel("Close")
                 }
                 
-                Capsule()
-                    .fill(Color.white.opacity(0.8))
-                    .frame(width: 64, height: 6)
-                    .padding(.vertical, 8)
+//                Capsule()
+//                    .fill(Color.white.opacity(0.8))
+//                    .frame(width: 64, height: 6)
+//                    .padding(.vertical, 8)
             }
             .padding(.horizontal, 8)
             .padding(.top, 4)

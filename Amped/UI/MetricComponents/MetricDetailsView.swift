@@ -124,14 +124,15 @@ struct MetricDetailsView: View {
                 }
             }
         }
-        .overlay(content: {
-            BottomSheet(isPresented: $showSheet) {
-                MetricImpactSheetContent(
-                    metricType: metric.type,
-                    customTitle: "Impact score: \(title(for: metric.type))"
-                )
-            }
-        })
+        // Present the impact details as a native sheet to avoid overlay stacking and duplicate close buttons
+        .sheet(isPresented: $showSheet) {
+            MetricImpactSheetContent(
+                metricType: metric.type,
+                customTitle: "Impact score: \(title(for: metric.type))"
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .navigationBarHidden(true)
     }
     
@@ -435,4 +436,3 @@ extension MetricDetailsView {
         }
     }
 }
-

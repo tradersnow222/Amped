@@ -174,11 +174,11 @@ struct StressStatsView: View {
                 Spacer()
             }
         }
-        .overlay(content: {
-            BottomSheet(isPresented: $showSheet) {
-                MetricImpactSheetContent(metricType: .stressLevel, customTitle: "Impact score: Stress")
-            }
-        })
+        .sheet(isPresented: $showSheet) {
+            MetricImpactSheetContent(metricType: .stressLevel, customTitle: "Impact score: Stress")
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .navigationBarBackButtonHidden(false)
         .onAppear {
             // If launched from Settings, prefill from defaults

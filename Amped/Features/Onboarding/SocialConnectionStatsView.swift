@@ -177,11 +177,11 @@ struct SocialConnectionStatsView: View {
                 Spacer()
             }
         }
-        .overlay(content: {
-            BottomSheet(isPresented: $showSheet) {
-                MetricImpactSheetContent(metricType: .socialConnectionsQuality, customTitle: "Impact score: Social Connections")
-            }
-        })
+        .sheet(isPresented: $showSheet) {
+            MetricImpactSheetContent(metricType: .socialConnectionsQuality, customTitle: "Impact score: Social Connections")
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .navigationBarBackButtonHidden(false)
         .onAppear {
             // If launched from Settings, prefill from defaults
@@ -194,4 +194,3 @@ struct SocialConnectionStatsView: View {
         }
     }
 }
-
