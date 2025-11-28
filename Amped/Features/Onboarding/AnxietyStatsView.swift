@@ -105,6 +105,8 @@ struct AnxietyStatsView: View {
                             onSelection?(level.rawValue)
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedStressLevel = level
+                                guard let selectedStressLevel else { return }
+                                onContinue?(selectedStressLevel.rawValue)
                             }
                         }) {
                             VStack(spacing: 4) {
@@ -143,15 +145,15 @@ struct AnxietyStatsView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 16)
 
-                OnboardingContinueButton(
-                    title: "Continue",
-                    isEnabled: selectedStressLevel != nil,
-                    animateIn: true,
-                    bottomPadding: 40
-                ) {
-                    guard let selectedStressLevel else { return }
-                    onContinue?(selectedStressLevel.rawValue)
-                }
+//                OnboardingContinueButton(
+//                    title: "Continue",
+//                    isEnabled: selectedStressLevel != nil,
+//                    animateIn: true,
+//                    bottomPadding: 40
+//                ) {
+//                    guard let selectedStressLevel else { return }
+//                    onContinue?(selectedStressLevel.rawValue)
+//                }
                 
                 // Research info text
                 HStack(spacing: 8) {
@@ -174,12 +176,11 @@ struct AnxietyStatsView: View {
                 Spacer()
             }
         }
-        .overlay(content: {
-            BottomSheet(isPresented: $showSheet) {
-                // Anxiety is not a separate metric type; use stressLevel as proxy
-                MetricImpactSheetContent(metricType: .stressLevel, customTitle: "Impact score: Anxiety")
-            }
-        })
+        .sheet(isPresented: $showSheet) {
+            MetricImpactSheetContent(metricType: .stressLevel, customTitle: "Impact score: Anxiety")
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .navigationBarBackButtonHidden(false)
         .onAppear {
             // If launched from Settings, prefill from defaults
@@ -191,4 +192,8 @@ struct AnxietyStatsView: View {
             }
         }
     }
+}
+
+#Preview {
+    AnxietyStatsView()
 }

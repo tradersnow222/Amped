@@ -12,6 +12,7 @@ struct MetricImpactSheetContent: View {
     var customTitle: String? = nil
     
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     
     @State private var score: Int = 50
     @State private var sliderValue: Double = 50
@@ -24,106 +25,113 @@ struct MetricImpactSheetContent: View {
     @State private var safariURL: URL?
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header with grabber and close button
-            ZStack {
-                HStack {
-                    Spacer()
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.9))
-                            .padding(12)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel("Close")
-                }
-                
-//                Capsule()
-//                    .fill(Color.white.opacity(0.8))
-//                    .frame(width: 64, height: 6)
-//                    .padding(.vertical, 8)
-            }
-            .padding(.horizontal, 8)
-            .padding(.top, 4)
+        ZStack {
+            // Custom dark background so content looks correct in both light and dark device modes
+            Color.black.ignoresSafeArea(.all).opacity(0.3)
             
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Title
-                    Text(title.isEmpty ? (customTitle ?? "Impact score: \(metricType.displayName)") : title)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.9))
-                        .padding(.top, 4)
-                    
-                    // Big score "50/100"
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text("\(score)")
-                            .font(.system(size: 44, weight: .semibold))
-                            .foregroundColor(.white)
-                        Text("/100")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.5))
-                    }
-                    
-                    // Slider (read-only)
-                    VStack(spacing: 6) {
-                        AmpedProgressSlider(value: sliderValue / 100.0)
-                            .frame(height: 28)
-                        HStack {
-                            Text("0")
-                                .font(.system(size: 12, weight: .regular))
-                                .foregroundColor(.white.opacity(0.6))
-                            Spacer()
-                            Text("100")
-                                .font(.system(size: 12, weight: .regular))
-                                .foregroundColor(.white.opacity(0.6))
-                        }
-                    }
-                    .padding(.top, 2)
-                    
-                    // Description paragraphs (first regular, second bold, third regular)
-                    VStack(alignment: .leading, spacing: 16) {
-                        let paragraphs = styledParagraphs(from: descriptionText)
-                        ForEach(paragraphs.indices, id: \.self) { idx in
-                            let p = paragraphs[idx]
-                            Text(p.text)
-                                .font(.system(size: 16, weight: p.isEmphasized ? .semibold : .regular))
-                                .foregroundColor(.white.opacity(0.9))
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    
-                    // Source chip (matches screenshot styling)
-                    if let sourceURL, !sourceText.isEmpty {
+            VStack(spacing: 0) {
+                // Header with grabber and close button
+                ZStack {
+                    HStack {
+                        Spacer()
                         Button {
-                            safariURL = sourceURL
+                            dismiss()
                         } label: {
-                            HStack(spacing: 8) {
-                                Text(sourceText)
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.9))
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                Image(systemName: "arrow.up.right")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.white.opacity(0.9))
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(Color.white.opacity(0.12))
-                            )
+                            Image(systemName: "xmark")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.9))
+                                .padding(12)
+                                .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(Text("Open source: \(sourceText)"))
-                        .padding(.top, 4)
+                        .accessibilityLabel("Close")
                     }
+                    
+                    // Visible grabber that works on dark bg
+//                    Capsule()
+//                        .fill(Color.white.opacity(0.35))
+//                        .frame(width: 64, height: 6)
+//                        .padding(.vertical, 8)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
+                .padding(.horizontal, 8)
+                .padding(.top, 4)
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Title
+                        Text(title.isEmpty ? (customTitle ?? "Impact score: \(metricType.displayName)") : title)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.9))
+                            .padding(.top, 4)
+                        
+                        // Big score "50/100"
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text("\(score)")
+                                .font(.system(size: 44, weight: .semibold))
+                                .foregroundColor(.white)
+                            Text("/100")
+                                .font(.system(size: 22, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.5))
+                        }
+                        
+                        // Slider (read-only)
+                        VStack(spacing: 6) {
+                            AmpedProgressSlider(value: sliderValue / 100.0)
+                                .frame(height: 28)
+                            HStack {
+                                Text("0")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .foregroundColor(.white.opacity(0.6))
+                                Spacer()
+                                Text("100")
+                                    .font(.system(size: 12, weight: .regular))
+                                    .foregroundColor(.white.opacity(0.6))
+                            }
+                        }
+                        .padding(.top, 2)
+                        
+                        // Description paragraphs (first regular, second bold, third regular)
+                        VStack(alignment: .leading, spacing: 16) {
+                            let paragraphs = styledParagraphs(from: descriptionText)
+                            ForEach(paragraphs.indices, id: \.self) { idx in
+                                let p = paragraphs[idx]
+                                Text(p.text)
+                                    .font(.system(size: 16, weight: p.isEmphasized ? .semibold : .regular))
+                                    .foregroundColor(.white.opacity(0.9))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        
+                        // Source chip
+                        if let sourceURL, !sourceText.isEmpty {
+                            Button {
+                                safariURL = sourceURL
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Text(sourceText)
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(.white.opacity(0.9))
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                    Image(systemName: "arrow.up.right")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.white.opacity(0.9))
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .fill(Color.white.opacity(0.12))
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(Text("Open source: \(sourceText)"))
+                            .padding(.top, 4)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
+                }
+                .scrollContentBackground(.hidden) // avoid default system background bleed
             }
         }
         .onAppear {
@@ -134,6 +142,12 @@ struct MetricImpactSheetContent: View {
             SafariView(url: url)
                 .ignoresSafeArea()
         }
+        // Ensure the system sheet background doesn’t overlay our dark gradient (iOS 17+)
+//        .presentationBackground(.clear)
+        // Force a dark look for this sheet so white text has consistent contrast
+        .preferredColorScheme(.dark)
+        // Improve corner radius appearance against our gradient
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
     
     // MARK: - Data loading and composition

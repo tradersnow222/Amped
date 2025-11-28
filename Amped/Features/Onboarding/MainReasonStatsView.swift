@@ -54,7 +54,6 @@ struct MainReasonStatsView: View {
                             .frame(width: 20, height: 20)
                     }
                     .padding(.leading, 30)
-                    .padding(.top, 10)
                     
                     Spacer() // pushes button to leading
                 }
@@ -105,6 +104,8 @@ struct MainReasonStatsView: View {
                             onSelection?(level.rawValue)
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedStressLevel = level
+                                guard let selectedStressLevel else { return }
+                                onContinue?(selectedStressLevel.rawValue)
                             }
                         }) {
                             VStack(spacing: 1) {
@@ -147,32 +148,33 @@ struct MainReasonStatsView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 16)
 
-                OnboardingContinueButton(
-                    title: "Continue",
-                    isEnabled: selectedStressLevel != nil,
-                    animateIn: true,
-                    bottomPadding: 20
-                ) {
-                    guard let selectedStressLevel else { return }
-                    onContinue?(selectedStressLevel.rawValue)
-                }
+//                OnboardingContinueButton(
+//                    title: "Continue",
+//                    isEnabled: selectedStressLevel != nil,
+//                    animateIn: true,
+//                    bottomPadding: 20
+//                ) {
+//                    guard let selectedStressLevel else { return }
+//                    onContinue?(selectedStressLevel.rawValue)
+//                }
                 
                 // Research info text (use as an info trigger)
-                HStack(spacing: 8) {
-                    Image(systemName: "book.closed")
-                        .font(.system(size: 14))
-                        .foregroundColor(.white.opacity(0.5))
-                    
-                    Button {
-                        showSheet.toggle()
-                    } label: {
-                        Text("See how your current habits impact your lifespan.")
-                            .font(.poppins(13, weight: .regular))
-                            .foregroundColor(.white.opacity(0.5))
-                    }
-                }
-                .padding(.horizontal, 32)
-                .padding(.bottom, 20)
+//                HStack(spacing: 8) {
+//                    Image(systemName: "book.closed")
+//                        .font(.system(size: 14))
+//                        .foregroundColor(.white.opacity(0.5))
+//                    
+//                    Button {
+//                        showSheet.toggle()
+//                    } label: {
+//                        Text("See how your current habits impact your lifespan.")
+//                            .font(.poppins(13, weight: .regular))
+//                            .foregroundColor(.white.opacity(0.5))
+//                    }
+//                }
+//                .padding(.horizontal, 32)
+//                .padding(.bottom, 20)
+                Spacer()
             }
         }
         .overlay(content: {
@@ -180,7 +182,7 @@ struct MainReasonStatsView: View {
                 AggregateImpactSheetContent()
             }
         })
-        .navigationBarBackButtonHidden(false)
+        .navigationBarHidden(true)
         .onAppear {
             // If launched from Settings, prefill from defaults
             if isFromSettings {
@@ -260,3 +262,6 @@ private struct AggregateImpactSheetContent: View {
     }
 }
 
+#Preview {
+    MainReasonStatsView()
+}

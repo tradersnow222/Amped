@@ -105,6 +105,8 @@ struct SmokeStatsView: View {
                             onSelection?(level.rawValue)
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedStressLevel = level
+                                guard let selectedStressLevel else { return }
+                                onContinue?(selectedStressLevel.rawValue)
                             }
                         }) {
                             VStack(spacing: 1) {
@@ -147,15 +149,15 @@ struct SmokeStatsView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 16)
 
-                OnboardingContinueButton(
-                    title: "Continue",
-                    isEnabled: selectedStressLevel != nil,
-                    animateIn: true,
-                    bottomPadding: 40
-                ) {
-                    guard let selectedStressLevel else { return }
-                    onContinue?(selectedStressLevel.rawValue)
-                }
+//                OnboardingContinueButton(
+//                    title: "Continue",
+//                    isEnabled: selectedStressLevel != nil,
+//                    animateIn: true,
+//                    bottomPadding: 40
+//                ) {
+//                    guard let selectedStressLevel else { return }
+//                    onContinue?(selectedStressLevel.rawValue)
+//                }
                 
                 // Research info text
                 HStack(spacing: 8) {
