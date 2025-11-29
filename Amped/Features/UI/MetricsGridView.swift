@@ -133,7 +133,10 @@ struct MetricGridView: View {
                                         change: card.changeText,
                                         unit: card.unit,
                                         isPositive: card.isPositive,
-                                        foregroundColor: card.foregroundColor
+                                        badge: nil,
+                                        foregroundColor: card.foregroundColor,
+                                        miniChartMetric: card.healthMetric,
+                                        miniChartPeriod: selectedPeriod
                                     )
                                 }
                                 .disabled(card.healthMetric == nil)
@@ -287,6 +290,10 @@ struct MetricCard: View {
     var badge: String? = nil
     let foregroundColor: Color
     
+    // NEW: Optional live mini chart inputs (defaults keep existing call sites working)
+    var miniChartMetric: HealthMetric? = nil
+    var miniChartPeriod: ImpactDataPoint.PeriodType? = nil
+    
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 24)
@@ -299,25 +306,11 @@ struct MetricCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
                     // Icon
-                    
                     Image(icon)
                         .scaledToFill()
                         .frame(width: 40, height: 40)
                     
                     Spacer()
-                    
-//                    // Share button
-//                    Button(action: {}) {
-//                        ZStack {
-//                            RoundedRectangle(cornerRadius: 8)
-//                                .fill(Color.white.opacity(0.1))
-//                                .frame(width: 28, height: 28)
-//                            
-//                            Image(systemName: "arrow.up.right")
-//                                .font(.system(size: 12))
-//                                .foregroundColor(Color.gray)
-//                        }
-//                    }
                 }
                 .padding(.bottom, 16)
                 
@@ -353,20 +346,136 @@ struct MetricCard: View {
                 
                 // Chart
                 ZStack(alignment: .bottomTrailing) {
-                    WaveShape()
-                        .stroke(Color.gray.opacity(0.3), lineWidth: 1.5)
+                    if let metric = miniChartMetric, let period = miniChartPeriod {
+                        MiniMetricSparklineView(
+                            metric: metric,
+                            period: period,
+                            lineColor: foregroundColor
+                        )
                         .frame(height: 48)
-                    
-                    Circle()
-                        .fill(foregroundColor)
-                        .frame(width: 8, height: 8)
-                        .offset(x: -46, y: -12)
+                    } else {
+                        // Graceful fallback placeholder (keeps UI identical)
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.gray.opacity(0.25))
+                            .frame(height: 1.5)
+                            .offset(y: 23) // center-ish baseline
+                    }
                 }
             }
             .padding(20)
         }
         .frame(height: 220)
         .padding(.bottom, 12)
+    }
+}
+
+// Live mini sparkline that uses the same data source as the full chart
+private struct MiniMetricSparklineView: View {
+    let metric: HealthMetric
+    let period: ImpactDataPoint.PeriodType
+    let lineColor: Color
+    
+    // IMPORTANT: Use the same view model so data matches full detail view
+    @StateObject private var vm: MetricDetailViewModel
+    
+    init(metric: HealthMetric, period: ImpactDataPoint.PeriodType, lineColor: Color) {
+        self.metric = metric
+        self.period = period
+        self.lineColor = lineColor
+        _vm = StateObject(wrappedValue: MetricDetailViewModel(metric: metric, initialPeriod: period))
+    }
+    
+    var body: some View {
+        GeometryReader { geo in
+            let pts = vm.professionalStyleDataPoints
+            let path = sparklinePath(in: geo.size, points: pts)
+            
+            ZStack(alignment: .topLeading) {
+                // Underline / baseline feel similar to previous WaveShape stroke look
+                path
+                    .stroke(Color.gray.opacity(0.3), lineWidth: 1.5)
+                
+                // Colored overlay to make it pop slightly
+                path
+                    .stroke(lineColor.opacity(0.9), lineWidth: 1.5)
+                
+                // Trailing dot at the last valid data point (sync with full chart)
+                if let lastPoint = lastPointPosition(in: geo.size, points: pts) {
+                    Circle()
+                        .fill(lineColor)
+                        .frame(width: 8, height: 8)
+                        .position(x: lastPoint.x, y: lastPoint.y)
+                }
+            }
+        }
+        .onAppear {
+            vm.loadRealHistoricalData(for: metric, period: period)
+        }
+        .onChange(of: period) { newPeriod in
+            vm.loadRealHistoricalData(for: metric, period: newPeriod)
+        }
+        .clipped()
+    }
+    
+    private func sparklinePath(in size: CGSize, points: [MetricDataPoint]) -> Path {
+        var path = Path()
+        guard points.count > 1 else { return path }
+        
+        // Compute bounds
+        let xs = points.map { $0.date.timeIntervalSince1970 }
+        let ys = points.map { $0.value }
+        guard let minX = xs.min(), let maxX = xs.max(),
+              let minY = ys.min(), let maxY = ys.max(),
+              maxX > minX else { return path }
+        
+        let inset: CGFloat = 2
+        let width = size.width - inset * 2
+        let height = size.height - inset * 2
+        
+        // Avoid flat line when min == max
+        let yRange = (maxY - minY) == 0 ? 1.0 : (maxY - minY)
+        
+        func xPos(_ t: TimeInterval) -> CGFloat {
+            let p = (t - minX) / (maxX - minX)
+            return inset + CGFloat(p) * width
+        }
+        func yPos(_ v: Double) -> CGFloat {
+            let p = (v - minY) / yRange
+            // Invert y for drawing
+            return inset + height * CGFloat(1.0 - p)
+        }
+        
+        // Move to first
+        let first = points.first!
+        path.move(to: CGPoint(x: xPos(first.date.timeIntervalSince1970), y: yPos(first.value)))
+        
+        // Simple line (can be upgraded to smoothing if needed)
+        for pt in points.dropFirst() {
+            path.addLine(to: CGPoint(x: xPos(pt.date.timeIntervalSince1970), y: yPos(pt.value)))
+        }
+        
+        return path
+    }
+    
+    private func lastPointPosition(in size: CGSize, points: [MetricDataPoint]) -> CGPoint? {
+        guard let last = points.last else { return nil }
+        let xs = points.map { $0.date.timeIntervalSince1970 }
+        let ys = points.map { $0.value }
+        guard let minX = xs.min(), let maxX = xs.max(),
+              let minY = ys.min(), let maxY = ys.max(),
+              maxX > minX else { return nil }
+        
+        let inset: CGFloat = 2
+        let width = size.width - inset * 2
+        let height = size.height - inset * 2
+        let yRange = (maxY - minY) == 0 ? 1.0 : (maxY - minY)
+        
+        let xP = (last.date.timeIntervalSince1970 - minX) / (maxX - minX)
+        let yP = (last.value - minY) / yRange
+        
+        let x = inset + CGFloat(xP) * width
+        let y = inset + height * CGFloat(1.0 - yP)
+        return CGPoint(x: x, y: y)
     }
 }
 
@@ -406,4 +515,3 @@ struct WaveShape: Shape {
         return path
     }
 }
-

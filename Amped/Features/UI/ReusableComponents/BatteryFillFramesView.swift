@@ -8,7 +8,7 @@
 import SwiftUI
 
 // MARK: - Battery fill frames animator
-private struct BatteryFillFramesView: View {
+struct BatteryFillFramesView: View {
     let level: Double   // 0.0 ... 1.0
     let size: CGFloat
     
