@@ -85,6 +85,33 @@ struct DashboardView: View {
         return signedImpact
     }
     
+    /// Convert total impact to minutes (so we can normalize to battery frames)
+    private var totalImpactMinutes: Double {
+        guard let impact = viewModel.lifeImpactData?.totalImpact else { return 0 }
+        let base = impact.value
+        switch impact.unit {
+        case .minutes: return (impact.direction == .positive) ? base : -base
+        case .hours:   return (impact.direction == .positive) ? base * 60.0 : -base * 60.0
+        case .days:    return (impact.direction == .positive) ? base * 1440.0 : -base * 1440.0
+        case .years:   return (impact.direction == .positive) ? base * 525600.0 : -base * 525600.0
+        }
+    }
+    
+    /// Map current impact to a 0...1 battery level using the same normalization used in LifeImpactData
+    private var batteryLevelFraction: Double {
+        // Max expected impact per selected period (same constants used in LifeImpactData.calculateBatteryLevel)
+        let maxImpactMinutes: Double
+        switch selectedPeriod {
+        case .day:  maxImpactMinutes = 240.0
+        case .month: maxImpactMinutes = 240.0 * 30.0
+        case .year:  maxImpactMinutes = 240.0 * 365.0
+        }
+        let normalized = max(-1.0, min(1.0, (maxImpactMinutes == 0 ? 0 : totalImpactMinutes / maxImpactMinutes)))
+        // 0.5 is neutral, ±0.5 span around it
+        let level = 0.5 + normalized * 0.5
+        return max(0.0, min(1.0, level))
+    }
+    
     /// Format the total time impact for display
     private var formattedTotalImpact: String {
         let absMinutes = abs(totalTimeImpact)
@@ -596,20 +623,20 @@ struct DashboardView: View {
         )
     }
     
-    /// Battery character section with steptwo image
+    /// Battery character section with frame-based filling animation
     private var batteryCharacterSection: some View {
         VStack(spacing: 12) {
             
-            // Character + Arrow
+            // Character + Arrow (animated frames)
             ZStack(alignment: .topTrailing) {
-                Image("Amped_8")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 180, height: 180)
+                BatteryFillFramesView(
+                    level: batteryLevelFraction,
+                    size: 180
+                )
                 
-                Image(systemName: totalTimeImpact >= 0 ? "arrow.up" : "arrow.down")
+                Image(systemName: totalImpactMinutes >= 0 ? "arrow.up" : "arrow.down")
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(totalTimeImpact >= 0 ? .ampedGreen : .ampedRed)
+                    .foregroundColor(totalImpactMinutes >= 0 ? .ampedGreen : .ampedRed)
                     .padding(.trailing, 4)
                     .padding(.top, 8)
             }
