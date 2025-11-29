@@ -632,7 +632,7 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 12) {
             
             // Title
-            Text("Today's focus:")
+            Text("\(periodFocusTitle) focus:")
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(.white)
                 .padding(.bottom, 4)
@@ -664,7 +664,7 @@ struct DashboardView: View {
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(.white)
                             
-                            // Red impact line
+                            // Red/Green impact line
                             Text(getTopMetricImpactText())
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(getTopMetricImpactColor())
@@ -674,12 +674,6 @@ struct DashboardView: View {
                         (
                             Text(getTopMetricImpactReccomendationText())
                                 .foregroundColor(.white)
-                            //                        +
-                            //                        Text("20 minutes ")
-                            //                            .foregroundColor(.white)
-                            //                            .fontWeight(.bold)
-                            //                        +
-                            //                        Text("more tonight to earn it back.")
                                 .foregroundColor(.white)
                         )
                         .font(.system(size: 14))
@@ -1872,66 +1866,83 @@ extension DashboardView {
     
     // MARK: - Dynamic Metric Helper Functions
     
-    /// Get the display name of the top impactful metric
+    /// Format minutes as a compact "Xd Yh Zm" string (omitting zero components)
+    private func formatMinutesShort(_ minutes: Double) -> String {
+        let total = max(0, Int(round(abs(minutes))))
+        let days = total / 1440
+        let hours = (total % 1440) / 60
+        let mins = total % 60
+        var parts: [String] = []
+        if days > 0 { parts.append("\(days)d") }
+        if hours > 0 { parts.append("\(hours)h") }
+        if mins > 0 || parts.isEmpty { parts.append("\(mins)m") }
+        return parts.joined(separator: " ")
+    }
+    
+    /// Period-aware focus title
+    private var periodFocusTitle: String {
+        switch selectedPeriod {
+        case .day: return "Today’s"
+        case .month: return "This month’s"
+        case .year: return "This year’s"
+        }
+    }
+    
+    /// Pick the top-impact metric for the currently selected period using LifeImpactData
+    private var topMetricForSelectedPeriod: (type: HealthMetricType, detail: MetricImpactDetail)? {
+        guard let contributions = viewModel.lifeImpactData?.metricContributions, !contributions.isEmpty else {
+            return nil
+        }
+        let sorted = contributions.sorted {
+            abs($0.value.impactForPeriod(selectedPeriod)) > abs($1.value.impactForPeriod(selectedPeriod))
+        }
+        return sorted.first.map { ($0.key, $0.value) }
+    }
+    
+    /// Get the display name of the top impactful metric (period-aware)
     private func getTopMetricDisplayName() -> String {
-        guard let topMetric = filteredMetrics.first else {
+        guard let top = topMetricForSelectedPeriod else {
             return "Connect Health Data"
         }
-        
-        let metricName = topMetric.type.displayName
-        let isPositive = topMetric.impactDetails?.lifespanImpactMinutes ?? 0 >= 0
-        
-        if isPositive {
-            return "Optimal \(metricName)"
-        } else {
-            return "Suboptimal \(metricName)"
-        }
+        let impact = top.detail.impactForPeriod(selectedPeriod)
+        let metricName = top.type.displayName
+        let isPositive = impact >= 0
+        return isPositive ? "Optimal \(metricName)" : "Suboptimal \(metricName)"
     }
     
-    /// Get the impact text for the top metric
+    /// Get the impact text for the top metric (period-aware)
     private func getTopMetricImpactText() -> String {
-        guard let topMetric = filteredMetrics.first,
-              let impact = topMetric.impactDetails else {
+        guard let top = topMetricForSelectedPeriod else {
             return "Track this metric to see your impact"
         }
-        
-        let impactMinutes = abs(impact.lifespanImpactMinutes)
-        let isPositive = impact.lifespanImpactMinutes >= 0
-        
-        if isPositive {
-            return "Adding \(String(format: "%.0f", impactMinutes)) minutes"
-        } else {
-            return "Costing you \(String(format: "%.0f", impactMinutes)) minutes"
-        }
+        let impact = top.detail.impactForPeriod(selectedPeriod)
+        let formatted = formatMinutesShort(impact)
+        return impact >= 0 ? "Adding \(formatted)" : "Costing you \(formatted)"
     }
     
-    /// Get the impact recommendatoin for the top metric
+    /// Get the impact recommendation for the top metric (comes from MetricImpactDetail)
     private func getTopMetricImpactReccomendationText() -> String {
-        guard let topMetric = filteredMetrics.first,
-              let impact = topMetric.impactDetails else {
+        guard let top = topMetricForSelectedPeriod else {
             return "Track this metric to see your impact"
         }
-        return impact.recommendation
+        return top.detail.recommendation
     }
     
-    /// Get the color for the top metric impact
+    /// Get the color for the top metric impact (period-aware)
     private func getTopMetricImpactColor() -> Color {
-        guard let topMetric = filteredMetrics.first,
-              let impact = topMetric.impactDetails else {
+        guard let top = topMetricForSelectedPeriod else {
             return .white.opacity(0.7)
         }
-        
-        let isPositive = impact.lifespanImpactMinutes >= 0
-        return isPositive ? .ampedGreen : .ampedRed
+        let impact = top.detail.impactForPeriod(selectedPeriod)
+        return impact >= 0 ? .ampedGreen : .ampedRed
     }
     
-    /// Get the icon for the top metric
+    /// Get the icon for the top metric (based on HealthMetricType)
     private func getTopMetricIcon() -> String {
-        guard let topMetric = filteredMetrics.first else {
+        guard let top = topMetricForSelectedPeriod else {
             return "heart.fill"
         }
-        
-        switch topMetric.type {
+        switch top.type {
         case .steps: return "figure.walk"
         case .sleepHours: return "moon"
         case .restingHeartRate: return "heart.fill"
@@ -1939,25 +1950,30 @@ extension DashboardView {
         case .exerciseMinutes: return "figure.run"
         case .vo2Max: return "heart.circle.fill"
         case .bodyMass: return "scalemass.fill"
-        default: return "chart.bar.fill"
+        case .heartRateVariability: return "waveform.path.ecg"
+        case .oxygenSaturation: return "lungs.fill"
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel, .bloodPressure:
+            return "heart.fill"
         }
     }
     
-    /// Get the icon color for the top metric
+    /// Get the icon color for the top metric (based on HealthMetricType)
     private func getTopMetricIconColor() -> Color {
-        guard let topMetric = filteredMetrics.first else {
+        guard let top = topMetricForSelectedPeriod else {
             return Color.red
         }
-        
-        switch topMetric.type {
+        switch top.type {
         case .steps: return .blue
-        case .sleepHours: return Color(red:252/255, green:238/255, blue: 33/255) // Keep original yellow for sleep
+        case .sleepHours: return Color(red:252/255, green:238/255, blue: 33/255)
         case .restingHeartRate: return .red
         case .activeEnergyBurned: return .orange
         case .exerciseMinutes: return .green
         case .vo2Max: return .blue
         case .bodyMass: return .purple
-        default: return .gray
+        case .heartRateVariability: return .cyan
+        case .oxygenSaturation: return .blue
+        case .nutritionQuality, .smokingStatus, .alcoholConsumption, .socialConnectionsQuality, .stressLevel, .bloodPressure:
+            return .gray
         }
     }
     
