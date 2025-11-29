@@ -99,6 +99,8 @@ struct MetricGridView: View {
     
     var body: some View {
         ZStack {
+            Color.black.ignoresSafeArea()
+            LinearGradient.customBlueToDarkGray.ignoresSafeArea()
             if !appState.isPremiumUser {
                 UnlockSubscriptionView {
                     // Got to subscription
@@ -119,7 +121,7 @@ struct MetricGridView: View {
                         LazyVGrid(columns: [
                             GridItem(.flexible(), spacing: 16),
                             GridItem(.flexible(), spacing: 16)
-                        ], spacing: 16) {
+                        ], spacing: 1) {
                             ForEach(cards) { card in
                                 NavigationLink {
                                     if let healthMetric = card.healthMetric {
@@ -144,8 +146,18 @@ struct MetricGridView: View {
                             }
                         }
                         .padding(.top, 20)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 90)
+                        .padding(.horizontal, 30)
+                        .padding(.bottom, 100)
+                        .background(
+                            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                                .fill(Color.white.opacity(0.08))       // light glass layer
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                                )
+                                .padding(.horizontal, 12)
+                                .padding(.bottom, 90)
+                        )
                     }
                 }
             }
@@ -297,7 +309,7 @@ struct MetricCard: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 24)
-                .fill(Color(hex: "#828282").opacity(0.20))
+                .fill(Color(hex: "#828282").opacity(0.35))
                 .overlay(
                     RoundedRectangle(cornerRadius: 24)
                         .stroke(Color.gray.opacity(0.2), lineWidth: 1)
@@ -514,4 +526,8 @@ struct WaveShape: Shape {
         
         return path
     }
+}
+
+#Preview {
+    MetricGridView().environmentObject(AppState())
 }

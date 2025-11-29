@@ -144,7 +144,7 @@ struct WelcomeView: View {
         
         // Step 3: After 4 seconds, show circular loader
         autoAdvanceTask = Task {
-            try? await Task.sleep(for: .seconds(4.0))
+            try? await Task.sleep(for: .seconds(3.0))
             
             await MainActor.run {
                 withAnimation(.easeInOut) {
