@@ -119,6 +119,7 @@ struct SettingView: View {
                 .zIndex(10)
             }
         }
+        .enableSwipeBack()
         .navigationBarHidden(true)
         .fullScreenCover(isPresented: $showOnboardingFlow) {
             OnboardingFlow(isFromSettings: showOnboardingFlow).environmentObject(appState)

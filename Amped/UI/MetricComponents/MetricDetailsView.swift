@@ -143,6 +143,8 @@ struct MetricDetailsView: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
+        // Keep your custom header but re-enable the system's interactive pop gesture.
+        .enableSwipeBack()
         .navigationBarHidden(true)
     }
     
