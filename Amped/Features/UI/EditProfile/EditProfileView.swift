@@ -7,6 +7,7 @@ struct EditProfileView: View {
     @ObservedObject private var imageManager = ProfileImageManager.shared
     
     @State private var photoItem: PhotosPickerItem? = nil
+    @State private var showDOBPicker = false
     
     // Keyboard handling
     @FocusState private var focusedField: Field?
@@ -404,14 +405,9 @@ struct EditProfileView: View {
     }
     
     private func dateButton() -> some View {
-        Menu {
-            DatePicker("Date of Birth", selection: Binding(
-                get: { vm.dateOfBirth ?? Calendar.current.date(from: DateComponents(year: 1990, month: 6, day: 15))! },
-                set: { vm.dateOfBirth = $0 }
-            ), displayedComponents: .date)
-            .datePickerStyle(.graphical)
+        Button {
+            showDOBPicker = true
         } label: {
-            // Reverted to calendar icon like before
             HStack {
                 Text(formattedDOB(vm.dateOfBirth))
                     .foregroundColor(.white.opacity(vm.dateOfBirth == nil ? 0.4 : 0.95))
@@ -422,10 +418,34 @@ struct EditProfileView: View {
             .padding(.horizontal, 16)
             .frame(height: 52)
             .background(Color.white.opacity(0.12))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.white.opacity(0.18), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 18)
+            .stroke(Color.white.opacity(0.18), lineWidth: 1))
             .cornerRadius(18)
         }
+        .sheet(isPresented: $showDOBPicker) {
+            VStack {
+                DatePicker(
+                    "Select Date",
+                    selection: Binding(
+                        get: { vm.dateOfBirth ?? Date() },
+                        set: { vm.dateOfBirth = $0 }
+                    ),
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.wheel)
+                .labelsHidden()
+                .presentationDetents([.height(300)])
+
+                Button("Done") {
+                    showDOBPicker = false
+                }
+                .padding(.top)
+            }
+            .padding()
+            .presentationDetents([.height(350)])
+        }
     }
+
     
     private func formattedDOB(_ date: Date?) -> String {
         guard let date else { return "Select Date" }
