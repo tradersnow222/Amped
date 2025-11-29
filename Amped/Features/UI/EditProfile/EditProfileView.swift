@@ -19,132 +19,129 @@ struct EditProfileView: View {
         ZStack {
             LinearGradient.customBlueToDarkGray.ignoresSafeArea()
             
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Top bar
-                    HStack {
-                        Button {
-                            dismiss()
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .foregroundColor(.white)
-                                .font(.system(size: 18, weight: .semibold))
-                        }
-                        Spacer()
-                        Text("Edit Profile")
-                            .font(.poppins(16, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.9))
-                        Spacer()
-                        // Invisible spacer to keep title centered
-                        Color.clear.frame(width: 24, height: 24)
+            VStack(spacing: 0) {
+                // Sticky Top bar (removed from ScrollView)
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image("backIcon")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    
-                    // Avatar
-                    ZStack {
-                        avatarView
-                    }
-                    .padding(.top, 8)
-                    
-                    VStack(alignment: .leading, spacing: 14) {
-                        fieldLabel("Name")
-                        roundedTextField("Enter your name", text: $vm.fullName, keyboard: .default, focus: .name)
-                        
-                        fieldLabel("Gender")
-                        roundedMenu(
-                            selection: Binding<String>(
-                                get: { (vm.gender ?? .preferNotToSay).displayName },
-                                set: { newDisplay in
-                                    vm.gender = UserProfile.Gender.allCases.first { $0.displayName == newDisplay } ?? .preferNotToSay
-                                }
-                            ),
-                            options: UserProfile.Gender.allCases.map { $0.displayName }
-                        )
-                        
-                        fieldLabel("Date of Birth")
-                        dateButton()
-                        
-                        fieldLabel("Height")
-                        roundedTextField("Height (cm)", text: $vm.heightText, keyboard: .decimalPad, focus: .height)
-                        
-                        fieldLabel("Weight")
-                        roundedTextField("Weight (kg)", text: $vm.weightText, keyboard: .decimalPad, focus: .weight)
-                        
-                        // Extended fields (stored in UserDefaults keys)
-                        // Match StressStatsView: Low, Moderate, High
-                        fieldLabel("Stress Level")
-                        roundedMenu(selection: $vm.stressLevel, options: ["Low", "Moderate", "High"])
-                        
-                        // Match AnxietyStatsView: Mild, Moderate, Severe
-                        fieldLabel("Anxiety Level")
-                        roundedMenu(selection: $vm.anxietyLevel, options: ["Mild", "Moderate", "Severe"])
-                        
-                        // Match DietStatsView: Very Healthy, Mixed, Very unhealthy
-                        fieldLabel("Typical Diet")
-                        roundedMenu(selection: $vm.dietLevel, options: ["Very Healthy", "Mixed", "Very unhealthy"])
-                        
-                        // Match SmokeStatsView: Never, Former smoker, Daily
-                        fieldLabel("Smoke Tobacco")
-                        roundedMenu(selection: $vm.smokingStatus, options: ["Never", "Former smoker", "Daily"])
-                        
-                        // Match AlcoholicStatsView: Never, Occassionally, Daily or Heavy
-                        fieldLabel("Consume Alcohol")
-                        roundedMenu(selection: $vm.alcoholStatus, options: ["Never", "Occassionally", "Daily or Heavy"])
-                        
-                        // Match SocialConnectionStatsView: Very Strong, Moderate, Isolated
-                        fieldLabel("Social Connections")
-                        roundedMenu(selection: $vm.socialConnections, options: ["Very Strong", "Moderate", "Isolated"])
-                        
-                        // Match BloodPressureReadingView: Below 120/80, 130/80+, I don’t know
-                        fieldLabel("Blood Pressure")
-                        roundedMenu(selection: $vm.bloodPressureCategory, options: ["Below 120/80", "130/80+", "I don’t know"])
-                        
-                        // Match MainReasonStatsView
-                        fieldLabel("Reason to Live Longer")
-                        roundedMenu(selection: $vm.mainReasonToLive, options: [
-                            "Watch my family grow",
-                            "Achieve my dreams",
-                            "Simply to experience life longer"
-                        ])
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    
-                    // Save button
-                    Button(action: {
-                        // Persist to defaults/profile via the VM
-                        vm.save()
-                        
-                        // Mirror DeviceSyncStats.completeQuestionnaire mapping into QuestionnaireViewModel
-                        syncQuestionnaireFromCurrentSelections()
-                        
-                        if vm.saveSucceeded {
-                            dismiss()
-                        }
-                    }) {
-                        Text(vm.isSaving ? "Saving..." : "Save")
-                            .font(.poppins(16, weight: .semibold))
-                            .foregroundColor(.black)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 54)
-                            .background(
-                                LinearGradient(colors: [Color(hex: "#18EF47"), Color(hex: "#0E8929")],
-                                               startPoint: .leading, endPoint: .trailing)
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.25), radius: 8, x: 0, y: 4)
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 24)
+                    Spacer()
+                    Text("Edit Profile")
+                        .font(.poppins(16, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.9))
+                    Spacer()
+                    // Invisible spacer to keep title centered
+                    Color.clear.frame(width: 24, height: 24)
                 }
-                .contentShape(Rectangle()) // so taps hit outside controls
-            }
-            // Dismiss keyboard while scrolling (iOS 16+)
-            .scrollDismissesKeyboard(.interactively)
-            // Dismiss keyboard on outside tap
-            .onTapGesture {
-                focusedField = nil
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+                
+                // Scrollable content
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // Avatar
+                        ZStack {
+                            avatarView
+                        }
+                        .padding(.top, 8)
+                        
+                        VStack(alignment: .leading, spacing: 14) {
+                            fieldLabel("Name")
+                            roundedTextField("Enter your name", text: $vm.fullName, keyboard: .default, focus: .name)
+                            
+                            fieldLabel("Gender")
+                            roundedMenu(
+                                selection: Binding<String>(
+                                    get: { (vm.gender ?? .preferNotToSay).displayName },
+                                    set: { newDisplay in
+                                        vm.gender = UserProfile.Gender.allCases.first { $0.displayName == newDisplay } ?? .preferNotToSay
+                                    }
+                                ),
+                                options: UserProfile.Gender.allCases.map { $0.displayName }
+                            )
+                            
+                            fieldLabel("Date of Birth")
+                            dateButton()
+                            
+                            fieldLabel("Height")
+                            roundedTextField("Height (cm)", text: $vm.heightText, keyboard: .decimalPad, focus: .height)
+                            
+                            fieldLabel("Weight")
+                            roundedTextField("Weight (kg)", text: $vm.weightText, keyboard: .decimalPad, focus: .weight)
+                            
+                            // Extended fields (stored in UserDefaults keys)
+                            fieldLabel("Stress Level")
+                            roundedMenu(selection: $vm.stressLevel, options: ["Low", "Moderate", "High"])
+                            
+                            fieldLabel("Anxiety Level")
+                            roundedMenu(selection: $vm.anxietyLevel, options: ["Mild", "Moderate", "Severe"])
+                            
+                            fieldLabel("Typical Diet")
+                            roundedMenu(selection: $vm.dietLevel, options: ["Very Healthy", "Mixed", "Very unhealthy"])
+                            
+                            fieldLabel("Smoke Tobacco")
+                            roundedMenu(selection: $vm.smokingStatus, options: ["Never", "Former smoker", "Daily"])
+                            
+                            fieldLabel("Consume Alcohol")
+                            roundedMenu(selection: $vm.alcoholStatus, options: ["Never", "Occassionally", "Daily or Heavy"])
+                            
+                            fieldLabel("Social Connections")
+                            roundedMenu(selection: $vm.socialConnections, options: ["Very Strong", "Moderate", "Isolated"])
+                            
+                            fieldLabel("Blood Pressure")
+                            roundedMenu(selection: $vm.bloodPressureCategory, options: ["Below 120/80", "130/80+", "I don’t know"])
+                            
+                            fieldLabel("Reason to Live Longer")
+                            roundedMenu(selection: $vm.mainReasonToLive, options: [
+                                "Watch my family grow",
+                                "Achieve my dreams",
+                                "Simply to experience life longer"
+                            ])
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        
+                        // Save button
+                        Button(action: {
+                            // Persist to defaults/profile via the VM
+                            vm.save()
+                            
+                            // Mirror DeviceSyncStats.completeQuestionnaire mapping into QuestionnaireViewModel
+                            syncQuestionnaireFromCurrentSelections()
+                            
+                            if vm.saveSucceeded {
+                                dismiss()
+                            }
+                        }) {
+                            Text(vm.isSaving ? "Saving..." : "Save")
+                                .font(.poppins(16, weight: .semibold))
+                                .foregroundColor(.black)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 54)
+                                .background(
+                                    LinearGradient(colors: [Color(hex: "#18EF47"), Color(hex: "#0E8929")],
+                                                   startPoint: .leading, endPoint: .trailing)
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                                .shadow(color: Color.black.opacity(0.25), radius: 8, x: 0, y: 4)
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 24)
+                    }
+                    .contentShape(Rectangle()) // so taps hit outside controls
+                }
+                // Dismiss keyboard while scrolling (iOS 16+)
+                .scrollDismissesKeyboard(.interactively)
+                // Dismiss keyboard on outside tap without swallowing control taps
+                .simultaneousGesture(
+                    TapGesture().onEnded { focusedField = nil }
+                )
             }
         }
         .onAppear {
@@ -446,7 +443,6 @@ struct EditProfileView: View {
         }
     }
 
-    
     private func formattedDOB(_ date: Date?) -> String {
         guard let date else { return "Select Date" }
         let df = DateFormatter()

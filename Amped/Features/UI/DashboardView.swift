@@ -290,7 +290,7 @@ struct DashboardView: View {
         .padding(.vertical, 10)
         .background(
             Capsule()
-                .fill(isSelected ? Color.green.opacity(0.9) : Color.clear)
+                .fill(isSelected ? Color.green.opacity(0.3) : Color.clear)
         )
         .foregroundColor(isSelected ? .white : .white.opacity(0.8))
         .onTapGesture {
