@@ -25,11 +25,13 @@ Using cutting-edge algorithms and peer-reviewed research, Amped converts your da
 
 ## 🎯 Core Features
 
-### ⚡ **Life Impact Battery**
-See instant feedback on how your daily choices affect your lifespan
-- **Real-time calculations** based on your activities
-- **Daily, monthly, and yearly** impact tracking
-- **Science-backed algorithms** using peer-reviewed research
+### ⚡ **Battery Companion Character**
+Interactive animated battery mascot that visualizes your daily health impact
+- **7-frame animation system**: Smooth transitions from empty to full charge
+- **Real-time updates**: Character fills or empties based on your daily activities
+- **Color-coded feedback**: Green (positive habits) to red (areas for improvement)
+- **Science-backed calculations**: Based on peer-reviewed research studies
+- **Engaging visualization**: Friendly character with face, arms, and legs makes health data approachable
 
 ### 🔋 **Life Projection Battery**  
 Visualize your total remaining life energy
@@ -53,7 +55,7 @@ Seamlessly integrates with Apple Health to automatically track your steps, sleep
 Answer a quick 5-minute questionnaire about nutrition, stress, and lifestyle factors.
 
 ### 3️⃣ **See Your Impact**
-Watch your batteries charge up as you make healthy choices throughout the day.
+Watch your battery companion character charge up as you make healthy choices throughout the day.
 
 ### 4️⃣ **Optimize Your Life**
 Get personalized recommendations to maximize your health impact.
@@ -105,8 +107,8 @@ Every calculation in Amped is based on **peer-reviewed scientific research** fro
 
 Amped features a stunning battery-themed interface that makes complex health data simple and motivating:
 
-- **Intuitive battery visualizations** that everyone understands
-- **Time-based color themes** that adapt throughout your day
+- **Animated battery companion** that everyone loves
+- **Intuitive visualizations** using the universal battery metaphor
 - **Smooth animations** that celebrate your healthy choices
 - **Accessibility-first design** supporting VoiceOver and Dynamic Type
 
@@ -116,7 +118,7 @@ Amped features a stunning battery-themed interface that makes complex health dat
 
 Ready to see how your daily choices really impact your lifespan?
 
-**Amped** transforms abstract health metrics into concrete, actionable insights that motivate real behavior change. Every step, every workout, every good night's sleep becomes a visible boost to your life battery.
+**Amped** transforms abstract health metrics into concrete, actionable insights that motivate real behavior change. Every step, every workout, every good night's sleep becomes a visible boost to your battery companion's energy.
 
 *Because knowing how much time you're gaining makes every healthy choice worth it.*
 
