@@ -123,8 +123,30 @@ final class RecommendationService {
             return "Add 30 minutes of exercise to your day"
         case .sleepHours:
             return "Aim for 7-9 hours of sleep nightly"
-        default:
-            return "Focus on improving your \(metric.type.displayName.lowercased())"
+        case .activeEnergyBurned:
+            return "Increase your active energy burn today for better health"
+        case .restingHeartRate:
+            return "Lower your resting heart rate through regular cardio and recovery"
+        case .heartRateVariability:
+            return "Improve HRV with quality sleep and stress management"
+        case .bodyMass:
+            return "Move toward a healthier weight with balanced nutrition and activity"
+        case .vo2Max:
+            return "Boost your cardio fitness with regular aerobic training"
+        case .oxygenSaturation:
+            return "Maintain healthy oxygen levels with good respiratory health"
+        case .nutritionQuality:
+            return "Focus on improving your nutrition quality"
+        case .smokingStatus:
+            return "Reduce or quit smoking to improve your health"
+        case .alcoholConsumption:
+            return "Reduce alcohol intake to improve your health"
+        case .socialConnectionsQuality:
+            return "Strengthen your social connections for better wellbeing"
+        case .stressLevel:
+            return "Practice stress management to improve your health"
+        case .bloodPressure:
+            return "Work toward a healthy blood pressure through lifestyle changes"
         }
     }
     
@@ -860,8 +882,22 @@ final class RecommendationService {
             return "Improve your nutrition to add \(benefitText) to your lifespan"
         case .stressLevel:
             return "Reduce your stress to add \(benefitText) to your lifespan"
-        default:
-            return "Improve your \(metricType.displayName.lowercased()) to add \(benefitText) to your lifespan"
+        case .restingHeartRate:
+            return "Lower your resting heart rate to add \(benefitText) to your lifespan"
+        case .heartRateVariability:
+            return "Improve your heart rate variability to add \(benefitText) to your lifespan"
+        case .bodyMass:
+            return "Move toward a healthier weight to add \(benefitText) to your lifespan"
+        case .vo2Max:
+            return "Improve your VO₂\u{00A0}max to add \(benefitText) to your lifespan"
+        case .oxygenSaturation:
+            return "Maintain healthy oxygen levels to add \(benefitText) to your lifespan"
+        case .alcoholConsumption:
+            return "Reduce alcohol intake to add \(benefitText) to your lifespan"
+        case .smokingStatus:
+            return "Reduce or quit smoking to add \(benefitText) to your lifespan"
+        case .bloodPressure:
+            return "Lower your blood pressure to add \(benefitText) to your lifespan"
         }
     }
     
@@ -885,8 +921,22 @@ final class RecommendationService {
             return "Aim for improving nutrition quality daily over the next month to add \(benefitText) to your life"
         case .stressLevel:
             return "Aim for practicing stress management daily over the next month to add \(benefitText) to your life"
-        default:
-            return "Aim for maintaining optimal \(metricType.displayName.lowercased()) daily over the next month to add \(benefitText) to your life"
+        case .restingHeartRate:
+            return "Aim for a resting heart rate around \(Int(targetValue))\u{00A0}bpm over the next month to add \(benefitText) to your life"
+        case .heartRateVariability:
+            return "Aim for an HRV around \(Int(targetValue))\u{00A0}ms over the next month to add \(benefitText) to your life"
+        case .bodyMass:
+            return "Work toward a weight of \(Int(targetValue)) over the next month to add \(benefitText) to your life"
+        case .vo2Max:
+            return "Aim for a VO₂\u{00A0}max around \(Int(targetValue))\u{00A0}ml/kg/min over the next month to add \(benefitText) to your life"
+        case .oxygenSaturation:
+            return "Aim to maintain oxygen saturation around \(Int(targetValue))% over the next month to add \(benefitText) to your life"
+        case .alcoholConsumption:
+            return "Aim for healthier alcohol habits over the next month to add \(benefitText) to your life"
+        case .smokingStatus:
+            return "Aim to remain smoke-free over the next month to add \(benefitText) to your life"
+        case .bloodPressure:
+            return "Aim to keep your blood pressure in a healthy range over the next month to add \(benefitText) to your life"
         }
     }
     
@@ -910,8 +960,22 @@ final class RecommendationService {
             return "Aim for improving nutrition quality daily over the next year to add \(benefitText) to your life"
         case .stressLevel:
             return "Aim for practicing stress management daily over the next year to add \(benefitText) to your life"
-        default:
-            return "Aim for maintaining optimal \(metricType.displayName.lowercased()) daily over the next year to add \(benefitText) to your life"
+        case .restingHeartRate:
+            return "Aim for a resting heart rate around \(Int(targetValue))\u{00A0}bpm over the next year to add \(benefitText) to your life"
+        case .heartRateVariability:
+            return "Aim for an HRV around \(Int(targetValue))\u{00A0}ms over the next year to add \(benefitText) to your life"
+        case .bodyMass:
+            return "Work toward a weight of \(Int(targetValue)) over the next year to add \(benefitText) to your life"
+        case .vo2Max:
+            return "Aim for a VO₂\u{00A0}max around \(Int(targetValue))\u{00A0}ml/kg/min over the next year to add \(benefitText) to your life"
+        case .oxygenSaturation:
+            return "Aim to maintain oxygen saturation around \(Int(targetValue))% over the next year to add \(benefitText) to your life"
+        case .alcoholConsumption:
+            return "Aim for healthier alcohol habits over the next year to add \(benefitText) to your life"
+        case .smokingStatus:
+            return "Aim to remain smoke-free over the next year to add \(benefitText) to your life"
+        case .bloodPressure:
+            return "Aim to keep your blood pressure in a healthy range over the next year to add \(benefitText) to your life"
         }
     }
 }

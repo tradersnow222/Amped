@@ -46,6 +46,9 @@ struct DashboardView: View {
     // Logger for debugging
     private let logger = Logger(subsystem: "com.amped.app", category: "DashboardView")
     
+    // Recommendation service (kept alive to leverage DailyTarget caching)
+    @State private var recommendationService: RecommendationService?
+    
     // MARK: - Computed Properties
     
     /// Convert period type to proper adjective form for display
@@ -245,11 +248,18 @@ struct DashboardView: View {
                 }
             }
             .onAppear {
+                // Initialize recommendation service with the current user profile
+                self.recommendationService = RecommendationService(userProfile: viewModel.userProfile)
+                
                 // For testing, remove it before release
 //                appState.updateSubscriptionStatus(true)
                 configureNavigationBar()
                 HapticManager.shared.prepareHaptics()
                 handleIntroAnimations()
+            }
+            // Recreate recommendation service if user profile changes (ensures correct age/gender calculations)
+            .onReceive(viewModel.$userProfile) { newProfile in
+                self.recommendationService = RecommendationService(userProfile: newProfile)
             }
         }
     }
@@ -670,9 +680,9 @@ struct DashboardView: View {
                                 .foregroundColor(getTopMetricImpactColor())
 //                        }
                         
-                        // Recommendation line (styled like screenshot)
+                        // Recommendation line (research-based, generated via RecommendationService)
                         (
-                            Text(getTopMetricImpactReccomendationText())
+                            Text(getTopMetricRecommendationText())
                                 .foregroundColor(.white)
                                 .foregroundColor(.white)
                         )
@@ -1261,6 +1271,7 @@ struct DashboardView: View {
         .background(Color.black)
         .navigationBarHidden(true)
     }
+    
     
     /// Clean Detailed Analysis Card implementation
     private func detailedAnalysisCard(
@@ -1920,11 +1931,18 @@ extension DashboardView {
         return impact >= 0 ? "Adding \(formatted)" : "Costing you \(formatted)"
     }
     
-    /// Get the impact recommendation for the top metric (comes from MetricImpactDetail)
-    private func getTopMetricImpactReccomendationText() -> String {
+    /// Get the impact recommendation for the top metric using RecommendationService when possible
+    private func getTopMetricRecommendationText() -> String {
         guard let top = topMetricForSelectedPeriod else {
             return "Track this metric to see your impact"
         }
+        // Try to find the actual HealthMetric instance for this type
+        if let metric = viewModel.healthMetrics.first(where: { $0.type == top.type }),
+           let recommendationService = recommendationService {
+            // Use real recommendation with DailyTarget caching
+            return recommendationService.generateRecommendation(for: metric, selectedPeriod: selectedPeriod)
+        }
+        // Fallback to the research-based recommendation in MetricImpactDetail
         return top.detail.recommendation
     }
     
@@ -2186,5 +2204,16 @@ private extension DashboardView {
     
     func dismissStreakOverlay() {
         viewModel.dismissMilestoneCelebration()
+    }
+}
+
+// MARK: - Additional helpers for recommendations
+private extension DashboardView {
+    /// Return a RecommendationService-backed recommendation for a specific metric, if possible.
+    func recommendationText(for metric: HealthMetric) -> String {
+        if let service = recommendationService {
+            return service.generateRecommendation(for: metric, selectedPeriod: selectedPeriod)
+        }
+        return metric.impactDetails?.recommendation ?? "Keep improving your \(metric.type.displayName.lowercased())."
     }
 }

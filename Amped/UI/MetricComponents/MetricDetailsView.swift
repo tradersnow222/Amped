@@ -19,6 +19,9 @@ struct MetricDetailsView: View {
     @StateObject private var dashboardViewModel = DashboardViewModel()
         
     @State private var showSheet = false
+    
+    // Recommendation service for generating real, period-aware recommendations
+    @State private var recommendationService: RecommendationService?
         
     // MARK: - Initialization
     
@@ -110,6 +113,9 @@ struct MetricDetailsView: View {
                     self.dashboardViewModel.selectedTimePeriod = timePeriod
                 }
                 
+                // Initialize RecommendationService with the current user profile
+                self.recommendationService = RecommendationService(userProfile: dashboardViewModel.userProfile)
+                
                 // Load REAL historical data for this metric (professional approach)
                 viewModel.loadRealHistoricalData(for: metric, period: selectedPeriod)
             }
@@ -122,6 +128,10 @@ struct MetricDetailsView: View {
                 if self.dashboardViewModel.selectedTimePeriod != timePeriod {
                     self.dashboardViewModel.selectedTimePeriod = timePeriod
                 }
+            }
+            // Recreate recommendation service if the user profile changes (ensures age/gender updates are respected)
+            .onReceive(dashboardViewModel.$userProfile) { newProfile in
+                self.recommendationService = RecommendationService(userProfile: newProfile)
             }
         }
         // Present the impact details as a native sheet to avoid overlay stacking and duplicate close buttons
@@ -215,7 +225,7 @@ struct MetricDetailsView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 6)
             
-            // Recommendation card (research-based)
+            // Recommendation card (research-based, now generated via RecommendationService when available)
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     Circle().fill(Color.yellow.opacity(0.15))
@@ -226,8 +236,8 @@ struct MetricDetailsView: View {
                 .frame(width: 36, height: 36)
                 
                 VStack(alignment: .leading, spacing: 6) {
-                    // Primary recommendation from research calculators
-                    Text(latestMetric.impactDetails?.recommendation ?? "")
+                    // Primary recommendation generated from RecommendationService
+                    Text(recommendationService?.generateRecommendation(for: latestMetric, selectedPeriod: selectedPeriod) ?? (latestMetric.impactDetails?.recommendation ?? "Keep improving your \(title(for: latestMetric.type))."))
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white.opacity(0.9))
                     
