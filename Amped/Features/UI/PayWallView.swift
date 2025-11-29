@@ -61,8 +61,8 @@ struct PaywallScreen: View {
 
                     // Title
                     VStack(spacing: 8) {
-                        Text("Hey, Adam! Turn your habits into more time with Amped Premium")
-                            .font(.system(size: 20, weight: .semibold))
+                        Text("Hey, \(UserDefaults.standard.string(forKey: UserDefaultsKeys.userName) ?? "Adam")! Turn your habits into more time with Amped Premium")
+                            .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(.white)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 30)
@@ -71,7 +71,7 @@ struct PaywallScreen: View {
                     // Feature Section
                     VStack(spacing: 20) {
                         Text("Amped Lifespan Premium Unlocks:")
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 24)
@@ -86,10 +86,10 @@ struct PaywallScreen: View {
                     
                     // CTA Button
                     Button(action: {
-                        onContinue?(false)
+                        onContinue?(true)
                     }) {
                         Text("Try for free")
-                            .font(.system(size: 20, weight: .semibold))
+                            .font(.poppins(20, weight: .semibold))
                             .foregroundColor(.black)
                             .padding()
                             .frame(maxWidth: .infinity)
@@ -105,15 +105,15 @@ struct PaywallScreen: View {
                     }
                     .padding(.top, 10)
                     
-                    Button {
-                        onContinue?(true)
-                    } label: {
-                        // Price Info
+//                    Button {
+//                        onContinue?(true)
+//                    } label: {
+//                        // Price Info
                         Text("3 days free, then $29.99/year.")
                             .foregroundColor(.white.opacity(0.7))
                             .font(.system(size: 14))
                             .padding(.bottom, 30)
-                    }
+//                    }
                 }
             }
         }
@@ -138,11 +138,12 @@ struct FeaturesRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(feature.title)
                     .foregroundColor(.white)
+                    .font(.poppins(14, weight: .semibold))
                     .font(.system(size: 17, weight: .semibold))
 
                 Text(feature.subtitle)
                     .foregroundColor(.white.opacity(0.7))
-                    .font(.system(size: 14))
+                    .font(.poppins(10))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

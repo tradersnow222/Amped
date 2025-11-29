@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Initial welcoming screen for the onboarding flow
 struct WelcomeView: View {
+    @EnvironmentObject var appState: AppState
     // MARK: - Properties
     
     @State private var isAppeared = false
@@ -99,10 +100,21 @@ struct WelcomeView: View {
             // Start the shared DashboardViewModel once during the welcome screen
             dashboardViewModel.startIfNeeded()
             startWelcomeSequence()
+            checkTrialExpiry()
         }
         .onDisappear {
             autoAdvanceTask?.cancel()
         }
+    }
+    
+    func checkTrialExpiry() {
+        guard let start = UserDefaults.standard.object(forKey: "trial_start_date") as? Date else {
+            return  // trial never started
+        }
+
+        let threeDaysLater = Calendar.current.date(byAdding: .day, value: 3, to: start)!
+        let isTrialExpired = Date() >= threeDaysLater
+        appState.updateSubscriptionStatus(isTrialExpired)
     }
     
     // MARK: - Welcome Sequence Logic

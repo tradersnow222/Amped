@@ -65,10 +65,13 @@ struct SubscriptionView: View {
                     ScrollView {
                         VStack(spacing: 24) {
                             
-                            Text("Choose Your Plan")
-                                .font(.title2.bold())
-                                .foregroundColor(.white)
-                                .padding(.top)
+                            HStack {
+                                Text("Choose Your Plan")
+                                    .font(.poppins(20, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .padding(.top)
+                                Spacer()
+                            }.padding(.horizontal)
                             
                             // MARK: Dynamic Product Cards
                             HStack(spacing: 16) {
@@ -191,9 +194,9 @@ struct SubscriptionView: View {
                     Text("Subscribe")
                         .foregroundColor(.black)
                         .font(.poppins(20, weight: .medium))
-                    Text(selectedProduct?.description ?? "")
-                        .font(.poppins(12, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
+//                    Text(selectedProduct?.description ?? "")
+//                        .font(.poppins(12, weight: .medium))
+//                        .foregroundColor(.white.opacity(0.7))
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
@@ -276,10 +279,9 @@ struct SubscriptionView: View {
     private var featuresSection: some View {
         // Your Subscription Unlocks section
         VStack(alignment: .leading, spacing: 16) {
-            Text("Your Subscription Unlocks:")
-                .font(.headline)
-                .fontWeight(.medium)
-                .foregroundColor(lightGrayText)
+            Text("Amped Lifespan Premium Unlocks:")
+                .font(.poppins(16, weight: .bold))
+                .foregroundColor(.white)
                 .padding(.bottom, 4)
 
             FeatureRow(icon: "habbitIcon", title: "Habit Impact", description: "SSee how specific metrics affects your lifespan, minute by minute.")

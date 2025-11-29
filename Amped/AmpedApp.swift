@@ -281,6 +281,9 @@ final class AppState: ObservableObject {
         let isPremiumUser = isPremium || inTrial
         UserDefaults.standard.set(isPremiumUser, forKey: "is_premium_user")
         self.isPremiumUser = isPremiumUser
+        if inTrial {
+            UserDefaults.standard.set(Date(), forKey: "trial_start_date")
+        }
     }
     
     /// Save onboarding completion state to UserDefaults

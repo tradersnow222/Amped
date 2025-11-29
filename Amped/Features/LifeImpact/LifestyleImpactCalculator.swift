@@ -107,6 +107,9 @@ class LifestyleImpactCalculator {
             3: "Current heavy smoker (≥1 pack/day)"
         ]
         
+        let studies = StudyReferenceProvider.getApplicableStudies(for: .smokingStatus, userProfile: userProfile)
+        let _ = studies.first ?? StudyReferenceProvider.smokingResearch[0]
+        
         let dailyImpactMinutes = calculateSmokingLifeImpact(smokingStatus: actualSmokingStatus)
         let recommendation = generateSmokingRecommendation(smokingStatus: actualSmokingStatus)
         
@@ -114,7 +117,7 @@ class LifestyleImpactCalculator {
             metricType: .smokingStatus,
             currentValue: smokingStatus, // Keep original questionnaire value for display
             baselineValue: 0.0, // Never smoker baseline
-            studyReferences: [], // Would include extensive smoking studies
+            studyReferences:studies,
             lifespanImpactMinutes: dailyImpactMinutes,
             calculationMethod: .metaAnalysisSynthesis,
             recommendation: recommendation
@@ -173,6 +176,9 @@ class LifestyleImpactCalculator {
     func calculateStressImpact(stressLevel: Double, userProfile: UserProfile) -> MetricImpactDetail {
         logger.info("😰 Calculating stress impact for level \(Int(stressLevel)) using research-based principles")
         
+        let studies = StudyReferenceProvider.getApplicableStudies(for: .stressLevel, userProfile: userProfile)
+        let _ = studies.first ?? StudyReferenceProvider.stressResearch[0]
+        
         // Stress on 1-10 scale (1 = minimal, 10 = severe chronic stress)
         let optimalStress = 3.0 // Low but not zero (some stress is normal)
         let moderateThreshold = 6.0
@@ -195,7 +201,7 @@ class LifestyleImpactCalculator {
             metricType: .stressLevel,
             currentValue: stressLevel,
             baselineValue: optimalStress,
-            studyReferences: [], // Would include chronic stress studies
+            studyReferences: studies,
             lifespanImpactMinutes: dailyImpactMinutes,
             calculationMethod: .expertConsensus, // Limited direct mortality data
             recommendation: recommendation
@@ -245,6 +251,9 @@ class LifestyleImpactCalculator {
     func calculateNutritionImpact(nutritionQuality: Double, userProfile: UserProfile) -> MetricImpactDetail {
         logger.info("🥗 Calculating nutrition impact for quality \(Int(nutritionQuality)) using research-based principles")
         
+        let studies = StudyReferenceProvider.getApplicableStudies(for: .nutritionQuality, userProfile: userProfile)
+        let _ = studies.first ?? StudyReferenceProvider.nutritionResearch[0]
+        
         // Nutrition quality on 1-10 scale (10 = optimal Mediterranean-style diet)
         let optimalNutrition = 8.0 // High quality diet
         let moderateNutrition = 6.0
@@ -267,7 +276,7 @@ class LifestyleImpactCalculator {
             metricType: .nutritionQuality,
             currentValue: nutritionQuality,
             baselineValue: optimalNutrition,
-            studyReferences: [], // Would include dietary pattern studies
+            studyReferences: studies,
             lifespanImpactMinutes: dailyImpactMinutes,
             calculationMethod: .metaAnalysisSynthesis,
             recommendation: recommendation
@@ -361,6 +370,9 @@ class LifestyleImpactCalculator {
     func calculateSocialConnectionsImpact(socialConnectionsQuality: Double, userProfile: UserProfile) -> MetricImpactDetail {
         logger.info("🤝 Calculating social connections impact for quality \(Int(socialConnectionsQuality)) using research-based principles")
         
+        let studies = StudyReferenceProvider.getApplicableStudies(for: .socialConnectionsQuality, userProfile: userProfile)
+        let _ = studies.first ?? StudyReferenceProvider.socialResearch[0]
+        
         // Social connections on 1-10 scale (10 = very strong social connections)
         let optimalConnections = 8.0 // Strong social connections
         let moderateThreshold = 5.0
@@ -382,7 +394,7 @@ class LifestyleImpactCalculator {
             metricType: .socialConnectionsQuality,
             currentValue: socialConnectionsQuality,
             baselineValue: optimalConnections,
-            studyReferences: [], // Would include Holt-Lunstad meta-analysis
+            studyReferences:studies,
             lifespanImpactMinutes: dailyImpactMinutes,
             calculationMethod: .metaAnalysisSynthesis,
             recommendation: recommendation

@@ -450,12 +450,11 @@ struct OnboardingFlow: View {
                     }
                     
                     if appState.currentOnboardingStep == .paywall {
-                        PaywallScreen { goToSubscription in
-                            if goToSubscription {
-                                navigateTo(.subscription)
-                            } else {
-                                navigateTo(.dashboard)
+                        PaywallScreen { tryForFree in
+                            if tryForFree {
+                                appState.updateSubscriptionStatus(true, inTrial: true)
                             }
+                            navigateTo(.dashboard)
                         }
                     }
                     
