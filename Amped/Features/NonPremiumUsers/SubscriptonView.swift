@@ -294,6 +294,7 @@ struct SubscriptionView: View {
     }
 }
 
+// MARK: - Plan Card
 struct DynamicPlanCard: View {
     
     let product: RevenueCatProduct
@@ -302,49 +303,68 @@ struct DynamicPlanCard: View {
     let onSelect: () -> Void
     
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                
-                Text(product.displayName)
-                    .foregroundColor(.white)
-                    .font(.headline)
-                
-                Text(product.displayPrice)
-                    .foregroundColor(.white.opacity(0.7))
-                    .font(.subheadline)
+        VStack {
+            // Perfect radio dot
+            HStack {
+                Spacer()
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.35), lineWidth: 1.5)
+                        .frame(width: 22, height: 22)
+                    
+                    if isSelected {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: gradientColors,
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 12, height: 12)
+                    }
+                }
             }
             
-            Spacer()
-            
-            // Custom radio button style
-            Circle()
-                .stroke(isSelected ? .clear : Color.white.opacity(0.3), lineWidth: 1)
-                .background(
-                    LinearGradient(
-                        colors: isSelected ? gradientColors : [Color.white.opacity(0.1)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 20, height: 20)
-                .cornerRadius(10)
+            HStack {
+                VStack(alignment: .leading, spacing: 6) {
+                    
+                    Text(product.displayName)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(
+                            isSelected
+                            ? Color(hex: "#18EF47")
+                            : Color.white.opacity(0.95)
+                        )
+                    
+                    Text(product.displayPrice)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(
+                            isSelected
+                            ? Color(hex: "#18EF47").opacity(0.8)
+                            : Color.white.opacity(0.55)
+                        )
+                }
+                Spacer()
+            }
         }
-        .frame(
-            minWidth: 160,
-            maxWidth: .infinity,
-            minHeight: 100
-        )
-        .padding(EdgeInsets(top: 14, leading: 12, bottom: 14, trailing: 12))
-        .frame(maxWidth: .infinity)
-        .background(Color(hex: "#2C2C2C"))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(
-                    isSelected
-                    ? AnyShapeStyle(LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                    : AnyShapeStyle(Color.clear),
-                    lineWidth: 1
+        .padding(.horizontal, 16)
+        .padding(.vertical, 18)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18)
+                        .stroke(
+                            isSelected ?
+                            AnyShapeStyle(
+                                LinearGradient(colors: gradientColors,
+                                               startPoint: .topLeading,
+                                               endPoint: .bottomTrailing)
+                            )
+                            : AnyShapeStyle(Color.white.opacity(0.12)),
+                            lineWidth: isSelected ? 1.5 : 1
+                        )
                 )
         )
         .onTapGesture(perform: onSelect)

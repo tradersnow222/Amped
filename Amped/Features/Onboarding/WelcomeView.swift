@@ -105,7 +105,6 @@ struct WelcomeView: View {
         .onDisappear {
             autoAdvanceTask?.cancel()
         }
-        .enableSwipeBack()
     }
     
     func checkTrialExpiry() {

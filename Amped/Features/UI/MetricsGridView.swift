@@ -99,8 +99,8 @@ struct MetricGridView: View {
     
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
-            LinearGradient.customBlueToDarkGray.ignoresSafeArea()
+//            Color.black.ignoresSafeArea()
+//            LinearGradient.customBlueToDarkGray.ignoresSafeArea()
             if !appState.isPremiumUser {
                 UnlockSubscriptionView {
                     // Got to subscription
