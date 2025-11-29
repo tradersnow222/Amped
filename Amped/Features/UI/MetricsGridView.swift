@@ -101,7 +101,7 @@ struct MetricGridView: View {
         ZStack {
 //            Color.black.ignoresSafeArea()
 //            LinearGradient.customBlueToDarkGray.ignoresSafeArea()
-            if !appState.isPremiumUser {
+            if !appState.isPremiumUser && !appState.isInTrial {
                 UnlockSubscriptionView {
                     // Got to subscription
                     onTapUnlock?()
@@ -196,7 +196,7 @@ struct MetricGridView: View {
             RoundedRectangle(cornerRadius: 100)
                 .fill(Color(hex: "#828282").opacity(0.45))
         )
-        .padding(.horizontal, 24)
+        .padding(.horizontal, 10)
         .padding(.vertical,12)
         .gesture(
             DragGesture(minimumDistance: 50, coordinateSpace: .local)

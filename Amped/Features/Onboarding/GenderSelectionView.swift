@@ -65,24 +65,30 @@ struct GenderSelectionView: View {
                 HStack(spacing: 40) {
                     SelectableAvatar(title: "Male", isSelected: selected == .male, imageName: "maleIcon") {
                         selected = .male
+                        if let onContinue, let selected {
+                            onContinue(selected)
+                        }
                     }
                     SelectableAvatar(title: "Female", isSelected: selected == .female, imageName: "femaleIcon") {
                         selected = .female
+                        if let onContinue, let selected {
+                            onContinue(selected)
+                        }
                     }
                 }
                 .padding(.top, 10)
 
-                OnboardingContinueButton(
-                    title: "Continue",
-                    isEnabled: selected != nil,
-                    animateIn: true,
-                    bottomPadding: 0
-                ) {
-                    if let onContinue, let selected {
-                        onContinue(selected)
-                    }
-                }
-                .padding(.top, 10)
+//                OnboardingContinueButton(
+//                    title: "Continue",
+//                    isEnabled: selected != nil,
+//                    animateIn: true,
+//                    bottomPadding: 0
+//                ) {
+//                    if let onContinue, let selected {
+//                        onContinue(selected)
+//                    }
+//                }
+//                .padding(.top, 10)
 
                 Spacer()
             }

@@ -677,7 +677,7 @@ struct DashboardView: View {
             // Card
             HStack(alignment: .top, spacing: 10) {
                 
-                if !appState.isPremiumUser {
+                if !appState.isPremiumUser && !appState.isInTrial {
                     UnlockSubscriptionView(buttonText: "Unlock it by subcribing") {
                         // Got to subscription
                         navigationPath.append(NavigationRoute.subscription)
@@ -736,7 +736,7 @@ struct DashboardView: View {
     private var streakCard: some View {
         HStack(spacing: 1) {
             
-            if !appState.isPremiumUser {
+            if !appState.isPremiumUser && !appState.isInTrial {
                 UnlockSubscriptionView(buttonText: "Unlock streak by subcribing") {
                     // Got to subscription
                     navigationPath.append(NavigationRoute.subscription)

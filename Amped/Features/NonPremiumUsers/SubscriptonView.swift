@@ -48,6 +48,19 @@ struct SubscriptionView: View {
                             .padding(.top,5)
                         Spacer()
                     }
+                } else {
+                    HStack(spacing: 10) {
+                        Spacer()
+                        Button {
+                            onContinue?(false)
+                        } label: {
+                            Text("Skip")
+                                .font(.poppins(16, weight: .semibold))
+                                .foregroundColor(.white)
+                                .underline()
+                        }
+                        .padding()
+                    }
                 }
 
                 // MARK: Loader
@@ -185,13 +198,18 @@ struct SubscriptionView: View {
             Button {
                 guard let selectedProduct = selectedProduct else { return }
 
-                Task {
-                    let result = await store.purchase(selectedProduct)
-                    handleResult(result)
+                if appState.isInTrial {
+                    Task {
+                        let result = await store.purchase(selectedProduct)
+                        handleResult(result)
+                    }
+                } else {
+                    appState.updateSubscriptionStatus(false, inTrial: true)
+                    dismiss()
                 }
             } label: {
                 VStack(spacing: 0) {
-                    Text("Subscribe")
+                    Text(appState.isInTrial ? "Subscribe" : "Try for free")
                         .foregroundColor(.black)
                         .font(.poppins(20, weight: .medium))
 //                    Text(selectedProduct?.description ?? "")
@@ -208,13 +226,11 @@ struct SubscriptionView: View {
             }
             .disabled(selectedProduct == nil)
 
-            Button {
-                onContinue?(false)
-            } label: {
-                Text("Try for free")
-                    .font(.poppins(18, weight: .medium))
-                    .foregroundColor(.white)
-            }
+            Text(
+                appState.isInTrial ? appState.formattedTrialExpiryStatus() : selectedProduct?.description ?? ""
+            )
+            .font(.poppins(12, weight: .medium))
+            .foregroundColor(.white).opacity(0.8)
             
             Button {
                 Task {

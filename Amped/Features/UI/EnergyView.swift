@@ -93,7 +93,7 @@ struct EnergyView: View {
     
     var body: some View {
         ZStack {
-            if !appState.isPremiumUser && selectedLifespanType == .potential {
+            if (!appState.isPremiumUser && !appState.isInTrial) && selectedLifespanType == .potential {
                 UnlockSubscriptionView(buttonText: "Unlock Your Best Life by subcribing") {
                     // Got to subscription
                     onTapUnlock?()

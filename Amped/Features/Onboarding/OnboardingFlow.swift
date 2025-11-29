@@ -428,6 +428,7 @@ struct OnboardingFlow: View {
                             isButtonNavigating = true
                             dragDirection = nil
                             // After syncing, go straight to paywall/subscription (Terms already accepted)
+                            navigateTo(.subscription)
                             navigateTo(.paywall)
                         }, onBack: {
                             navigateTo(.goalsStats)
@@ -459,9 +460,9 @@ struct OnboardingFlow: View {
                     }
                     
                     if appState.currentOnboardingStep == .subscription {
-                        SubscriptionView(isFromOnboarding: true) { isSubscribed in
-                            if isSubscribed {
-                                appState.updateSubscriptionStatus(true)
+                        SubscriptionView(isFromOnboarding: true) { tryForFree in
+                            if tryForFree {
+                                appState.updateSubscriptionStatus(false, inTrial: true)
                             }
                             
                             navigateTo(.dashboard)

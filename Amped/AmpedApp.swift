@@ -74,6 +74,7 @@ struct AmpedApp: App {
                     .environmentObject(backgroundHealthManager)
                     .environmentObject(revenueCatManager)
                     .environmentObject(dashboardViewModel) // Inject once for the whole app
+                    .preferredColorScheme(.dark)
             }
             .background(Color.clear)
             // Ensure we pick up any pending quick action on first render
@@ -196,6 +197,7 @@ final class AppState: ObservableObject {
     
     // SUBSCRIPTION STATUS: Track premium subscription status
     @Published var isPremiumUser: Bool = false
+    @Published var isInTrial: Bool = false
     
     // ONBOARDING PERSISTENCE: Manager for handling soft vs hard close
     private let persistenceManager = OnboardingPersistenceManager()
@@ -248,6 +250,9 @@ final class AppState: ObservableObject {
         
         // Load subscription status
         isPremiumUser = UserDefaults.standard.bool(forKey: "is_premium_user")
+        
+        // if expired then user is not in free trial
+        isInTrial = !isTrialExpired()
     }
     
     /// Load remaining state asynchronously to avoid blocking launch
@@ -278,11 +283,40 @@ final class AppState: ObservableObject {
     
     /// Update subscription status and save to UserDefaults
     func updateSubscriptionStatus(_ isPremium: Bool, inTrial: Bool = false) {
-        let isPremiumUser = isPremium || inTrial
-        UserDefaults.standard.set(isPremiumUser, forKey: "is_premium_user")
-        self.isPremiumUser = isPremiumUser
+        UserDefaults.standard.set(isPremium, forKey: "is_premium_user")
+        self.isPremiumUser = isPremium
         if inTrial {
             UserDefaults.standard.set(Date(), forKey: "trial_start_date")
+        }
+    }
+    
+    func isTrialExpired() -> Bool {
+        guard let start = UserDefaults.standard.object(forKey: "trial_start_date") as? Date else {
+            return true // trial never started
+        }
+
+        let threeDaysLater = Calendar.current.date(byAdding: .day, value: 3, to: start)!
+        let isTrialExpired = Date() >= threeDaysLater
+        return isTrialExpired
+    }
+    
+    func formattedTrialExpiryStatus() -> String {
+        guard let start = UserDefaults.standard.object(forKey: "trial_start_date") as? Date else {
+            return "NeverStarted"
+        }
+        
+        let expiry = Calendar.current.date(byAdding: .day, value: 3, to: start)!
+        
+        let df = DateFormatter()
+        df.dateStyle = .medium
+        df.timeStyle = .short
+        
+        let expiryString = df.string(from: expiry)
+        
+        if Date() >= expiry {
+            return "Free trial expired on \(expiryString)"
+        } else {
+            return "Free trial expires on \(expiryString)"
         }
     }
     
