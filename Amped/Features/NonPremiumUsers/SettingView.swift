@@ -175,11 +175,9 @@ struct SettingView: View {
     // MARK: - Profile card
     
     private var profileCard: some View {
-        Button {
-            // Navigate to MascotNamingView from Settings
-            // It will pre-populate from UserDefaults and save back on Continue.
-            appState.updateOnboardingStep(.mascotNaming)
-            showOnboardingFlow = true
+        NavigationLink {
+            // Navigate to EditProfileView from Settings
+            EditProfileView().navigationBarBackButtonHidden(true)
         } label: {
             HStack(spacing: 12) {
                 // Left rounded “chip” with initials
