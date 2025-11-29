@@ -11,6 +11,7 @@ import OSLog
 struct SettingView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
+    @ObservedObject private var profileManager = ProfileImageManager.shared
     
     // Alerts (now used to drive custom dialogs instead of system .alert)
     @State private var showingDeleteAccountConfirmation: Bool = false
@@ -180,14 +181,22 @@ struct SettingView: View {
             EditProfileView().navigationBarBackButtonHidden(true)
         } label: {
             HStack(spacing: 12) {
-                // Left rounded “chip” with initials
-                Text(ProfileImageManager.shared.getInitials())
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                    .frame(width: 40, height: 40)
-                    .background(Color.white.opacity(0.15), in: Circle())
-                    .overlay(Circle().stroke(rowStroke, lineWidth: 1))
+                if let profileImage = profileManager.profileImage {
+                    Image(uiImage: profileImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 40, height: 40)
+                        .clipShape(Circle())
+                } else {
+                    // Left rounded “chip” with initials
+                    Text(ProfileImageManager.shared.getInitials())
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .frame(width: 40, height: 40)
+                        .background(Color.white.opacity(0.15), in: Circle())
+                        .overlay(Circle().stroke(rowStroke, lineWidth: 1))
+                }
                 
                 Text(ProfileImageManager.shared.getUserName())
                     .font(.system(size: 14, weight: .medium))

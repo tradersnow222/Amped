@@ -6,6 +6,11 @@ struct ProfileImageView: View {
     @State private var navigateToNotifications = false
     @State private var navigateToSettings = false
     
+    // Token to trigger view refresh when profile data changes (e.g., name, gender, DOB)
+    @State private var profileRefreshCounter: Int = 0
+    // Token to force-refresh the avatar image when the image updates
+    @State private var imageRefreshToken = UUID()
+    
     let size: CGFloat
     let showBorder: Bool
     let showEditIndicator: Bool
@@ -28,6 +33,7 @@ struct ProfileImageView: View {
         HStack(spacing: 10) {
             HStack {
                 avatarView
+                    .id(imageRefreshToken) // Force redraw when token changes
                 
                 VStack(alignment: .leading, spacing: 2) {
                     if showWelcomeMessage {
@@ -37,6 +43,7 @@ struct ProfileImageView: View {
                             .foregroundColor(.white)
                     }
                     Text(getUserName())
+                        .id(profileRefreshCounter) // re-evaluate when counter changes
                         .font(.system(size: showWelcomeMessage ? 16 : 22, weight: showWelcomeMessage ? .regular : .semibold))
                         .foregroundColor(.white)
                 }
@@ -73,6 +80,17 @@ struct ProfileImageView: View {
         .padding(.horizontal, 20)
         .padding(.top, 4)
         .padding(.bottom, 8)
+        // Listen for profile data changes (e.g., name/gender/DOB saved)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ProfileDataUpdated"))) { _ in
+            // Bump counter to force body to re-render and re-read UserDefaults
+            profileRefreshCounter &+= 1
+        }
+        // Also listen for profile image changes (posted by ProfileImageManager)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ProfileImageUpdated"))) { _ in
+            // Ensure we reload the image and force a redraw
+            ProfileImageManager.shared.loadProfileImage()
+            imageRefreshToken = UUID()
+        }
         // Navigate to notification center
         .navigationDestination(isPresented: $navigateToNotifications) {
             NotificationsView()
@@ -109,6 +127,7 @@ struct ProfileImageView: View {
                     .frame(width: size, height: size)
                     .overlay(
                         Text(getInitials())
+                            .id(profileRefreshCounter) // refresh initials when profile changes
                             .font(.system(size: size * 0.4, weight: .semibold))
                             .foregroundColor(.white.opacity(0.8))
                     )
