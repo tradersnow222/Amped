@@ -51,10 +51,15 @@ struct EditProfileView: View {
                         roundedTextField("Enter your name", text: $vm.fullName, keyboard: .default, focus: .name)
                         
                         fieldLabel("Gender")
-                        roundedPicker(selection: Binding(
-                            get: { vm.gender ?? .preferNotToSay },
-                            set: { vm.gender = $0 }
-                        ), options: UserProfile.Gender.allCases.map { ($0, $0.displayName) })
+                        roundedMenu(
+                            selection: Binding<String>(
+                                get: { (vm.gender ?? .preferNotToSay).displayName },
+                                set: { newDisplay in
+                                    vm.gender = UserProfile.Gender.allCases.first { $0.displayName == newDisplay } ?? .preferNotToSay
+                                }
+                            ),
+                            options: UserProfile.Gender.allCases.map { $0.displayName }
+                        )
                         
                         fieldLabel("Date of Birth")
                         dateButton()
@@ -66,34 +71,40 @@ struct EditProfileView: View {
                         roundedTextField("Weight (kg)", text: $vm.weightText, keyboard: .decimalPad, focus: .weight)
                         
                         // Extended fields (stored in UserDefaults keys)
+                        // Match StressStatsView: Low, Moderate, High
                         fieldLabel("Stress Level")
-                        roundedMenu(selection: $vm.stressLevel, options: ["Very Low","Low","Moderate","High","Very High"])
+                        roundedMenu(selection: $vm.stressLevel, options: ["Low", "Moderate", "High"])
                         
+                        // Match AnxietyStatsView: Mild, Moderate, Severe
                         fieldLabel("Anxiety Level")
-                        roundedMenu(selection: $vm.anxietyLevel, options: ["Minimal","Mild","Moderate","Severe"])
+                        roundedMenu(selection: $vm.anxietyLevel, options: ["Mild", "Moderate", "Severe"])
                         
+                        // Match DietStatsView: Very Healthy, Mixed, Very unhealthy
                         fieldLabel("Typical Diet")
-                        roundedMenu(selection: $vm.dietLevel, options: ["Very Healthy","Mostly Healthy","Mixed","Unhealthy"])
+                        roundedMenu(selection: $vm.dietLevel, options: ["Very Healthy", "Mixed", "Very unhealthy"])
                         
+                        // Match SmokeStatsView: Never, Former smoker, Daily
                         fieldLabel("Smoke Tobacco")
-                        roundedMenu(selection: $vm.smokingStatus, options: ["Never","Former","Occasional","Daily"])
+                        roundedMenu(selection: $vm.smokingStatus, options: ["Never", "Former smoker", "Daily"])
                         
+                        // Match AlcoholicStatsView: Never, Occassionally, Daily or Heavy
                         fieldLabel("Consume Alcohol")
-                        roundedMenu(selection: $vm.alcoholStatus, options: ["Never","Occasional","Several/Week","Daily/Heavy"])
+                        roundedMenu(selection: $vm.alcoholStatus, options: ["Never", "Occassionally", "Daily or Heavy"])
                         
+                        // Match SocialConnectionStatsView: Very Strong, Moderate, Isolated
                         fieldLabel("Social Connections")
-                        roundedMenu(selection: $vm.socialConnections, options: ["Very Strong","Moderate","Limited","Isolated"])
+                        roundedMenu(selection: $vm.socialConnections, options: ["Very Strong", "Moderate", "Isolated"])
                         
+                        // Match BloodPressureReadingView: Below 120/80, 130/80+, I don’t know
                         fieldLabel("Blood Pressure")
-                        roundedMenu(selection: $vm.bloodPressureCategory, options: ["Below 120/80","120–129/80","130–139/80+","Unknown"])
+                        roundedMenu(selection: $vm.bloodPressureCategory, options: ["Below 120/80", "130/80+", "I don’t know"])
                         
+                        // Match MainReasonStatsView
                         fieldLabel("Reason to Live Longer")
                         roundedMenu(selection: $vm.mainReasonToLive, options: [
+                            "Watch my family grow",
                             "Achieve my dreams",
-                            "Be there for family",
-                            "Experience more life",
-                            "Health and vitality",
-                            "Other"
+                            "Simply to experience life longer"
                         ])
                     }
                     .padding(.horizontal, 20)
@@ -101,7 +112,12 @@ struct EditProfileView: View {
                     
                     // Save button
                     Button(action: {
+                        // Persist to defaults/profile via the VM
                         vm.save()
+                        
+                        // Mirror DeviceSyncStats.completeQuestionnaire mapping into QuestionnaireViewModel
+                        syncQuestionnaireFromCurrentSelections()
+                        
                         if vm.saveSucceeded {
                             dismiss()
                         }
@@ -148,6 +164,129 @@ struct EditProfileView: View {
         } message: {
             Text(vm.errorMessage ?? "")
         }
+    }
+    
+    // MARK: - Mirror DeviceSyncStats.completeQuestionnaire
+    
+    private func syncQuestionnaireFromCurrentSelections() {
+        let questionnaireVM = QuestionnaireViewModel()
+        let manager = QuestionnaireManager()
+        
+        // Name
+        questionnaireVM.userName = vm.fullName
+        
+        // Gender
+        questionnaireVM.selectedGender = vm.gender
+        
+        // Age + birth year from date
+        if let dob = vm.dateOfBirth {
+            let age = Calendar.current.dateComponents([.year], from: dob, to: Date()).year ?? 0
+            if age >= 18 && age <= 120 {
+                questionnaireVM.setAge(age)
+            }
+            questionnaireVM.selectedBirthYear = Calendar.current.component(.year, from: dob)
+            questionnaireVM.birthdate = dob
+        }
+        
+        // Height (cm) 100...250
+        if let h = Int(vm.heightText.trimmingCharacters(in: .whitespacesAndNewlines)),
+           h >= 100, h <= 250 {
+            questionnaireVM.setHeight(Double(h))
+        }
+        
+        // Weight (kg) 30...300
+        if let w = Int(vm.weightText.trimmingCharacters(in: .whitespacesAndNewlines)),
+           w >= 30, w <= 300 {
+            questionnaireVM.setWeight(Double(w))
+        }
+        
+        // Stress mapping: "High"/"Low"/else Moderate
+        switch vm.stressLevel {
+        case "High":
+            questionnaireVM.selectedStressLevel = .high
+        case "Low":
+            questionnaireVM.selectedStressLevel = .low
+        default:
+            questionnaireVM.selectedStressLevel = .moderate
+        }
+        
+        // Anxiety mapping: "High"/"Low"/else Moderate
+        switch vm.anxietyLevel {
+        case "High":
+            questionnaireVM.selectedAnxietyLevel = .high
+        case "Low":
+            questionnaireVM.selectedAnxietyLevel = .low
+        default:
+            questionnaireVM.selectedAnxietyLevel = .moderate
+        }
+        
+        // Diet mapping
+        switch vm.dietLevel {
+        case "Very Healthy":
+            questionnaireVM.selectedNutritionQuality = .low
+        case "Mixed":
+            questionnaireVM.selectedNutritionQuality = .moderate
+        default:
+            questionnaireVM.selectedNutritionQuality = .high
+        }
+        
+        // Smoking mapping
+        switch vm.smokingStatus {
+        case "Never":
+            questionnaireVM.selectedSmokingStatus = .low
+        case "Former smoker":
+            questionnaireVM.selectedSmokingStatus = .moderate
+        default:
+            questionnaireVM.selectedSmokingStatus = .high
+        }
+        
+        // Alcohol mapping
+        switch vm.alcoholStatus {
+        case "Never":
+            questionnaireVM.selectedAlcoholFrequency = .low
+        case "Occassionally":
+            questionnaireVM.selectedAlcoholFrequency = .moderate
+        default:
+            questionnaireVM.selectedAlcoholFrequency = .high
+        }
+        
+        // Social mapping
+        switch vm.socialConnections {
+        case "Isolated":
+            questionnaireVM.selectedSocialConnectionsQuality = .high
+        case "Moderate":
+            questionnaireVM.selectedSocialConnectionsQuality = .moderate
+        default:
+            questionnaireVM.selectedSocialConnectionsQuality = .low
+        }
+        
+        // Blood pressure mapping
+        switch vm.bloodPressureCategory {
+        case "Below 120/80":
+            questionnaireVM.selectedBloodPressureCategory = .low
+        case "130/80+":
+            questionnaireVM.selectedBloodPressureCategory = .moderate
+        default:
+            questionnaireVM.selectedBloodPressureCategory = .unknown
+        }
+        
+        // Main reason mapping
+        switch vm.mainReasonToLive {
+        case "Watch my family grow":
+            questionnaireVM.selectedLifeMotivation = .family
+        case "Achieve my dreams":
+            questionnaireVM.selectedLifeMotivation = .dreams
+        default:
+            questionnaireVM.selectedLifeMotivation = .experience
+        }
+        
+        // Daily goal fallback (10 if missing)
+        questionnaireVM.desiredDailyLifespanGainMinutes = UserDefaults.standard.integer(forKey: UserDefaultsKeys.userGoalStats) == 0
+            ? 10
+            : UserDefaults.standard.integer(forKey: UserDefaultsKeys.userGoalStats)
+        
+        // Save via manager
+        manager.saveQuestionnaireData(from: questionnaireVM)
     }
     
     // MARK: - Avatar
@@ -272,6 +411,7 @@ struct EditProfileView: View {
             ), displayedComponents: .date)
             .datePickerStyle(.graphical)
         } label: {
+            // Reverted to calendar icon like before
             HStack {
                 Text(formattedDOB(vm.dateOfBirth))
                     .foregroundColor(.white.opacity(vm.dateOfBirth == nil ? 0.4 : 0.95))
