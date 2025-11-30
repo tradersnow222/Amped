@@ -231,10 +231,11 @@ struct DashboardView: View {
                     dashboardHomeView.tag(0)
                     metricView.tag(1)
                     energyView
-                        .id(selectedTab == 2 ? UUID() : UUID())
+//                        .id(selectedTab == 2 ? UUID() : UUID())
                         .tag(2)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never)) // hides native tabs
+                .gesture(DragGesture()) // absorb gestures in children
                 
                 // Custom tab bar overlay
                 customTabBar
@@ -438,22 +439,6 @@ struct DashboardView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
                 }
-                .gesture(
-                    DragGesture(minimumDistance: 100, coordinateSpace: .local)
-                        .onEnded { value in
-                            let horizontalAmount = value.translation.width
-                            let verticalAmount = abs(value.translation.height)
-                            
-                            // Keep your EXACT swipe logic
-                            if abs(horizontalAmount) > verticalAmount && abs(horizontalAmount) > 100 {
-                                if horizontalAmount > 0 {
-                                    swipeToPreviousPeriod()
-                                } else {
-                                    swipeToNextPeriod()
-                                }
-                            }
-                        }
-                )
             }
             .opacity(viewModel.isLoading ? 0.3 : 1)   // hide dashboard when loading
             
@@ -603,24 +588,24 @@ struct DashboardView: View {
         )
         .padding(.horizontal, 24)
         .padding(.vertical,12)
-        .gesture(
-            DragGesture(minimumDistance: 50, coordinateSpace: .local)
-                .onEnded { value in
-                    let horizontalAmount = value.translation.width
-                    let verticalAmount = abs(value.translation.height)
-                    
-                    // Only respond to horizontal swipes (not vertical)
-                    if abs(horizontalAmount) > verticalAmount {
-                        if horizontalAmount > 0 {
-                            // Swipe right - go to previous period
-                            swipeToPreviousPeriod()
-                        } else {
-                            // Swipe left - go to next period
-                            swipeToNextPeriod()
-                        }
-                    }
-                }
-        )
+//        .gesture(
+//            DragGesture(minimumDistance: 50, coordinateSpace: .local)
+//                .onEnded { value in
+//                    let horizontalAmount = value.translation.width
+//                    let verticalAmount = abs(value.translation.height)
+//                    
+//                    // Only respond to horizontal swipes (not vertical)
+//                    if abs(horizontalAmount) > verticalAmount {
+//                        if horizontalAmount > 0 {
+//                            // Swipe right - go to previous period
+//                            swipeToPreviousPeriod()
+//                        } else {
+//                            // Swipe left - go to next period
+//                            swipeToNextPeriod()
+//                        }
+//                    }
+//                }
+//        )
     }
     
     /// Battery character section with frame-based filling animation
