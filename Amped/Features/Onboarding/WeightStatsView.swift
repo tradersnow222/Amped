@@ -18,9 +18,9 @@ struct WeightStatsView: View {
     @EnvironmentObject private var appState: AppState
 
     var isFromSettings: Bool = false
-    @State private var selectedUnit: WeightUnit = .kg
+    @State private var selectedUnit: WeightUnit = Locale.defaultWeightUnit
     // Default to 55 as requested
-    @State private var selectedWeight: Int? = 55
+    @State private var selectedWeight: Int? = nil
     let progress: Double = 5
     var onContinue: ((String, String) -> Void)?
     var onBack: (() -> Void)?
@@ -202,6 +202,11 @@ struct WeightStatsView: View {
                     selectedWeight = Int(saved)
                 }
             }
+            
+            // Auto default based on locale
+            if selectedWeight == nil {
+                selectedWeight = (selectedUnit == .kg) ? 55 : 121
+            }
         }
     }
 }
@@ -285,10 +290,6 @@ struct WeightPickerView: View {
                         }
                 )
                 .onAppear {
-                    // Ensure default selection (55) is visible/centered on first appear
-                    if selectedWeight == nil {
-                        selectedWeight = 55
-                    }
                     if let w = selectedWeight {
                         DispatchQueue.main.async {
                             proxy.scrollTo(w, anchor: .center)
@@ -360,4 +361,19 @@ struct WeightPickerView: View {
 
 #Preview {
     WeightStatsView()
+}
+
+extension Locale {
+    /// Detects whether the user's region uses the metric system
+    static var usesMetric: Bool {
+        Locale.current.usesMetricSystem   // ✔ instance property
+    }
+    
+    static var defaultHeightUnit: HeightStatsView.HeightUnit {
+        usesMetric ? .cm : .feet
+    }
+    
+    static var defaultWeightUnit: WeightStatsView.WeightUnit {
+        usesMetric ? .kg : .lb
+    }
 }

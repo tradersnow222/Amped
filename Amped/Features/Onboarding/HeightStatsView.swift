@@ -17,9 +17,10 @@ struct HeightStatsView: View {
     @EnvironmentObject private var appState: AppState
 
     var isFromSettings: Bool = false
-    @State private var selectedUnit: HeightUnit = .cm
+    @State private var selectedUnit: HeightUnit = Locale.defaultHeightUnit
+    
     // Default to 173 cm as requested
-    @State private var selectedHeight: Int? = 173
+    @State private var selectedHeight: Int? = nil
     let progress: Double = 4
     var onContinue: ((String) -> Void)?
     var onBack: (() -> Void)?
@@ -203,6 +204,11 @@ struct HeightStatsView: View {
                 if !saved.isEmpty {
                     selectedHeight = Int(saved)
                 }
+            }
+            
+            // Auto-default based on region
+            if selectedHeight == nil {
+                selectedHeight = selectedUnit == .cm ? 173 : 68
             }
         }
     }

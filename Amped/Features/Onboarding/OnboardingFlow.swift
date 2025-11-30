@@ -429,7 +429,7 @@ struct OnboardingFlow: View {
                             dragDirection = nil
                             // After syncing, go straight to paywall/subscription (Terms already accepted)
                             navigateTo(.subscription)
-                            navigateTo(.paywall)
+//                            navigateTo(.paywall)
                         }, onBack: {
                             navigateTo(.goalsStats)
                         })
