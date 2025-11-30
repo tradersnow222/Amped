@@ -134,23 +134,66 @@ struct MetricGridView: View {
             }
         }
         
-        func qualitativeLabel(for score: Double) -> String {
-            // Mirror HealthMetric.getContextLabel buckets but return just the label
-            let rating = Int(score.rounded())
-            switch rating {
-            case 9...10: return "Excellent"
-            case 7...8:  return "Above average"
-            case 4...6:  return "Average"
-            case 2...3:  return "Below Average"
-            case 0...1:  return "Very poor"
-            default:     return "Average"
+        func qualitativeLabel(for score: Double, type: HealthMetricType) -> String {
+            switch type {
+            case .nutritionQuality:
+                switch score {
+                case 7...10: return "Very Healthy"
+                case 4..<7:  return "Mixed to Unhealthy"
+                case 0..<4:  return "Very Unhealthy"
+                case 0..<2:  return "Very Unhealthy"
+                default:     return "Mixed to Unhealthy"
+                }
+            case .alcoholConsumption:
+                switch score {
+                case 9...10: return "Never"
+                case 7..<9:  return "Occasionally"
+                case 3..<7:  return "Several Times"
+                case 0..<3:  return "Daily or Heavy"
+                default:     return "Occasionally"
+                }
+            case .socialConnectionsQuality:
+                switch score {
+                case 7...10: return "Very Strong"
+                case 4..<7:  return "Limited"
+                case 2..<4:  return "Isolated"
+                case 0..<2:  return "Isolated"
+                default:     return "Moderate to Good"
+                }
+            case .smokingStatus:
+                switch score {
+                case 9...10: return "Never"
+                case 6..<9:  return "Former Smoker"
+                case 2..<6:  return "Occasionally"
+                case 0..<2:  return "Daily"
+                default:     return "Occasionally"
+                }
+            case .stressLevel:
+                switch score {
+                case 0..<2.5:  return "Very Low"
+                case 2.5..<4.5: return "Low"
+                case 4.5..<7.5: return "Moderate to High"
+                case 7.5...10:  return "Very High"
+                default:        return "Moderate to High"
+                }
+            default:
+                // Generic fallback
+                let rating = Int(score.rounded())
+                switch rating {
+                case 9...10: return "Excellent"
+                case 7...8:  return "Above average"
+                case 4...6:  return "Average"
+                case 2...3:  return "Below Average"
+                case 0...1:  return "Very poor"
+                default:     return "Average"
+                }
             }
         }
         
         func valueText(for metric: HealthMetric) -> (text: String, unit: String) {
             switch metric.type {
             case .nutritionQuality, .alcoholConsumption, .socialConnectionsQuality, .smokingStatus, .stressLevel:
-                return (qualitativeLabel(for: metric.value), "")
+                return (qualitativeLabel(for: metric.value, type: metric.type), "")
             case .bloodPressure:
                 // Use formatted numeric and mmHg unit
                 return (metric.formattedValue, "mmHg")
@@ -262,8 +305,9 @@ struct MetricGridView: View {
                                             isPositive: card.isPositive,
                                             badge: nil,
                                             foregroundColor: card.foregroundColor,
+                                            isManualMetric: true,
                                             miniChartMetric: card.healthMetric,
-                                            miniChartPeriod: selectedPeriod
+                                            miniChartPeriod: selectedPeriod,
                                         )
                                     }
                                     .buttonStyle(.plain)
@@ -446,6 +490,7 @@ struct MetricCard: View {
     let isPositive: Bool
     var badge: String? = nil
     let foregroundColor: Color
+    var isManualMetric: Bool = false
     
     // NEW: Optional live mini chart inputs (defaults keep existing call sites working)
     var miniChartMetric: HealthMetric? = nil
@@ -491,9 +536,10 @@ struct MetricCard: View {
                 
                 // Value
                 Text(value + (unit.isEmpty ? "" : " " + unit))
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: isManualMetric ? 16 : 24, weight: .semibold))
                     .foregroundColor(.white)
                     .padding(.bottom, 12)
+                    .multilineTextAlignment(.leading)
                 
                 // Change
                 Text(change)
