@@ -11,6 +11,10 @@ struct MetricChartSection: View {
     let period: ImpactDataPoint.PeriodType
     var chartHeight: CGFloat = 300
     
+    // Interaction state
+    @State private var selectedIndex: Int? = nil
+    @State private var lastHapticsIndex: Int? = nil
+    
     // NEW chart data model
     // Transform raw values into delta around the period-aware target/baseline so negatives plot below zero (red)
     private var chartData: [ChartDataPoint] {
@@ -163,6 +167,25 @@ struct MetricChartSection: View {
             RuleMark(y: .value("Zero", 0.0))
                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                 .foregroundStyle(Color.white.opacity(0.35))
+            
+            // Selection crosshair + marker + annotation
+            if let idx = selectedIndex, idx >= 0, idx < chartData.count {
+                let point = chartData[idx]
+                
+                RuleMark(x: .value("Selected", idx))
+                    .foregroundStyle(Color.white.opacity(0.35))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                
+                PointMark(
+                    x: .value("Selected", idx),
+                    y: .value("Delta", point.value)
+                )
+                .symbolSize(64)
+                .foregroundStyle(point.value >= 0 ? Color.green : Color.red)
+                .annotation(position: .top, alignment: .leading) {
+                    selectionCallout(forIndex: idx)
+                }
+            }
         }
         .chartXAxis {
             AxisMarks(values: xAxisMarkValues) { value in
@@ -192,6 +215,29 @@ struct MetricChartSection: View {
                     )
                 )
         }
+        // Interactive overlay to select nearest point by drag/tap
+        .chartOverlay { proxy in
+            GeometryReader { geo in
+                Rectangle()
+                    .fill(.clear)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                updateSelection(at: value.location, in: geo, proxy: proxy)
+                            }
+                            .onEnded { _ in
+                                // Keep last selection; double-tap clears
+                            }
+                    )
+                    .onTapGesture(count: 2) {
+                        withAnimation(.easeOut(duration: 0.15)) {
+                            selectedIndex = nil
+                        }
+                    }
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: selectedIndex)
     }
     
     // MARK: - X Axis
@@ -363,6 +409,115 @@ struct MetricChartSection: View {
             abs($0.element.date.timeIntervalSince(point.date)) < abs($1.element.date.timeIntervalSince(point.date))
         }
         return nearest?.offset ?? 0
+    }
+    
+    // MARK: - Interaction helpers
+    
+    private func updateSelection(at location: CGPoint, in geo: GeometryProxy, proxy: ChartProxy) {
+        // Resolve the plot area frame from the anchor
+        let plotFrame: CGRect = geo[proxy.plotAreaFrame]
+        
+        // Ensure the location is inside the plot area
+        guard plotFrame.contains(location) else {
+            return
+        }
+        
+        // Convert to plot-area-local X
+        let xInPlot = location.x - plotFrame.origin.x
+        
+        // Resolve x value (Int index) from the proxy
+        if let value = proxy.value(atX: xInPlot, as: Int.self) {
+            let clamped = max(0, min(value, chartData.count - 1))
+            setSelectedIndex(clamped)
+        } else if let valueDouble = proxy.value(atX: xInPlot, as: Double.self) {
+            let rounded = Int(round(valueDouble))
+            let clamped = max(0, min(rounded, chartData.count - 1))
+            setSelectedIndex(clamped)
+        }
+    }
+    
+    private func setSelectedIndex(_ idx: Int) {
+        if selectedIndex != idx {
+            selectedIndex = idx
+            // Light haptic when moving to a new point
+            if lastHapticsIndex != idx {
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                lastHapticsIndex = idx
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func selectionCallout(forIndex idx: Int) -> some View {
+        let delta = chartData[idx].value
+        // Recover original value from source array (same order)
+        let originalValue = (idx < dataPoints.count) ? dataPoints[idx].value : nil
+        let titleText = chartData[idx].label
+        let isPositive = delta >= 0
+        
+        VStack(alignment: .leading, spacing: 4) {
+            Text(titleText)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.white.opacity(0.9))
+            
+            // Value lines
+            if let v = originalValue {
+                Text(originalFormatted(v))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white)
+            }
+            
+            Text("Δ \(formatYAxisTick(delta))")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(isPositive ? Color.green : Color.red)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.black.opacity(0.75))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+        )
+    }
+    
+    private func originalFormatted(_ value: Double) -> String {
+        switch metricType {
+        case .sleepHours:
+            // Show hours with one decimal
+            return String(format: "%.1f hr", value)
+        case .steps:
+            let int = Int(round(value))
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            return (formatter.string(from: NSNumber(value: int)) ?? "\(int)") + " steps"
+        case .activeEnergyBurned:
+            return String(format: "%.0f kcal", value)
+        case .exerciseMinutes:
+            return String(format: "%.0f min", value)
+        case .restingHeartRate:
+            return String(format: "%.0f BPM", value)
+        case .heartRateVariability:
+            return String(format: "%.0f ms", value)
+        case .vo2Max:
+            return String(format: "%.0f ml/kg/min", value)
+        case .oxygenSaturation:
+            return String(format: "%.0f%%", value)
+        case .bodyMass:
+            return String(format: "%.1f kg", value)
+        default:
+            // Generic numeric
+            if abs(value) >= 1000 {
+                return String(format: "%.1fk", value / 1000.0)
+            } else if abs(value) >= 1 {
+                return String(format: "%.0f", value)
+            } else {
+                return String(format: "%.2f", value)
+            }
+        }
     }
 }
 
