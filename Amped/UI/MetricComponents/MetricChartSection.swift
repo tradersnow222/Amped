@@ -15,13 +15,70 @@ struct MetricChartSection: View {
     @State private var selectedIndex: Int? = nil
     @State private var lastHapticsIndex: Int? = nil
     
+    // Determine if this is a manual metric from questionnaire
+    private var isManualMetric: Bool {
+        switch metricType {
+        case .smokingStatus, .alcoholConsumption, .stressLevel, .nutritionQuality, .socialConnectionsQuality:
+            return true
+        default:
+            return false
+        }
+    }
+    
+    // Manual metric: whether higher values are better
+    private var manualIsHigherBetter: Bool? {
+        switch metricType {
+        case .smokingStatus: return true        // 10 = never smoked/best
+        case .alcoholConsumption: return true   // higher score = healthier intake
+        case .stressLevel: return false         // lower is better
+        case .nutritionQuality: return true     // higher is better
+        case .socialConnectionsQuality: return true // higher is better
+        default: return nil
+        }
+    }
+    
+    // Manual metric target values (period-agnostic, reflect best-practice targets used elsewhere in the app)
+    private func manualTargetValue(for period: ImpactDataPoint.PeriodType) -> Double? {
+        switch metricType {
+        case .smokingStatus:
+            return 10.0 // abstinent / never
+        case .alcoholConsumption:
+            return 9.0 // very minimal alcohol
+        case .stressLevel:
+            return 2.0 // very low stress
+        case .nutritionQuality:
+            return 9.0 // excellent nutrition quality
+        case .socialConnectionsQuality:
+            return 8.0 // strong social connections
+        default:
+            return nil
+        }
+    }
+    
+    // Fallback target and direction helpers that prioritize manual metric rules
+    private var effectiveTarget: Double {
+        if let manual = manualTargetValue(for: period) {
+            return manual
+        }
+        // Fall back to metric-provided target/baseline
+        return metricType.targetValue(for: period) ?? metricType.baselineValue(for: period)
+    }
+    
+    private var effectiveIsHigherBetter: Bool {
+        if let manual = manualIsHigherBetter {
+            return manual
+        }
+        return metricType.isHigherBetter
+    }
+    
     // NEW chart data model
     // Transform raw values into delta around the period-aware target/baseline so negatives plot below zero (red)
     private var chartData: [ChartDataPoint] {
-        let target = metricType.targetValue(for: period) ?? metricType.baselineValue(for: period)
+        let target = effectiveTarget
+        let higherBetter = effectiveIsHigherBetter
         return dataPoints.map { src in
             let delta: Double
-            if metricType.isHigherBetter {
+            if higherBetter {
                 // Higher is better: under target => negative
                 delta = src.value - target
             } else {
@@ -276,6 +333,17 @@ struct MetricChartSection: View {
     }
     
     private func formatYAxisTick(_ value: Double) -> String {
+        // For manual metrics, show ±points (scale 1–10)
+        if isManualMetric {
+            let sign = value >= 0 ? "+" : "−"
+            // Show one decimal if fractional, else integer
+            if abs(value).truncatingRemainder(dividingBy: 1) == 0 {
+                return "\(sign)\(Int(abs(value)))"
+            } else {
+                return String(format: "\(sign)%.1f", abs(value))
+            }
+        }
+        
         // For sleep: show hours/minutes like +2.3hr, +50min, -1.7hr
         switch metricType {
         case .sleepHours:
@@ -509,7 +577,7 @@ struct MetricChartSection: View {
         case .bodyMass:
             return String(format: "%.1f kg", value)
         default:
-            // Generic numeric
+            // Generic numeric (works well for manual 1–10 scales too)
             if abs(value) >= 1000 {
                 return String(format: "%.1fk", value / 1000.0)
             } else if abs(value) >= 1 {
