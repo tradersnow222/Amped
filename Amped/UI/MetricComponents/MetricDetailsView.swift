@@ -153,13 +153,7 @@ struct MetricDetailsView: View {
     @ViewBuilder
     private func metricDetailSection(for latestMetric: HealthMetric) -> some View {
         VStack(alignment: .leading, spacing: 20) {
-            // Status sentence
-            let impactMinutes = latestMetric.impactDetails?.lifespanImpactMinutes ?? 0
-            let isPositive = impactMinutes >= 0
-            let minutes = Int(abs(impactMinutes))
-            let lostOrGained = isPositive ? "gained" : "lost"
-            let mainColor: Color = isPositive ? .ampedGreen : .ampedRed
-            
+            // Status sentence as a single attributed text (works for manual and live metrics)
             let periodLabel: String = {
                 switch selectedPeriod {
                 case .day: return "Today"
@@ -168,26 +162,12 @@ struct MetricDetailsView: View {
                 }
             }()
             
-            // Descriptive sentence (period-aware)
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(periodLabel) you've")
-                    .foregroundColor(.white.opacity(0.8))
-                
-                Text("\(lostOrGained) \(minutes) mins")
-                    .foregroundColor(mainColor)
-                    .fontWeight(.semibold)
-                
-                if isPositive {
-                    Text("thanks to your \(title(for: latestMetric.type)).")
-                        .foregroundColor(.white.opacity(0.8))
-                } else {
-                    Text("due to poor \(title(for: latestMetric.type)).")
-                        .foregroundColor(.white.opacity(0.8))
-                }
-            }
-            .font(.system(size: 16))
-            .padding(.horizontal, 16)
-            .padding(.top, 6)
+            Text(statusAttributedSentence(for: latestMetric, periodLabel: periodLabel))
+                .font(.system(size: 16))
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, alignment: .center)
             
             // Big metric value
             VStack(alignment: .leading, spacing: 6) {
@@ -445,6 +425,95 @@ extension MetricDetailsView {
         case .vo2Max: return ""
         case .bodyMass: return "KG"
         default: return ""
+        }
+    }
+    
+    // MARK: - Attributed sentence builder
+    private func statusAttributedSentence(for metric: HealthMetric, periodLabel: String) -> AttributedString {
+        let impactMinutes = metric.impactDetails?.lifespanImpactMinutes ?? 0
+        let minutesAbs = Int(abs(impactMinutes))
+        let isPositive = impactMinutes > 0
+        let isNegative = impactMinutes < 0
+        
+        // Neutral case -> show "you've gained 0 minutes from your X."
+        if impactMinutes == 0 {
+            var full = AttributedString("")
+            var part1 = AttributedString("\(periodLabel) you've ")
+            part1.foregroundColor = .white.opacity(0.8)
+            full.append(part1)
+            
+            var highlight = AttributedString("gained 0 minutes")
+            highlight.foregroundColor = .ampedSilver
+            highlight.inlinePresentationIntent = .emphasized
+            full.append(highlight)
+            
+            let tail = " from your \(title(for: metric.type))."
+            var tailAttr = AttributedString(tail)
+            tailAttr.foregroundColor = .white.opacity(0.8)
+            full.append(tailAttr)
+            return full
+        }
+        
+        let lostOrGained = isPositive ? "gained" : "lost"
+        let minuteWord = minutesAbs == 1 ? "minute" : "minutes"
+        
+        // Compose: "<Period> you've " + "<gained/lost N minute(s)>" + " <tail phrase>."
+        var full = AttributedString("")
+        
+        var part1 = AttributedString("\(periodLabel) you've ")
+        part1.foregroundColor = .white.opacity(0.8)
+        full.append(part1)
+        
+        var highlight = AttributedString("\(lostOrGained) \(minutesAbs) \(minuteWord)")
+        highlight.foregroundColor = isPositive ? .ampedGreen : .ampedRed
+        highlight.inlinePresentationIntent = .emphasized
+        full.append(highlight)
+        
+        let tailText = " " + tailPhrase(for: metric.type, positive: isPositive) + "."
+        var part3 = AttributedString(tailText)
+        part3.foregroundColor = .white.opacity(0.8)
+        full.append(part3)
+        
+        return full
+    }
+    
+    /// Tail phrase by metric type for positive/negative impact
+    private func tailPhrase(for type: HealthMetricType, positive: Bool) -> String {
+        switch type {
+        // Behavior / manual metrics
+        case .smokingStatus:
+            return positive ? "thanks to staying smoke‑free" : "due to smoking"
+        case .alcoholConsumption:
+            return positive ? "thanks to low alcohol intake" : "due to alcohol intake"
+        case .stressLevel:
+            return positive ? "thanks to low stress" : "due to high stress"
+        case .nutritionQuality:
+            return positive ? "thanks to healthy nutrition" : "due to poor nutrition quality"
+        case .socialConnectionsQuality:
+            return positive ? "thanks to strong social connections" : "due to limited social connections"
+        // Activity and energy
+        case .steps, .exerciseMinutes, .activeEnergyBurned:
+            return positive ? "thanks to your activity" : "due to low activity"
+        // Sleep
+        case .sleepHours:
+            return positive ? "thanks to good sleep" : "due to suboptimal sleep"
+        // Cardiovascular and biomarkers
+        case .restingHeartRate:
+            return positive ? "thanks to a healthy resting heart rate" : "due to elevated resting heart rate"
+        case .heartRateVariability:
+            return positive ? "thanks to good heart rate variability" : "due to low heart rate variability"
+        case .vo2Max:
+            return positive ? "thanks to strong cardio fitness" : "due to low cardio fitness"
+        case .oxygenSaturation:
+            return positive ? "thanks to healthy oxygen levels" : "due to low oxygen levels"
+        case .bloodPressure:
+            return positive ? "thanks to healthy blood pressure" : "due to high blood pressure"
+        case .bodyMass:
+            return positive ? "thanks to a healthy weight" : "due to unhealthy weight"
+        // Default fallback
+        default:
+            let titleText = title(for: type).lowercased()
+            return positive ? "thanks to your \(titleText)" : "due to suboptimal \(titleText)"
         }
     }
 }

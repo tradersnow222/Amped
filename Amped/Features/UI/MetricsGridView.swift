@@ -3,7 +3,7 @@ import Combine
 
 struct MetricGridView: View {
     @State private var selectedPeriod: ImpactDataPoint.PeriodType = .day
-    @EnvironmentObject private var viewModel: DashboardViewModel
+    @StateObject private var viewModel = DashboardViewModel()
     var onCardTap: ((String, ImpactDataPoint.PeriodType, HealthMetric?) -> Void)? = nil
     var onTapUnlock: (() -> Void)?
     
