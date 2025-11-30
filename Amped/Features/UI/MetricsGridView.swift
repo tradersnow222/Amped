@@ -3,7 +3,7 @@ import Combine
 
 struct MetricGridView: View {
     @State private var selectedPeriod: ImpactDataPoint.PeriodType = .day
-    @StateObject private var viewModel = DashboardViewModel()
+    @EnvironmentObject private var viewModel: DashboardViewModel
     var onCardTap: ((String, ImpactDataPoint.PeriodType, HealthMetric?) -> Void)? = nil
     var onTapUnlock: (() -> Void)?
     
@@ -52,7 +52,6 @@ struct MetricGridView: View {
         }
         
         func metricUnit(for type: HealthMetricType) -> String {
-            // These map to your existing asset names used by MetricCard (e.g., "heartRateIcon", "stepsIcon", etc.)
             switch type {
             case .restingHeartRate: return "BPM"
             case .steps: return ""
@@ -81,7 +80,7 @@ struct MetricGridView: View {
                     unit: metricUnit(for: metricType)
                 )
             } else {
-                // Placeholder when no data exists
+                // Placeholder when no data exists (keep existing behavior for live metrics)
                 return CardData(
                     type: metricType,
                     healthMetric: nil,
@@ -97,11 +96,94 @@ struct MetricGridView: View {
         }
     }
     
+    // MARK: - Manual habits section (REAL data only, onboarding-captured set only)
+    
+    private var manualCards: [CardData] {
+        // Use the canonical set of manual types (these are the metrics captured during onboarding)
+        // HealthDataService uses HealthMetricType.manualTypes; we rely on the same list here.
+        let allowedManualTypes = Set(HealthMetricType.manualTypes)
+        
+        // Pull real manual metrics already merged into the dashboard VM
+        // Only include those that exist and are part of the onboarding-captured set
+        let manualMetrics = viewModel.healthMetrics.filter {
+            $0.source == .userInput && allowedManualTypes.contains($0.type)
+        }
+        
+        func title(for type: HealthMetricType) -> String {
+            switch type {
+            case .nutritionQuality: return "Nutrition"
+            case .alcoholConsumption: return "Alcohol"
+            case .socialConnectionsQuality: return "Social Connection"
+            case .smokingStatus: return "Smoking"
+            case .stressLevel: return "Stress"
+            case .bloodPressure: return "Blood Pressure"
+            default: return type.displayName
+            }
+        }
+        
+        func iconName(for type: HealthMetricType) -> String {
+            // Asset names to match your card icon style
+            switch type {
+            case .nutritionQuality: return "nutritionIcon"
+            case .alcoholConsumption: return "alcoholIcon"
+            case .socialConnectionsQuality: return "socialIcon"
+            case .smokingStatus: return "smokingIcon"
+            case .stressLevel: return "stressIcon"          // ensure this asset exists
+            case .bloodPressure: return "bpIcon" // ensure this asset exists
+            default: return "nutritionIcon"
+            }
+        }
+        
+        func qualitativeLabel(for score: Double) -> String {
+            // Mirror HealthMetric.getContextLabel buckets but return just the label
+            let rating = Int(score.rounded())
+            switch rating {
+            case 9...10: return "Excellent"
+            case 7...8:  return "Above average"
+            case 4...6:  return "Average"
+            case 2...3:  return "Below Average"
+            case 0...1:  return "Very poor"
+            default:     return "Average"
+            }
+        }
+        
+        func valueText(for metric: HealthMetric) -> (text: String, unit: String) {
+            switch metric.type {
+            case .nutritionQuality, .alcoholConsumption, .socialConnectionsQuality, .smokingStatus, .stressLevel:
+                return (qualitativeLabel(for: metric.value), "")
+            case .bloodPressure:
+                // Use formatted numeric and mmHg unit
+                return (metric.formattedValue, "mmHg")
+            default:
+                return (metric.formattedValue, metric.unitString)
+            }
+        }
+        
+        return manualMetrics.map { metric in
+            let minutes = metric.impactDetails?.lifespanImpactMinutes ?? 0
+            let isPositive = minutes >= 0
+            let changeText = String(format: "%@%.0f mins %@", isPositive ? "↑" : "↓", abs(minutes), isPositive ? "gained" : "lost")
+            let v = valueText(for: metric)
+            
+            return CardData(
+                type: metric.type,
+                healthMetric: metric,
+                title: title(for: metric.type),
+                icon: iconName(for: metric.type),
+                value: v.text,
+                changeText: changeText,
+                foregroundColor: isPositive ? Color(hex: "#18EF47") : Color(hex: "#F52828"),
+                isPositive: isPositive,
+                unit: v.unit
+            )
+        }
+    }
+    
     var body: some View {
         ZStack {
-//            Color.black.ignoresSafeArea()
-//            LinearGradient.customBlueToDarkGray.ignoresSafeArea()
-            if !appState.isPremiumUser && !appState.isInTrial {
+            Color.black.ignoresSafeArea()
+            LinearGradient.customBlueToDarkGray.ignoresSafeArea()
+            if appState.isPremiumUser && !appState.isInTrial {
                 UnlockSubscriptionView {
                     // Got to subscription
                     onTapUnlock?()
@@ -116,52 +198,115 @@ struct MetricGridView: View {
                     dateNavigationBar
                     
                     ScrollView {
-                        
-                        // Metrics Grid
-                        LazyVGrid(columns: [
-                            GridItem(.flexible(), spacing: 16),
-                            GridItem(.flexible(), spacing: 16)
-                        ], spacing: 1) {
-                            ForEach(cards) { card in
-                                NavigationLink {
-                                    if let healthMetric = card.healthMetric {
-                                        MetricDetailsView(metric: healthMetric, selectedPeriod: selectedPeriod)
+                        // MARK: Your Live Habits section header
+                        sectionHeader(
+                            systemIcon: "bolt.heart",
+                            title: "Your Live Habits"
+                        )
+                        // Live metrics grid
+                        sectionContainer {
+                            LazyVGrid(columns: [
+                                GridItem(.flexible(), spacing: 16),
+                                GridItem(.flexible(), spacing: 16)
+                            ], spacing: 1) {
+                                ForEach(cards) { card in
+                                    NavigationLink {
+                                        if let healthMetric = card.healthMetric {
+                                            MetricDetailsView(metric: healthMetric, selectedPeriod: selectedPeriod)
+                                        }
+                                    } label: {
+                                        MetricCard(
+                                            icon: card.icon,
+                                            title: card.title,
+                                            value: card.value,
+                                            change: card.changeText,
+                                            unit: card.unit,
+                                            isPositive: card.isPositive,
+                                            badge: nil,
+                                            foregroundColor: card.foregroundColor,
+                                            miniChartMetric: card.healthMetric,
+                                            miniChartPeriod: selectedPeriod
+                                        )
                                     }
-                                } label: {
-                                    MetricCard(
-                                        icon: card.icon,
-                                        title: card.title,
-                                        value: card.value,
-                                        change: card.changeText,
-                                        unit: card.unit,
-                                        isPositive: card.isPositive,
-                                        badge: nil,
-                                        foregroundColor: card.foregroundColor,
-                                        miniChartMetric: card.healthMetric,
-                                        miniChartPeriod: selectedPeriod
-                                    )
+                                    .disabled(card.healthMetric == nil)
+                                    .buttonStyle(.plain)
                                 }
-                                .disabled(card.healthMetric == nil)
-                                .buttonStyle(.plain)
                             }
                         }
-                        .padding(.top, 20)
-                        .padding(.horizontal, 30)
-                        .padding(.bottom, 100)
-                        .background(
-                            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                                .fill(Color.white.opacity(0.08))       // light glass layer
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
-                                )
-                                .padding(.horizontal, 12)
-                                .padding(.bottom, 90)
+                        .padding(.top, 6)
+                        
+                        // MARK: Manually Entered Habits section header
+                        sectionHeader(
+                            systemIcon: "person.fill.badge.plus",
+                            title: "Manually Entered Habits"
                         )
+                        
+                        // Manual habits grid (REAL data only; renders nothing if none exist)
+                        sectionContainer {
+                            LazyVGrid(columns: [
+                                GridItem(.flexible(), spacing: 16),
+                                GridItem(.flexible(), spacing: 16)
+                            ], spacing: 1) {
+                                ForEach(manualCards) { card in
+                                    NavigationLink {
+                                        if let healthMetric = card.healthMetric {
+                                            MetricDetailsView(metric: healthMetric, selectedPeriod: selectedPeriod)
+                                        }
+                                    } label: {
+                                        MetricCard(
+                                            icon: card.icon,
+                                            title: card.title,
+                                            value: card.value,
+                                            change: card.changeText,
+                                            unit: card.unit,
+                                            isPositive: card.isPositive,
+                                            badge: nil,
+                                            foregroundColor: card.foregroundColor,
+                                            miniChartMetric: card.healthMetric,
+                                            miniChartPeriod: selectedPeriod
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                        .padding(.bottom, 100)
                     }
                 }
             }
         }
+    }
+    
+    // MARK: - Section header and container
+    
+    private func sectionHeader(systemIcon: String, title: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemIcon)
+                .foregroundColor(Color(hex: "#E6B400"))
+                .font(.system(size: 16, weight: .semibold))
+            Text(title)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.white.opacity(0.9))
+            Spacer()
+        }
+        .padding(.horizontal, 22)
+        .padding(.top, 6)
+    }
+    
+    private func sectionContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(.top, 20)
+            .padding(.horizontal, 30)
+            .padding(.bottom, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(Color.white.opacity(0.08))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    )
+                    .padding(.horizontal, 12)
+            )
     }
     
     private var personalizedHeader: some View {
@@ -345,7 +490,7 @@ struct MetricCard: View {
                 .padding(.bottom, 4)
                 
                 // Value
-                Text(value+" "+unit)
+                Text(value + (unit.isEmpty ? "" : " " + unit))
                     .font(.system(size: 24, weight: .semibold))
                     .foregroundColor(.white)
                     .padding(.bottom, 12)
@@ -529,5 +674,5 @@ struct WaveShape: Shape {
 }
 
 #Preview {
-    MetricGridView().environmentObject(AppState())
+    MetricGridView().environmentObject(AppState()).environmentObject(DashboardViewModel())
 }
