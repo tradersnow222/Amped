@@ -224,9 +224,9 @@ struct MetricGridView: View {
     
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
-            LinearGradient.customBlueToDarkGray.ignoresSafeArea()
-            if appState.isPremiumUser && !appState.isInTrial {
+//            Color.black.ignoresSafeArea()
+//            LinearGradient.customBlueToDarkGray.ignoresSafeArea()
+            if !appState.isPremiumUser && !appState.isInTrial {
                 UnlockSubscriptionView {
                     // Got to subscription
                     onTapUnlock?()
