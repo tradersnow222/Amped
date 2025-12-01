@@ -287,6 +287,7 @@ final class AppState: ObservableObject {
         self.isPremiumUser = isPremium
         if inTrial {
             UserDefaults.standard.set(Date(), forKey: "trial_start_date")
+            isInTrial = true
         }
     }
     

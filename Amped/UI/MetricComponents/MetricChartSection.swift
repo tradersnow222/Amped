@@ -2,6 +2,78 @@ import Foundation
 import SwiftUI
 import Charts
 
+
+// MARK: - Data Model used by MetricChartSection
+
+struct MetricDataPoint: Identifiable {
+    let id = UUID()
+    let date: Date
+    let value: Double
+}
+
+#Preview("Metric Chart Testing") {
+    ScrollView {
+        VStack(spacing: 32) {
+            
+            // STEPS
+            MetricChartSection(
+                metricType: .steps,
+                dataPoints: [
+                    MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -6, to: Date())!, value: 8500),
+                    MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -5, to: Date())!, value: 9200),
+                    MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -4, to: Date())!, value: 7800),
+                    MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -3, to: Date())!, value: 7300),
+                    MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -2, to: Date())!, value: 9800),
+                    MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -1, to: Date())!, value: 11200),
+                    MetricDataPoint(date: Date(), value: 10500)
+                ],
+                period: .year
+            )
+            .frame(height: 260)
+            .padding()
+            .background(.black.opacity(0.9))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            
+            
+            // SLEEP HOURS
+            MetricChartSection(
+                metricType: .sleepHours,
+                dataPoints: [
+                    MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -6, to: Date())!, value: 6.3),
+                    MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -5, to: Date())!, value: 6.8),
+                    MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -4, to: Date())!, value: 6.2),
+                    MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -3, to: Date())!, value: 6.4),
+                    MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -2, to: Date())!, value: 7.1),
+                    MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -1, to: Date())!, value: 7.6),
+                    MetricDataPoint(date: Date(), value: 7.4)
+                ],
+                period: .year
+            )
+            .frame(height: 260)
+            .padding()
+            .background(.black.opacity(0.9))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            
+            
+            // EMPTY DATA
+            MetricChartSection(
+                metricType: .restingHeartRate,
+                dataPoints: [],
+                period: .day
+            )
+            .frame(height: 260)
+            .padding()
+            .background(.black.opacity(0.9))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            
+        }
+        .padding()
+    }
+    .background(Color(.systemGroupedBackground))
+}
+
+
+
 // Visualizes historical data for a health metric (split red/green, zero baseline, soft gradient)
 struct MetricChartSection: View {
     // MARK: - Properties
@@ -14,6 +86,9 @@ struct MetricChartSection: View {
     // Interaction state
     @State private var selectedIndex: Int? = nil
     @State private var lastHapticsIndex: Int? = nil
+    
+    // NEW — selection for line-only chart
+    @State private var selectedPoint: ChartDataPoint? = nil
     
     // Determine if this is a manual metric from questionnaire
     private var isManualMetric: Bool {
@@ -161,99 +236,98 @@ struct MetricChartSection: View {
     // MARK: - Main Chart
     
     private var mainChartView: some View {
-        let segments = splitSegmentsBySign(chartData)
-        
+        let segments = splitSegments(chartData)
+
         return Chart {
-            // Negative area
-            ForEach(segments.neg) { seg in
-                ForEach(Array(seg.points.enumerated()), id: \.offset) { _, p in
-                    AreaMark(
-                        x: .value("Time", idxGlobal(of: p)),
-                        yStart: .value("Zero", 0.0),
-                        yEnd: .value("Delta", p.value)
-                    )
-                    .foregroundStyle(LinearGradient(
-                        colors: [Color.red.opacity(0.35), Color.clear],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ))
-                }
+
+            // negative (red)
+            ForEach(Array(segments.neg.enumerated()), id: \.offset) { idx, seg in
+                SegmentAreaAndLine(segment: seg, color: .red, seriesID: "neg-\(idx)")
             }
-            
-            // Positive area
-            ForEach(segments.pos) { seg in
-                ForEach(Array(seg.points.enumerated()), id: \.offset) { _, p in
-                    AreaMark(
-                        x: .value("Time", idxGlobal(of: p)),
-                        yStart: .value("Zero", 0.0),
-                        yEnd: .value("Delta", p.value)
-                    )
-                    .foregroundStyle(LinearGradient(
-                        colors: [Color.green.opacity(0.35), Color.clear],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ))
-                }
+
+            // positive (green)
+            ForEach(Array(segments.pos.enumerated()), id: \.offset) { idx, seg in
+                SegmentAreaAndLine(segment: seg, color: .green, seriesID: "pos-\(idx)")
             }
-            
-            // Negative line
-            ForEach(segments.neg) { seg in
-                ForEach(Array(seg.points.enumerated()), id: \.offset) { _, p in
-                    LineMark(
-                        x: .value("Time", idxGlobal(of: p)),
-                        y: .value("Delta", p.value)
-                    )
-                    .foregroundStyle(Color.red)
-                    .lineStyle(StrokeStyle(lineWidth: 2.3, lineCap: .round))
-                }
-            }
-            
-            // Positive line
-            ForEach(segments.pos) { seg in
-                ForEach(Array(seg.points.enumerated()), id: \.offset) { _, p in
-                    LineMark(
-                        x: .value("Time", idxGlobal(of: p)),
-                        y: .value("Delta", p.value)
-                    )
-                    .foregroundStyle(Color.green)
-                    .lineStyle(StrokeStyle(lineWidth: 2.3, lineCap: .round))
-                }
-            }
-            
-            // Zero baseline (dashed)
-            RuleMark(y: .value("Zero", 0.0))
-                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                .foregroundStyle(Color.white.opacity(0.35))
-            
-            // Selection crosshair + marker + annotation
-            if let idx = selectedIndex, idx >= 0, idx < chartData.count {
-                let point = chartData[idx]
-                
-                RuleMark(x: .value("Selected", idx))
-                    .foregroundStyle(Color.white.opacity(0.35))
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                
+
+            // Zero baseline
+            RuleMark(y: .value("Zero", 0))
+                .lineStyle(.init(lineWidth: 1, dash: [4, 4]))
+                .foregroundStyle(.white.opacity(0.35))
+
+            // Selection
+            if let sp = selectedPoint {
+                RuleMark(x: .value("Selected", sp.date))
+                    .foregroundStyle(.white.opacity(0.4))
+                    .lineStyle(.init(lineWidth: 1, dash: [4, 4]))
+
                 PointMark(
-                    x: .value("Selected", idx),
-                    y: .value("Delta", point.value)
+                    x: .value("Selected", sp.date),
+                    y: .value("Value", sp.value)
                 )
-                .symbolSize(64)
-                .foregroundStyle(point.value >= 0 ? Color.green : Color.red)
+                .symbolSize(60)
+                .foregroundStyle(sp.value >= 0 ? .green : .red)
                 .annotation(position: .top, alignment: .leading) {
-                    selectionCallout(forIndex: idx)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(sp.label)
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(formatValue(sp.value))
+                            .font(.system(size: 12))
+                        Text("Δ \(formatDelta(sp.value))")
+                            .foregroundStyle(sp.value >= 0 ? .green : .red)
+                            .font(.system(size: 11))
+                    }
+                    .padding(8)
+                    .background(Color.black.opacity(0.75))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
+            }
+
+        }
+        .chartOverlay { proxy in
+            GeometryReader { geo in
+                Rectangle()
+                    .fill(Color.clear)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                let plotFrame = geo[proxy.plotAreaFrame]
+
+                                guard plotFrame.contains(value.location) else {
+                                    selectedPoint = nil
+                                    return
+                                }
+
+                                // Convert tap to X-value inside chart
+                                if let date: Date = proxy.value(atX: value.location.x - plotFrame.origin.x) {
+                                    // Find closest data point by date
+                                    if let nearest = chartData.min(by: { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }) {
+                                        selectedPoint = nearest
+                                    }
+                                }
+                            }
+                            .onEnded { _ in }
+                    )
+                    .onTapGesture(count: 2) {
+                        selectedPoint = nil
+                    }
             }
         }
         .chartXAxis {
-            AxisMarks(values: xAxisMarkValues) { value in
-                if let idx = value.as(Int.self), idx < chartData.count {
+            AxisMarks(
+                values: axisTickIndices(period: period).map { chartData[$0].date }
+            ) { value in
+                
+                if let date = value.as(Date.self) {
                     AxisValueLabel {
-                        Text(chartData[idx].label)
+                        Text(formatDate(date, period: period))
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(Color.white.opacity(0.7))
+                            .foregroundStyle(.white.opacity(0.7))
                     }
-                    AxisGridLine().foregroundStyle(Color.clear)
-                    AxisTick().foregroundStyle(Color.clear)
+                    
+                    AxisGridLine().foregroundStyle(.clear)
+                    AxisTick().foregroundStyle(.clear)
                 }
             }
         }
@@ -272,29 +346,88 @@ struct MetricChartSection: View {
                     )
                 )
         }
-        // Interactive overlay to select nearest point by drag/tap
-        .chartOverlay { proxy in
-            GeometryReader { geo in
-                Rectangle()
-                    .fill(.clear)
-                    .contentShape(Rectangle())
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { value in
-                                updateSelection(at: value.location, in: geo, proxy: proxy)
-                            }
-                            .onEnded { _ in
-                                // Keep last selection; double-tap clears
-                            }
-                    )
-                    .onTapGesture(count: 2) {
-                        withAnimation(.easeOut(duration: 0.15)) {
-                            selectedIndex = nil
-                        }
-                    }
+    }
+
+    // Draws the shaded area and the line for a single contiguous segment (either all ≥0 or all <0)
+    private struct SegmentAreaAndLine: ChartContent {
+        let segment: [ChartDataPoint]
+        let color: Color
+        let seriesID: String
+
+        var body: some ChartContent {
+            // Area (y from 0 to value)
+            ForEach(segment, id: \.id) { p in
+                AreaMark(
+                    x: .value("Date", p.date),
+                    yStart: .value("Zero", 0.0),
+                    yEnd: .value("Delta", p.value),
+                    series: .value("seg", seriesID)
+                )
+                .interpolationMethod(.monotone)
+                .foregroundStyle(
+                    color == .green
+                        ? LinearGradient(colors: [Color.green.opacity(0.35), .clear], startPoint: .top, endPoint: .bottom)
+                        : LinearGradient(colors: [Color.red.opacity(0.35), .clear], startPoint: .top, endPoint: .bottom)
+                )
+            }
+
+            // Line
+            ForEach(segment, id: \.id) { p in
+                LineMark(
+                    x: .value("Date", p.date),
+                    y: .value("Value", p.value),
+                    series: .value("seg", seriesID)
+                )
+                .interpolationMethod(.monotone)
+                .foregroundStyle(color)
+                .lineStyle(.init(lineWidth: 3.2, lineCap: .round))
             }
         }
-        .animation(.easeInOut(duration: 0.15), value: selectedIndex)
+    }
+    
+    func formatDate(_ date: Date, period: ImpactDataPoint.PeriodType) -> String {
+        let df = DateFormatter()
+        df.locale = .current
+        
+        switch period {
+        case .day:   df.dateFormat = "ha"   // 1AM
+//        case .week:  df.dateFormat = "E"    // Mon
+        case .month: df.dateFormat = "d MMM"    // 1–30
+        case .year:  df.dateFormat = "MMM"  // Jan
+        }
+        
+        return df.string(from: date)
+    }
+
+    private func axisTickIndices(period: ImpactDataPoint.PeriodType) -> [Int] {
+        switch period {
+        
+        case .day:
+            // Hourly → show every 3 hours
+            return stride(from: 0, to: chartData.count, by: 3).map { $0 }
+
+//        case .week:
+//            // Daily → show every 2 days
+//            return stride(from: 0, to: chartData.count, by: 2).map { $0 }
+
+        case .month:
+            // Daily → show every 5 days
+            return stride(from: 0, to: chartData.count, by: 5).map { $0 }
+
+        case .year:
+            // Monthly → show every 2 months
+            return stride(from: 0, to: chartData.count, by: 1).map { $0 }
+        }
+    }
+
+
+    private func formatValue(_ v: Double) -> String {
+        String(format: "%.1f", v)
+    }
+
+    private func formatDelta(_ v: Double) -> String {
+        if v >= 0 { return "+\(String(format: "%.1f", v))" }
+        return "\(String(format: "%.1f", v))"
     }
     
     // MARK: - X Axis
@@ -411,51 +544,51 @@ struct MetricChartSection: View {
         let isPositive: Bool
     }
     
-    private func splitSegmentsBySign(_ points: [ChartDataPoint]) -> (pos: [Segment], neg: [Segment]) {
+    private func splitSegments(_ points: [ChartDataPoint]) -> (neg: [[ChartDataPoint]], pos: [[ChartDataPoint]]) {
         guard !points.isEmpty else { return ([], []) }
-        var pos: [Segment] = []
-        var neg: [Segment] = []
-        
+
         var current: [ChartDataPoint] = []
-        var currentSign: Bool = points[0].value >= 0
-        
-        for (i, p) in points.enumerated() {
+        var positive = points[0].value >= 0
+        var segmentsPos: [[ChartDataPoint]] = []
+        var segmentsNeg: [[ChartDataPoint]] = []
+
+        for i in 0..<points.count {
+            let p = points[i]
+
             if i > 0 {
                 let prev = points[i - 1]
-                if (prev.value < 0 && p.value > 0) || (prev.value > 0 && p.value < 0) {
-                    if let cross = interpolateZeroCrossing(p1: prev, p2: p) {
-                        current.append(cross)
-                        if currentSign {
-                            pos.append(Segment(points: current, isPositive: true))
-                        } else {
-                            neg.append(Segment(points: current, isPositive: false))
-                        }
-                        current = [cross]
-                        currentSign.toggle()
+
+                // detect sign change
+                if (prev.value >= 0 && p.value < 0) || (prev.value < 0 && p.value >= 0) {
+                    if let z = zeroCross(prev, p) {
+                        current.append(z)
+                        if positive { segmentsPos.append(current) } else { segmentsNeg.append(current) }
+                        current = [z]
                     }
+                    positive.toggle()
                 }
             }
-            if (p.value >= 0) == currentSign || current.isEmpty {
-                current.append(p)
-            } else {
-                if currentSign {
-                    pos.append(Segment(points: current, isPositive: true))
-                } else {
-                    neg.append(Segment(points: current, isPositive: false))
-                }
-                current = [p]
-                currentSign = p.value >= 0
-            }
+
+            current.append(p)
         }
-        if !current.isEmpty {
-            if currentSign {
-                pos.append(Segment(points: current, isPositive: true))
-            } else {
-                neg.append(Segment(points: current, isPositive: false))
-            }
-        }
-        return (pos, neg)
+
+        if positive { segmentsPos.append(current) } else { segmentsNeg.append(current) }
+
+        return (segmentsNeg, segmentsPos)
     }
+
+    private func zeroCross(_ p1: ChartDataPoint, _ p2: ChartDataPoint) -> ChartDataPoint? {
+        let y1 = p1.value
+        let y2 = p2.value
+        guard y1 != y2 else { return nil }
+
+        let t = (0 - y1) / (y2 - y1)
+        let dt = p2.date.timeIntervalSince(p1.date)
+        let d = p1.date.addingTimeInterval(dt * t)
+
+        return ChartDataPoint(date: d, value: 0, label: formattedXAxisLabel(for: d))
+    }
+
     
     private func interpolateZeroCrossing(p1: ChartDataPoint, p2: ChartDataPoint) -> ChartDataPoint? {
         let y1 = p1.value
@@ -589,50 +722,14 @@ struct MetricChartSection: View {
     }
 }
 
-// MARK: - Data Model used by MetricChartSection
 
-struct MetricDataPoint: Identifiable {
-    let id = UUID()
-    let date: Date
-    let value: Double
-}
 
-#Preview {
-    VStack {
-        MetricChartSection(
-            metricType: .steps,
-            dataPoints: [
-                MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -6, to: Date())!, value: 8500),
-                MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -5, to: Date())!, value: 9200),
-                MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -4, to: Date())!, value: 7800),
-                MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -3, to: Date())!, value: 7300),
-                MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -2, to: Date())!, value: 9800),
-                MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -1, to: Date())!, value: 11200),
-                MetricDataPoint(date: Date(), value: 10500)
-            ],
-            period: .year
-        )
-        
-        MetricChartSection(
-            metricType: .sleepHours,
-            dataPoints: [
-                MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -6, to: Date())!, value: 6.3),
-                MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -5, to: Date())!, value: 6.8),
-                MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -4, to: Date())!, value: 6.2),
-                MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -3, to: Date())!, value: 6.4),
-                MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -2, to: Date())!, value: 7.1),
-                MetricDataPoint(date: Calendar.current.date(byAdding: .month, value: -1, to: Date())!, value: 7.6),
-                MetricDataPoint(date: Date(), value: 7.4)
-            ],
-            period: .year
-        )
-        
-        MetricChartSection(
-            metricType: .restingHeartRate,
-            dataPoints: [],
-            period: .day
-        )
-    }
-    .padding()
-    .background(Color(.systemGroupedBackground))
-}
+
+
+//
+//
+//
+//// Visualizes historical data for a health metric (split red/green, zero baseline, soft gradient)
+//struct MetricChartSection2: View {
+//    ...
+//}

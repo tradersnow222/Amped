@@ -249,6 +249,19 @@ struct DashboardView: View {
                 if showingProjectionHelp {
                     projectionHelpOverlay
                 }
+                
+                // Global fullscreen loading overlay (covers tabs and everything)
+                if viewModel.isLoading {
+                    ZStack {
+                        Color.black.opacity(0.2)
+                            .ignoresSafeArea()
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(2)
+                    }
+                    .transition(.opacity)
+                    .zIndex(1000)
+                }
             }
             .ignoresSafeArea(.keyboard)
             .sheet(isPresented: $showingUpdateHealthProfile) {
@@ -304,10 +317,10 @@ struct DashboardView: View {
         .padding(.vertical, 10)
         .background(
             Capsule()
-                .fill(.ultraThinMaterial)
-                .opacity(0.8)
+                .fill(.ultraThickMaterial)
+//                .opacity(0.8)
         )
-        .padding(.bottom, 20)
+        .padding(.bottom, 15)
     }
     
     @ViewBuilder
@@ -440,16 +453,7 @@ struct DashboardView: View {
                     .padding(.top, 20)
                 }
             }
-            .opacity(viewModel.isLoading ? 0.3 : 1)   // hide dashboard when loading
-            
-            // Fullscreen loading overlay
-            if viewModel.isLoading {
-                Color.black.opacity(0.4).ignoresSafeArea()
-                
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(2)
-            }
+            .opacity(viewModel.isLoading ? 0.2 : 1)   // dim dashboard content while loading
             
             // Streak milestone overlay (from StreakManager via ViewModel)
             if viewModel.showStreakCelebration {
@@ -627,7 +631,7 @@ struct DashboardView: View {
             }
             
             // Header line (centered)
-            Text("Today, your habits collectively \(totalTimeImpact >= 0 ? "added" : "reduced")")
+            Text("\(periodLabel), your habits collectively \(totalTimeImpact >= 0 ? "added" : "reduced")")
                 .font(.system(size: 16, weight: .regular))
                 .foregroundColor(.white.opacity(0.9))
                 .multilineTextAlignment(.center)
@@ -1911,6 +1915,14 @@ extension DashboardView {
         }
     }
     
+    private var periodLabel: String {
+        switch selectedPeriod {
+        case .day: return "Today"
+        case .month: return "This month"
+        case .year: return "This year"
+        }
+    }
+    
     /// Pick the top-impact metric for the currently selected period using LifeImpactData
     private var topMetricForSelectedPeriod: (type: HealthMetricType, detail: MetricImpactDetail)? {
         guard let contributions = viewModel.lifeImpactData?.metricContributions, !contributions.isEmpty else {
@@ -2017,7 +2029,7 @@ extension DashboardView {
 }
 
 // MARK: - Chart Data Model
-struct ChartDataPoint {
+struct ChartDataPoint: Identifiable, Hashable {
     let id = UUID()
     let date: Date
     let value: Double
