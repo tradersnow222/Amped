@@ -304,10 +304,10 @@ struct DashboardView: View {
         .padding(.vertical, 10)
         .background(
             Capsule()
-                .fill(.ultraThinMaterial)
-                .opacity(0.8)
+                .fill(.ultraThickMaterial)
+//                .opacity(0.8)
         )
-        .padding(.bottom, 20)
+        .padding(.bottom, 15)
     }
     
     @ViewBuilder
