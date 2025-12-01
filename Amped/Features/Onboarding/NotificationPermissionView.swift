@@ -233,7 +233,7 @@ struct NotificationPermissionView: View {
                 
                 // Set up observers if granted
                 if granted {
-                    notificationManager.setupStreakObservers()
+//                    notificationManager.setupStreakObservers()
                 }
             }
         }

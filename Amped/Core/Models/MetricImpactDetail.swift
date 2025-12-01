@@ -123,7 +123,7 @@ struct MetricImpactDetail: Codable, Identifiable, Equatable {
         self.confidenceInterval = studyReferences.first?.confidenceInterval
         
         // Calculate applicability (simplified - would be more complex in real implementation)
-        self.applicabilityScore = studyReferences.isEmpty ? 50 : 
+        self.applicabilityScore = studyReferences.isEmpty ? 50 :
             studyReferences.map { _ in 80.0 }.reduce(0, +) / Double(studyReferences.count)
         
         // Determine actionability based on metric type
@@ -223,27 +223,6 @@ extension HealthMetricType {
             return .medium
         }
     }
-    
-    /// Research-based optimal baseline values
-    var researchBaseline: Double {
-        switch self {
-        case .steps: return 7500          // Based on meta-analyses showing mortality benefits
-        case .exerciseMinutes: return 150 // WHO/AHA guidelines (150 min/week = ~21 min/day)
-        case .sleepHours: return 7.5      // Sleep studies showing U-shaped mortality curve
-        case .restingHeartRate: return 65 // Cardiovascular health studies
-        case .heartRateVariability: return 40 // HRV research (varies by age/gender)
-        case .vo2Max: return 35           // Fitness studies (varies by age/gender)
-        case .bodyMass: return 70         // Placeholder - should be BMI-based
-        case .alcoholConsumption: return 0.5 // Moderate consumption studies
-        case .smokingStatus: return 0     // No smoking
-        case .stressLevel: return 3       // 1-10 scale, 3 = low stress
-        case .nutritionQuality: return 8  // 1-10 scale, 8 = high quality
-        case .socialConnectionsQuality: return 7 // 1-10 scale, 7 = good connections
-        case .activeEnergyBurned: return 400 // kcal per day
-        case .oxygenSaturation: return 98 // percent
-        case .bloodPressure: return 115 // mmHg systolic
-        }
-    }
 }
 
 // MARK: - Formatting Extensions
@@ -265,4 +244,3 @@ extension MetricImpactDetail {
     }
 }
 
- 

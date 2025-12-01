@@ -17,6 +17,9 @@ protocol StoreKitManaging: ObservableObject {
     /// Whether a purchase is in progress
     var isPurchasing: Bool { get }
     
+    /// Whether a purchase is in restoring
+    var isRestoring: Bool { get }
+    
     /// Load available subscription products
     func loadProducts() async
     
@@ -58,12 +61,12 @@ final class StoreKitManager: StoreKitManaging, ObservableObject {
     @Published private(set) var subscriptionStatus: SubscriptionStatus = .unknown
     @Published private(set) var isLoadingProducts: Bool = false
     @Published private(set) var isPurchasing: Bool = false
-    
+    @Published private(set) var isRestoring: Bool = false
     // MARK: - Private Properties
     
     private let productIdentifiers: Set<String> = [
-        "amped_monthly_subscription",
-        "amped_annual_subscription"
+        "ai.ampedlife.amped.weekly",
+        "ai.ampedlife.amped.monthly"
     ]
     
     private let logger = Logger(subsystem: "ai.ampedlife.amped", category: "StoreKitManager")
@@ -154,6 +157,13 @@ final class StoreKitManager: StoreKitManaging, ObservableObject {
     /// Restore previous purchases
     func restorePurchases() async -> RestoreResult {
         logger.info("Starting restore purchases")
+        guard !isRestoring else {
+            logger.warning("Restore already in progress")
+            return .failed(StoreKitError.purchaseInProgress)
+        }
+        
+        isRestoring = true
+        defer { isRestoring = false }
         
         do {
             try await AppStore.sync()

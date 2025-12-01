@@ -1,127 +1,147 @@
 import SwiftUI
 
-/// Second mascot screen - "What do you want to call me?" with text input
 struct MascotNamingView: View {
+    // MARK: - Environment
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
+    
     // MARK: - Properties
+    @State private var userName: String = ""
+    @State private var progress: CGFloat = 1
     
-    @State private var animateElements = false
-    @State private var mascotName: String = ""
-    @FocusState private var isTextFieldFocused: Bool
+    // When true, this screen is being used from Settings rather than onboarding.
+    var isFromSettings: Bool = false
     
-    // Callback to proceed to next step with the chosen name
+    // Onboarding flow continuation closure (unused when from Settings)
     var onContinue: ((String) -> Void)?
     
     // MARK: - Body
-    
     var body: some View {
         ZStack {
-            // Black background
-            Color.black
-                .edgesIgnoringSafeArea(.all)
+            // Gradient Overlay
+            LinearGradient.customBlueToDarkGray
+                .ignoresSafeArea()
             
-            // Main content
-            VStack(spacing: 0) {
-                Spacer()
+            VStack(spacing: 30) {
+                if isFromSettings {
+                    HStack {
+                        Spacer()
+                        Button(action: { dismiss() }) {
+                            Image(systemName: "xmark")
+                                .foregroundColor(.white)
+                        }
+                        .padding()
+                    }
+                }
                 
-                VStack(spacing: 23) {
-                    // Mascot character (smaller than previous screen)
-                    Image("steptwo")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 174, height: 174)
-                        .opacity(animateElements ? 1 : 0)
-                        .scaleEffect(animateElements ? 1 : 0.8)
-                        .animation(.easeOut(duration: 0.8).delay(0.2), value: animateElements)
+                // MARK: - Cute Character
+                Image("Amped_8")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 120, height: 120)
+                    .shadow(color: Color.green.opacity(0.5), radius: 15, x: 0, y: 5)
+                    .padding(.top, 70)
+                
+                // MARK: - Title
+                Text("Let’s get familiar!")
+                    .font(.poppins(26, weight: .bold))
+                    .foregroundColor(.white)
+                
+                // MARK: - Progress Bar
+                VStack(spacing: 4) {
+                    ProgressView(value: progress, total: 13)
+                        .progressViewStyle(ThickProgressViewStyle(height: 12))
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 40)
                     
-                    // Question text
-                    Text("What do you want to call me?")
-                        .font(.system(size: 24, weight: .medium))
+                    Text("\(Int(progress))%")
+                        .font(.poppins(12))
+                        .foregroundColor(.white.opacity(0.8))
+                }
+                .padding(.bottom, 30)
+                
+                // MARK: - Question
+                Text("What should we call you?")
+                    .font(.poppins(18, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.bottom, 10)
+                
+                // MARK: - TextField
+                ZStack {
+                    if userName.isEmpty {
+                        Text("Enter your name")
+                            .foregroundColor(Color.white.opacity(0.2)) // 👈 placeholder color
+                    }
+                    TextField("", text: $userName)
+                        .padding()
+                        .frame(height: 52)
+                        .frame(maxWidth: .infinity)
+                        .font(.poppins(14))
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(Color(hex: "#0E8929"), lineWidth: 1)
+                        )
+                        .padding(.horizontal, 40)
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
-                        .opacity(animateElements ? 1 : 0)
-                        .offset(y: animateElements ? 0 : 20)
-                        .animation(.easeOut(duration: 0.8).delay(0.6), value: animateElements)
-                    
-                    // Text input field
-                    TextField("", text: $mascotName)
-                        .font(.system(size: 18))
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.white)
-                        )
-                        .focused($isTextFieldFocused)
-                        .opacity(animateElements ? 1 : 0)
-                        .scaleEffect(animateElements ? 1 : 0.9)
-                        .animation(.easeOut(duration: 0.8).delay(0.8), value: animateElements)
-                        .padding(.horizontal, 28)
+                        .textInputAutocapitalization(.words)
+                        .disableAutocorrection(true)
                 }
-                .padding(.bottom, 40)
                 
-                // Continue button
-                Button(action: {
-                    let finalName = mascotName.isEmpty ? "Emma" : mascotName
-                    onContinue?(finalName)
-                }) {
-                    Text("Continue")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 25)
-                                .fill(
-                                    mascotName.isEmpty ? 
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.3)]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    ) :
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color(red:0/255, green:146/255, blue:69/255),
-                                            Color(red:252/255, green:238/255, blue:33/255)
-                                        ]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                        )
+                OnboardingContinueButton(
+                    title: "Continue",
+                    isEnabled: !userName.isEmpty,
+                    animateIn: true,
+                    bottomPadding: 10
+                ) {
+                    if isFromSettings {
+                        NotificationCenter.default.post(name: NSNotification.Name("ProfileDataUpdated"), object: nil)
+                    }
+                    onContinue?(userName)
                 }
-                .padding(.horizontal, 28)
-                .opacity(animateElements ? 1 : 0)
-                .scaleEffect(animateElements ? 1 : 0.9)
-                .animation(.easeOut(duration: 0.8).delay(1.0), value: animateElements)
                 
                 Spacer()
             }
         }
-        .navigationBarHidden(true)
+        // Show nav bar when coming from Settings; onboarding keeps it hidden
+        .navigationBarHidden(!isFromSettings)
         .onAppear {
-            withAnimation {
-                animateElements = true
+            // If launched from Settings, prefill from defaults
+            if isFromSettings {
+                let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userName)
+                if !saved.isEmpty {
+                    userName = saved
+                }
             }
-            // Auto-focus the text field after a delay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                isTextFieldFocused = true
-            }
-        }
-        .onTapGesture {
-            // Dismiss keyboard when tapping outside
-            isTextFieldFocused = false
         }
     }
 }
 
-// MARK: - Preview
+struct ThickProgressViewStyle: ProgressViewStyle {
+    var height: CGFloat = 10
+    var backgroundColor: Color = Color.white.opacity(0.2)
+    var foregroundColor: Color = Color(hex: "#00E676")
+    
+    func makeBody(configuration: Configuration) -> some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(backgroundColor)
+                    .frame(height: height)
+                
+                Capsule()
+                    .fill(foregroundColor)
+                    .frame(width: geo.size.width * CGFloat(configuration.fractionCompleted ?? 0),
+                           height: height)
+            }
+        }
+        .frame(height: height)
+    }
+}
 
 struct MascotNamingView_Previews: PreviewProvider {
     static var previews: some View {
-        MascotNamingView(onContinue: { name in
-            print("Mascot named: \(name)")
-        })
-        .preferredColorScheme(.dark)
+        MascotNamingView(isFromSettings: true)
+            .environmentObject(AppState())
     }
 }

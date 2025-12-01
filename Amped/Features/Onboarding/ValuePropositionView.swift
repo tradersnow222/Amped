@@ -47,149 +47,104 @@ struct ValuePropositionView: View {
     // Callback to proceed to next step
     var onContinue: (() -> Void)?
     
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+    
     // MARK: - Body
     
     var body: some View {
+        let isRegular = hSizeClass == .regular
+        let bottomButtonPadding: CGFloat = isRegular ? 450 : 50
+        
         ZStack {
-            // Background video with overlay
-            GeometryReader { geometry in
-                DNAVideoBackgroundView()
-                    .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
-                    .rotationEffect(.degrees(90)) // Rotate 90 degrees
-                    .scaleEffect(1.8) // Increased scale for wider coverage
-                    .offset(y: -180) // Match the original image offset
-                    .clipped()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                
-                // Linear gradient overlay matching exact specifications
-                LinearGradient(
-                    gradient: Gradient(stops: [
-                        .init(color: Color(red: 102/255, green: 102/255, blue: 102/255).opacity(0.0), location: 0.0),     // rgba(102, 102, 102, 0) at 0%
-                        .init(color: Color(red: 51/255, green: 51/255, blue: 51/255).opacity(0.5), location: 0.3894),     // rgba(51, 51, 51, 0.5) at 38.94%
-                        .init(color: Color.black, location: 0.6635)                                                      // #000000 at 66.35%
-                    ]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
-            .edgesIgnoringSafeArea(.all)
             
-            // Main content
-            VStack(spacing: 48) {
-                Spacer()
-                VStack(spacing: 0){
-                    // Heart icon at top
-                    Image("heart")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 24, height: 24)
-                        .opacity(animateElements ? 1 : 0)
-                        .scaleEffect(animateElements ? 1 : 0.8)
-                        .animation(.easeOut(duration: 0.8), value: animateElements)
-                    
-                    // Main headline
-                    VStack(spacing:0){
-                        Text("Welcome")
-                            .font(.system(size: 32, weight: .bold, design: .default))
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                            .padding(.top, 4)
-                            .opacity(animateElements ? 1 : 0)
-                            .offset(y: animateElements ? 4 : 20)
-                            .animation(.easeOut(duration: 0.8).delay(0.2), value: animateElements)
-                        
-                        // Text("Your Life")
-                        //     .font(.system(size: 32, weight: .bold, design: .default))
-                        //     .foregroundColor(.white)
-                        //     .multilineTextAlignment(.center)
-                        //     .opacity(animateElements ? 1 : 0)
-                        //     .offset(y: animateElements ? 0 : 20)
-                        //     .padding(.top,4)
-                        //     .animation(.easeOut(duration: 0.8).delay(0.2), value: animateElements)
-                    }
-                    // Subtitle
-                    Text("Life is fleeting, but this app can guide you towards a healthier, longer life.")
-                        .font(.system(size: 22, weight: .light, design: .default))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(4)
-                        .padding(.horizontal, 28)
-                        .padding(.top, 16)
-                        .opacity(animateElements ? 1 : 0)
-                        .offset(y: animateElements ? 0 : 20)
-                        .animation(.easeOut(duration: 0.8).delay(0.4), value: animateElements)
-                    // Feature highlights
-                    HStack(spacing:25) {
-                        featureHighlight(
-                            iconName: "heartline",
-                            title: "Track Impact",
-                            delay: 0.6
-                        )
-                        
-                        featureHighlight(
-                            iconName: "liveupdates",
-                            title: "Live updates",
-                            delay: 0.7
-                        )
-                        
-                        featureHighlight(
-                            iconName: "records",
-                            title: "Live reports",
-                            delay: 0.8
-                        )
-                    }
-                    .padding(.top, 40)
-                    
-                }
-                // Get Started button
-                Button(action: {
-                    onContinue?()
-                }) {
-                    Text("Get Started")
-                }
-                .primaryButtonStyle()
-                .padding(.horizontal, 28)
-                .opacity(animateElements ? 1 : 0)
-                .scaleEffect(animateElements ? 1 : 0.9)
-                .animation(.easeOut(duration: 0.8).delay(1.0), value: animateElements)
-            }
-        }
-        .navigationBarHidden(true)
-        .onAppear {
-            withAnimation {
-                animateElements = true
-            }
-        }
-    }
-    
-    // MARK: - Subviews
-    
-    private func featureHighlight(iconName: String, title: String, delay: Double) -> some View {
-        HStack(spacing: 6) {
-            // Icon
-            Image(iconName)
+            Image("femaleBg")
                 .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 20, height: 20)
-                .foregroundColor(.white)
+                .scaledToFill()
+                .opacity(0.40)
+                .ignoresSafeArea()
             
-            // Title
-            Text(title)
-                .font(.system(size: 13, weight: .regular, design: .default))
-                .foregroundColor(.white)
+            LinearGradient.ampBlueGradient
+                .ignoresSafeArea()
             
+            VStack {
+                Spacer()
+                
+                // MARK: Text Content
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Life is short.\nBad habits\nmake it shorter.")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.poppins(40, weight: .bold))
+                        .foregroundColor(.white)
+                        .shadow(radius: 3)
+                        .opacity(animateElements ? 1 : 0)
+                        .offset(y: animateElements ? 0 : 40)
+                        .animation(.easeOut(duration: 0.8).delay(0.1), value: animateElements)
+                        .padding(.leading, 30)
+                    
+                    
+                    Text("Track your habits and see how \nthey impact your real lifespan.\nTake control → Live longer.")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.poppins(18))
+                        .foregroundColor(.white.opacity(0.85))
+                        .opacity(animateElements ? 1 : 0)
+                        .offset(y: animateElements ? 0 : 40)
+                        .animation(.easeOut(duration: 0.8).delay(0.3), value: animateElements)
+                        .padding(.leading, 30)
+                }
+//                .padding(.horizontal, 30)
+                .padding(.bottom, 30)
+                
+                // MARK: Continue Button
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        onContinue?()
+                    }
+                }) {
+                    HStack {
+                        Text("Continue")
+                            .font(.poppins(20, weight: .medium))
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 17, weight: .semibold))
+                            
+                    }
+                    .foregroundColor(.black)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(LinearGradient.ampButtonGradient)
+                    .cornerRadius(30)
+                    .padding(.horizontal, 30)
+                    .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 3)
+                    .opacity(animateElements ? 1 : 0)
+                    .offset(y: animateElements ? 0 : 50)
+                    .scaleEffect(animateElements ? 1 : 0.9)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.6), value: animateElements)
+                }
+                .padding(.bottom, bottomButtonPadding)
+            }
         }
-        .opacity(animateElements ? 1 : 0)
-        .offset(x: animateElements ? 0 : -20)
-        .animation(.easeOut(duration: 0.8).delay(delay), value: animateElements)
+        .onAppear {
+            // Trigger animation when the view appears
+            animateElements = true
+        }
     }
 }
+
 
 // MARK: - Preview
 
 struct ValuePropositionView_Previews: PreviewProvider {
     static var previews: some View {
-        ValuePropositionView(onContinue: {})
-            .preferredColorScheme(.dark)
+        Group {
+            ValuePropositionView(onContinue: {})
+                .preferredColorScheme(.dark)
+                .previewDisplayName("iPhone")
+                .previewDevice("iPhone 15 Pro")
+            
+            ValuePropositionView(onContinue: {})
+                .preferredColorScheme(.dark)
+                .previewDisplayName("iPad")
+                .previewDevice("iPad Pro (11-inch) (4th generation)")
+        }
     }
-} 
+}

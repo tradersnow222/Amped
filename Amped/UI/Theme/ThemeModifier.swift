@@ -18,3 +18,83 @@ extension View {
         modifier(DeepBackgroundThemeModifier())
     }
 } 
+
+extension LinearGradient {
+    static var ampBlueGradient: LinearGradient {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color(hex: "#3FA9F5").opacity(0.3),
+                Color.black.opacity(0.3)
+            ]),
+            startPoint: .topLeading,
+            endPoint: .bottom
+        )
+    }
+    
+    static var ampButtonGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(hex: "#18EF47"),  // Bright green start
+                Color(hex: "#0E8929")   // Brand blue end
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+    
+    static var grayGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(hex: "#3FA9F5").opacity(0.3),
+                Color(hex: "#262626")
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomLeading
+        )
+    }
+    
+    static var mpButtonGrayGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(hex: "#18EF47").opacity(0.3),
+                Color(hex: "#0E8929").opacity(0.3)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+}
+
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17,
+                            (int >> 4 & 0xF) * 17,
+                            (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16,
+                            int >> 8 & 0xFF,
+                            int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24,
+                            int >> 16 & 0xFF,
+                            int >> 8 & 0xFF,
+                            int & 0xFF)
+        default:
+            (a, r, g, b) = (255, 0, 0, 0)
+        }
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
+}
+

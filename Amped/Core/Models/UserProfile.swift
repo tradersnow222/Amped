@@ -60,8 +60,8 @@ struct UserProfile: Codable, Equatable {
     
     /// Gender enum for calculation purposes
     enum Gender: String, Codable, CaseIterable {
-        case male
-        case female
+        case male = "Male"
+        case female = "Female"
         case preferNotToSay
         
         var displayName: String {

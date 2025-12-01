@@ -18,50 +18,50 @@ struct PrePaywallTeaserView: View {
     private var preliminaryScore: Int {
         var score = 50
 
-        if let stressLevel = viewModel.selectedStressLevel {
-            switch stressLevel {
-            case .veryLow: score += 15
-            case .low: score += 10
-            case .moderateToHigh: score -= 5
-            case .veryHigh: score -= 15
-            }
-        }
-
-        if let nutritionQuality = viewModel.selectedNutritionQuality {
-            switch nutritionQuality {
-            case .veryHealthy: score += 15
-            case .mostlyHealthy: score += 10
-            case .mixedToUnhealthy: score -= 5
-            case .veryUnhealthy: score -= 15
-            }
-        }
-
-        if let smokingStatus = viewModel.selectedSmokingStatus {
-            switch smokingStatus {
-            case .never: score += 15
-            case .former: score += 5
-            case .occasionally: score -= 10
-            case .daily: score -= 20
-            }
-        }
-
-        if let alcoholFrequency = viewModel.selectedAlcoholFrequency {
-            switch alcoholFrequency {
-            case .never: score += 5
-            case .occasionally: break
-            case .severalTimesWeek: score -= 5
-            case .dailyOrHeavy: score -= 15
-            }
-        }
-
-        if let socialConnections = viewModel.selectedSocialConnectionsQuality {
-            switch socialConnections {
-            case .veryStrong: score += 10
-            case .moderateToGood: score += 5
-            case .limited: score -= 5
-            case .isolated: score -= 10
-            }
-        }
+//        if let stressLevel = viewModel.selectedStressLevel {
+//            switch stressLevel {
+//            case .veryLow: score += 15
+//            case .low: score += 10
+//            case .moderateToHigh: score -= 5
+//            case .veryHigh: score -= 15
+//            }
+//        }
+//
+//        if let nutritionQuality = viewModel.selectedNutritionQuality {
+//            switch nutritionQuality {
+//            case .veryHealthy: score += 15
+//            case .mostlyHealthy: score += 10
+//            case .mixedToUnhealthy: score -= 5
+//            case .veryUnhealthy: score -= 15
+//            }
+//        }
+//
+//        if let smokingStatus = viewModel.selectedSmokingStatus {
+//            switch smokingStatus {
+//            case .never: score += 15
+//            case .former: score += 5
+//            case .occasionally: score -= 10
+//            case .daily: score -= 20
+//            }
+//        }
+//
+//        if let alcoholFrequency = viewModel.selectedAlcoholFrequency {
+//            switch alcoholFrequency {
+//            case .never: score += 5
+//            case .occasionally: break
+//            case .severalTimesWeek: score -= 5
+//            case .dailyOrHeavy: score -= 15
+//            }
+//        }
+//
+//        if let socialConnections = viewModel.selectedSocialConnectionsQuality {
+//            switch socialConnections {
+//            case .veryStrong: score += 10
+//            case .moderateToGood: score += 5
+//            case .limited: score -= 5
+//            case .isolated: score -= 10
+//            }
+//        }
 
         return max(0, min(100, score))
     }

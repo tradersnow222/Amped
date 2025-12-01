@@ -1,74 +1,61 @@
-    import SwiftUI
+import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject var appState: AppState
+
+    // Launch flow stages: Splash (AmpedAnimatedView) → WelcomeView → Rest of app
+    private enum LaunchStage {
+        case splash
+        case welcome
+        case main
+    }
+
+    @State private var stage: LaunchStage = .splash
+
+    // Existing debug state
     @State private var selectedView: AppView = .onboardingFlow
     @State private var showDebugControls: Bool = false
-    
-    @EnvironmentObject var appState: AppState
-    @EnvironmentObject var settingsManager: SettingsManager
-    @EnvironmentObject var themeManager: BatteryThemeManager
-    
+    @State private var showSplash: Bool = true
+
     enum AppView: String, CaseIterable, Identifiable {
-        case welcome
-        case personalizationIntro
-        case questionnaire
-        case payment
         case dashboard
         case onboardingFlow
-        
+
         var id: String { rawValue }
-        
+
         var displayName: String {
             switch self {
-            case .welcome: return "Welcome"
-            case .personalizationIntro: return "Personalization Intro"
-            case .questionnaire: return "Questionnaire"
-            case .payment: return "Payment"
             case .dashboard: return "Dashboard"
             case .onboardingFlow: return "Onboarding Flow"
             }
         }
     }
-    
+
     var body: some View {
-        // DEBUG development mode with view switcher controls
         ZStack {
-            // The main content view takes up the full screen
             Group {
-                // PRODUCTION LOGIC: Show dashboard if onboarding is complete, otherwise show onboarding flow
-                if appState.hasCompletedOnboarding && !showDebugControls {
-                    // Show main dashboard for completed users
-                    if #available(iOS 16.0, *) {
-                        NavigationStack {
-                            DashboardView()
+                switch stage {
+                case .splash:
+                    SplashView {
+                        withAnimation(.easeInOut(duration: 0.35)) {
+                            stage = .welcome
                         }
-                    } else {
-                        NavigationView {
-                            DashboardView()
-                        }
-                        .navigationViewStyle(StackNavigationViewStyle())
                     }
-                } else if !showDebugControls {
-                    // Show onboarding flow for new users
-                    OnboardingFlow()
-                        .environmentObject(appState)
-                } else {
-                    // DEBUG MODE: Show selected view
-                    switch selectedView {
-                    case .welcome:
-                        WelcomeView(onContinue: {})
-                    case .personalizationIntro:
-                        PersonalizationIntroView(onContinue: {})
-                    case .questionnaire:
-                        QuestionnaireView(
-                            viewModel: QuestionnaireViewModel(startFresh: true),
-                            exitToPersonalizationIntro: .constant(false), 
-                            proceedToHealthPermissions: .constant(false)
-                        )
-                    case .payment:
-                        PaymentView(onContinue: {})
-                            .environmentObject(appState)
-                    case .dashboard:
+                    .environmentObject(appState)
+
+                case .welcome:
+                    WelcomeView(onContinue: {
+                        withAnimation(.easeInOut(duration: 0.35)) {
+                            stage = .main
+                            // Immediately show Terms before any other onboarding screens
+                            appState.currentOnboardingStep = .terms
+                        }
+                        
+                    })
+                    .environmentObject(appState)
+
+                case .main:
+                    if appState.hasCompletedOnboarding && !showDebugControls {
                         if #available(iOS 16.0, *) {
                             NavigationStack {
                                 DashboardView()
@@ -79,64 +66,32 @@ struct ContentView: View {
                             }
                             .navigationViewStyle(StackNavigationViewStyle())
                         }
-                    case .onboardingFlow:
-                        OnboardingFlow()
-                            .environmentObject(appState)
+                    } else {
+                        switch selectedView {
+                        case .dashboard:
+                            if #available(iOS 16.0, *) {
+                                NavigationStack {
+                                    DashboardView()
+                                }
+                            } else {
+                                NavigationView {
+                                    DashboardView()
+                                }
+                                .navigationViewStyle(StackNavigationViewStyle())
+                            }
+                        case .onboardingFlow:
+                            OnboardingFlow()
+                                .environmentObject(appState)
+                        }
                     }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            
-            // Hidden debug controls that can be shown by triple-tapping the corner
-            if showDebugControls {
-                VStack {
-                    Spacer()
-                    
-                    VStack(spacing: 12) {
-                        Text("DEBUG MODE")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Picker("Select View", selection: $selectedView) {
-                            ForEach(AppView.allCases) { view in
-                                Text(view.displayName).tag(view)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                        
-                        // Add button to reset onboarding state for testing
-                        Button("Reset Onboarding") {
-                            appState.resetOnboarding()
-                        }
-                        .font(.caption)
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 8)
-                        .background(Color.red.opacity(0.2))
-                        .cornerRadius(4)
-                        
-                        // Add button to complete onboarding for testing
-                        Button("Complete Onboarding") {
-                            appState.completeOnboarding()
-                        }
-                        .font(.caption)
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 8)
-                        .background(Color.green.opacity(0.2))
-                        .cornerRadius(4)
-                    }
-                    .padding()
-                    .background(Color(.systemBackground).opacity(0.9))
-                    .cornerRadius(10)
-                    .padding(.horizontal)
-                    .padding(.bottom, 20)
-                }
-            }
         }
-        // Add a tap gesture to the corner to show/hide debug controls
+        // Triple-tap debug overlay toggle (unchanged)
         .overlay(
             VStack {
                 Spacer()
-                
                 HStack {
                     Rectangle()
                         .fill(Color.clear)
@@ -145,25 +100,9 @@ struct ContentView: View {
                         .onTapGesture(count: 3) {
                             showDebugControls.toggle()
                         }
-                    
                     Spacer()
                 }
             }
         )
     }
 }
-
-// For Xcode 15+ preview
-#if swift(>=5.9)
-#Preview {
-    let themeManager = BatteryThemeManager()
-    
-    ContentView()
-        .environmentObject(AppState())
-        .environmentObject(SettingsManager())
-        .environmentObject(themeManager)
-        .accentColor(Color.ampedGreen)
-        .withDeepBackground()
-        .withBatteryTheme(themeManager)
-}
-#endif

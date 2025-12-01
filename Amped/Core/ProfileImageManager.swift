@@ -80,6 +80,18 @@ class ProfileImageManager: ObservableObject {
         return nil
     }
     
+    func getInitials() -> String {
+        let userName = UserDefaults.standard.string(forKey: UserDefaultsKeys.userName) ?? "Matt Snow"
+        let components = userName.components(separatedBy: " ")
+        let firstInitial = components.first?.prefix(1).uppercased() ?? "M"
+        let lastInitial = components.dropFirst().first?.prefix(1).uppercased() ?? "S"
+        return "\(firstInitial)\(lastInitial)"
+    }
+    
+    func getUserName() -> String {
+        return UserDefaults.standard.string(forKey: UserDefaultsKeys.userName) ?? "Matt Snow"
+    }
+    
     // MARK: - Helper Methods
     
     private func resizeImage(_ image: UIImage, to size: CGSize) -> UIImage {

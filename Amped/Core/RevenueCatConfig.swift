@@ -9,6 +9,7 @@ struct RevenueCatConfig {
     /// Product IDs
     enum ProductID {
         static let weekly = "ai.ampedlife.amped.weekly"
+        static let monthly = "ai.ampedlife.amped.monthly"
     }
     
     /// Entitlement IDs
@@ -18,7 +19,7 @@ struct RevenueCatConfig {
     
     /// Configure RevenueCat on app launch
     static func configure() {
-        Purchases.logLevel = .debug // Remove in production
+//        Purchases.logLevel = .debug // Remove in production
         Purchases.configure(withAPIKey: apiKey)
     }
 }

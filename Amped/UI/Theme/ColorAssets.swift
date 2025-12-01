@@ -16,8 +16,8 @@ extension Color {
     static var ampedDarkFallback: Color { Color(red: 0.2, green: 0.2, blue: 0.2) }
     
     // Primary button gradient colors from Figma design
-    static var primaryButtonStart: Color { Color(red: 0.988, green: 0.933, blue: 0.129) } // #FCEE21
-    static var primaryButtonEnd: Color { Color(red: 0.0, green: 0.573, blue: 0.271) }    // #009245
+    static var primaryButtonStart: Color { Color(hex: "#18EF47") } // #FCEE21
+    static var primaryButtonEnd: Color { Color(hex: "#0E8929") }    // #009245
     
     // Energy level colors
     static var fullPowerFallback: Color { ampedGreenFallback }
@@ -37,6 +37,8 @@ extension Color {
     
     /// Tertiary background for very subtle elements
     static var tertiaryBackground: Color { Color.black.opacity(0.2) }
+    
+    static var cardBgBackground: Color { Color(hex: "#3D3D3D").opacity(0.45) }
 }
 
 /// Custom namespace for theme colors to avoid conflicts with auto-generated asset symbols
@@ -157,3 +159,7 @@ struct ColorAssets {
  
  Note: This approach provides type-safe color access and supports dark mode
  */ 
+
+extension Color {
+    
+}

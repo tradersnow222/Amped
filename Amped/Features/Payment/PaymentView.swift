@@ -329,7 +329,7 @@ struct PaymentView: View {
             
             if success {
                 // Update app state
-                appState.updateSubscriptionStatus(true)
+//                appState.updateSubscriptionStatus(true)
                 
                 // Proceed to next step
                 onContinue?()
@@ -346,7 +346,7 @@ struct PaymentView: View {
             
             if success {
                 // Update app state
-                appState.updateSubscriptionStatus(true)
+//                appState.updateSubscriptionStatus(true)
                 
                 // Proceed to next step
                 onContinue?()

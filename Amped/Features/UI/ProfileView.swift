@@ -197,164 +197,164 @@ struct ProfileView: View {
 
 // MARK: - Edit Profile View
 
-struct EditProfileView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var name: String = ""
-    @State private var dob: String = "1 January 1995"
-    @State private var gender: String = "Male"
-    
-    var body: some View {
-        VStack(spacing: 24) {
-            // Profile Picture Section
-            profilePictureSection
-            
-            // Input Fields
-            inputFieldsSection
-            
-            // Continue Button
-            continueButton
-            
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 20)
-        .background(Color.black)
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    dismiss()
-                }) {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(width: 32, height: 32)
-                        .overlay(
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
-                        )
-                }
-            }
-            
-            ToolbarItem(placement: .principal) {
-                Text("Edit profile")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
-            }
-        }
-        .preferredColorScheme(.dark)
-    }
-    
-    private var profilePictureSection: some View {
-        VStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [.ampedGreen, .ampedYellow],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 100, height: 100)
-                
-                Image(systemName: "person")
-                    .font(.system(size: 40, weight: .medium))
-                    .foregroundColor(.white)
-                
-                // Edit Button - anchored to avatar
-//                VStack {
-//                    Spacer()
-//                    HStack {
-//                        Spacer()
-//                        Button(action: {
-//                            // Handle profile picture edit
-//                        }) {
-//                            RoundedRectangle(cornerRadius: 6)
-//                                .fill(Color.white)
-//                                .frame(width: 24, height: 24)
-//                                .overlay(
-//                                    Image(systemName: "pencil")
-//                                        .font(.system(size: 12, weight: .medium))
-//                                        .foregroundColor(.black)
-//                                )
-//                        }
-//                        .offset(x: 8, y: 8)
-//                    }
+//struct EditProfileView: View {
+//    @Environment(\.dismiss) private var dismiss
+//    @State private var name: String = ""
+//    @State private var dob: String = "1 January 1995"
+//    @State private var gender: String = "Male"
+//    
+//    var body: some View {
+//        VStack(spacing: 24) {
+//            // Profile Picture Section
+//            profilePictureSection
+//            
+//            // Input Fields
+//            inputFieldsSection
+//            
+//            // Continue Button
+//            continueButton
+//            
+//            Spacer()
+//        }
+//        .padding(.horizontal, 20)
+//        .padding(.top, 20)
+//        .background(Color.black)
+//        .navigationBarTitleDisplayMode(.inline)
+//        .navigationBarBackButtonHidden(true)
+//        .toolbar {
+//            ToolbarItem(placement: .navigationBarLeading) {
+//                Button(action: {
+//                    dismiss()
+//                }) {
+//                    RoundedRectangle(cornerRadius: 8)
+//                        .fill(Color.gray.opacity(0.3))
+//                        .frame(width: 32, height: 32)
+//                        .overlay(
+//                            Image(systemName: "chevron.left")
+//                                .font(.system(size: 14, weight: .medium))
+//                                .foregroundColor(.white)
+//                        )
 //                }
-            }
-        }
-    }
-    
-    private var inputFieldsSection: some View {
-        VStack(spacing: 16) {
-            // Name Field
-            ZStack(alignment: .leading) {
-                if name.isEmpty {
-                    Text("Enter your full name")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(Color(red: 39/255, green: 39/255, blue: 39/255, opacity: 0.4))
-                        .padding(.horizontal, 16)
-                }
-                
-                TextField("", text: $name)
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
-                    .padding(16)
-            }
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white)
-            )
-            .accentColor(.black)
-            
-            // Date of Birth Field
-            HStack {
-                Text(dob)
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
-                
-                Spacer()
-            }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white)
-            )
-            
-            // Gender Field
-            HStack {
-                Text(gender)
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
-                
-                Spacer()
-            }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white)
-            )
-        }
-    }
-    
-    private var continueButton: some View {
-        Button(action: {
-            dismiss()
-        }) {
-            Text("Continue")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.gray.opacity(0.3))
-                )
-        }
-    }
-}
+//            }
+//            
+//            ToolbarItem(placement: .principal) {
+//                Text("Edit profile")
+//                    .font(.system(size: 18, weight: .semibold))
+//                    .foregroundColor(.white)
+//            }
+//        }
+//        .preferredColorScheme(.dark)
+//    }
+//    
+//    private var profilePictureSection: some View {
+//        VStack(spacing: 16) {
+//            ZStack {
+//                Circle()
+//                    .fill(
+//                        LinearGradient(
+//                            colors: [.ampedGreen, .ampedYellow],
+//                            startPoint: .topLeading,
+//                            endPoint: .bottomTrailing
+//                        )
+//                    )
+//                    .frame(width: 100, height: 100)
+//                
+//                Image(systemName: "person")
+//                    .font(.system(size: 40, weight: .medium))
+//                    .foregroundColor(.white)
+//                
+//                // Edit Button - anchored to avatar
+////                VStack {
+////                    Spacer()
+////                    HStack {
+////                        Spacer()
+////                        Button(action: {
+////                            // Handle profile picture edit
+////                        }) {
+////                            RoundedRectangle(cornerRadius: 6)
+////                                .fill(Color.white)
+////                                .frame(width: 24, height: 24)
+////                                .overlay(
+////                                    Image(systemName: "pencil")
+////                                        .font(.system(size: 12, weight: .medium))
+////                                        .foregroundColor(.black)
+////                                )
+////                        }
+////                        .offset(x: 8, y: 8)
+////                    }
+////                }
+//            }
+//        }
+//    }
+//    
+//    private var inputFieldsSection: some View {
+//        VStack(spacing: 16) {
+//            // Name Field
+//            ZStack(alignment: .leading) {
+//                if name.isEmpty {
+//                    Text("Enter your full name")
+//                        .font(.system(size: 16, weight: .medium))
+//                        .foregroundColor(Color(red: 39/255, green: 39/255, blue: 39/255, opacity: 0.4))
+//                        .padding(.horizontal, 16)
+//                }
+//                
+//                TextField("", text: $name)
+//                    .font(.system(size: 14, weight: .regular))
+//                    .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
+//                    .padding(16)
+//            }
+//            .background(
+//                RoundedRectangle(cornerRadius: 12)
+//                    .fill(Color.white)
+//            )
+//            .accentColor(.black)
+//            
+//            // Date of Birth Field
+//            HStack {
+//                Text(dob)
+//                    .font(.system(size: 14, weight: .regular))
+//                    .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
+//                
+//                Spacer()
+//            }
+//            .padding(16)
+//            .background(
+//                RoundedRectangle(cornerRadius: 12)
+//                    .fill(Color.white)
+//            )
+//            
+//            // Gender Field
+//            HStack {
+//                Text(gender)
+//                    .font(.system(size: 14, weight: .regular))
+//                    .foregroundColor(Color(red:35/255,green:57/255, blue:32/255))
+//                
+//                Spacer()
+//            }
+//            .padding(16)
+//            .background(
+//                RoundedRectangle(cornerRadius: 12)
+//                    .fill(Color.white)
+//            )
+//        }
+//    }
+//    
+//    private var continueButton: some View {
+//        Button(action: {
+//            dismiss()
+//        }) {
+//            Text("Continue")
+//                .font(.system(size: 16, weight: .semibold))
+//                .foregroundColor(.white)
+//                .frame(maxWidth: .infinity)
+//                .padding(.vertical, 16)
+//                .background(
+//                    RoundedRectangle(cornerRadius: 12)
+//                        .fill(Color.gray.opacity(0.3))
+//                )
+//        }
+//    }
+//}
 
 // MARK: - Data Models
 

@@ -20,15 +20,15 @@ struct PrimaryButtonStyle: ButtonStyle {
             .multilineTextAlignment(.center)
             // Fitts's Law: primary CTAs should be big and easy to hit
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .padding(.vertical, 10)
             .padding(.horizontal, 16)
             .background(
                 RoundedRectangle(cornerRadius: 100)
                     .fill(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color.primaryButtonEnd,    // #009245
-                                Color.primaryButtonStart // #FCEE21
+                                Color.primaryButtonStart,
+                                Color.primaryButtonEnd
                             ]),
                             startPoint: UnitPoint(x: 0.0, y: 1.0),   // bottom-left
                             endPoint: UnitPoint(x: 1.0, y: 0.0)

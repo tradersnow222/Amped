@@ -11,11 +11,15 @@ import SwiftUI
 import OSLog
 import HealthKit
 import RevenueCat
+import Combine
 
 @main
 struct AmpedApp: App {
     // MARK: - App State and Services
     
+    /// Bridge UIKit AppDelegate so quick actions and other delegate callbacks work
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     /// Global app state
     @StateObject private var appState = AppState()
     
@@ -41,72 +45,91 @@ struct AmpedApp: App {
     @StateObject private var notificationManager = NotificationManager.shared
     
     /// Subscription manager for RevenueCat integration
-    @StateObject private var subscriptionManager = SubscriptionManager.shared
+    @StateObject private var revenueCatManager = RevenueCatStoreKitManager.shared
+    
+    /// Shared DashboardViewModel for the entire app
+    @StateObject private var dashboardViewModel = DashboardViewModel()
     
     // MARK: - Scene Phase Tracking for Intro Animations
     @Environment(\.scenePhase) private var scenePhase
     
-    init() {
-        // OPTIMIZATION: Use LaunchOptimizer for deferred initialization
-        // Rules: Minimize main thread blocking during app launch
-        LaunchOptimizer.shared.performCriticalInitialization()
-        LaunchOptimizer.shared.performDeferredInitialization()
-        
-        // Configure RevenueCat
-        RevenueCatConfig.configure()
-    }
+    // MARK: - Quick Action Feedback Sheet State
+    @State private var showFeedbackSheet = false
+    @State private var feedbackText: String = ""
     
-    // MARK: - Scene Configuration
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "ai.ampedlife.amped", category: "AmpedApp")
     
     /// Main app scene
     var body: some Scene {
         WindowGroup {
             ZStack {
-                backgroundView
-                
+                LinearGradient.customBlueToDarkGray.ignoresSafeArea()
+                // Use ContentView so it can observe .showFeedback and present the sheet
                 ContentView()
+                    .background(Color.black)
                     .environmentObject(appState)
                     .environmentObject(settingsManager)
                     .environmentObject(glassTheme)
                     .environmentObject(batteryTheme)
                     .environmentObject(backgroundHealthManager)
-                    .environmentObject(subscriptionManager)
+                    .environmentObject(revenueCatManager)
+                    .environmentObject(dashboardViewModel) // Inject once for the whole app
+                    .preferredColorScheme(.dark)
             }
-            .onChange(of: scenePhase) { newPhase in
-                handleScenePhaseChange(to: newPhase)
+            .background(Color.clear)
+            // Ensure we pick up any pending quick action on first render
+            .onAppear {
+                consumePendingQuickActionIfAny(context: "onAppear")
             }
+            .feedbackDialog(
+                isPresented: $showFeedbackSheet,
+                text: $feedbackText,
+                title: "Please share your feedback with us.",
+                onSubmit: { message in
+
+                    // Send feedback via email
+                    FeedbackEmailHelper.shared.sendFeedbackEmail(body: message)
+
+                    // Optional: also send to backend if you want
+                    logger.info("Feedback submitted: \(message)")
+
+                    // Clear after submit
+                    feedbackText = ""
+                },
+                onCancel: {
+                    // Optional: track dismiss
+                }
+            )
         }
         // SwiftUI background task for health data refresh
         .backgroundTask(.appRefresh("ai.ampedlife.amped.health-refresh")) {
-            await BackgroundHealthManager.shared.handleHealthDataRefreshTask()
+//            await BackgroundHealthManager.shared.handleHealthDataRefreshTask()
         }
     }
     
-    // MARK: - Background View
+    // MARK: - Quick Action Consumption
     
-    /// Deep, immersive background for the app - Rules: Split into computed property for readability
-    private var backgroundView: some View {
-        ZStack {
-            // Deep background image
-            GeometryReader { geometry in
-                Color.black.ignoresSafeArea()
+    private func consumePendingQuickActionIfAny(context: String) {
+        let pendingKey = "PendingQuickActionType"
+        guard let type = UserDefaults.standard.string(forKey: pendingKey) else {
+            return
+        }
+        logger.info("📦 Found pending quick action in UserDefaults (\(context, privacy: .public)): \(type, privacy: .public)")
+        
+        // Clear it immediately to avoid double handling
+        UserDefaults.standard.removeObject(forKey: pendingKey)
+        
+        if type == "ai.ampedlife.amped.sendFeedback" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                logger.info("🗳️ Setting showFeedbackSheet = true (consumePendingQuickActionIfAny)")
+                showFeedbackSheet = true
             }
-            .ignoresSafeArea()
-            
-            // Glass-compatible overlay for better material effects
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.black.opacity(0.3),
-                            Color.black.opacity(0.5),
-                            Color.black.opacity(0.4)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .ignoresSafeArea()
+        } else if type == "ai.ampedlife.amped.openDashboard" {
+            // If you need to navigate to dashboard at app level, handle here
+            logger.info("🧭 Pending action requested dashboard (not implemented at app level)")
+        } else if type == "ai.ampedlife.amped.refreshHealthData" {
+            // If you need to trigger a refresh globally, handle here
+            logger.info("🔄 Pending action requested health data refresh (not implemented at app level)")
         }
     }
     
@@ -174,6 +197,7 @@ final class AppState: ObservableObject {
     
     // SUBSCRIPTION STATUS: Track premium subscription status
     @Published var isPremiumUser: Bool = false
+    @Published var isInTrial: Bool = false
     
     // ONBOARDING PERSISTENCE: Manager for handling soft vs hard close
     private let persistenceManager = OnboardingPersistenceManager()
@@ -226,6 +250,9 @@ final class AppState: ObservableObject {
         
         // Load subscription status
         isPremiumUser = UserDefaults.standard.bool(forKey: "is_premium_user")
+        
+        // if expired then user is not in free trial
+        isInTrial = !isTrialExpired()
     }
     
     /// Load remaining state asynchronously to avoid blocking launch
@@ -246,10 +273,52 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(name, forKey: "mascot_name")
     }
     
+    func saveToUserDefault(keyname: String, value: Any) {
+        UserDefaults.standard.set(value, forKey: keyname)
+    }
+    
+    func getFromUserDefault(key: String) -> String {
+        return UserDefaults.standard.string(forKey: key) ?? ""
+    }
+    
     /// Update subscription status and save to UserDefaults
-    func updateSubscriptionStatus(_ isPremium: Bool) {
-        isPremiumUser = isPremium
+    func updateSubscriptionStatus(_ isPremium: Bool, inTrial: Bool = false) {
         UserDefaults.standard.set(isPremium, forKey: "is_premium_user")
+        self.isPremiumUser = isPremium
+        if inTrial {
+            UserDefaults.standard.set(Date(), forKey: "trial_start_date")
+            isInTrial = true
+        }
+    }
+    
+    func isTrialExpired() -> Bool {
+        guard let start = UserDefaults.standard.object(forKey: "trial_start_date") as? Date else {
+            return true // trial never started
+        }
+
+        let threeDaysLater = Calendar.current.date(byAdding: .day, value: 3, to: start)!
+        let isTrialExpired = Date() >= threeDaysLater
+        return isTrialExpired
+    }
+    
+    func formattedTrialExpiryStatus() -> String {
+        guard let start = UserDefaults.standard.object(forKey: "trial_start_date") as? Date else {
+            return "NeverStarted"
+        }
+        
+        let expiry = Calendar.current.date(byAdding: .day, value: 3, to: start)!
+        
+        let df = DateFormatter()
+        df.dateStyle = .medium
+        df.timeStyle = .short
+        
+        let expiryString = df.string(from: expiry)
+        
+        if Date() >= expiry {
+            return "Free trial expired on \(expiryString)"
+        } else {
+            return "Free trial expires on \(expiryString)"
+        }
     }
     
     /// Save onboarding completion state to UserDefaults
@@ -272,10 +341,6 @@ final class AppState: ObservableObject {
     func handleAppReturnFromBackground() {
         // Rules: Only show intro animations if user haven't disabled them
         shouldShowIntroAnimations = true
-        
-        // CRITICAL FIX: Don't detect closure type again on app return
-        // Detection already happened in init() - this would cause double detection
-        // and incorrect soft close detection due to fresh timestamp
     }
     
     /// Mark onboarding as completed and persist to UserDefaults

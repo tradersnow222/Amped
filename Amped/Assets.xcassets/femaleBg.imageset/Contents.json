@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "femaleBg.jpg",
+      "filename" : "femaleBg.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "femaleBg 1.jpg",
+      "filename" : "femaleBg 1.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "femaleBg 2.jpg",
+      "filename" : "femaleBg 2.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

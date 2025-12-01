@@ -2,19 +2,29 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>NSHealthShareUsageDescription</key>
-    <string>Amped needs access to your health data to calculate your Life Battery. We only read your data and process it on your device. Your privacy is our priority.</string>
-    <key>NSHealthUpdateUsageDescription</key>
-    <string>For technical reasons, this permission appears but Amped does not modify or write any data to Health. We only read your health data to provide insights.</string>
-    <key>UIBackgroundModes</key>
-    <array>
-        <string>fetch</string>
-        <string>background-processing</string>
-    </array>
-    <key>BGTaskSchedulerPermittedIdentifiers</key>
-    <array>
-        <string>ai.ampedlife.amped.health-refresh</string>
-        <string>ai.ampedlife.amped.health-processing</string>
-    </array>
+	<key>CFBundleIdentifier</key>
+	<string></string>
+	<key>UIAppFonts</key>
+	<array>
+        <string>Poppins/Poppins-Regular.ttf</string>
+        <string>Poppins/Poppins-Bold.ttf</string>
+        <string>Poppins/Poppins-Medium.ttf</string>
+        <string>Poppins/Poppins-semiBold.ttf</string>
+        <string>Poppins/Poppins-Thin.ttf</string>
+	</array>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Amped needs access to your health data to calculate your Life Battery. We only read your data and process it on your device. Your privacy is our priority.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>For technical reasons, this permission appears but Amped does not modify or write any data to Health. We only read your health data to provide insights.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>background-processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>ai.ampedlife.amped.health-refresh</string>
+		<string>ai.ampedlife.amped.health-processing</string>
+	</array>
 </dict>
-</plist> 
+</plist>

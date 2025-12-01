@@ -208,6 +208,22 @@ struct DailyTarget: Codable, Identifiable, Equatable {
             } else {
                 return "Manage stress better to add \(benefitText) to your lifespan"
             }
+        case .restingHeartRate:
+            return "Lower your resting heart rate to add \(benefitText) to your lifespan"
+        case .heartRateVariability:
+            return "Improve your heart rate variability to add \(benefitText) to your lifespan"
+        case .bodyMass:
+            return "Move toward a healthier weight to add \(benefitText) to your lifespan"
+        case .vo2Max:
+            return "Improve your VO₂ max to add \(benefitText) to your lifespan"
+        case .oxygenSaturation:
+            return "Maintain healthy oxygen levels to add \(benefitText) to your lifespan"
+        case .alcoholConsumption:
+            return "Reduce alcohol intake to add \(benefitText) to your lifespan"
+        case .smokingStatus:
+            return "Reduce or quit smoking to add \(benefitText) to your lifespan"
+        case .bloodPressure:
+            return "Lower your blood pressure to add \(benefitText) to your lifespan"
         default:
             if isCurrentlyNegative {
                 return "Improve your \(metricType.displayName.lowercased()) to add \(benefitText) to your lifespan"
@@ -255,6 +271,22 @@ struct DailyTarget: Codable, Identifiable, Equatable {
             return "Aim for improving nutrition quality daily over the next month to add \(benefitText) to your life"
         case .stressLevel:
             return "Aim for practicing stress management daily over the next month to add \(benefitText) to your life"
+        case .restingHeartRate:
+            return "Aim for a resting heart rate around \(Int(targetValue)) bpm over the next month to add \(benefitText) to your life"
+        case .heartRateVariability:
+            return "Aim for an HRV around \(Int(targetValue)) ms over the next month to add \(benefitText) to your life"
+        case .bodyMass:
+            return "Work toward a weight of \(Int(targetValue)) kg over the next month to add \(benefitText) to your life"
+        case .vo2Max:
+            return "Aim for a VO₂ max around \(Int(targetValue)) ml/kg/min over the next month to add \(benefitText) to your life"
+        case .oxygenSaturation:
+            return "Aim to maintain oxygen saturation around \(Int(targetValue))% over the next month to add \(benefitText) to your life"
+        case .alcoholConsumption:
+            return "Aim for healthier alcohol habits over the next month to add \(benefitText) to your life"
+        case .smokingStatus:
+            return "Aim to remain smoke-free over the next month to add \(benefitText) to your life"
+        case .bloodPressure:
+            return "Aim to keep your blood pressure in a healthy range over the next month to add \(benefitText) to your life"
         default:
             return "Aim for maintaining optimal \(metricType.displayName.lowercased()) daily over the next month to add \(benefitText) to your life"
         }
@@ -279,6 +311,22 @@ struct DailyTarget: Codable, Identifiable, Equatable {
             return "Aim for improving nutrition quality daily over the next year to add \(benefitText) to your life"
         case .stressLevel:
             return "Aim for practicing stress management daily over the next year to add \(benefitText) to your life"
+        case .restingHeartRate:
+            return "Aim for a resting heart rate around \(Int(targetValue)) bpm over the next year to add \(benefitText) to your life"
+        case .heartRateVariability:
+            return "Aim for an HRV around \(Int(targetValue)) ms over the next year to add \(benefitText) to your life"
+        case .bodyMass:
+            return "Work toward a weight of \(Int(targetValue)) kg over the next year to add \(benefitText) to your life"
+        case .vo2Max:
+            return "Aim for a VO₂ max around \(Int(targetValue)) ml/kg/min over the next year to add \(benefitText) to your life"
+        case .oxygenSaturation:
+            return "Aim to maintain oxygen saturation around \(Int(targetValue))% over the next year to add \(benefitText) to your life"
+        case .alcoholConsumption:
+            return "Aim for healthier alcohol habits over the next year to add \(benefitText) to your life"
+        case .smokingStatus:
+            return "Aim to remain smoke-free over the next year to add \(benefitText) to your life"
+        case .bloodPressure:
+            return "Aim to keep your blood pressure in a healthy range over the next year to add \(benefitText) to your life"
         default:
             return "Aim for maintaining optimal \(metricType.displayName.lowercased()) daily over the next year to add \(benefitText) to your life"
         }

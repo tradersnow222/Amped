@@ -165,13 +165,13 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
     var detailedDescription: String {
         switch self {
         case .steps: 
-            return "Daily steps directly correlate with cardiovascular health and longevity. Research shows that 10,000 steps per day can add years to your life."
+            return "Daily steps directly correlate with cardiovascular health and longevity. Research shows that 8,000–10,000 steps per day is associated with lower mortality."
         case .exerciseMinutes:
             return "Regular exercise strengthens your heart, improves mood, and significantly reduces mortality risk. Aim for at least \(Double(150).formattedAsTime()) weekly."
         case .sleepHours:
-            return "Quality sleep is essential for cellular repair, brain health, and immune function. Most adults need 7-9 hours nightly."
+            return "Quality sleep is essential for cellular repair, brain health, and immune function. Most adults need 7–9 hours nightly."
         case .restingHeartRate:
-            return "A lower resting heart rate indicates better cardiovascular fitness. Elite athletes often have rates below 60 bpm."
+            return "A lower resting heart rate indicates better cardiovascular fitness. Many healthy adults target ≤60 bpm."
         case .heartRateVariability:
             return "HRV reflects your body's ability to adapt to stress. Higher variability generally indicates better health and recovery."
         case .bodyMass:
@@ -181,9 +181,9 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .smokingStatus:
             return "Smoking significantly reduces life expectancy. Quitting at any age provides immediate and long-term health benefits."
         case .alcoholConsumption:
-            return "Moderate alcohol consumption may have some benefits, but excessive drinking significantly harms health and longevity."
+            return "Minimal alcohol intake is associated with better long-term health outcomes."
         case .socialConnectionsQuality:
-            return "Strong social connections are as important as physical health factors, reducing stress and improving mental wellbeing."
+            return "Strong social connections reduce stress and improve mental wellbeing."
         case .activeEnergyBurned:
             return "Active calories burned through movement and exercise contribute to maintaining a healthy metabolism and weight."
         case .vo2Max:
@@ -233,7 +233,7 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         case .heartRateVariability:
             return HKUnit.secondUnit(with: .milli)
         case .bodyMass:
-            return HKUnit.gramUnit(with: .kilo) // CRITICAL FIX: Use kg internally, convert to user preference in UI
+            return HKUnit.gramUnit(with: .kilo) // Use kg internally, convert to user preference in UI
         case .activeEnergyBurned:
             return HKUnit.kilocalorie()
         case .vo2Max:
@@ -306,24 +306,55 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         }
     }
     
-    /// Returns the baseline value for comparisons
+    /// Research-based period-agnostic baseline (reference/neutral value)
+    /// Matches the research used in calculators and services.
     var baselineValue: Double {
         switch self {
-        case .steps: return 7500
-        case .exerciseMinutes: return 20
-        case .restingHeartRate: return 70
-        case .heartRateVariability: return 35
-        case .sleepHours: return 7
-        case .bodyMass: return 70 // kg for average adult
-        case .nutritionQuality: return 5 // 1-10 scale, 5 = average
-        case .smokingStatus: return 10 // 1-10 scale, 10 = never smoked
-        case .alcoholConsumption: return 8 // 1-10 scale, 8 = occasional drinking
-        case .socialConnectionsQuality: return 5 // 1-10 scale, 5 = moderate connections
-        case .activeEnergyBurned: return 400 // calories
-        case .vo2Max: return 40 // ml/kg/min
-        case .oxygenSaturation: return 98 // percent
-        case .stressLevel: return 5 // 1-10 scale, 5 = moderate stress
-        case .bloodPressure: return 120 // systolic pressure baseline
+        case .steps:
+            // Lower-mortality threshold ~8,000 steps/day (Paluch 2022; Saint‑Maurice 2020)
+            return 8_000
+        case .exerciseMinutes:
+            // WHO guideline baseline ≈ 150 min/week → ~21.4 min/day
+            return 150.0 / 7.0
+        case .restingHeartRate:
+            // Healthy adult reference
+            return 60
+        case .heartRateVariability:
+            // Adult reference used in calculators
+            return 40
+        case .sleepHours:
+            // Optimal midpoint of 7–8 hours
+            return 7.5
+        case .bodyMass:
+            // Placeholder reference (true target should be BMI-based using height/gender)
+            return 70 // kg
+        case .nutritionQuality:
+            // Average diet quality midpoint
+            return 5
+        case .smokingStatus:
+            // 10/10 = never smoked (optimal baseline as reference)
+            return 10
+        case .alcoholConsumption:
+            // Minimal alcohol (very light) as baseline; optimal is none
+            return 9
+        case .socialConnectionsQuality:
+            // Moderate-good connections as neutral baseline
+            return 6.5
+        case .activeEnergyBurned:
+            // Reference used in calculator
+            return 400
+        case .vo2Max:
+            // Adult reference used in calculator
+            return 40
+        case .oxygenSaturation:
+            // Healthy norm
+            return 98
+        case .stressLevel:
+            // Moderate stress as neutral baseline on 1–10 scale
+            return 5
+        case .bloodPressure:
+            // Optimal systolic ~110–115; use 115 as research baseline
+            return 115
         }
     }
     
@@ -337,25 +368,85 @@ enum HealthMetricType: String, CaseIterable, Identifiable, Codable {
         }
     }
     
-    /// Returns the recommended target value for this metric type
+    /// Period-agnostic recommended target (kept for compatibility)
     var targetValue: Double? {
+        // Prefer using targetValue(for:) below
         switch self {
-        case .steps: return 10000
+        case .steps: return 10_000
         case .exerciseMinutes: return 30
         case .restingHeartRate: return 60
         case .heartRateVariability: return 50
         case .sleepHours: return 8
-        case .bodyMass: return nil // Depends on height, gender, etc.
-        case .nutritionQuality: return 8 // 1-10 scale, 8 = above average nutrition
-        case .smokingStatus: return 10 // 1-10 scale, 10 = never smoked (ideal)
-        case .alcoholConsumption: return 10 // 1-10 scale, 10 = never drinks (ideal)
-        case .socialConnectionsQuality: return 8 // 1-10 scale, 8 = good connections
+        case .bodyMass: return nil // Should be BMI-based using height/gender
+        case .nutritionQuality: return 8
+        case .smokingStatus: return 10
+        case .alcoholConsumption: return 10
+        case .socialConnectionsQuality: return 8
         case .activeEnergyBurned: return 500
         case .vo2Max: return 45
-        case .oxygenSaturation: return 100
-        case .stressLevel: return 2 // 1-10 scale, 2 = low stress (ideal)
-        case .bloodPressure: return 110 // systolic pressure target
+        case .oxygenSaturation: return 99
+        case .stressLevel: return 2
+        case .bloodPressure: return 110
         }
+    }
+    
+    /// Period-aware recommended target values
+    /// Notes (evidence):
+    /// - Steps: 8,000–10,000 steps/day associated with lower mortality (Paluch et al., JAMA Netw Open 2022; Saint‑Maurice et al., JAMA 2020).
+    /// - Exercise: 150–300 min/week moderate (~30–45 min/day) (WHO/AHA).
+    /// - Sleep: 7–9 hours/night optimal (Jike et al., Sleep Med Rev 2018).
+    /// - Resting HR: ≤60 bpm healthy target.
+    /// - HRV: 50 ms reasonable adult target; ideally age-adjusted.
+    /// - Active energy: ~500 kcal/day widely used goal.
+    /// - VO2 Max: 45 ml/kg/min strong adult target.
+    /// - Oxygen saturation: 98–100% typical; 99–100% target.
+    func targetValue(for period: ImpactDataPoint.PeriodType) -> Double? {
+        switch self {
+        // Cumulative metrics: keep per-day targets across periods
+        case .steps:
+            return 10_000
+        case .exerciseMinutes:
+            return 30
+        case .activeEnergyBurned:
+            return 500
+            
+        // Recovery / status metrics: per-day averages across periods
+        case .sleepHours:
+            return 8
+        case .restingHeartRate:
+            return 60
+        case .heartRateVariability:
+            return 50
+        case .vo2Max:
+            return 45
+        case .oxygenSaturation:
+            return 99
+        
+        // Body mass depends on height/gender; compute elsewhere
+        case .bodyMass:
+            return nil
+            
+        // Questionnaire/lifestyle metrics (1–10 scale): period-invariant
+        case .nutritionQuality:
+            return 8
+        case .smokingStatus:
+            return 10
+        case .alcoholConsumption:
+            return 10
+        case .socialConnectionsQuality:
+            return 8
+        case .stressLevel:
+            return 2
+        case .bloodPressure:
+            return 110
+        }
+    }
+    
+    /// Period-aware baseline fallback (used when a target is not defined, e.g., bodyMass)
+    func baselineValue(for period: ImpactDataPoint.PeriodType) -> Double {
+        // For our charts, values are daily totals or daily averages even in longer periods,
+        // so baseline per-day values are appropriate across periods.
+        return baselineValue
     }
     
     /// CRITICAL FIX: Determines if this metric type represents cumulative data
@@ -462,4 +553,4 @@ enum MetricFunctionalGroup: String, CaseIterable {
         case .healthRisks: return "draining your power"
         }
     }
-} 
+}

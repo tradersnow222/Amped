@@ -32,6 +32,7 @@ final class DashboardViewModel: ObservableObject {
     @Published var lifeImpactData: LifeImpactData?
     @Published var lifeProjection: LifeProjection?
     @Published var optimalHabitsProjection: LifeProjection?
+    @Published var canShowLoading: Bool = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var selectedTimePeriod: TimePeriod = .day
@@ -55,6 +56,8 @@ final class DashboardViewModel: ObservableObject {
     
     /// Track if goal was achieved today to prevent duplicate notifications
     @Published private(set) var goalAchievedToday: Bool = false
+    
+    var canCalculateLifeProjection = true
     
     /// User's daily goal from questionnaire
     private var dailyGoalMinutes: Int? {
@@ -129,7 +132,10 @@ final class DashboardViewModel: ObservableObject {
     @Published private(set) var isAppInForeground: Bool = true
     
     /// Interval for foreground refresh (10 seconds - matches Apple Fitness app)
-    private let foregroundRefreshInterval: TimeInterval = 10.0
+    private let foregroundRefreshInterval: TimeInterval = 500.0
+    
+    /// Ensure we only start loading/timers once per app session
+    private var hasStarted = false
     
     init(
         healthKitManager: HealthKitManaging? = nil,
@@ -200,7 +206,7 @@ final class DashboardViewModel: ObservableObject {
             userProfile: chosenProfile
         )
         
-        // Ensure questionnaire data is loaded
+        // Ensure questionnaire data is loaded (deferred)
         Task {
             await self.questionnaireManager.loadDataIfNeeded()
         }
@@ -208,10 +214,30 @@ final class DashboardViewModel: ObservableObject {
         setupSubscriptions()
         setupStreakObservers()
         resetDailyGoalTracking()
+        // IMPORTANT: Do NOT load data or start timers here. Call startIfNeeded() once from the WelcomeView.
+        
+        // Also do NOT start the foreground timer here. We will start it in startIfNeeded()
+    }
+    
+    /// Explicit one-time start. Call this from WelcomeView.onAppear.
+    func startIfNeeded() {
+        guard !hasStarted else {
+            logger.debug("⏭️ DashboardViewModel already started; skipping")
+            return
+        }
+        hasStarted = true
+        
+        logger.info("🚀 Starting DashboardViewModel loading and timers")
+        
+        // Make sure questionnaire data is fresh before first load
+        Task {
+            await self.questionnaireManager.loadDataIfNeeded()
+        }
+        
+        // Load initial data for the current period
         loadData()
         
-        // Start foreground timer if app is currently active
-        // Check app state and start timer if needed
+        // Start foreground timer if app is active
         Task { @MainActor in
             if UIApplication.shared.applicationState == .active {
                 self.startForegroundRefreshTimer()
@@ -356,14 +382,25 @@ final class DashboardViewModel: ObservableObject {
 
         // Recalculate for currently selected period and projections
         loadDataForPeriod(selectedTimePeriod)
-        calculateLifeProjection()
+        if canCalculateLifeProjection {
+            calculateLifeProjection()
+        }
     }
     
     /// Load data for a specific time period (both metrics and impact calculations)
     private func loadDataForPeriod(_ timePeriod: TimePeriod) {
+        // Skip if already loading to prevent overlapping
+        guard !isLoading else {
+            logger.debug("⏸️ Skipping foreground refresh - already loading")
+            return
+        }
         logger.info("🔄 Loading data for time period: \(timePeriod.displayName)")
         
         Task {
+            await MainActor.run {
+                self.isLoading = true
+            }
+            
             do {
                 logger.info("📊 Fetching period-specific health metrics for \(timePeriod.displayName)")
                 let periodMetrics = try await healthDataService.fetchHealthMetricsForPeriod(timePeriod: timePeriod)
@@ -404,21 +441,43 @@ final class DashboardViewModel: ObservableObject {
                         logger.info("🔋 Battery level: \(String(format: "%.1f", impactData.batteryLevel))%")
                         
                         // Load historical chart data when impact data is available
-                        loadHistoricalChartData()
+//                        loadHistoricalChartData()
                     } else {
                         logger.warning("⚠️ No life impact data calculated for \(timePeriod.displayName)")
                     }
+                    
+                    // Also calculate life projection after metrics are in place
+                    if canCalculateLifeProjection {
+                        self.calculateLifeProjection()
+                    }
+                    
+                    // Done loading for this cycle
+                    self.isLoading = false
                 }
             } catch {
                 await MainActor.run {
                     logger.error("❌ Failed to fetch period metrics for \(timePeriod.displayName): \(error.localizedDescription)")
                     self.errorMessage = "Failed to load data for \(timePeriod.displayName): \(error.localizedDescription)"
+                    self.isLoading = false
                 }
             }
         }
     }
     
     func loadData() {
+        // Skip if already loading to prevent overlapping refreshes
+        guard !isLoading else {
+            logger.debug("⏸️ Skipping: Already loading")
+            return
+        }
+        
+        // Avoid requesting healthkit permission on welcome screen.
+        let userName = UserDefaults.standard.string(forKey: UserDefaultsKeys.userName) ?? ""
+        if userName.isEmpty {
+            isLoading = false
+            return
+        }
+        
         logger.info("🔄 Starting data load process")
         isLoading = true
         errorMessage = nil
@@ -445,19 +504,15 @@ final class DashboardViewModel: ObservableObject {
                     return
                 }
             } else {
+                isLoading = false
                 logger.info("✅ HealthKit permissions already granted")
-            }
-            
-            await MainActor.run {
-                self.isLoading = false
             }
             
             // CRITICAL FIX: Load data for the currently selected time period
             // This ensures we show period-appropriate data from the start
             loadDataForPeriod(selectedTimePeriod)
             
-            // Also calculate life projection (this doesn't depend on time period)
-            calculateLifeProjection()
+            // No longer setting isLoading = false here; it will be set at the end of loadDataForPeriod
         }
     }
     
@@ -768,6 +823,13 @@ final class DashboardViewModel: ObservableObject {
     func refreshData() async {
         logger.info("🔄 Manual data refresh requested")
         
+        // Avoid requesting healthkit permission on welcome screen.
+        let userName = UserDefaults.standard.string(forKey: UserDefaultsKeys.userName) ?? ""
+        if userName.isEmpty {
+            isLoading = false
+            return
+        }
+        
         await MainActor.run {
             isLoading = true
             errorMessage = nil
@@ -818,7 +880,7 @@ final class DashboardViewModel: ObservableObject {
                 let hasMetricsChanged = self.healthMetrics.count != periodMetrics.count || 
                                       !periodMetrics.isEmpty
                 
-                if hasMetricsChanged {
+                if hasMetricsChanged && canCalculateLifeProjection {
                     // Calculate life projection
                     lifeProjection = lifeProjectionService.calculateLifeProjection(
                         from: periodMetrics,
@@ -836,7 +898,7 @@ final class DashboardViewModel: ObservableObject {
                 }
                 
                 // Load historical chart data after refresh
-                loadHistoricalChartData()
+//                loadHistoricalChartData()
                 
                 // Record engagement for streak tracking
                 // Only record if we have meaningful health data
@@ -908,7 +970,7 @@ final class DashboardViewModel: ObservableObject {
     private func performLightweightRefresh() async {
         // Skip if already loading to prevent overlapping refreshes
         guard !isLoading else {
-            logger.debug("⏸️ Skipping foreground refresh - already loading")
+            logger.debug("⏸️ Skipping: Already loading")
             return
         }
         
@@ -1428,3 +1490,4 @@ final class DashboardViewModel: ObservableObject {
         logger.info("🗑️ DashboardViewModel deallocated - stopped foreground refresh timer")
     }
 }
+

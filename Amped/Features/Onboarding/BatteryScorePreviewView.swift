@@ -23,6 +23,8 @@ struct BatteryScorePreviewView: View {
             case .low: score += 10
             case .moderateToHigh: score -= 5
             case .veryHigh: score -= 15
+            case .moderate: score -= 5
+            case .high: score -= 15
             }
         }
         
@@ -32,6 +34,9 @@ struct BatteryScorePreviewView: View {
             case .mostlyHealthy: score += 10
             case .mixedToUnhealthy: score -= 5
             case .veryUnhealthy: score -= 15
+            case .low: score += 15
+            case .moderate: score += 10
+            case .high: score -= 15
             }
         }
         
@@ -41,6 +46,9 @@ struct BatteryScorePreviewView: View {
             case .former: score += 5
             case .occasionally: score -= 10
             case .daily: score -= 20
+            case .low: score += 15
+            case .moderate: score += 5
+            case .high: score -= 20
             }
         }
         
@@ -50,6 +58,9 @@ struct BatteryScorePreviewView: View {
             case .occasionally: score += 0
             case .severalTimesWeek: score -= 5
             case .dailyOrHeavy: score -= 15
+            case .low: score += 5
+            case .moderate: score += 0
+            case .high: score -= 15
             }
         }
         
@@ -59,6 +70,9 @@ struct BatteryScorePreviewView: View {
             case .moderateToGood: score += 5
             case .limited: score -= 5
             case .isolated: score -= 10
+            case .low: score -= 10
+            case .moderate: score += 5
+            case .high: score += 10
             }
         }
         

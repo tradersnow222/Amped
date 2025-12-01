@@ -13,8 +13,8 @@ final class PaymentViewModel: ObservableObject {
         
         var productIdentifier: String {
             switch self {
-            case .monthly: return "amped_monthly_subscription"
-            case .annual: return "amped_annual_subscription"
+            case .monthly: return "ai.ampedlife.amped.weekly"
+            case .annual: return "ai.ampedlife.amped.monthly"
             }
         }
     }
