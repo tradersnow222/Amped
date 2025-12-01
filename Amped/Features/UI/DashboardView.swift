@@ -249,6 +249,19 @@ struct DashboardView: View {
                 if showingProjectionHelp {
                     projectionHelpOverlay
                 }
+                
+                // Global fullscreen loading overlay (covers tabs and everything)
+                if viewModel.isLoading {
+                    ZStack {
+                        Color.black.opacity(0.2)
+                            .ignoresSafeArea()
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(2)
+                    }
+                    .transition(.opacity)
+                    .zIndex(1000)
+                }
             }
             .ignoresSafeArea(.keyboard)
             .sheet(isPresented: $showingUpdateHealthProfile) {
@@ -440,16 +453,7 @@ struct DashboardView: View {
                     .padding(.top, 20)
                 }
             }
-            .opacity(viewModel.isLoading ? 0.3 : 1)   // hide dashboard when loading
-            
-            // Fullscreen loading overlay
-            if viewModel.isLoading {
-                Color.black.opacity(0.4).ignoresSafeArea()
-                
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(2)
-            }
+            .opacity(viewModel.isLoading ? 0.2 : 1)   // dim dashboard content while loading
             
             // Streak milestone overlay (from StreakManager via ViewModel)
             if viewModel.showStreakCelebration {
