@@ -205,7 +205,11 @@ struct SubscriptionView: View {
                     }
                 } else {
                     appState.updateSubscriptionStatus(false, inTrial: true)
-                    dismiss()
+                    if isFromOnboarding {
+                        onContinue?(true)
+                    } else {
+                        dismiss()
+                    }
                 }
             } label: {
                 VStack(spacing: 0) {
@@ -300,7 +304,7 @@ struct SubscriptionView: View {
                 .foregroundColor(.white)
                 .padding(.bottom, 4)
 
-            FeatureRow(icon: "habbitIcon", title: "Habit Impact", description: "SSee how specific metrics affects your lifespan, minute by minute.")
+            FeatureRow(icon: "habbitIcon", title: "Habit Impact", description: "See how specific metrics affects your lifespan, minute by minute.")
             FeatureRow(icon: "insightIcon", title: "Deep Insights", description: "Track each habit’s historical impact across days, months, and years.")
             FeatureRow(icon: "lifeGainIcon", title: "Life Gain Plan", description: "Compare your current path vs optimal habits to see time gained.")
             FeatureRow(icon: "streakIcon", title: "Streaks", description: "Stay consistent and keep your life battery charged.")
