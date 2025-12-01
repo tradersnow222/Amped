@@ -2025,7 +2025,7 @@ extension DashboardView {
 }
 
 // MARK: - Chart Data Model
-struct ChartDataPoint {
+struct ChartDataPoint: Identifiable, Hashable {
     let id = UUID()
     let date: Date
     let value: Double
