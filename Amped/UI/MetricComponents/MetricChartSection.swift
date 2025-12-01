@@ -242,12 +242,12 @@ struct MetricChartSection: View {
 
             // negative (red)
             ForEach(Array(segments.neg.enumerated()), id: \.offset) { idx, seg in
-                SegmentAreaLine(segment: seg, color: .red, seriesID: "neg-\(idx)")
+                SegmentAreaAndLine(segment: seg, color: .red, seriesID: "neg-\(idx)")
             }
 
             // positive (green)
             ForEach(Array(segments.pos.enumerated()), id: \.offset) { idx, seg in
-                SegmentAreaLine(segment: seg, color: .green, seriesID: "pos-\(idx)")
+                SegmentAreaAndLine(segment: seg, color: .green, seriesID: "pos-\(idx)")
             }
 
             // Zero baseline
@@ -348,22 +348,37 @@ struct MetricChartSection: View {
         }
     }
 
-    private struct SegmentAreaLine: ChartContent {
+    // Draws the shaded area and the line for a single contiguous segment (either all ≥0 or all <0)
+    private struct SegmentAreaAndLine: ChartContent {
         let segment: [ChartDataPoint]
         let color: Color
         let seriesID: String
 
         var body: some ChartContent {
-            ForEach(segment) { p in
+            // Area (y from 0 to value)
+            ForEach(segment, id: \.id) { p in
+                AreaMark(
+                    x: .value("Date", p.date),
+                    yStart: .value("Zero", 0.0),
+                    yEnd: .value("Delta", p.value),
+                    series: .value("seg", seriesID)
+                )
+                .interpolationMethod(.monotone)
+                .foregroundStyle(
+                    color == .green
+                        ? LinearGradient(colors: [Color.green.opacity(0.35), .clear], startPoint: .top, endPoint: .bottom)
+                        : LinearGradient(colors: [Color.red.opacity(0.35), .clear], startPoint: .top, endPoint: .bottom)
+                )
+            }
+
+            // Line
+            ForEach(segment, id: \.id) { p in
                 LineMark(
                     x: .value("Date", p.date),
                     y: .value("Value", p.value),
-                    series: .value("seg", seriesID) // unique per segment so Charts won't bridge
+                    series: .value("seg", seriesID)
                 )
-                .interpolationMethod(
-                    // Prefer monotone if available to avoid overshoot, else fall back to linear
-                    .monotone
-                )
+                .interpolationMethod(.monotone)
                 .foregroundStyle(color)
                 .lineStyle(.init(lineWidth: 3.2, lineCap: .round))
             }
