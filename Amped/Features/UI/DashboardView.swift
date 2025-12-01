@@ -627,7 +627,7 @@ struct DashboardView: View {
             }
             
             // Header line (centered)
-            Text("Today, your habits collectively \(totalTimeImpact >= 0 ? "added" : "reduced")")
+            Text("\(periodLabel), your habits collectively \(totalTimeImpact >= 0 ? "added" : "reduced")")
                 .font(.system(size: 16, weight: .regular))
                 .foregroundColor(.white.opacity(0.9))
                 .multilineTextAlignment(.center)
@@ -1908,6 +1908,14 @@ extension DashboardView {
         case .day: return "Today’s"
         case .month: return "This month’s"
         case .year: return "This year’s"
+        }
+    }
+    
+    private var periodLabel: String {
+        switch selectedPeriod {
+        case .day: return "Today"
+        case .month: return "This month"
+        case .year: return "This year"
         }
     }
     
