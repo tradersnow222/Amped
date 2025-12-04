@@ -15,7 +15,7 @@ struct BeforeAfterTransformationView: View {
     
     var body: some View {
         let isRegular = hSizeClass == .regular
-        let bottomButtonPadding: CGFloat = isRegular ? 450 : 30
+        let bottomButtonPadding: CGFloat = isRegular ? 750 : 30
         
         ZStack {
             

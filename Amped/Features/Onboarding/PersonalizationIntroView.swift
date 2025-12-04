@@ -19,7 +19,7 @@ struct PersonalizationIntroView: View {
     
     var body: some View {
         let isRegular = hSizeClass == .regular
-        let bottomButtonPadding: CGFloat = isRegular ? 400 : 30
+        let bottomButtonPadding: CGFloat = isRegular ? 750 : 30
         
         ZStack {
             

@@ -299,7 +299,7 @@ final class MetricDetailViewModel: ObservableObject {
             return dailyImpact * 30.0
         case .year:
             return dailyImpact * 365.0
-        }
+        } 
     }
     
     // Computed properties for the power level indicator

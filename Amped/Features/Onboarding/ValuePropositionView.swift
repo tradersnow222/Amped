@@ -53,7 +53,7 @@ struct ValuePropositionView: View {
     
     var body: some View {
         let isRegular = hSizeClass == .regular
-        let bottomButtonPadding: CGFloat = isRegular ? 450 : 50
+        let bottomButtonPadding: CGFloat = isRegular ? 750 : 50
         
         ZStack {
             
