@@ -25,6 +25,33 @@ struct SubscriptionView: View {
     var isFromOnboarding: Bool
     var onContinue: ((Bool) -> Void)?
 
+    // MARK: - Adaptive Sizing (match MascotNamingView pattern)
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var contentMaxWidth: CGFloat { isPad ? 640 : .infinity }
+    private var headerIconSize: CGFloat { isPad ? 24 : 20 }
+    private var headerProfileSize: CGFloat { isPad ? 52 : 44 }
+    private var headerTopPadding: CGFloat { isPad ? 10 : 5 }
+    private var headerHorizontalPadding: CGFloat { isPad ? 28 : 16 }
+    private var titleFontSize: CGFloat { isPad ? 26 : 20 }
+    private var sectionSpacing: CGFloat { isPad ? 28 : 24 }
+    private var cardSpacing: CGFloat { isPad ? 18 : 16 }
+    private var productCardCorner: CGFloat { isPad ? 20 : 18 }
+    private var featureTitleFontSize: CGFloat { isPad ? 18 : 16 }
+    private var featureRowTitleFont: Font { .system(size: isPad ? 15 : 13, weight: .medium) }
+    private var featureRowDescFont: Font { .system(size: isPad ? 13 : 11, weight: .regular) }
+    private var ctaFontSize: CGFloat { isPad ? 22 : 20 }
+    private var ctaVerticalPadding: CGFloat { isPad ? 12 : 8 }
+    private var footerSpacing: CGFloat { isPad ? 20 : 18 }
+    private var footerBottomPadding: CGFloat { isPad ? 20 : 5 }
+    private var skipFontSize: CGFloat { isPad ? 18 : 16 }
+    private var trialTextFontSize: CGFloat { isPad ? 14 : 12 }
+    private var loaderFontSize: CGFloat { isPad ? 16 : 14 }
+    private var featuresBottomPadding: CGFloat { isPad ? 160 : 120 }
+    private var productGridColumns: [GridItem] {
+        // Use 2 columns on iPad regular width; single column on iPhone
+        isPad ? [GridItem(.flexible(), spacing: cardSpacing), GridItem(.flexible(), spacing: cardSpacing)] : [GridItem(.flexible())]
+    }
+
     var body: some View {
         ZStack {
             LinearGradient.customBlueToDarkGray
@@ -41,13 +68,17 @@ struct SubscriptionView: View {
                             Image("backIcon")
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 20, height: 20)
+                                .frame(width: headerIconSize, height: headerIconSize)
                         }
                         .padding(.leading)
-                        ProfileImageView(size: 44, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
-                            .padding(.top,5)
+
+                        ProfileImageView(size: headerProfileSize, showBorder: false, showEditIndicator: false, showWelcomeMessage: false)
+                            .padding(.top, headerTopPadding)
+
                         Spacer()
                     }
+                    .padding(.horizontal, headerHorizontalPadding)
+                    .frame(maxWidth: .infinity)
                 } else {
                     HStack(spacing: 10) {
                         Spacer()
@@ -55,34 +86,35 @@ struct SubscriptionView: View {
                             onContinue?(false)
                         } label: {
                             Text("Skip")
-                                .font(.poppins(16, weight: .semibold))
+                                .font(.poppins(skipFontSize, weight: .semibold))
                                 .foregroundColor(.white)
                                 .underline()
                         }
-                        .padding()
+                        .padding(.horizontal, headerHorizontalPadding)
+                        .padding(.vertical, isPad ? 12 : 8)
                     }
+                    .frame(maxWidth: .infinity)
                 }
 
                 // MARK: Loader
                 if store.isLoadingProducts {
                     VStack {
                         Spacer()
-                        
                         ProgressView("Loading plans...")
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .foregroundColor(.white)
-                        
+                            .font(.system(size: loaderFontSize))
                         Spacer()
                     }
                 } else {
-                    ScrollView {
-                        VStack(spacing: 24) {
-                            
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: sectionSpacing) {
+                            // Title
                             HStack {
                                 Text("Choose Your Plan")
-                                    .font(.poppins(20, weight: .semibold))
+                                    .font(.poppins(titleFontSize, weight: .semibold))
                                     .foregroundColor(.white)
-                                    .padding(.top)
+                                    .padding(.top, isPad ? 8 : 4)
                                 Spacer()
                             }.padding(.horizontal)
                             
@@ -98,11 +130,13 @@ struct SubscriptionView: View {
                                     }
                                 }
                             }
-                            .padding(.horizontal)
-                            
+
+                            // MARK: Features
                             featuresSection
-                                .padding(.horizontal)
                         }
+                        .padding(.horizontal, isPad ? 40 : 16)
+                        .padding(.top, isPad ? 12 : 0)
+                        .frame(maxWidth: .infinity)
                     }
                     .onAppear {
                         if selectedProduct == nil {
@@ -111,25 +145,28 @@ struct SubscriptionView: View {
                     }
                     // Footer
                     subscriptionFooter
+                        .frame(maxWidth: contentMaxWidth)
+                        .padding(.horizontal, isPad ? 40 : 16)
+                        .frame(maxWidth: .infinity)
                 }
             }
-            // MARK: Loader
+
+            // MARK: Purchasing/Restoring Overlay
             if store.isPurchasing || store.isRestoring {
                 ZStack {
                     Color.black
                         .opacity(0.7)
-                        .ignoresSafeArea()   // covers full screen
-                    
+                        .ignoresSafeArea()
+
                     VStack {
                         Spacer()
-                        
                         ProgressView(store.isPurchasing ? "Processing purchase..." : "Restoring your purchase...")
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .foregroundColor(.white)
-                        
+                            .font(.system(size: loaderFontSize))
                         Spacer()
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity) // forces full size
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
 
@@ -193,7 +230,7 @@ struct SubscriptionView: View {
 
     // MARK: Footer
     private var subscriptionFooter: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: footerSpacing) {
 
             Button {
                 guard let selectedProduct = selectedProduct else { return }
@@ -212,30 +249,26 @@ struct SubscriptionView: View {
                     }
                 }
             } label: {
-                VStack(spacing: 0) {
+                VStack(spacing: 4) {
                     Text(appState.isInTrial ? "Subscribe" : "Try for free")
                         .foregroundColor(.black)
-                        .font(.poppins(20, weight: .medium))
-//                    Text(selectedProduct?.description ?? "")
-//                        .font(.poppins(12, weight: .medium))
-//                        .foregroundColor(.white.opacity(0.7))
+                        .font(.poppins(ctaFontSize, weight: .medium))
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
+                .padding(.vertical, ctaVerticalPadding)
                 .background(
                     LinearGradient(colors: gradientColors, startPoint: .leading, endPoint: .trailing)
                 )
                 .cornerRadius(100)
-                .padding(.horizontal)
             }
             .disabled(selectedProduct == nil)
 
             Text(
                 appState.isInTrial ? appState.formattedTrialExpiryStatus() : selectedProduct?.description ?? ""
             )
-            .font(.poppins(12, weight: .medium))
+            .font(.poppins(trialTextFontSize, weight: .medium))
             .foregroundColor(.white).opacity(0.8)
-            
+
             Button {
                 Task {
                     let result = await store.restorePurchases()
@@ -243,11 +276,11 @@ struct SubscriptionView: View {
                 }
             } label: {
                 Text("Restore")
-                    .font(.poppins(18, weight: .medium))
+                    .font(.poppins(isPad ? 20 : 18, weight: .medium))
                     .foregroundColor(.white)
             }
         }
-        .padding(.bottom, 5)
+        .padding(.bottom, footerBottomPadding)
     }
 
     // MARK: - Purchase Result Handler
@@ -297,12 +330,11 @@ struct SubscriptionView: View {
 
     // MARK: Features
     private var featuresSection: some View {
-        // Your Subscription Unlocks section
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: isPad ? 18 : 16) {
             Text("Amped Lifespan Premium Unlocks:")
-                .font(.poppins(16, weight: .bold))
+                .font(.poppins(featureTitleFontSize, weight: .bold))
                 .foregroundColor(.white)
-                .padding(.bottom, 4)
+                .padding(.bottom, isPad ? 6 : 4)
 
             FeatureRow(icon: "habbitIcon", title: "Habit Impact", description: "See how specific metrics affects your lifespan, minute by minute.")
             FeatureRow(icon: "insightIcon", title: "Deep Insights", description: "Track each habit’s historical impact across days, months, and years.")
@@ -310,7 +342,7 @@ struct SubscriptionView: View {
             FeatureRow(icon: "streakIcon", title: "Streaks", description: "Stay consistent and keep your life battery charged.")
             FeatureRow(icon: "smartIcon", title: "Smart Recommendations", description: "Get personalized ways to earn time back faster.")
         }
-        .padding(.bottom, 120)
+        .padding(.bottom, featuresBottomPadding)
     }
 }
 
@@ -321,7 +353,16 @@ struct DynamicPlanCard: View {
     let isSelected: Bool
     let gradientColors: [Color]
     let onSelect: () -> Void
-    
+
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var cornerRadius: CGFloat { isPad ? 20 : 18 }
+    private var radioOuterSize: CGFloat { isPad ? 24 : 22 }
+    private var radioInnerSize: CGFloat { isPad ? 14 : 12 }
+    private var titleFont: Font { .system(size: isPad ? 18 : 16, weight: .medium) }
+    private var priceFont: Font { .system(size: isPad ? 16 : 14, weight: .regular) }
+    private var verticalPadding: CGFloat { isPad ? 20 : 18 }
+    private var horizontalPadding: CGFloat { isPad ? 18 : 16 }
+
     var body: some View {
         VStack {
             // Perfect radio dot
@@ -330,7 +371,7 @@ struct DynamicPlanCard: View {
                 ZStack {
                     Circle()
                         .stroke(Color.white.opacity(0.35), lineWidth: 1.5)
-                        .frame(width: 22, height: 22)
+                        .frame(width: radioOuterSize, height: radioOuterSize)
                     
                     if isSelected {
                         Circle()
@@ -341,7 +382,7 @@ struct DynamicPlanCard: View {
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 12, height: 12)
+                            .frame(width: radioInnerSize, height: radioInnerSize)
                     }
                 }
             }
@@ -350,7 +391,7 @@ struct DynamicPlanCard: View {
                 VStack(alignment: .leading, spacing: 6) {
                     
                     Text(product.displayName)
-                        .font(.system(size: 16, weight: .medium))
+                        .font(titleFont)
                         .foregroundColor(
                             isSelected
                             ? Color(hex: "#18EF47")
@@ -358,7 +399,7 @@ struct DynamicPlanCard: View {
                         )
                     
                     Text(product.displayPrice)
-                        .font(.system(size: 14, weight: .regular))
+                        .font(priceFont)
                         .foregroundColor(
                             isSelected
                             ? Color(hex: "#18EF47").opacity(0.8)
@@ -368,13 +409,13 @@ struct DynamicPlanCard: View {
                 Spacer()
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 18)
+        .padding(.horizontal, horizontalPadding)
+        .padding(.vertical, verticalPadding)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(Color.white.opacity(0.08))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18)
+                    RoundedRectangle(cornerRadius: cornerRadius)
                         .stroke(
                             isSelected ?
                             AnyShapeStyle(
@@ -398,20 +439,22 @@ struct FeatureRow: View {
     let title: String
     let description: String
 
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var iconSize: CGFloat { isPad ? 34 : 30 }
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(icon)
                 .font(.title2)
-                .foregroundColor(Color(hex: "#18EF47")) // Green color for icons
-                .frame(width: 30, height: 30)
+                .foregroundColor(Color(hex: "#18EF47"))
+                .frame(width: iconSize, height: iconSize)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+                    .font(.system(size: isPad ? 15 : 13, weight: .medium))
                     .foregroundColor(.white)
                 Text(description)
-                    .font(.caption)
+                    .font(.system(size: isPad ? 13 : 11, weight: .regular))
                     .foregroundColor(.white.opacity(0.7))
             }
             Spacer()
