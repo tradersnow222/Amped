@@ -14,20 +14,26 @@ struct PersonalizationIntroView: View {
     var onContinue: (() -> Void)?
     
     @Environment(\.horizontalSizeClass) private var hSizeClass
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
     
     // MARK: - Body
     
     var body: some View {
-        let isRegular = hSizeClass == .regular
-        let bottomButtonPadding: CGFloat = isRegular ? 750 : 30
-        
         ZStack {
             
-            Image("femaleBg")
-                .resizable()
-                .scaledToFill()
-                .opacity(0.40)
-                .ignoresSafeArea()
+            if isPad {
+                Image("femaleBg")
+                    .resizable()
+                    .scaledToFit()
+                    .opacity(0.40)
+                    .ignoresSafeArea()
+            } else {
+                Image("femaleBg")
+                    .resizable()
+                    .scaledToFill()
+                    .opacity(0.40)
+                    .ignoresSafeArea()
+            }
             
             LinearGradient.ampBlueGradient
                 .ignoresSafeArea()
@@ -39,7 +45,7 @@ struct PersonalizationIntroView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Sync Your World. \nSee the Truth.")
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .font(.poppins(40, weight: .bold))
+                        .font(.poppins(isPad ? 55 : 40, weight: .bold))
                         .foregroundColor(.white)
                         .shadow(radius: 3)
                         .opacity(animateElements ? 1 : 0)
@@ -50,7 +56,7 @@ struct PersonalizationIntroView: View {
                     
                     Text("Connect Apple Health and let Amped \nturn your steps, sleep, and workouts into \nreal time gained or lost.")
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .font(.poppins(18))
+                        .font(.poppins(isPad ? 28 : 18))
                         .foregroundColor(.white.opacity(0.85))
                         .opacity(animateElements ? 1 : 0)
                         .offset(y: animateElements ? 0 : 40)
@@ -67,7 +73,7 @@ struct PersonalizationIntroView: View {
                     onContinue?()
                 }
             }
-            .padding(.bottom, bottomButtonPadding)
+            .padding(.bottom, 40)
         }
         .onAppear {
             // Trigger animation when the view appears

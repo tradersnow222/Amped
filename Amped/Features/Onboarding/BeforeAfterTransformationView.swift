@@ -10,20 +10,27 @@ struct BeforeAfterTransformationView: View {
     var onContinue: (() -> Void)?
     
     @Environment(\.horizontalSizeClass) private var hSizeClass
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
     
     // MARK: - Body
     
     var body: some View {
-        let isRegular = hSizeClass == .regular
-        let bottomButtonPadding: CGFloat = isRegular ? 750 : 30
         
         ZStack {
             
-            Image("femaleBg")
-                .resizable()
-                .scaledToFill()
-                .opacity(0.40)
-                .ignoresSafeArea()
+            if isPad {
+                Image("femaleBg")
+                    .resizable()
+                    .scaledToFit()
+                    .opacity(0.40)
+                    .ignoresSafeArea()
+            } else {
+                Image("femaleBg")
+                    .resizable()
+                    .scaledToFill()
+                    .opacity(0.40)
+                    .ignoresSafeArea()
+            }
             
             LinearGradient.ampBlueGradient
                 .ignoresSafeArea()
@@ -35,7 +42,7 @@ struct BeforeAfterTransformationView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Powered by \nReal Science, \nNot Guesswork.")
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .font(.poppins(40, weight: .bold))
+                        .font(.poppins(isPad ? 55 : 40, weight: .bold))
                         .foregroundColor(.white)
                         .shadow(radius: 3)
                         .opacity(animateElements ? 1 : 0)
@@ -46,7 +53,7 @@ struct BeforeAfterTransformationView: View {
                     
                     Text("Science-backed insights from Harvard \n& AHA on how your habits impact your \nlifespan.")
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .font(.poppins(18))
+                        .font(.poppins(isPad ? 28 : 18))
                         .foregroundColor(.white.opacity(0.85))
                         .opacity(animateElements ? 1 : 0)
                         .offset(y: animateElements ? 0 : 40)
@@ -63,7 +70,7 @@ struct BeforeAfterTransformationView: View {
                     onContinue?()
                 }
             }
-            .padding(.bottom, bottomButtonPadding)
+            .padding(.bottom, 40)
         }
         .onAppear {
             // Trigger animation when the view appears
