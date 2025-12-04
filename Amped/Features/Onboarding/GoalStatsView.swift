@@ -24,6 +24,22 @@ struct GoalsStatsView: View {
     private var buttonHeight: CGFloat { isPad ? 60 : 56 }
     private var buttonFontSize: CGFloat { isPad ? 22 : 20 }
     private var dialPadding: CGFloat { isPad ? 100 : 16 }
+    
+    // Dynamic paddings for GoalDial based on screen size (keeps roughly same visual layout)
+    private var dialTopPaddingDynamic: CGFloat {
+        let h = UIScreen.main.bounds.height
+        guard isPad else { return max(20, h * 0.10) }
+        return max(160, h * 0.20)
+    }
+    private var dialLeadingPaddingDynamic: CGFloat {
+        let w = UIScreen.main.bounds.width
+        if isPad {
+            // About ~30% of width
+            return max(140, w * 0.30)
+        } else {
+            return max(30, w * 0.15)
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -61,14 +77,10 @@ struct GoalsStatsView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, isPad ? 60 : 40)
 
-                HStack {
-                    Spacer()
-                    GoalDial(minutes: $minutes)
-                        .padding(dialPadding)
-                        .padding(.bottom, dialPadding)
-                    Spacer()
-                }
-                .padding(.top, isPad ? 10 : 0)
+                // Goal Dial with dynamic paddings derived from screen size
+                GoalDial(minutes: $minutes)
+                    .padding(.top, dialTopPaddingDynamic)
+                    .padding(.leading, dialLeadingPaddingDynamic)
                 
                 Spacer()
                 
