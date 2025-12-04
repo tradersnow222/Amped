@@ -10,72 +10,68 @@ struct GoalsStatsView: View {
     @EnvironmentObject private var appState: AppState
 
     var isFromSettings: Bool = false
-    // Angle represents progress around the circle (0 - 360)
-    @State private var angle: Double = 60 // default ~10 mins (10/60 * 360 = 60)
-    @State private var minutes: Int = 10  // quantized to 5-minute steps
+    @State private var angle: Double = 60
+    @State private var minutes: Int = 10
     
     var onContinue: ((String) -> Void)?
     var onBack: (() -> Void)?
     
-    private let dialSize: CGFloat = 260
-    private let trackWidth: CGFloat = 12
-    private let progressWidth: CGFloat = 14
-    private let knobSize: CGFloat = 32
-    
+    // Adaptive sizing
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var titleSize: CGFloat { isPad ? 32 : 26 }
+    private var subtitleSize: CGFloat { isPad ? 20 : 18 }
+    private var backIconSize: CGFloat { isPad ? 24 : 20 }
+    private var buttonHeight: CGFloat { isPad ? 60 : 56 }
+    private var buttonFontSize: CGFloat { isPad ? 22 : 20 }
+    private var dialPadding: CGFloat { isPad ? 100 : 16 }
+
     var body: some View {
         ZStack {
-            // Background
             LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
             
-            VStack(spacing: 28) {
-                // Back button row
+            VStack(spacing: isPad ? 32 : 28) {
                 HStack {
                     Button(action: { onBack?() }) {
                         Image("backIcon")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 20, height: 20)
+                            .frame(width: backIconSize, height: backIconSize)
                             .opacity(0.9)
                     }
                     .padding(.leading, 24)
-                    .padding(.top, 8)
+                    .padding(.top, isPad ? 12 : 8)
                     Spacer()
                 }
                 .frame(maxWidth: .infinity)
                 
-                // Title
                 Text("Let's set some goals!")
-                    .font(.poppins(26, weight: .semibold))
+                    .font(.poppins(titleSize, weight: .semibold))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
                     .padding(.top, 8)
                 
-                // Subtitle
                 Text("Choose how much time you want to add to your projected lifespan each day.")
-                    .font(.poppins(18, weight: .medium))
+                    .font(.poppins(subtitleSize, weight: .medium))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
                     .lineLimit(3)
                     .truncationMode(.tail)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 40)
+                    .padding(.horizontal, isPad ? 60 : 40)
 
-                // Dial
                 HStack {
                     Spacer()
                     GoalDial(minutes: $minutes)
-                        .padding()
-                        .padding()
-                        .padding()
+                        .padding(dialPadding)
+                        .padding(.bottom, dialPadding)
                     Spacer()
                 }
-                .padding()
+                .padding(.top, isPad ? 10 : 0)
                 
                 Spacer()
                 
-                // Continue Button
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.25)) {
                         onContinue?("\(minutes)")
@@ -83,26 +79,23 @@ struct GoalsStatsView: View {
                 }) {
                     HStack(spacing: 8) {
                         Text("Continue")
-                            .font(.poppins(20, weight: .medium))
+                            .font(.poppins(buttonFontSize, weight: .medium))
                         Image(systemName: "arrow.right")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: isPad ? 19 : 17, weight: .semibold))
                     }
                     .foregroundColor(.black)
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .frame(height: 56)
+                    .frame(height: buttonHeight)
                     .background(LinearGradient.ampButtonGradient)
                     .cornerRadius(30)
                     .padding(.horizontal, 30)
                     .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 3)
                 }
-                .padding(.bottom, 50)
+                .padding(.bottom, isPad ? 60 : 50)
             }
         }
         .onAppear {
-            // ensure angle and minutes are in sync on first load
-            
-            // If launched from Settings, prefill from defaults
             if isFromSettings {
                 let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userGoalStats)
                 if !saved.isEmpty {
@@ -128,32 +121,28 @@ struct GoalsStatsView: View {
 
 struct GoalDial: View {
 
-    @Binding var minutes: Int   // 0...60
+    @Binding var minutes: Int
     @State private var angle: Double = 0
     
-    // MARK: Config
-    private let trackWidth: CGFloat = 10
-    private let progressWidth: CGFloat = 12
-    private let knobSize: CGFloat = 24
-    private let dialSize: CGFloat = 280
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var trackWidth: CGFloat { isPad ? 12 : 10 }
+    private var progressWidth: CGFloat { isPad ? 14 : 12 }
+    private var knobSize: CGFloat { isPad ? 28 : 24 }
+    private var dialSize: CGFloat { isPad ? 340 : 280 }
+    private var centerTitleSize: CGFloat { isPad ? 20 : 18 }
 
     var body: some View {
         GeometryReader { geo in
-            
             let size = min(geo.size.width, geo.size.height)
             let center = CGPoint(x: size / 2, y: size / 2)
-            
-            // Main radius for progress ring + knob
             let radius = (size - trackWidth) / 2 - (progressWidth / 2)
 
             ZStack {
-                
                 backgroundDial(size: size)
                 tickMarks(size: size - trackWidth * 2)
                 progressRing(size: size, progress: Double(minutes) / 60)
                 centerContent()
                 knobView(center: center, radius: radius)
-                
             }
             .frame(width: size, height: size)
             .onAppear { syncAngleWithMinutes() }
@@ -161,7 +150,6 @@ struct GoalDial: View {
         .frame(height: dialSize)
     }
 
-    // MARK: - Background
     private func backgroundDial(size: CGFloat) -> some View {
         ZStack {
             Circle()
@@ -173,7 +161,6 @@ struct GoalDial: View {
         }
     }
 
-    // MARK: - Progress Ring
     private func progressRing(size: CGFloat, progress: Double) -> some View {
         Circle()
             .trim(from: 0, to: progress)
@@ -194,28 +181,25 @@ struct GoalDial: View {
             .frame(width: size - trackWidth)
     }
 
-    // MARK: - Center Content
     private func centerContent() -> some View {
         VStack(spacing: 6) {
             Image("goalBattery")
                 .renderingMode(.template)
                 .foregroundColor(.white.opacity(0.9))
-                .frame(width: 22, height: 22)
+                .frame(width: isPad ? 26 : 22, height: isPad ? 26 : 22)
 
             Text("\(minutes) Mins")
                 .foregroundColor(.white)
-                .font(.poppins(18, weight: .medium))
+                .font(.poppins(centerTitleSize, weight: .medium))
         }
     }
 
-    // MARK: - Knob
     private func knobView(center: CGPoint, radius: CGFloat) -> some View {
         knob()
             .position(knobPosition(center: center, radius: radius, angle: angle))
             .gesture(dragGesture(center: center))
     }
 
-    // Knob design
     private func knob() -> some View {
         Circle()
             .fill(Color.white)
@@ -227,11 +211,9 @@ struct GoalDial: View {
             )
     }
 
-    // MARK: - Drag Logic
     private func dragGesture(center: CGPoint) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
-                
                 let vector = CGVector(
                     dx: value.location.x - center.x,
                     dy: value.location.y - center.y
@@ -247,7 +229,6 @@ struct GoalDial: View {
             }
     }
 
-    // MARK: - Logic
     private func updateMinutesFromAngle() {
         let rawMinutes = angle / 360 * 60
         let stepped = round(rawMinutes / 5) * 5
@@ -259,17 +240,13 @@ struct GoalDial: View {
         angle = Double(minutes) / 60 * 360
     }
 
-    // MARK: - Knob Position
     private func knobPosition(center: CGPoint, radius: CGFloat, angle: Double) -> CGPoint {
         let radians = (angle - 90) * .pi / 180
-        
         let x = center.x + radius * cos(radians)
         let y = center.y + radius * sin(radians)
-        
         return CGPoint(x: x, y: y)
     }
 
-    // MARK: - Tick Marks
     private func tickMarks(size: CGFloat) -> some View {
         ZStack {
             ForEach(0..<60, id: \.self) { i in
@@ -277,9 +254,9 @@ struct GoalDial: View {
 
                 Capsule()
                     .fill(Color.white.opacity(isMajor ? 0.8 : 0.5))
-                    .frame(width: isMajor ? 3 : 2,
-                           height: isMajor ? 16 : 8)
-                    .offset(y: -(size / 2) + (isMajor ? 12 : 15))
+                    .frame(width: isMajor ? (isPad ? 3.5 : 3) : 2,
+                           height: isMajor ? (isPad ? 18 : 16) : (isPad ? 10 : 8))
+                    .offset(y: -(size / 2) + (isMajor ? (isPad ? 14 : 12) : (isPad ? 16 : 15)))
                     .rotationEffect(.degrees(Double(i) * 6))
             }
         }

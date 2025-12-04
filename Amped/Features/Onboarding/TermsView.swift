@@ -41,6 +41,13 @@ struct TermsView: View {
     We reserve the right to update these Terms at any time. Continued use after updates constitutes acceptance of the revised Terms.
     """
     
+    // MARK: - Adaptive Sizing
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var headerFontSize: CGFloat { isPad ? 28 : 18 }
+    private var bodyFontSize: CGFloat { isPad ? 18 : 13 }
+    private var sectionTitleFontSize: CGFloat { isPad ? 20 : 14 }
+    private var lineSpacing: CGFloat { isPad ? 7 : 5 }
+    
     var body: some View {
         ZStack {
             // Use the parent black background from OnboardingFlow for consistency
@@ -51,9 +58,9 @@ struct TermsView: View {
                 HStack {
                     Button(action: { onBack?() }) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: isPad ? 20 : 17, weight: .semibold))
                             .foregroundColor(.white.opacity(0.9))
-                            .padding(8)
+                            .padding(isPad ? 10 : 8)
                             .background(Color.white.opacity(0.08))
                             .clipShape(Circle())
                     }
@@ -61,7 +68,7 @@ struct TermsView: View {
                     Spacer()
                     
                     Text("Terms of Use")
-                        .font(.poppins(18, weight: .semibold))
+                        .font(.poppins(headerFontSize, weight: .semibold))
                         .foregroundColor(.white)
                     
                     Spacer()
@@ -85,15 +92,15 @@ struct TermsView: View {
                             "6. Limitation of Liability",
                             "7. Changes to Terms"
                         ],
-                        color: .ampedGreen
+                        color: .ampedGreen,
+                        sectionTitleSize: sectionTitleFontSize
                     ))
-                    .font(.poppins(13, weight: .regular))
+                    .font(.poppins(bodyFontSize, weight: .regular))
                     .foregroundColor(.white.opacity(0.85))
                     .multilineTextAlignment(.leading)
-                    .lineSpacing(5)
+                    .lineSpacing(lineSpacing)
                     .padding(.top, 2)
                 }
-//                .frame(maxHeight: 360) // keep it compact
                 .scrollIndicators(.visible)
                 
                 Spacer()
@@ -108,10 +115,9 @@ struct TermsView: View {
                     onContinue?()
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 20)
-//            .frame(maxWidth: 600) // smaller on large screens
+            .padding(.horizontal, isPad ? 28 : 20)
+            .padding(.top, isPad ? 26 : 20)
+            .padding(.bottom, isPad ? 26 : 20)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(Color.black.opacity(0.55))
@@ -124,13 +130,13 @@ struct TermsView: View {
         }
     }
     
-    func highlight(_ full: String, words: [String], color: Color = .blue) -> AttributedString {
+    func highlight(_ full: String, words: [String], color: Color = .blue, sectionTitleSize: CGFloat) -> AttributedString {
         var text = AttributedString(full)
 
         for word in words {
             if let range = text.range(of: word) {
                 text[range].foregroundColor = color
-                text[range].font = .poppins(14, weight: .semibold)
+                text[range].font = .poppins(sectionTitleSize, weight: .semibold)
             }
         }
         return text

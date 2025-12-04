@@ -19,7 +19,6 @@ struct WeightStatsView: View {
 
     var isFromSettings: Bool = false
     @State private var selectedUnit: WeightUnit = Locale.defaultWeightUnit
-    // Default to 55 as requested
     @State private var selectedWeight: Int? = nil
     let progress: Double = 5
     var onContinue: ((String, String) -> Void)?
@@ -30,7 +29,16 @@ struct WeightStatsView: View {
         case lb = 1
     }
     
-    // Weight range based on unit
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var mascotSize: CGFloat { isPad ? 180 : 120 }
+    private var titleSize: CGFloat { isPad ? 34 : 26 }
+    private var progressHeight: CGFloat { isPad ? 16 : 12 }
+    private var progressTextSize: CGFloat { isPad ? 14 : 12 }
+    private var questionFontSize: CGFloat { isPad ? 18 : 16 }
+    private var segmentFontSize: CGFloat { isPad ? 16 : 14 }
+    private var segmentHeight: CGFloat { isPad ? 52 : 45 }
+    private var backIconSize: CGFloat { isPad ? 24 : 20 }
+    
     private var weightRange: [Int] {
         selectedUnit == .kg ? Array(30...150) : Array(66...350)
     }
@@ -40,76 +48,70 @@ struct WeightStatsView: View {
             LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
 
-            VStack(spacing: 24) {
+            VStack(spacing: isPad ? 28 : 24) {
                 
                 HStack {
                     Button(action: {
-                        // back action
                         onBack?()
                     }) {
                         Image("backIcon")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 20, height: 20)
+                            .frame(width: backIconSize, height: backIconSize)
                     }
                     .padding(.leading, 30)
-                    .padding(.top, 10)
+                    .padding(.top, isPad ? 16 : 10)
                     
-                    Spacer() // pushes button to leading
+                    Spacer()
                 }
                 
-                // Top mascot image
                 Image("Amped_8")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 120, height: 120)
-                    .shadow(color: Color.green.opacity(0.35), radius: 18, x: 0, y: 6)
-                    .padding(.top, 25)
+                    .frame(width: mascotSize, height: mascotSize)
+                    .shadow(color: Color.green.opacity(0.35), radius: isPad ? 18 : 18, x: 0, y: 6)
+                    .padding(.top, isPad ? 28 : 25)
 
                 Text("Let's set your stats!")
-                    .font(.poppins(26, weight: .bold))
+                    .font(.poppins(titleSize, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.top, 4)
 
-                // MARK: - Progress Bar
                 VStack(spacing: 4) {
                     ProgressView(value: progress, total: 13)
-                        .progressViewStyle(ThickProgressViewStyle(height: 12))
+                        .progressViewStyle(ThickProgressViewStyle(height: progressHeight))
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 40)
+                        .padding(.horizontal, isPad ? 60 : 40)
                     
                     Text("30%")
-                        .font(.poppins(12))
+                        .font(.poppins(progressTextSize))
                         .foregroundColor(.white.opacity(0.8))
                 }
-                .padding(.bottom, 30)
+                .padding(.bottom, isPad ? 28 : 30)
 
                 VStack(spacing: 8) {
                     Text("Enter your weight to complete your charge profile.")
-                        .font(.poppins(16, weight: .medium))
+                        .font(.poppins(isPad ? 18 : 16, weight: .medium))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .truncationMode(.tail)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 40)
+                        .padding(.horizontal, isPad ? 60 : 40)
                 }
                 .padding(.top, 8)
 
-                // Segmented unit control
                 HStack(spacing: 0) {
-                    // KG segment
                     Button(action: {
                         selectedUnit = .kg
-                        // Default selection for KG as requested
                         selectedWeight = 55
                     }) {
                         Text("KG")
-                            .font(.poppins(14, weight: .medium))
+                            .font(.poppins(segmentFontSize, weight: .medium))
                             .foregroundColor(selectedUnit == .kg ? .white : .white.opacity(0.8))
                             .frame(maxWidth: .infinity)
-                            .frame(height: 45)
+                            .frame(height: segmentHeight)
                             .background(
                                 Group {
                                     if selectedUnit == .kg {
@@ -126,17 +128,15 @@ struct WeightStatsView: View {
                     }
                     .frame(maxWidth: .infinity)
 
-                    // LB segment
                     Button(action: {
                         selectedUnit = .lb
-                        // Choose a sensible default for LB; convert 55 kg ≈ 121 lb
                         selectedWeight = 121
                     }) {
                         Text("LB")
-                            .font(.poppins(14, weight: .medium))
+                            .font(.poppins(segmentFontSize, weight: .medium))
                             .foregroundColor(selectedUnit == .lb ? .white : .white.opacity(0.8))
                             .frame(maxWidth: .infinity)
-                            .frame(height: 45)
+                            .frame(height: segmentHeight)
                             .background(
                                 Group {
                                     if selectedUnit == .lb {
@@ -165,29 +165,26 @@ struct WeightStatsView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 4)
 
-                // Horizontal Weight Picker
                 WeightPickerView(selectedWeight: $selectedWeight, weightRange: weightRange)
-                    .frame(height: 120)
+                    .frame(height: isPad ? 150 : 120)
                     .padding(.top, 6)
 
                 OnboardingContinueButton(
                     title: "Continue",
                     isEnabled: selectedWeight != nil,
                     animateIn: true,
-                    bottomPadding: 40
+                    bottomPadding: isPad ? 50 : 40
                 ) {
                     guard let weight = selectedWeight else { return }
                     
-                    // Normalize to KG for saving/calculation
                     let weightInKg: Int
                     if selectedUnit == .lb {
                         let kg = Double(weight) * 0.45359237
-                        weightInKg = Int((kg).rounded()) // round to nearest whole kg
+                        weightInKg = Int((kg).rounded())
                     } else {
                         weightInKg = weight
                     }
                     
-                    // Always pass KG as the unit string since we save in kg
                     onContinue?("\(weightInKg)", "KG")
                 }
                 Spacer()
@@ -195,7 +192,6 @@ struct WeightStatsView: View {
         }
         .navigationBarBackButtonHidden(false)
         .onAppear {
-            // If launched from Settings, prefill from defaults
             if isFromSettings {
                 let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userWeight)
                 if !saved.isEmpty {
@@ -203,7 +199,6 @@ struct WeightStatsView: View {
                 }
             }
             
-            // Auto default based on locale
             if selectedWeight == nil {
                 selectedWeight = (selectedUnit == .kg) ? 55 : 121
             }
@@ -215,8 +210,11 @@ struct WeightPickerView: View {
     @Binding var selectedWeight: Int?
     let weightRange: [Int]
     
-    private let itemSpacing: CGFloat = 14
-    private let itemSize: CGFloat = 100
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var itemSpacing: CGFloat { isPad ? 18 : 14 }
+    private var itemSize: CGFloat { isPad ? 120 : 100 }
+    private var selectedFontSize: CGFloat { isPad ? 52 : 44 }
+    private var unselectedFontSize: CGFloat { isPad ? 26 : 22 }
     
     @State private var itemCenters: [Int: CGFloat] = [:]
     @State private var isDragging = false
@@ -228,7 +226,6 @@ struct WeightPickerView: View {
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: itemSpacing) {
-                        // Leading spacer to center the first item
                         Color.clear
                             .frame(width: (geometry.size.width - itemSize) / 2)
                         
@@ -239,7 +236,6 @@ struct WeightPickerView: View {
                                 }
                             }) {
                                 ZStack {
-                                    // Selected ring
                                     if selectedWeight == weight {
                                         Circle()
                                             .strokeBorder(Color(hex: "#18EF47").opacity(0.9), lineWidth: 2)
@@ -248,7 +244,7 @@ struct WeightPickerView: View {
                                     }
                                     
                                     Text("\(weight)")
-                                        .font(.poppins(selectedWeight == weight ? 44 : 22, weight: selectedWeight == weight ? .bold : .regular))
+                                        .font(.poppins(selectedWeight == weight ? selectedFontSize : unselectedFontSize, weight: selectedWeight == weight ? .bold : .regular))
                                         .foregroundColor(selectedWeight == weight ? Color(hex: "#18EF47") : .white.opacity(0.45))
                                         .frame(width: itemSize, height: itemSize)
                                 }
@@ -266,7 +262,6 @@ struct WeightPickerView: View {
                             )
                         }
                         
-                        // Trailing spacer to center the last item
                         Color.clear
                             .frame(width: (geometry.size.width - itemSize) / 2)
                     }
@@ -283,9 +278,7 @@ struct WeightPickerView: View {
                         }
                         .onEnded { _ in
                             isDragging = false
-                            // Immediate snap
                             snapToNearestCenter(visibleWidth: geometry.size.width, proxy: proxy)
-                            // Post-deceleration safety snaps (covers inertial scrolling drift)
                             schedulePostDecelerationSnaps(visibleWidth: geometry.size.width, proxy: proxy)
                         }
                 )
@@ -303,7 +296,6 @@ struct WeightPickerView: View {
                         }
                     }
                 }
-                // If the range changes (e.g., unit switch), ensure we still have a valid selection and center it
                 .onChange(of: weightRange) { _ in
                     if let current = selectedWeight, !weightRange.contains(current) {
                         selectedWeight = weightRange.first
@@ -322,7 +314,6 @@ struct WeightPickerView: View {
         let visibleCenterX = visibleWidth / 2.0
         guard !itemCenters.isEmpty else { return }
         
-        // Find the value whose center is closest to the visible center
         let nearest = itemCenters.min { a, b in
             abs(a.value - visibleCenterX) < abs(b.value - visibleCenterX)
         }
@@ -364,9 +355,8 @@ struct WeightPickerView: View {
 }
 
 extension Locale {
-    /// Detects whether the user's region uses the metric system
     static var usesMetric: Bool {
-        Locale.current.usesMetricSystem   // ✔ instance property
+        Locale.current.usesMetricSystem
     }
     
     static var defaultHeightUnit: HeightStatsView.HeightUnit {

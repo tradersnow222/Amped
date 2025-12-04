@@ -17,6 +17,17 @@ struct MainReasonStatsView: View {
     var onSelection: ((String) -> Void)?
     var onBack: (() -> Void)?
     
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var mascotSize: CGFloat { isPad ? 180 : 120 }
+    private var titleSize: CGFloat { isPad ? 34 : 26 }
+    private var progressHeight: CGFloat { isPad ? 16 : 12 }
+    private var progressTextSize: CGFloat { isPad ? 14 : 12 }
+    private var questionFontSize: CGFloat { isPad ? 20 : 18 }
+    private var optionTitleSize: CGFloat { isPad ? 20 : 18 }
+    private var optionSubtitleSize: CGFloat { isPad ? 15 : 13 }
+    private var optionHeight: CGFloat { isPad ? 60 : 54 }
+    private var backIconSize: CGFloat { isPad ? 24 : 20 }
+    
     enum StressLevel: String, CaseIterable {
         case low = "Watch my family grow"
         case moderate = "Achieve my dreams"
@@ -41,63 +52,59 @@ struct MainReasonStatsView: View {
             LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
 
-            VStack(spacing: 24) {
+            VStack(spacing: isPad ? 28 : 24) {
                 
                 HStack {
                     Button(action: {
-                        // back action
                         onBack?()
                     }) {
                         Image("backIcon")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 20, height: 20)
+                            .frame(width: backIconSize, height: backIconSize)
                     }
                     .padding(.leading, 30)
                     
-                    Spacer() // pushes button to leading
+                    Spacer()
                 }
                 
-                // Top mascot image
                 Image("Amped_8")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 120, height: 120)
-                    .shadow(color: Color.green.opacity(0.35), radius: 18, x: 0, y: 6)
-                    .padding(.top, 25)
+                    .frame(width: mascotSize, height: mascotSize)
+                    .shadow(color: Color.green.opacity(0.35), radius: isPad ? 18 : 18, x: 0, y: 6)
+                    .padding(.top, isPad ? 28 : 25)
 
                 Text("Let's get familiar!")
-                    .font(.poppins(26, weight: .bold))
+                    .font(.poppins(titleSize, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.top, 4)
 
-                // MARK: - Progress Bar
                 VStack(spacing: 4) {
                     ProgressView(value: progress, total: 13)
-                        .progressViewStyle(ThickProgressViewStyle(height: 12))
+                        .progressViewStyle(ThickProgressViewStyle(height: progressHeight))
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 40)
+                        .padding(.horizontal, isPad ? 60 : 40)
                     
                     Text("100%")
-                        .font(.poppins(12))
+                        .font(.poppins(progressTextSize))
                         .foregroundColor(.white.opacity(0.8))
                 }
-                .padding(.bottom, 30)
+                .padding(.bottom, isPad ? 28 : 30)
 
                 VStack(spacing: 8) {
                     Text("What is the main reason you might want to live longer?")
-                        .font(.poppins(18, weight: .medium))
+                        .font(.poppins(questionFontSize, weight: .medium))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .truncationMode(.tail)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 40)
+                        .padding(.horizontal, isPad ? 60 : 40)
                 }
                 .padding(.top, 8)
 
-                // Stress Level Buttons
                 VStack(spacing: 16) {
                     ForEach(StressLevel.allCases, id: \.self) { level in
                         Button(action: {
@@ -110,19 +117,18 @@ struct MainReasonStatsView: View {
                         }) {
                             VStack(spacing: 1) {
                                 Text(level.rawValue)
-                                    .font(.poppins(18, weight: .semibold))
+                                    .font(.poppins(optionTitleSize, weight: .semibold))
                                     .foregroundColor(selectedStressLevel == level ? .white : .white.opacity(0.9))
                                     .multilineTextAlignment(.center)
                                 
-                                // Subtitle (only show if not empty)
                                 if !level.subtitle.isEmpty {
                                     Text(level.subtitle)
-                                        .font(.poppins(13, weight: .regular))
+                                        .font(.poppins(optionSubtitleSize, weight: .regular))
                                         .foregroundColor(selectedStressLevel == level ? .white.opacity(0.9) : .white.opacity(0.6))
                                 }
                             }
                             .frame(maxWidth: .infinity)
-                            .frame(height: 54)
+                            .frame(height: optionHeight)
                             .background(
                                 Group {
                                     if selectedStressLevel == level {
@@ -148,32 +154,6 @@ struct MainReasonStatsView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 16)
 
-//                OnboardingContinueButton(
-//                    title: "Continue",
-//                    isEnabled: selectedStressLevel != nil,
-//                    animateIn: true,
-//                    bottomPadding: 20
-//                ) {
-//                    guard let selectedStressLevel else { return }
-//                    onContinue?(selectedStressLevel.rawValue)
-//                }
-                
-                // Research info text (use as an info trigger)
-//                HStack(spacing: 8) {
-//                    Image(systemName: "book.closed")
-//                        .font(.system(size: 14))
-//                        .foregroundColor(.white.opacity(0.5))
-//                    
-//                    Button {
-//                        showSheet.toggle()
-//                    } label: {
-//                        Text("See how your current habits impact your lifespan.")
-//                            .font(.poppins(13, weight: .regular))
-//                            .foregroundColor(.white.opacity(0.5))
-//                    }
-//                }
-//                .padding(.horizontal, 32)
-//                .padding(.bottom, 20)
                 Spacer()
             }
         }
@@ -184,7 +164,6 @@ struct MainReasonStatsView: View {
         })
         .navigationBarHidden(true)
         .onAppear {
-            // If launched from Settings, prefill from defaults
             if isFromSettings {
                 let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userMainReasonStats)
                 if !saved.isEmpty {
@@ -238,17 +217,14 @@ private struct AggregateImpactSheetContent: View {
         let qm = QuestionnaireManager()
         let lifeService = LifeImpactService(userProfile: profile)
         
-        // Build metrics from current manual inputs
         let manualInputs = qm.getCurrentManualMetrics()
         let metrics: [HealthMetric] = manualInputs.map {
             HealthMetric(id: UUID().uuidString, type: $0.type, value: $0.value, date: $0.date, source: .userInput)
         }
         
-        // Calculate total daily impact (use .day period)
         let impactPoint = lifeService.calculateTotalImpact(from: metrics, for: .day)
         let dailyMinutes = impactPoint.totalImpactMinutes
         
-        // Prepare a friendly description
         let formatted = ImpactDataPoint.formatLifespanImpact(minutes: dailyMinutes)
         let summary = "Estimated total daily impact from your current habits: \(formatted)."
         

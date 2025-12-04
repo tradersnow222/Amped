@@ -15,6 +15,20 @@ struct MascotNamingView: View {
     // Onboarding flow continuation closure (unused when from Settings)
     var onContinue: ((String) -> Void)?
     
+    // MARK: - Adaptive Sizing
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var mascotSize: CGFloat { isPad ? 180 : 120 }
+    private var titleFontSize: CGFloat { isPad ? 34 : 26 }
+    private var progressHeight: CGFloat { isPad ? 16 : 12 }
+    private var progressTextSize: CGFloat { isPad ? 14 : 12 }
+    private var questionFontSize: CGFloat { isPad ? 22 : 18 }
+    private var textFieldFontSize: CGFloat { isPad ? 18 : 14 }
+    private var textFieldHeight: CGFloat { isPad ? 60 : 52 }
+    private var horizontalFieldPadding: CGFloat { isPad ? 80 : 40 }
+    private var verticalSpacing: CGFloat { isPad ? 36 : 30 }
+    private var topImagePadding: CGFloat { isPad ? 80 : 70 }
+    private var buttonBottomPadding: CGFloat { isPad ? 20 : 10 }
+    
     // MARK: - Body
     var body: some View {
         ZStack {
@@ -22,13 +36,14 @@ struct MascotNamingView: View {
             LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
             
-            VStack(spacing: 30) {
+            VStack(spacing: verticalSpacing) {
                 if isFromSettings {
                     HStack {
                         Spacer()
                         Button(action: { dismiss() }) {
                             Image(systemName: "xmark")
                                 .foregroundColor(.white)
+                                .font(.system(size: isPad ? 20 : 17, weight: .regular))
                         }
                         .padding()
                     }
@@ -38,50 +53,51 @@ struct MascotNamingView: View {
                 Image("Amped_8")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 120, height: 120)
-                    .shadow(color: Color.green.opacity(0.5), radius: 15, x: 0, y: 5)
-                    .padding(.top, 70)
+                    .frame(width: mascotSize, height: mascotSize)
+                    .shadow(color: Color.green.opacity(0.5), radius: isPad ? 18 : 15, x: 0, y: 5)
+                    .padding(.top, topImagePadding)
                 
                 // MARK: - Title
                 Text("Let’s get familiar!")
-                    .font(.poppins(26, weight: .bold))
+                    .font(.poppins(titleFontSize, weight: .bold))
                     .foregroundColor(.white)
                 
                 // MARK: - Progress Bar
-                VStack(spacing: 4) {
+                VStack(spacing: 6) {
                     ProgressView(value: progress, total: 13)
-                        .progressViewStyle(ThickProgressViewStyle(height: 12))
+                        .progressViewStyle(ThickProgressViewStyle(height: progressHeight))
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 40)
+                        .padding(.horizontal, isPad ? 80 : 40)
                     
                     Text("\(Int(progress))%")
-                        .font(.poppins(12))
+                        .font(.poppins(progressTextSize))
                         .foregroundColor(.white.opacity(0.8))
                 }
-                .padding(.bottom, 30)
+                .padding(.bottom, isPad ? 36 : 30)
                 
                 // MARK: - Question
                 Text("What should we call you?")
-                    .font(.poppins(18, weight: .medium))
+                    .font(.poppins(questionFontSize, weight: .medium))
                     .foregroundColor(.white)
-                    .padding(.bottom, 10)
+                    .padding(.bottom, isPad ? 12 : 10)
                 
                 // MARK: - TextField
                 ZStack {
                     if userName.isEmpty {
                         Text("Enter your name")
                             .foregroundColor(Color.white.opacity(0.2)) // 👈 placeholder color
+                            .font(.poppins(textFieldFontSize))
                     }
                     TextField("", text: $userName)
                         .padding()
-                        .frame(height: 52)
+                        .frame(height: textFieldHeight)
                         .frame(maxWidth: .infinity)
-                        .font(.poppins(14))
+                        .font(.poppins(textFieldFontSize))
                         .background(
                             RoundedRectangle(cornerRadius: 20)
                                 .stroke(Color(hex: "#0E8929"), lineWidth: 1)
                         )
-                        .padding(.horizontal, 40)
+                        .padding(.horizontal, horizontalFieldPadding)
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                         .textInputAutocapitalization(.words)
@@ -92,7 +108,7 @@ struct MascotNamingView: View {
                     title: "Continue",
                     isEnabled: !userName.isEmpty,
                     animateIn: true,
-                    bottomPadding: 10
+                    bottomPadding: buttonBottomPadding
                 ) {
                     if isFromSettings {
                         NotificationCenter.default.post(name: NSNotification.Name("ProfileDataUpdated"), object: nil)

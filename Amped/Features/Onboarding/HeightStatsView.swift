@@ -19,24 +19,32 @@ struct HeightStatsView: View {
     var isFromSettings: Bool = false
     @State private var selectedUnit: HeightUnit = Locale.defaultHeightUnit
     
-    // Default to 173 cm as requested
     @State private var selectedHeight: Int? = nil
     let progress: Double = 4
     var onContinue: ((String) -> Void)?
     var onBack: (() -> Void)?
     
     enum HeightUnit: Int {
-        case feet = 0   // We show inches when this is selected (e.g., 68 = 5'8")
+        case feet = 0
         case cm = 1
     }
     
-    // Ranges for height based on selected unit
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var mascotSize: CGFloat { isPad ? 180 : 120 }
+    private var titleSize: CGFloat { isPad ? 34 : 26 }
+    private var progressHeight: CGFloat { isPad ? 16 : 12 }
+    private var progressTextSize: CGFloat { isPad ? 14 : 12 }
+    private var questionFontSize: CGFloat { isPad ? 22 : 18 }
+    private var segmentFontSize: CGFloat { isPad ? 16 : 14 }
+    private var segmentHeight: CGFloat { isPad ? 52 : 45 }
+    private var backIconSize: CGFloat { isPad ? 24 : 20 }
+
     private var heightRange: [Int] {
         switch selectedUnit {
         case .cm:
-            return Array(120...220) // cm range
+            return Array(120...220)
         case .feet:
-            return Array(48...84)   // inches range (4'0" to 7'0")
+            return Array(48...84)
         }
     }
     
@@ -45,67 +53,61 @@ struct HeightStatsView: View {
             LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
 
-            VStack(spacing: 24) {
+            VStack(spacing: isPad ? 28 : 24) {
                 
                 HStack {
                     Button(action: {
-                        // back action
                         onBack?()
                     }) {
                         Image("backIcon")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 20, height: 20)
+                            .frame(width: backIconSize, height: backIconSize)
                     }
                     .padding(.leading, 30)
                     
-                    Spacer() // pushes button to leading
+                    Spacer()
                 }
                 
-                // Top mascot image
                 Image("Amped_8")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 120, height: 120)
-                    .shadow(color: Color.green.opacity(0.35), radius: 18, x: 0, y: 6)
-                    .padding(.top, 25)
+                    .frame(width: mascotSize, height: mascotSize)
+                    .shadow(color: Color.green.opacity(0.35), radius: isPad ? 18 : 18, x: 0, y: 6)
+                    .padding(.top, isPad ? 28 : 25)
 
                 Text("Let's set your stats!")
-                    .font(.poppins(26, weight: .bold))
+                    .font(.poppins(titleSize, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.top, 4)
 
-                // MARK: - Progress Bar
                 VStack(spacing: 4) {
                     ProgressView(value: progress, total: 13)
-                        .progressViewStyle(ThickProgressViewStyle(height: 12))
+                        .progressViewStyle(ThickProgressViewStyle(height: progressHeight))
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 40)
+                        .padding(.horizontal, isPad ? 60 : 40)
                     
                     Text("23%")
-                        .font(.poppins(12))
+                        .font(.poppins(progressTextSize))
                         .foregroundColor(.white.opacity(0.8))
                 }
-                .padding(.bottom, 30)
+                .padding(.bottom, isPad ? 28 : 30)
 
                 Text("How tall are you?")
-                    .font(.poppins(18, weight: .medium))
+                    .font(.poppins(questionFontSize, weight: .medium))
                     .foregroundColor(.white)
                     .padding(.top, 8)
 
-                // Segmented unit control with matching background and gradient on selected segment
                 HStack(spacing: 0) {
-                    // Feet segment
                     Button(action: {
                         selectedUnit = .feet
-                        // Default for inches (5'8" = 68 in)
                         selectedHeight = 68
                     }) {
                         Text("Feet")
-                            .font(.poppins(14, weight: .medium))
+                            .font(.poppins(segmentFontSize, weight: .medium))
                             .foregroundColor(selectedUnit == .feet ? .white : .white.opacity(0.8))
                             .frame(maxWidth: .infinity)
-                            .frame(height: 45)
+                            .frame(height: segmentHeight)
                             .background(
                                 Group {
                                     if selectedUnit == .feet {
@@ -122,17 +124,15 @@ struct HeightStatsView: View {
                     }
                     .frame(maxWidth: .infinity)
 
-                    // cm segment
                     Button(action: {
                         selectedUnit = .cm
-                        // Default as requested
                         selectedHeight = 173
                     }) {
                         Text("cm")
-                            .font(.poppins(14, weight: .medium))
+                            .font(.poppins(segmentFontSize, weight: .medium))
                             .foregroundColor(selectedUnit == .cm ? .white : .white.opacity(0.8))
                             .frame(maxWidth: .infinity)
-                            .frame(height: 45)
+                            .frame(height: segmentHeight)
                             .background(
                                 Group {
                                     if selectedUnit == .cm {
@@ -161,35 +161,31 @@ struct HeightStatsView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 4)
 
-                // Height horizontal picker (matches weight style)
                 HeightPickerView(
                     selectedHeight: $selectedHeight,
                     heightRange: heightRange,
                     unit: selectedUnit
                 )
-                .frame(height: 120)
+                .frame(height: isPad ? 150 : 120)
                 .padding(.top, 6)
 
                 OnboardingContinueButton(
                     title: "Continue",
                     isEnabled: selectedHeight != nil,
                     animateIn: true,
-                    bottomPadding: 40
+                    bottomPadding: isPad ? 50 : 40
                 ) {
                     guard let h = selectedHeight else { return }
                     
-                    // Normalize to CM for saving/calculation
                     let heightInCm: Int
                     switch selectedUnit {
                     case .cm:
                         heightInCm = h
                     case .feet:
-                        // Here "h" is inches; convert inches → cm
                         let cm = Double(h) * 2.54
                         heightInCm = Int((cm).rounded())
                     }
                     
-                    // Always pass cm (as String) to the continuation
                     onContinue?("\(heightInCm)")
                 }
                 
@@ -198,7 +194,6 @@ struct HeightStatsView: View {
         }
         .navigationBarBackButtonHidden(false)
         .onAppear {
-            // If launched from Settings, prefill from defaults
             if isFromSettings {
                 let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userHeight)
                 if !saved.isEmpty {
@@ -206,7 +201,6 @@ struct HeightStatsView: View {
                 }
             }
             
-            // Auto-default based on region
             if selectedHeight == nil {
                 selectedHeight = selectedUnit == .cm ? 173 : 68
             }
@@ -219,8 +213,11 @@ struct HeightPickerView: View {
     let heightRange: [Int]
     let unit: HeightStatsView.HeightUnit
     
-    private let itemSpacing: CGFloat = 14
-    private let itemSize: CGFloat = 100
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var itemSpacing: CGFloat { isPad ? 18 : 14 }
+    private var itemSize: CGFloat { isPad ? 120 : 100 }
+    private var selectedFontSize: CGFloat { isPad ? 52 : 44 }
+    private var unselectedFontSize: CGFloat { isPad ? 26 : 22 }
     
     @State private var itemCenters: [Int: CGFloat] = [:]
     @State private var isDragging = false
@@ -230,7 +227,6 @@ struct HeightPickerView: View {
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: itemSpacing) {
-                        // Leading spacer to center the first item
                         Color.clear
                             .frame(width: (geometry.size.width - itemSize) / 2)
                         
@@ -249,7 +245,7 @@ struct HeightPickerView: View {
                                     }
                                     
                                     Text(formattedHeight(h))
-                                        .font(.poppins(selectedHeight == h ? 44 : 22, weight: selectedHeight == h ? .bold : .regular))
+                                        .font(.poppins(selectedHeight == h ? selectedFontSize : unselectedFontSize, weight: selectedHeight == h ? .bold : .regular))
                                         .foregroundColor(selectedHeight == h ? Color(hex: "#18EF47") : .white.opacity(0.45))
                                         .frame(width: itemSize, height: itemSize)
                                 }
@@ -267,7 +263,6 @@ struct HeightPickerView: View {
                             )
                         }
                         
-                        // Trailing spacer to center the last item
                         Color.clear
                             .frame(width: (geometry.size.width - itemSize) / 2)
                     }
@@ -285,7 +280,6 @@ struct HeightPickerView: View {
                         }
                 )
                 .onAppear {
-                    // Ensure default selection is visible/centered
                     if selectedHeight == nil {
                         selectedHeight = (unit == .cm) ? 173 : 68
                     }
@@ -310,7 +304,6 @@ struct HeightPickerView: View {
         let visibleCenterX = visibleWidth / 2.0
         guard !itemCenters.isEmpty else { return }
         
-        // Find the value whose center is closest to the visible center
         let nearest = itemCenters.min { a, b in
             abs(a.value - visibleCenterX) < abs(b.value - visibleCenterX)
         }
@@ -328,7 +321,6 @@ struct HeightPickerView: View {
         case .cm:
             return "\(value)"
         case .feet:
-            // value is inches; convert to ft'in"
             let feet = value / 12
             let inches = value % 12
             return "\(feet)′\(inches)″"

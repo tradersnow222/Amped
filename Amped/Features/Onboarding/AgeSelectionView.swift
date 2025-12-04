@@ -19,79 +19,88 @@ struct AgeSelectionView: View {
     
     private let maxDate: Date = Date()
     
+    // Adaptive sizing
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var mascotSize: CGFloat { isPad ? 180 : 120 }
+    private var titleSize: CGFloat { isPad ? 34 : 26 }
+    private var progressHeight: CGFloat { isPad ? 16 : 12 }
+    private var progressTextSize: CGFloat { isPad ? 14 : 12 }
+    private var questionFontSize: CGFloat { isPad ? 22 : 20 }
+    private var labelFontSize: CGFloat { isPad ? 18 : 16 }
+    private var backIconSize: CGFloat { isPad ? 24 : 20 }
+    private var datePickerHeight: CGFloat { isPad ? 260 : .infinity }
+
     var body: some View {
         ZStack {
             LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
 
-            VStack(spacing: 20) {
+            VStack(spacing: isPad ? 28 : 20) {
                 HStack {
                     Button(action: {
-                        // back action
                         onBack?()
                     }) {
                         Image("backIcon")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 20, height: 20)
+                            .frame(width: backIconSize, height: backIconSize)
                     }
                     .padding(.leading, 30)
                     
-                    Spacer() // pushes button to leading
+                    Spacer()
                 }
                 
                 Image("Amped_8")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 120, height: 120)
-                    .shadow(color: Color.green.opacity(0.5), radius: 15, x: 0, y: 5)
-                    .padding(.top, 20)
+                    .frame(width: mascotSize, height: mascotSize)
+                    .shadow(color: Color.green.opacity(0.5), radius: isPad ? 18 : 15, x: 0, y: 5)
+                    .padding(.top, isPad ? 28 : 20)
 
                 Text("Let's set your stats!")
-                    .font(.poppins(26, weight: .bold))
+                    .font(.poppins(titleSize, weight: .bold))
                     .foregroundColor(.white)
 
                 VStack(spacing: 4) {
                     ProgressView(value: progress, total: 13)
-                        .progressViewStyle(ThickProgressViewStyle(height: 12))
+                        .progressViewStyle(ThickProgressViewStyle(height: progressHeight))
                         .frame(maxWidth: .infinity)
-                        .padding(.horizontal, 40)
+                        .padding(.horizontal, isPad ? 60 : 40)
 
                     Text("15%")
-                        .font(.poppins(12))
+                        .font(.poppins(progressTextSize))
                         .foregroundColor(.white.opacity(0.8))
                 }
-                .padding(.bottom, 20)
+                .padding(.bottom, isPad ? 26 : 20)
 
                 Text("How many years have you powered through life?")
-                    .font(.poppins(20, weight: .medium))
+                    .font(.poppins(questionFontSize, weight: .medium))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 35)
+                    .padding(.horizontal, isPad ? 60 : 35)
                 
                 HStack {
                     Text("Date")
-                        .font(.poppins(16, weight: .bold))
+                        .font(.poppins(labelFontSize, weight: .bold))
                         .foregroundColor(Color(hex: "#18EF47"))
                     
                     Spacer()
                     
                     Text("Month")
-                        .font(.poppins(16, weight: .bold))
+                        .font(.poppins(labelFontSize, weight: .bold))
                         .foregroundColor(Color(hex: "#18EF47"))
                     
                     Spacer()
                     
                     Text("Year")
-                        .font(.poppins(16, weight: .bold))
+                        .font(.poppins(labelFontSize, weight: .bold))
                         .foregroundColor(Color(hex: "#18EF47"))
                 }
-                .padding(.horizontal, 80)
+                .padding(.horizontal, isPad ? 120 : 80)
                 .padding(.top, 10)
                 
-                // DatePicker wheel container
                 DatePicker(
                     "",
                     selection: $dateOfBirth,
@@ -103,6 +112,7 @@ struct AgeSelectionView: View {
                 .foregroundStyle(.white)
                 .environment(\.colorScheme, .dark)
                 .frame(maxWidth: .infinity)
+                .frame(height: datePickerHeight)
                 .clipped()
                 .labelsHidden()
                 .padding(.bottom, 10)
@@ -126,7 +136,6 @@ struct AgeSelectionView: View {
         }
         .navigationBarBackButtonHidden(false)
         .onAppear {
-            // If launched from Settings, prefill from defaults
             if isFromSettings {
                 let saved = appState.getFromUserDefault(key: UserDefaultsKeys.userDateOfBirth)
                 if !saved.isEmpty {

@@ -18,80 +18,100 @@ struct SyncDeviceView: View {
     var onContinue: ((Bool) -> Void)?
     var onBack: (() -> Void)?
     
+    // MARK: - Adaptive Sizing
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var backIconSize: CGFloat { isPad ? 24 : 20 }
+    private var topSpacing: CGFloat { isPad ? 34 : 30 }
+    private var imageWidth: CGFloat { isPad ? 420 : 240 }
+    private var imageHeight: CGFloat { isPad ? 280 : 160 }
+    private var imageTopPadding: CGFloat { isPad ? 36 : 20 }
+    private var imageBottomPadding: CGFloat { isPad ? 18 : 10 }
+    private var titleFontSize: CGFloat { isPad ? 28 : 24 }
+    private var bodyFontSize: CGFloat { isPad ? 17 : 15 }
+    private var bodyHorizontalPadding: CGFloat { isPad ? 80 : 40 }
+    private var buttonFontSize: CGFloat { isPad ? 19 : 17 }
+    private var buttonHorizontalPadding: CGFloat { isPad ? 80 : 40 }
+    private var buttonVStackSpacing: CGFloat { isPad ? 18 : 15 }
+    private var bottomPadding: CGFloat { isPad ? 55 : 40 }
+    
     var body: some View {
         ZStack {
             LinearGradient.customBlueToDarkGray
                 .ignoresSafeArea()
             
-            VStack(spacing: 30) {
+            VStack(spacing: topSpacing) {
                 
+                // Back
                 HStack {
                     Button(action: {
-                        // back action
                         onBack?()
                     }) {
                         Image("backIcon")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 20, height: 20)
+                            .frame(width: backIconSize, height: backIconSize)
                     }
                     .padding(.leading, 30)
-                    .padding(.top, 10)
+                    .padding(.top, isPad ? 14 : 10)
                     
-                    Spacer() // pushes button to leading
+                    Spacer()
                 }
                 
                 // Image section
-                Image("syncDevice") 
+                Image("syncDevice")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 240, height: 160)
-                    .padding(.top, 20)
-                    .padding(.bottom, 10)
+                    .frame(width: imageWidth, height: imageHeight)
+                    .padding(.top, imageTopPadding)
+                    .padding(.bottom, imageBottomPadding)
                 
                 // Title and description
-                VStack(spacing: 10) {
+                VStack(spacing: isPad ? 14 : 10) {
                     Text("Let’s Get You Synced")
-                        .font(.system(size: 24, weight: .semibold))
+                        .font(.poppins(titleFontSize, weight: .semibold))
                         .foregroundColor(.white)
                     
                     Text("To provide the most accurate lifespan calculations, we’ll need access to steps, heart rate, activity etc. and daily health scores.")
-                        .font(.system(size: 15))
+                        .font(.poppins(bodyFontSize))
                         .multilineTextAlignment(.center)
-                        .foregroundColor(.white.opacity(0.8))
-                        .padding(.horizontal, 40)
+                        .foregroundColor(.white.opacity(0.85))
+                        .padding(.horizontal, bodyHorizontalPadding)
                     
                     Text("Make sure your wearable is already linked to Apple Health.")
-                        .font(.system(size: 15))
+                        .font(.poppins(bodyFontSize))
                         .multilineTextAlignment(.center)
-                        .foregroundColor(.white.opacity(0.8))
-                        .padding(.horizontal, 40)
+                        .foregroundColor(.white.opacity(0.85))
+                        .padding(.horizontal, bodyHorizontalPadding)
                     
                     Text("No wearable? No problem! Your iPhone works too.")
-                        .font(.system(size: 15))
+                        .font(.poppins(bodyFontSize))
                         .multilineTextAlignment(.center)
-                        .foregroundColor(.white.opacity(0.8))
-                        .padding(.horizontal, 40)
+                        .foregroundColor(.white.opacity(0.85))
+                        .padding(.horizontal, bodyHorizontalPadding)
                 }
                 
                 Spacer()
                 
                 // Buttons
-                VStack(spacing: 15) {
+                VStack(spacing: buttonVStackSpacing) {
                     Button(action: {
                         viewModel.selectedDeviceTrackingStatus = .yesBoth
                         requestHealthKitAuthorization()
                     }) {
                         Text("Yes, I track with a device")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.poppins(buttonFontSize, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(RoundedRectangle(cornerRadius: 30)
-                                .stroke(Color.green, lineWidth: 1.5))
-                            .background(RoundedRectangle(cornerRadius: 30)
-                                .fill(Color.green.opacity(0.15)))
-                            .padding(.horizontal, 40)
+                            .background(
+                                RoundedRectangle(cornerRadius: 30)
+                                    .stroke(Color.ampedGreen, lineWidth: 1.5)
+                            )
+                            .background(
+                                RoundedRectangle(cornerRadius: 30)
+                                    .fill(Color.ampedGreen.opacity(0.15))
+                            )
+                            .padding(.horizontal, buttonHorizontalPadding)
                     }
                     
                     Button(action: {
@@ -100,16 +120,18 @@ struct SyncDeviceView: View {
                         onContinue?(false)
                     }) {
                         Text("No, I don’t use any device")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.poppins(buttonFontSize, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(RoundedRectangle(cornerRadius: 30)
-                                .stroke(Color.green, lineWidth: 1.5))
-                            .padding(.horizontal, 40)
+                            .background(
+                                RoundedRectangle(cornerRadius: 30)
+                                    .stroke(Color.ampedGreen, lineWidth: 1.5)
+                            )
+                            .padding(.horizontal, buttonHorizontalPadding)
                     }
                 }
-                .padding(.bottom, 40)
+                .padding(.bottom, bottomPadding)
             }
         }
     }
@@ -119,14 +141,11 @@ struct SyncDeviceView: View {
         print("🔍 DEVICE TRACKING: Requesting HealthKit authorization")
         print("🔍 DEVICE TRACKING: Current question before auth: \(viewModel.currentQuestion)")
         
-        // Set flag to track that we're waiting for authorization
         isWaitingForHealthKitAuth = true
         
-        // ULTRA-FAST: Fire the authorization immediately with completion handler
         HealthKitManager.shared.requestAuthorizationUltraFast {
             print("🔍 DEVICE TRACKING: HealthKit authorization completed")
             
-            // Complete the questionnaire when authorization completes
             DispatchQueue.main.async {
                 if self.isWaitingForHealthKitAuth {
                     print("🔍 DEVICE TRACKING: Completing questionnaire")
@@ -136,13 +155,10 @@ struct SyncDeviceView: View {
                 }
             }
         }
-        
-        // DO NOT navigate yet - stay on current screen while dialog is shown
-        // Navigation will happen when authorization completes
     }
     
     private func completeQuestionnaire() {
-        // Only sync if actually different to avoid unnecessary updates
+        // Sync user name
         let userName = appState.getFromUserDefault(key: UserDefaultsKeys.userName)
         if viewModel.userName != userName {
             viewModel.userName = userName
@@ -160,65 +176,63 @@ struct SyncDeviceView: View {
             viewModel.setAge(age)
         }
         
+        // Birth year
         let year = extractYear(from: appState.getFromUserDefault(key: UserDefaultsKeys.userDateOfBirth))
         viewModel.selectedBirthYear = year
         
-        // Sync height
+        // Height
         let height = appState.getFromUserDefault(key: UserDefaultsKeys.userHeight)
         if let heightInt = Int(height.trimmingCharacters(in: .whitespacesAndNewlines)),
            heightInt >= 100 && heightInt <= 250 {
             viewModel.setHeight(Double(heightInt))
         }
         
-        // Sync weight
+        // Weight
         let weight = appState.getFromUserDefault(key: UserDefaultsKeys.userWeight)
         if let weightInt = Int(weight.trimmingCharacters(in: .whitespacesAndNewlines)),
            weightInt >= 30 && weightInt <= 300 {
             viewModel.setWeight(Double(weightInt))
         }
         
-        // Sync stressLevel
+        // Stress
         let stressLevel = appState.getFromUserDefault(key: UserDefaultsKeys.userStressLevel)
         viewModel.selectedStressLevel = stressLevel == "High" ? QuestionnaireViewModel.StressLevel.high : stressLevel == "Low" ? QuestionnaireViewModel.StressLevel.low : QuestionnaireViewModel.StressLevel.moderate
         
-        // Sync AnxietyLevel
+        // Anxiety
         let anxietyLevel = appState.getFromUserDefault(key: UserDefaultsKeys.userAnxietyLevel)
         viewModel.selectedAnxietyLevel = anxietyLevel == "High" ? QuestionnaireViewModel.AnxietyLevel.high : anxietyLevel == "Low" ? QuestionnaireViewModel.AnxietyLevel.low : QuestionnaireViewModel.AnxietyLevel.moderate
         
-        // Sync DietLevel
+        // Diet
         let dietLevel = appState.getFromUserDefault(key: UserDefaultsKeys.userDietLevel)
         viewModel.selectedNutritionQuality = dietLevel == "Very Healthy" ? QuestionnaireViewModel.NutritionQuality.low : dietLevel == "Mixed" ? QuestionnaireViewModel.NutritionQuality.moderate : QuestionnaireViewModel.NutritionQuality.high
         
-        // Sync smokeStats
+        // Smoking
         let smokeStats = appState.getFromUserDefault(key: UserDefaultsKeys.userSmokeStats)
         viewModel.selectedSmokingStatus = smokeStats == "Never" ? QuestionnaireViewModel.SmokingStatus.low : smokeStats == "Former smoker" ? QuestionnaireViewModel.SmokingStatus.moderate : QuestionnaireViewModel.SmokingStatus.high
         
-        // Sync alcoholStats
+        // Alcohol
         let alcoholStats = appState.getFromUserDefault(key: UserDefaultsKeys.userAlcoholStats)
         viewModel.selectedAlcoholFrequency = alcoholStats == "Never" ? QuestionnaireViewModel.AlcoholFrequency.low : alcoholStats == "Occassionally" ? QuestionnaireViewModel.AlcoholFrequency.moderate : QuestionnaireViewModel.AlcoholFrequency.high
         
-        // Sync socialStats
+        // Social
         let socialStats = appState.getFromUserDefault(key: UserDefaultsKeys.userSocialStats)
         viewModel.selectedSocialConnectionsQuality = socialStats == "Isolated" ? QuestionnaireViewModel.SocialConnectionsQuality.high : socialStats == "Moderate" ? QuestionnaireViewModel.SocialConnectionsQuality.moderate : QuestionnaireViewModel.SocialConnectionsQuality.low
         
-        // Sync bloodPressureStats
+        // Blood Pressure
         let bloodPressureStats = appState.getFromUserDefault(key: UserDefaultsKeys.userBloodPressureStats)
         viewModel.selectedBloodPressureCategory = bloodPressureStats == "Below 120/80" ? QuestionnaireViewModel.BloodPressureCategory.low : bloodPressureStats == "130/80+" ? QuestionnaireViewModel.BloodPressureCategory.moderate : QuestionnaireViewModel.BloodPressureCategory.unknown
         
-        // Sync mainReasonStats
+        // Motivation
         let mainReasonStats = appState.getFromUserDefault(key: UserDefaultsKeys.userMainReasonStats)
         viewModel.selectedLifeMotivation = mainReasonStats == "Watch my family grow" ? QuestionnaireViewModel.LifeMotivation.family : mainReasonStats == "Achieve my dreams" ? QuestionnaireViewModel.LifeMotivation.dreams : QuestionnaireViewModel.LifeMotivation.experience
         
-        // Sync DailyLifespanGainMinutes
+        // Daily goal
         viewModel.desiredDailyLifespanGainMinutes = Int(appState.getFromUserDefault(key: UserDefaultsKeys.userGoalStats)) ?? 10
         
         questionnaireManager.saveQuestionnaireData(from: viewModel)
-        
-        // Clear persisted questionnaire state since we're done
-//        UserDefaults.standard.removeObject(forKey: "questionnaire_current_question")
-
     }
     
+    // MARK: - Helpers
     func calculateAge(from dobString: String) -> Int {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss zzz"
@@ -247,5 +261,8 @@ struct SyncDeviceView: View {
         let calendar = Calendar.current
         return calendar.component(.year, from: date)
     }
+}
 
+#Preview {
+    SyncDeviceView()
 }
